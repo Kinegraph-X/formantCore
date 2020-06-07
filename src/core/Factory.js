@@ -649,7 +649,7 @@ var Factory = (function() {
 		this.createEvent('clicked');
 		this.createEvent('update');
 		
-//		this.init(def);
+//		this.init(def, container);
 	};
 	UIModule.objectType = 'UIModule';
 	UIModule.prototype = Object.create(DependancyModule.prototype);
@@ -658,7 +658,7 @@ var Factory = (function() {
 	UIModule.prototype.registerLearnEvents = function() {}		// dummy
 	UIModule.prototype.registerKeyboardEvents = function() {}	// dummy
 	
-	UIModule.prototype.init = function(/* arguments : def */) {
+	UIModule.prototype.init = function(/* arguments : def, container */) {
 //		console.error('init', this.objectType);
 		this.createDOM.apply(this, arguments);
 		this.registerClickEvents();
