@@ -697,7 +697,7 @@ var Factory = (function() {
 		this.resize();
 		setTimeout(function() {
 			for (var i in self.modules) {
-				if (self.modules[i].objectType === 'uiModule')
+				if (self.modules[i].objectType === 'UIModule')
 					self.modules[i].resize();
 			}
 		}, 64);
