@@ -3,9 +3,8 @@
  */
 
 var Factory = require('../core/Factory');
-var constants = require('../constants/appConstants');
+var constants = require('../appLaucher/appLauncher');
 
-var classConstructor = function() {
 
 	var Logger = function() {
 		Factory.CoreModule.call(this);
@@ -92,6 +91,7 @@ var classConstructor = function() {
 			OK : 'OK'
 	}
 	
+var classConstructor = function() {
 	return new Logger();
 }
 

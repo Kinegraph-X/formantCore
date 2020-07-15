@@ -4,8 +4,7 @@
 
 var Factory = require('../core/Factory');
 
-var classConstructor = function() {
-	
+var classConstructor = function() {	
 	var context = this.context;
 	var baseAppDefaultOptions = {};
 	var baseApp = {};
@@ -61,6 +60,6 @@ var classConstructor = function() {
 	}
 }
 
-classConstructor.__factory_name = 'appConstants';
+classConstructor.__factory_name = 'appLauncher';
 var factory = Factory.Maker.getSingletonFactory(classConstructor);
 module.exports = factory;

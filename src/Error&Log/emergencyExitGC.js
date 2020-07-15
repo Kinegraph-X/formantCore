@@ -5,8 +5,7 @@
 var Factory = require('../core/Factory');
 //var audioSource = require('../renderers/audioSource');
 
-var classConstructor = function() {
-	var context = this.context;
+	
 	
 //	var objects = {
 //			'audioSource' : audioSource(context).getInstance()
@@ -25,7 +24,7 @@ var classConstructor = function() {
 			return 'WebApp Memory Cleaning: Click OK to leave';
 		}.bind(this);
 	}
-EmergencyExitGC.prototype = Object.create(Factory.CoreModule.prototype);EmergencyExitGC.prototype.objectType = 'EmergencyExitGC';
+	EmergencyExitGC.prototype = Object.create(Factory.CoreModule.prototype);	EmergencyExitGC.prototype.objectType = 'EmergencyExitGC';
 
 	
 	EmergencyExitGC.prototype.registerObjectForDeletion = function(parent, objName, removeEvent, handler) {
@@ -44,10 +43,13 @@ EmergencyExitGC.prototype = Object.create(Factory.CoreModule.prototype);Emergen
 		}
 	}
 	
+	
+var classConstructor = function() {
+	var context = this.context;
 	var instance = new EmergencyExitGC();
 	return instance;
 }
 
 classConstructor.__factory_name = 'EmergencyExitGC';
 var factory = Factory.Maker.getSingletonFactory(classConstructor);
-//module.exports = factory;
+module.exports = factory;

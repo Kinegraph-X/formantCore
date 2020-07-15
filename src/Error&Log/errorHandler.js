@@ -3,10 +3,9 @@
  */
 
 var Factory = require('../core/Factory');
-var constants = require('../constants/appConstants');
+var constants = require('../appLaucher/appLauncher');
 
 var classConstructor = function() {
-
 	
 }
 
