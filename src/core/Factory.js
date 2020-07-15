@@ -514,7 +514,7 @@ var Factory = (function() {
 			this.modules[i].trigger('destroy');
 		}
 	}
-	CoreModule.objectType = 'CoreModule';
+	CoreModule.prototype.objectType = 'CoreModule';
 	CoreModule.__factory_name = 'CoreModule';
 	
 	
@@ -537,8 +537,9 @@ var Factory = (function() {
 		this.createEvent('readystatechange');
 		this.createEvent('statuschange');
 	};
-	AsynchronousModule.objectType = 'AsynchronousModule';
+
 	AsynchronousModule.prototype = Object.create(CoreModule.prototype);
+	AsynchronousModule.prototype.objectType = 'AsynchronousModule';
 	AsynchronousModule.prototype.constructor = AsynchronousModule;
 	
 	Object.defineProperty(AsynchronousModule.prototype, 'readyState', {
@@ -606,8 +607,9 @@ var Factory = (function() {
 		this.createEvent('destroy');
 		this.createEvent('exportdata');
 	};
-	DependancyModule.objectType = 'DependancyModule';
+
 	DependancyModule.prototype = Object.create(CoreModule.prototype);
+	DependancyModule.prototype.objectType = 'DependancyModule';
 	DependancyModule.prototype.constructor = DependancyModule;
 	
 	DependancyModule.prototype.callMethod = function(methodName) {
@@ -651,8 +653,9 @@ var Factory = (function() {
 		
 //		this.init(def, container);
 	};
-	UIModule.objectType = 'UIModule';
+
 	UIModule.prototype = Object.create(DependancyModule.prototype);
+	UIModule.prototype.objectType = 'UIModule';
 	UIModule.prototype.constructor = UIModule;
 	UIModule.prototype.registerClickEvents = function() {}		// dummy
 	UIModule.prototype.registerLearnEvents = function() {}		// dummy
@@ -747,8 +750,8 @@ var Factory = (function() {
 		this.createEvent('action');
 		this.createEvent('actionrefused');
 	}
-	Command.objectType = 'Command';
-	Command.prototype = Object.create(CoreModule.prototype);
+Command.prototype = Object.create(CoreModule.prototype);
+Command.prototype.objectType = 'Command';
 	Command.prototype.constructor = Command;
 	
 	Command.prototype.act = function() {
@@ -807,8 +810,8 @@ var Factory = (function() {
 		this.worker = new Worker(url);
 		this.worker.onmessage = this.handleResponse.bind(this); 
 	}
-	WorkerInterface.objectType = 'WorkerInterface';
-	WorkerInterface.prototype = Object.create(CoreModule.prototype);
+WorkerInterface.prototype = Object.create(CoreModule.prototype);
+WorkerInterface.prototype.objectType = 'WorkerInterface';
 	WorkerInterface.prototype.constructor = WorkerInterface;
 
 	WorkerInterface.prototype.postMessage = function(action, e) { 	// e.data = File Object (blob)
