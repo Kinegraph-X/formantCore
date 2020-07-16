@@ -648,6 +648,8 @@ var Factory = (function() {
 		this.domElem = $('');
 		this.hoverElem;
 		
+		this.command;
+		
 		this.createEvent('clicked');
 		this.createEvent('update');
 		this.createEvent('stroke');
@@ -658,10 +660,18 @@ var Factory = (function() {
 	UIModule.prototype = Object.create(DependancyModule.prototype);
 	UIModule.prototype.objectType = 'UIModule';
 	UIModule.prototype.constructor = UIModule;
+	UIModule.prototype.initGenericEvent = function() {			// dummy
+		// generic event may be : this.createEvent('action'); triggered by the -whole- set of events the module may trigger
+		// CAUTION : only end-heriting object MAY call initGenericEvent in the constructor.
+		// The other classes (one level uppon this abstract class and upper) may define a default method,
+		// but would risk an init race failure when calling (calling to soon) the method from their constructor
+		// intermediate- (two levels uppon this abstract class) & end- classes should then call super.initGenericEvent()
+		// before connecting their own events to the generic event
+	}
 	UIModule.prototype.registerClickEvents = function() {}		// dummy
 	UIModule.prototype.registerLearnEvents = function() {}		// dummy
 	UIModule.prototype.registerKeyboardEvents = function() {}	// dummy
-	UIModule.prototype.programmaticCSSActiveState = function() {
+	UIModule.prototype.programmaticCSSActiveState = function() {// helper (and always async)
 		var self = this;
 		var asyncExec = new Promise(function(resolve, reject) {
 			self.domElem.addClass('active');
