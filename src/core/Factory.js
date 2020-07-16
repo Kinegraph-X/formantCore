@@ -645,13 +645,14 @@ var Factory = (function() {
 		this.container = container || undefined;
 		this.buttonClassName = buttonClassName || undefined;
 		
-		this.domElem;
+		this.domElem = $('');
 		this.hoverElem;
 		
 		this.createEvent('clicked');
 		this.createEvent('update');
+		this.createEvent('stroke');
 		
-//		this.init(def, container);
+//		this.init(def, container); 	// REMINDER : some components may want to delay initialization
 	};
 
 	UIModule.prototype = Object.create(DependancyModule.prototype);
@@ -660,6 +661,15 @@ var Factory = (function() {
 	UIModule.prototype.registerClickEvents = function() {}		// dummy
 	UIModule.prototype.registerLearnEvents = function() {}		// dummy
 	UIModule.prototype.registerKeyboardEvents = function() {}	// dummy
+	UIModule.prototype.programmaticCSSActiveState = function() {
+		var self = this;
+		var asyncExec = new Promise(function(resolve, reject) {
+			self.domElem.addClass('active');
+			setTimeout(function() {
+				self.domElem.removeClass('active');
+			}, 64);
+		});
+	}
 	
 	UIModule.prototype.init = function(/* arguments : def, container */) {
 //		console.error('init', this.objectType);
@@ -742,7 +752,7 @@ var Factory = (function() {
 		CoreModule.call(this);
 
 		this.objectType = 'Command ' + action.name;
-		this.canActBool = false;
+		this.canActQuery = false;
 		this.action = action;
 		this.canAct = canAct;
 		this.undo = undo;
@@ -750,43 +760,42 @@ var Factory = (function() {
 		this.createEvent('action');
 		this.createEvent('actionrefused');
 	}
-Command.prototype = Object.create(CoreModule.prototype);
-Command.prototype.objectType = 'Command';
+	Command.prototype = Object.create(CoreModule.prototype);
+	Command.prototype.objectType = 'Command';
 	Command.prototype.constructor = Command;
 	
 	Command.prototype.act = function() {
-		var self = this, args = arguments; 
+		var self = this, canActResult, args = Array.prototype.apply(arguments); 
 		if (this.canAct === null) {
-			this.canActBool = true;
 			this.action.apply(this, args);
 		}
 		else {
-			this.canActBool = this.canAct.apply(this, args); 
-			if (typeof this.canActBool === 'object' && this.canActBool instanceof Promise)
-				this.canActBool.then(
-						function(canActBool) {
-							if (canActBool) {
-								self.canActBool = true;
-								self.action.apply(self, args);
-							}
-							else {
-								self.canActBool = false;
-								self.trigger('actionrefused');
-							}
+			this.canActQuery = this.canAct.apply(this, args); 
+			if (typeof this.canActQuery === 'object' && this.canActQuery instanceof Promise) {
+				this.canActQuery.then(
+						function(queryResult) {
+							args.push(queryResult);
+							self.action.apply(self, args);
+							self.trigger('action');
+							return queryResult;
 						},
-						function(rejected) {
-							self.canActBool = false;
+						function(queryResult) {
 							self.trigger('actionrefused');
+							return queryResult;
 						}
-						);
-			else if (this.canActBool)
+				);
+			}
+			else if (this.canActQuery) {
+				this.canActQuery = Promise.resolve(this.canActQuery);
 				this.action.apply(this, args);
+				this.trigger('action');
+			}
 			else {
-				this.canActBool = false;
-				this.trigger('actionrefused', ['this.canActBool', this.canActBool]);
+				this.canActQuery = Promise.reject(this.canActQuery);
+				this.trigger('actionrefused', ['canActQuery', this.canActQuery]);
 			}
 		}
-		return this.canActBool;
+		return this.canActQuery;
 	}
 	
 //	Command.prototype.resetSiblings = false;
