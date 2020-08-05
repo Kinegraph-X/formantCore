@@ -2,20 +2,38 @@
  * @module appLauncher
  */
 
-var Factory = require('../core/Factory');
+var Factory = require('src/core/Factory');
+var Str = require('src/extendedNative/string');
+var arr = require('src/extendedNative/array');
 
 var classConstructor = function() {	
-	var context = this.context;
-	var baseAppDefaultOptions = {};
-	var baseApp = {};
+	var context = this.context,
+		options = {},
+		baseAppDefaultOptions = {
+			UIDPrefix : ''
+		},
+		baseApp = {},
+		currentHostPath,
+		browserName,
+		knownIDs = [];
+	
 
-	var launch = function(options) {
-		if (typeof options !== 'undefined')
-			this.options = $.arrayMerge([], options, baseAppDefaultOptions);
-		else
-			this.options = baseAppDefaultOptions;
-		this.currentHostPath = window.location.href.match(/(.*\/)[^/]*$/)[1];
-		this.browserName = parseUserAgent();
+	var launch = function(customOptions) {
+		options = baseAppDefaultOptions;
+		if (typeof customOptions === 'object' && Object.keys(customOptions).length) {
+			for(var prop in customOptions) {
+				if (customOptions.hasOwnProperty(prop))
+					options[prop] = customOptions[prop];
+			};
+		}
+		// ensure we have an underscore at the end of the "app specific" prefix
+		options.UIDPrefix = (options.UIDPrefix.lastIndexOf('_') === options.UIDPrefix.length - 1) ? options.UIDPrefix : options.UIDPrefix + '_';
+		
+		// helper styles
+		require('src/UI/styles/helperStyles')(context).getInstance();
+		
+		currentHostPath = window.location.href.match(/(.*\/)[^/]*$/)[1];
+		browserName = parseUserAgent();
 	}
 	
 	var parseUserAgent = function() {
@@ -54,9 +72,38 @@ var classConstructor = function() {
 		return true;
 	}
 	
+	var getUID = function(uniqueID) {
+		var index;
+		if ((index = knownIDs.indexOf(uniqueID)) !== -1)
+			return options.UIDPrefix + knownIDs[index];
+		else {
+			uniqueID = uniqueID || ($.guid++).toString();
+			knownIDs.push(uniqueID);
+			return options.UIDPrefix + uniqueID;
+		}
+	}
+	
+	var isKnownUID = function(uniqueID) {
+		return getUID(uniqueID);
+	}
+	
+	// jQuery UI implements some lock-mechanisms to prevent interfaces being used at the same time by two widgets
+	// Now we've integrated some widgets as native components, let's try to keep track of those locks at our app level
+	var locks = {
+			mouseHandled : false
+	}
+	document.addEventListener("mouseup", function() {
+		locks.mouseHandled = false;
+	});
+	
 	return {
 		launch : launch,
-		checkSupport : checkSupport
+		checkSupport : checkSupport,
+		locks : locks,
+		getUID : getUID,
+		isKnownUID : isKnownUID,
+		currentHostPath : currentHostPath,
+		browserName : browserName
 	}
 }
 

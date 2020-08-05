@@ -173,7 +173,7 @@ var Factory = (function() {
 
 	    return instance;
 
-	}());
+	})();
 	
 	/**
 	 * An Interface to be implemented by a module supposed to host children singleton modules
@@ -229,7 +229,7 @@ var Factory = (function() {
 			if (this.modules[module] === candidateModule || module === moduleName)
 				return;
 		}
-		candidateModule.__instance_name = moduleName;
+		candidateModule.__tree_name = moduleName;
 		this.modules[moduleName] = candidateModule;
 		
 		// autoSubscribe to object own events
@@ -447,44 +447,66 @@ var Factory = (function() {
 	 */
 	// static method
 	CoreModule.prototype.addInterface = CoreModule.addInterface = function(base, extension) {
-		var self = this;
+		var self = this, objectType = base.prototype.objectType;
 
-		var constructor = function() {
-			self.mergeOwnProperties(this, new base(), new extension());
-			this.objectType = base.objectType;
-			this.implements = extension.objectType;
+		var mergedConstructor = function() {
+			// CAUTION : constructors seems unreachable after the second inheritance...
+			// base.apply(this, arguments);
+			// extension.apply(this, arguments);
+			
+			// creating dummy objects with new base(arguments) seems to be a more functional construct :
+			// CAUTION : jQuery objects may loose their prototype (see com on mergeOwnProperties function)...
+			var args = UIModule.prototype.isCalledFromFactory.apply(this, arguments) || arguments;
+			self.mergeOwnProperties(this, new base(args), new extension(args));
+			
+			this.objectType = objectType;
+			this.implements = extension.prototype.objectType;
 		};
-		constructor.prototype = this.mergeOwnProperties(base.prototype, extension.prototype);
-		constructor.prototype.constructor = constructor;
-		return constructor;
+
+		// interface prototype depth is limited to 1 (mergeOwnProperties tests hasOwnProperty)
+		// limit extended to 2 when setting keepNonStdProtos to "true"
+		mergedConstructor.prototype = this.mergeOwnProperties(base.prototype, extension.prototype);
+		mergedConstructor.prototype.constructor = mergedConstructor;
+		return mergedConstructor;
 	}
-	// static method
+	// mergeOwnProperties is part of the abstract class but also usable as a static method
+	// Pass "true" as first argument if we want to retrieve the custom prototype of the injected object in the target object
+	// (though still seemingly not allowing to merge objects referencing domElements : 
+	// appart from instances of jQuery, which MAY be already loaded, and to which we simply create a reference, then the first boolean is not necessary)
 	CoreModule.prototype.mergeOwnProperties = CoreModule.mergeOwnProperties = function() {
-		var self = this, obj, desc, isArray, isObj, len,
-			target = arguments[ 0 ] || {},
-			i = 1,
+		var self = this, keepNonStdProtos = false, obj, desc, isArray, isObj, len,
+			target = (typeof arguments[0] === 'boolean'
+						&& arguments[0]
+						&& (keepNonStdProtos = true))
+							? arguments[1]
+									: arguments[0] || {},
+			i = keepNonStdProtos ? 2 : 1,
 			length = arguments.length,
 			testObj;
 
 		for ( ; i < length; i++ ) {
-
 			// Only deal with non-null/undefined values
 			if ((obj = arguments[ i ]) != null) {
 				testObj = Object.getOwnPropertyNames(obj).concat(Object.getOwnPropertyNames(Object.getPrototypeOf(obj)));
 
-				
 				// Extend the base object
 				testObj.forEach(function(name) {
-//					console.log(name);
-					if (!obj.hasOwnProperty(name))
+					if (!obj.hasOwnProperty(name) && !keepNonStdProtos)
 						return;
-//					console.log(name);
+					else if (keepNonStdProtos && target.prototype === Object.prototype && obj.prototype[name]) {
+						target.prototype = obj.prototype;
+						return;
+					}
 					desc = Object.getOwnPropertyDescriptor(obj, name);
 					if (!desc.get) {
-						if ((isArray = Array.isArray(obj[name])) || (isObj = $.isPlainObject(obj[name]))) {
+						if ((isArray = Array.isArray(obj[name])) || (isObj = (Object.prototype.toString.call(obj[name]) === '[object Object]'))) {
 							len = obj[name].length || Object.keys(obj[name]).length;
-							if (len)
-								target[name] = self.mergeOwnProperties(target[name], obj[name]);
+							if (len) {
+								if (typeof $ !== 'undefined' && obj[name] instanceof $)
+									target[name] = obj[name];
+								else
+									target[name] = self.mergeOwnProperties(target[name] || (isArray ? [] : {}), obj[name]);
+							}
 							else
 								target[name] = isArray ? [] : {};
 						}
@@ -637,86 +659,144 @@ var Factory = (function() {
 	 * @param {Object} (jQuery Instance) container
 	 * @param {string} buttonClassName
 	 */
-	var UIModule = function(def, container, buttonClassName) {
+	var UIModule = function(def, containerDOMId, automakeable, buttonClassName) {
+		this.raw = true;
 		DependancyModule.call(this);
 		this.objectType = 'UIModule';
 
-		this.def = def || undefined;
-		this.container = container || undefined;
-		this.buttonClassName = buttonClassName || undefined;
+		this.def = def || (this.def || undefined);
+		this.container = this.container || undefined;
+		this.buttonClassName = buttonClassName || (this.buttonClassName || undefined);
 		
-		this.domElem = $('');
-		this.hoverElem;
-		
+		this.containerDOMId = containerDOMId || this.containerDOMId;
+		this.container = this.container;
+		this.domElem = this.domElem || $(''); 		// not functional ($('') === {})
+		this.hoverElem = this.hoverElem;
+
+		this.renderChain = [];
 		this.command;
+		this.keyboardEvents = this.keyboardEvents || [];
 		
-		this.createEvent('clicked');
-		this.createEvent('update');
-		this.createEvent('stroke');
-		
-//		this.init(def, container); 	// REMINDER : some components may want to delay initialization
+		(automakeable && this.Make.apply(this, arguments));
 	};
 
 	UIModule.prototype = Object.create(DependancyModule.prototype);
 	UIModule.prototype.objectType = 'UIModule';
 	UIModule.prototype.constructor = UIModule;
-	UIModule.prototype.initGenericEvent = function() {			// dummy
-		// generic event may be : this.createEvent('action'); triggered by the -whole- set of events the module may trigger
+	UIModule.prototype.beforeMake = function() {}				// virtual
+	UIModule.prototype.afterMake = function() {}				// virtual
+	UIModule.prototype.beforeCreateDOM = function() {}			// virtual
+	UIModule.prototype.createDOM = function() {}				// virtual
+	UIModule.prototype.afterCreateDOM = function() {}			// virtual
+	UIModule.prototype.beforeRegisterEvents = function() {}		// virtual
+	UIModule.prototype.registerClickEvents = function() {}		// virtual
+	UIModule.prototype.registerLearnEvents = function() {}		// virtual
+	UIModule.prototype.registerKeyboardEvents = function() {}	// virtual
+	UIModule.prototype.afterRegisterEvents = function() {}		// virtual
+	UIModule.prototype.registerValidators = function() {}		// virtual
+	UIModule.prototype.resize = function() {}					// virtual
+	UIModule.__factory_name = 'UIModule';
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.Make = function() {
+		this.beforeMake(arguments);
+		this.init(arguments)
+		this.afterMake(arguments);
+		this.raw = false;
+	}
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.init = function(/* arguments : def, container */) {
+		this.createEvents.apply(this, arguments);
+		this.create.apply(this, arguments);
+//		this.initGenericEvent(); 						// REMINDER : Don't call. That could call the descendant's method before the events are created
+		this.registerEvents();
+		this.resizeAll();
+		this.firstRender();
+		this.renderChain.push();
+	}
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.createEvents = function() {
+		this.createEvent('clicked');
+		this.createEvent('update');
+		this.createEvent('stroke');
+	}
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.create = function() {
+		this.beforeCreateDOM(arguments);
+		(this.containerDOMId && (this.container = $('#' + this.containerDOMId)));
+		this.createDOM(arguments)
+		this.afterCreateDOM(arguments);
+	}
+	
+	UIModule.prototype.registerEvents = function() {
+		this.beforeRegisterEvents();
+		this.registerClickEvents();
+		this.registerKeyboardEvents();
+		(this.hoverElem && this.registerLearnEvents());
+		this.afterRegisterEvents();
+		this.registerValidators();
+	}
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.firstRender = function() {
+		(this.container && this.container.append(this.domElem));
+	}
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.initGenericEvent = function() {
+		this.genericEvent();
+		// generic event may be : this.createEvent('action'); triggered by any individual event among the -whole- set of events the module may trigger
 		// CAUTION : only end-heriting object MAY call initGenericEvent in the constructor.
 		// The other classes (one level uppon this abstract class and upper) may define a default method,
 		// but would risk an init race failure when calling (calling to soon) the method from their constructor
 		// intermediate- (two levels uppon this abstract class) & end- classes should then call super.initGenericEvent()
 		// before connecting their own events to the generic event
 	}
-	UIModule.prototype.registerClickEvents = function() {}		// dummy
-	UIModule.prototype.registerLearnEvents = function() {}		// dummy
-	UIModule.prototype.registerKeyboardEvents = function() {}	// dummy
-	UIModule.prototype.programmaticCSSActiveState = function() {// helper (and always async)
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.isCalledFromFactory = function() {
+//		console.log(arguments);
+		var args = null,
+			bool = (arguments.length === 1 && (args = Array.prototype.slice.call(arguments[0])).length && typeof args[0].sections !== 'undefined');
+//		console.log(args);
+		return args;
+	}
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.asyncCSSActiveState = function() {// helper (locks behavior as "always async", then command can be initialized before animation ends)
 		var self = this;
 		var asyncExec = new Promise(function(resolve, reject) {
-			self.domElem.addClass('active');
+			self.domElem.addClass('actionated');
 			setTimeout(function() {
-				self.domElem.removeClass('active');
+				self.domElem.removeClass('actionated');
 			}, 64);
 		});
 	}
-	
-	UIModule.prototype.init = function(/* arguments : def, container */) {
-//		console.error('init', this.objectType);
-		this.createDOM.apply(this, arguments);
-		this.registerClickEvents();
-		this.registerLearnEvents();
-		this.registerKeyboardEvents();
-		this.resizeAll();
-		return this.domElem;
-	}
-	
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.createDOM = function(def) {		// dummy
-		
-	}
-	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.update = function() { 		// dummy
+	UIModule.prototype.update = function() {
 		// code here //
 		this.trigger('update');
 	}
-	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.resize = function() {}		// dummy
-	
 	/**
 	 * @generic
 	 */
 	UIModule.prototype.resizeAll = function() {
 		var self = this;
 //		console.log('resizeAll');
+//		console.log(this.resize)
 		this.resize();
 		setTimeout(function() {
 			for (var i in self.modules) {
@@ -725,7 +805,6 @@ var Factory = (function() {
 			}
 		}, 64);
 	}
-	
 	/**
 	 * @generic
 	 */
@@ -735,9 +814,6 @@ var Factory = (function() {
 				this.modules[i].update();
 		}
 	}
-	
-
-	UIModule.__factory_name = 'UIModule';
 	
 	
 	/**
@@ -829,8 +905,8 @@ var Factory = (function() {
 		this.worker = new Worker(url);
 		this.worker.onmessage = this.handleResponse.bind(this); 
 	}
-WorkerInterface.prototype = Object.create(CoreModule.prototype);
-WorkerInterface.prototype.objectType = 'WorkerInterface';
+	WorkerInterface.prototype = Object.create(CoreModule.prototype);
+	WorkerInterface.prototype.objectType = 'WorkerInterface';
 	WorkerInterface.prototype.constructor = WorkerInterface;
 
 	WorkerInterface.prototype.postMessage = function(action, e) { 	// e.data = File Object (blob)
@@ -892,6 +968,56 @@ WorkerInterface.prototype.objectType = 'WorkerInterface';
 	
 	
 	
+	/**
+	 * A Factory to instanciate virtual-DOM element definitions
+	 */
+	var elementDef = FactoryMaker.getClassFactory(function(type, nodeName, uniqueId, className, section, title) {
+			return {
+				type : type || '',
+				nodeName : nodeName || '',
+				id : uniqueId || '',
+				buttonClassName : '',
+				className : className || '',
+				css : {},
+				section : section || 0,
+				title : title || '',
+				command : null,
+				keyboardSettings : [{
+					ctrlKey : false,
+					shiftKey : false,
+					altKey : false,
+					keyCode : 0
+				}]
+			};
+		}
+	);
+	
+	
+	/**
+	 * A Factory to instanciate UI Modules definitions
+	 */
+	var UIModuleDef = FactoryMaker.getClassFactory(function(sections, subSections, members, stylesheet, options) {
+			return {
+				sections : sections || [],
+				subSections : subSections || [],
+				members : members || [],
+				stylesheet : stylesheet || null,
+				options : options || {},
+				verticalMargins : 0
+			};
+		}
+	);
+	
+	var optionSetter = function(baseOptions, options) {
+		options = (typeof options === 'object' && Object.keys(options).length) ? options : {};
+		for(var prop in baseOptions) {
+			if (baseOptions.hasOwnProperty(prop) && typeof options[prop] === 'undefined')
+				options[prop] = baseOptions[prop];
+		};
+		return options;
+	}
+	
+	
 	return {
 		CoreModule : CoreModule,
 		AsynchronousModule : AsynchronousModule,
@@ -899,6 +1025,9 @@ WorkerInterface.prototype.objectType = 'WorkerInterface';
 		UIModule : UIModule,
 		Command : Command,
 		Worker : WorkerInterface,
+		elementDef : elementDef,
+		UIModuleDef : UIModuleDef,
+		optionSetter : optionSetter,
 		Maker : FactoryMaker
 	}
 	

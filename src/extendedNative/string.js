@@ -174,27 +174,27 @@ RegExp.protect= function(s) {
 
 // Source: http://www.antiyes.com/jquery-blink-plugin
 //http://www.antiyes.com/jquery-blink/jquery-blink.js
-(function($) {
- $.fn.blink = function(options) {
-     var defaults = {
-         delay: 113,
-         iterations : 3
-     };
-     var options = $.extend(defaults, options);
-
-     return this.each(function() {
-         var obj = $(this), inter, iterations = 0;
-         inter = setInterval(function() {
-             if ($(obj).css("visibility") == "visible") {
-                 $(obj).css('visibility', 'hidden');
-             }
-             else {
-                 $(obj).css('visibility', 'visible');
-             }
-             iterations++;
-             if (iterations / 2 === options.iterations)
-            	 clearInterval(inter);
-         }, options.delay);
-     });
- }
-}(jQuery)) 
+//(function($) {
+// $.fn.blink = function(options) {
+//     var defaults = {
+//         delay: 113,
+//         iterations : 3
+//     };
+//     var options = $.extend(defaults, options);
+//
+//     return this.each(function() {
+//         var obj = $(this), inter, iterations = 0;
+//         inter = setInterval(function() {
+//             if ($(obj).css("visibility") == "visible") {
+//                 $(obj).css('visibility', 'hidden');
+//             }
+//             else {
+//                 $(obj).css('visibility', 'visible');
+//             }
+//             iterations++;
+//             if (iterations / 2 === options.iterations)
+//            	 clearInterval(inter);
+//         }, options.delay);
+//     });
+// }
+//}(jQuery)) 

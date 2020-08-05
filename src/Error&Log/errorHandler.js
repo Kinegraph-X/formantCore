@@ -2,8 +2,8 @@
  * @module errorHandler
  */
 
-var Factory = require('../core/Factory');
-var constants = require('../appLaucher/appLauncher');
+var Factory = require('src/core/Factory');
+var constants = require('src/appLauncher/appLauncher');
 
 var classConstructor = function() {
 	
