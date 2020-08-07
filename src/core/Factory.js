@@ -708,9 +708,10 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.init = function(/* arguments : def, container */) {
+	UIModule.prototype.init = function(/* arguments : def, containerDOMId */) {
 		this.createEvents.apply(this, arguments);
 		this.create.apply(this, arguments);
+//		console.log(this.containerDOMId)
 //		this.initGenericEvent(); 						// REMINDER : Don't call. That could call the descendant's method before the events are created
 		this.registerEvents();
 		this.resizeAll();
@@ -730,7 +731,12 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.create = function() {
 		this.beforeCreateDOM(arguments);
-		(this.containerDOMId && (this.container = $('#' + this.containerDOMId)));
+		// Shortcut to allow children instanciation of non-appended parents (using a selector is not applicable at instantiation step, due to DOM update latency)
+		(this.containerDOMId && 
+				(this.containerDOMId instanceof $
+					? this.container = this.containerDOMId
+						: this.container = $('#' + this.containerDOMId)));
+//		console.log(this.containerDOMId);
 		this.createDOM(arguments)
 		this.afterCreateDOM(arguments);
 	}
@@ -971,7 +977,7 @@ var Factory = (function() {
 	/**
 	 * A Factory to instanciate virtual-DOM element definitions
 	 */
-	var elementDef = FactoryMaker.getClassFactory(function(type, nodeName, uniqueId, className, section, title) {
+	var elementDef = FactoryMaker.getClassFactory(function(type, nodeName, uniqueId, className, section, title, glyphInactive, glyphBlurred, glyphInvalid) {
 			return {
 				type : type || '',
 				nodeName : nodeName || '',
@@ -982,6 +988,9 @@ var Factory = (function() {
 				section : section || 0,
 				title : title || '',
 				command : null,
+				glyphInactive : glyphInactive,
+				glyphBlurred : glyphBlurred,
+				glyphInvalid : glyphInvalid,
 				keyboardSettings : [{
 					ctrlKey : false,
 					shiftKey : false,

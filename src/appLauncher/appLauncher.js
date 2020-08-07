@@ -5,6 +5,7 @@
 var Factory = require('src/core/Factory');
 var Str = require('src/extendedNative/string');
 var arr = require('src/extendedNative/array');
+var validate = require('src/validate_js/validate');
 
 var classConstructor = function() {	
 	var context = this.context,
@@ -31,6 +32,9 @@ var classConstructor = function() {
 		
 		// helper styles
 		require('src/UI/styles/helperStyles')(context).getInstance();
+		// Validate init
+		validate.options = {format: "flat"};
+		validate.validators.presence.options = {message: "can't be empty"};
 		
 		currentHostPath = window.location.href.match(/(.*\/)[^/]*$/)[1];
 		browserName = parseUserAgent();
