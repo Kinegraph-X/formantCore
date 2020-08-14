@@ -16,7 +16,7 @@ var classConstructor = function() {
 		baseApp = {},
 		currentHostPath,
 		browserName,
-		knownIDs = [];
+		knownIDs = {};
 	
 
 	var launch = function(customOptions) {
@@ -77,18 +77,23 @@ var classConstructor = function() {
 	}
 	
 	var getUID = function(uniqueID) {
-		var index;
-		if ((index = knownIDs.indexOf(uniqueID)) !== -1)
-			return options.UIDPrefix + knownIDs[index];
-		else {
-			uniqueID = uniqueID || ($.guid++).toString();
-			knownIDs.push(uniqueID);
-			return options.UIDPrefix + uniqueID;
+		if (knownIDs.hasOwnProperty(options.UIDPrefix + uniqueID))
+			return knownIDs[options.UIDPrefix + uniqueID];
+		else if (!knownIDs.hasOwnProperty(options.UIDPrefix + uniqueID) || !uniqueID || !uniqueID.length) {
+			uniqueID = (options.UIDPrefix + uniqueID) || (options.UIDPrefix + ($.guid++).toString());
+			knownIDs[uniqueID] = uniqueID;
+			return knownIDs[uniqueID];
 		}
+		else if (knownIDs.hasOwnProperty((uniqueID || '')))
+			return knownIDs[uniqueID];
 	}
 	
 	var isKnownUID = function(uniqueID) {
 		return getUID(uniqueID);
+	}
+	
+	var setUID = function(uniqueID, globalObj) {
+		return (knownIDs[uniqueID] = globalObj);
 	}
 	
 	// jQuery UI implements some lock-mechanisms to prevent interfaces being used at the same time by two widgets
@@ -106,6 +111,7 @@ var classConstructor = function() {
 		locks : locks,
 		getUID : getUID,
 		isKnownUID : isKnownUID,
+		setUID : setUID,
 		currentHostPath : currentHostPath,
 		browserName : browserName
 	}

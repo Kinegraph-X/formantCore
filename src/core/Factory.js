@@ -977,20 +977,16 @@ var Factory = (function() {
 	/**
 	 * A Factory to instanciate virtual-DOM element definitions
 	 */
-	var elementDef = FactoryMaker.getClassFactory(function(type, nodeName, uniqueId, className, section, title, glyphInactive, glyphBlurred, glyphInvalid) {
+	var elementDef = FactoryMaker.getClassFactory(function(type, nodeName, uniqueId, sWrapper, section, title) {
 			return {
 				type : type || '',
 				nodeName : nodeName || '',
 				id : uniqueId || '',
-				buttonClassName : '',
-				className : className || '',
+				sWrapper : sWrapper || {},
 				css : {},
 				section : section || 0,
 				title : title || '',
 				command : null,
-				glyphInactive : glyphInactive,
-				glyphBlurred : glyphBlurred,
-				glyphInvalid : glyphInvalid,
 				keyboardSettings : [{
 					ctrlKey : false,
 					shiftKey : false,
@@ -1005,12 +1001,12 @@ var Factory = (function() {
 	/**
 	 * A Factory to instanciate UI Modules definitions
 	 */
-	var UIModuleDef = FactoryMaker.getClassFactory(function(sections, subSections, members, stylesheet, options) {
+	var UIModuleDef = FactoryMaker.getClassFactory(function(sections, subSections, members, sWrapper, options) {
 			return {
 				sections : sections || [],
 				subSections : subSections || [],
 				members : members || [],
-				stylesheet : stylesheet || null,
+				sWrapper : sWrapper || null,
 				options : options || {},
 				verticalMargins : 0
 			};
