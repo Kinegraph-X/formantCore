@@ -3,9 +3,13 @@
  */
 
 var Factory = require('src/core/Factory');
+// TODO : Should not polute the namespace of this function : think seriously of removing the affectation to vars, as we only need to "execute" the require 
 var Str = require('src/extendedNative/string');
-var arr = require('src/extendedNative/array');
-var validate = require('src/validate_js/validate');
+var Arr = require('src/extendedNative/array');
+var Bool = require('src/extendedNative/boolean');
+var Obj = require('src/extendedNative/object');
+var Regex = require('src/extendedNative/regexp');
+var Validate = require('src/validate_js/validate');
 
 var classConstructor = function() {	
 	var context = this.context,
@@ -33,8 +37,7 @@ var classConstructor = function() {
 		// helper styles
 		require('src/UI/styles/helperStyles')(context).getInstance();
 		// Validate init
-		validate.options = {format: "flat"};
-		validate.validators.presence.options = {message: "can't be empty"};
+		Validate.options = {format: "flat"};
 		
 		currentHostPath = window.location.href.match(/(.*\/)[^/]*$/)[1];
 		browserName = parseUserAgent();
@@ -77,14 +80,16 @@ var classConstructor = function() {
 	}
 	
 	var getUID = function(uniqueID) {
-		if (knownIDs.hasOwnProperty(options.UIDPrefix + uniqueID))
+		if (knownIDs.hasOwnProperty(options.UIDPrefix + uniqueID)) {
+//			console.log(uniqueID, knownIDs);
 			return knownIDs[options.UIDPrefix + uniqueID];
+		}
 		else if (!knownIDs.hasOwnProperty(options.UIDPrefix + uniqueID) || !uniqueID || !uniqueID.length) {
-			uniqueID = (options.UIDPrefix + uniqueID) || (options.UIDPrefix + ($.guid++).toString());
+			uniqueID = uniqueID ? (options.UIDPrefix + uniqueID) : (options.UIDPrefix + ($.guid++).toString());
 			knownIDs[uniqueID] = uniqueID;
 			return knownIDs[uniqueID];
 		}
-		else if (knownIDs.hasOwnProperty((uniqueID || '')))
+		else if (knownIDs.hasOwnProperty((uniqueID || ''))) // Hacky : knownIDs.hasOwnProperty('') won't ever return truthy
 			return knownIDs[uniqueID];
 	}
 	

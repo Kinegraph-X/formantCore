@@ -5,7 +5,7 @@ delete window.logLevelQuery;
 var Factory = (function() {
 	
 	/**
-	 * from https://github.com/Dash-Industry-Forum/dash.js/.../FactoryMaker.js
+	 * from https://github.com/Dash-Industry-Forum/dash.js/.../Factory.js
 	 */
 	/**
 	 * The copyright in this software is being made available under the BSD License,
@@ -217,6 +217,9 @@ var Factory = (function() {
 			configurable : true,
 			value : {}
 		});
+		
+		this.autoSubscribe = {};
+		this.autoReact = {};
 	};
 	
 	/**
@@ -225,20 +228,43 @@ var Factory = (function() {
 	CoreModule.prototype.registerModule = function(moduleName, candidateModule) {
 		if (!candidateModule)
 			return;
+		
 		for (var module in this.modules) {
 			if (this.modules[module] === candidateModule || module === moduleName)
 				return;
 		}
-		candidateModule.__tree_name = moduleName;
-		this.modules[moduleName] = candidateModule;
+		candidateModule.__in_tree_name = moduleName;
+		candidateModule._parent = this;
+		this.modules[moduleName] = this[moduleName] = candidateModule;
+		(!this[moduleName] && (this[moduleName] = this.modules[moduleName]));	// allow "protected" aliasing
+		(!this[moduleName] && console.error('ModuleName Aliasing error'))
 		
 		// autoSubscribe to object own events
 		var handler, desc;
 		for (evt in candidateModule.autoSubscribe) {
+			if (!this['on' + evt])
+				console.warn(this.objectType, 'registers ' + candidateModule.objectType, ' : Registering a child module on a raw Component ("Make" function not already called, then no DOM/Event exists) : Automatic Bindings won\'t work');
 			handler = candidateModule.autoSubscribe[evt];
 			desc = Object.getOwnPropertyDescriptor(this, 'on' + evt);
 			if (typeof desc !== 'undefined' && typeof desc.get === 'function')
 				this['on' + evt] = handler; 	// setter for event subscribtion
+		}
+		
+		// autoReact on parent's observables
+		// (DONE : as there is no insurance that the DOM/Streams are existent nor created in this abstract interface, this code-block may not work.
+		// this functionnality is now handled in UIModule.prototype.execBindingQueue = after DOM creation)
+		// BINDING on "raw" childModules (module's "make" function hasn't still beeen called when "making" the parent) is tested and warned there (UIModule)
+		// THIS CODE IS BROKEN : refer to UIModule to have the current mecanism
+		// TODO => maybe there's something to do here to anticipate on a case where the component state is held elsewhere than on the DOM hostElem
+		if (this.streams && Object.keys(this.streams).length) {
+			console.log(this.streams);
+			for (state in candidateModule.autoReact) {
+				desc = candidateModule.autoReact[state];
+				if(!this.streams[desc.attr])
+					continue;
+				(!this.streams[desc.attr].transform && (this.streams[desc.attr].transform = desc.transform));
+				(function(prop) {this.streams[prop].subscribe(candidateModule.hostElem[prop]);}).call(this, state);
+			}
 		}
 	}
 	
@@ -259,6 +285,19 @@ var Factory = (function() {
 	}
 	
 	/**
+	 * @param {string} moduleName
+	 */
+	CoreModule.prototype.getModules = function(moduleName) {
+		var ret = [];
+		for (var name in this.modules) {
+			if (name.toLowerCase().indexOf(moduleName.toLowerCase()) !== -1)
+				ret.push(this.modules[name]);
+		}
+		return ret;
+	}
+	
+	
+	/**
 	 * Creates a listenable event : generic event creation (onready, etc.)
 	 * 
 	 * @param {string} eventType
@@ -277,7 +316,7 @@ var Factory = (function() {
 			},
 			set : function(handler) {
 				if (typeof handler !== 'function') {
-					console.warn('Bad eventHandler assigned : type is ' + typeof handler + ' instead of "function or object"', 'EventType ' + eventType);
+					console.warn('Bad eventHandler assigned : handler type is ' + typeof handler + ' instead of "function or object"', 'EventType ' + eventType);
 					return;
 				}
 //				if (this._eventHandlers[eventType].indexOf(handler) === -1)
@@ -450,23 +489,37 @@ var Factory = (function() {
 		var self = this, objectType = base.prototype.objectType;
 
 		var mergedConstructor = function() {
-			// CAUTION : constructors seems unreachable after the second inheritance...
+			// HISTORY : constructors seems unreachable after the second inheritance...
 			// base.apply(this, arguments);
 			// extension.apply(this, arguments);
 			
-			// creating dummy objects with new base(arguments) seems to be a more functional construct :
-			// CAUTION : jQuery objects may loose their prototype (see com on mergeOwnProperties function)...
+			// creating dummy objects with new base(arguments) seems to be a more useable construct :
+			// CAUTION : jQuery objects (and other object of type "instance object") may loose their prototype (see com on mergeOwnProperties function)...
 			var args = UIModule.prototype.isCalledFromFactory.apply(this, arguments) || arguments;
-			self.mergeOwnProperties(this, new base(args), new extension(args));
+//			if (Object.getPrototypeOf(base) === Object.getPrototypeOf(Function)) {
+//				console.log('merge', args);
+//				self.mergeOwnProperties(this, new base(args));
+				base.apply(this, args);
+				extension.apply(this, args);
+//			}
+//			else {
+//				extension.apply(this, args);
+//			}
+			// cf. upper com ("CAUTION")
+			(this.command && (this.command = new Command(this.command.action, this.command.canAct, this.command.undo)));
+//			console.log(this.def);
+			(extension.prototype.pushToRenderQueue && this.DOMRenderQueue.push(extension.prototype.pushToRenderQueue.call(this)));
+			(extension.prototype.pushToBindingQueue && this.bindingQueue.push(extension.prototype.pushToBindingQueue.call(this)));
 			
 			this.objectType = objectType;
-			this.implements = extension.prototype.objectType;
+			this.implements.push(extension.prototype.objectType);
 		};
 
 		// interface prototype depth is limited to 1 (mergeOwnProperties tests hasOwnProperty)
 		// limit extended to 2 when setting keepNonStdProtos to "true"
 		mergedConstructor.prototype = this.mergeOwnProperties(base.prototype, extension.prototype);
 		mergedConstructor.prototype.constructor = mergedConstructor;
+		mergedConstructor.prototype.objectType = objectType;
 		return mergedConstructor;
 	}
 	// mergeOwnProperties is part of the abstract class but also usable as a static method
@@ -510,7 +563,7 @@ var Factory = (function() {
 							else
 								target[name] = isArray ? [] : {};
 						}
-						else if (obj[name])
+						else if (obj[name] || obj[name] === null) 	// copy null values : null is sometimes explicitly tested
 							target[name] = obj[name];
 						else if (typeof obj[name] !== 'function' && typeof obj[name] !== 'undefined' && obj[name] !== null)
 							target[name] = typeof obj[name] === 'string' ? '' : 0;
@@ -543,7 +596,7 @@ var Factory = (function() {
 	
 	
 	/**
-	 * An Interface to be implemented by a module supposed to be asynchronous (and then publish state changes)
+	 * An Interface to be implemented by a module designed as asynchronous (will then publish state changes)
 	 * @constructor
 	 * @extends CoreModule
 	 * @interface
@@ -656,25 +709,33 @@ var Factory = (function() {
 	 * @interface
 	 * 
 	 * @param {Object} def : custom object that defines the UI (generally a list of properties and behaviors for a button)
-	 * @param {Object} (jQuery Instance) container
+	 * @param {Object} (jQuery Instance) parentSlot
 	 * @param {string} buttonClassName
 	 */
-	var UIModule = function(def, containerDOMId, automakeable, buttonClassName) {
+	var UIModule = function(def, parentSlotDOMId, automakeable, buttonClassName) {
 		this.raw = true;
+		this.DOMRenderQueue = this.DOMRenderQueue || [];
+		this.bindingQueue = this.bindingQueue || []; 
 		DependancyModule.call(this);
 		this.objectType = 'UIModule';
 
 		this.def = def || (this.def || undefined);
-		this.container = this.container || undefined;
+		this.mergeDefaultDef(this.setDefaultDef());
+		this.parentSlot = this.parentSlot || undefined;
 		this.buttonClassName = buttonClassName || (this.buttonClassName || undefined);
 		
-		this.containerDOMId = containerDOMId || this.containerDOMId;
-		this.container = this.container;
-		this.domElem = this.domElem || $(''); 		// not functional ($('') === {})
+		this.parentSlotDOMId = parentSlotDOMId || this.parentSlotDOMId;
+		this.parentSlot = this.parentSlot;
+		this.parentSlotW = this.parentSlotW;
+		this.hostElem;
+		this.hostEW;
+		this.rootElem;
+		this.rootEW = this.rootEW || $(''); 		// not functional ($('') === {})
 		this.hoverElem = this.hoverElem;
 
 		this.renderChain = [];
-		this.command;
+		this.command = this.def.command || undefined;
+//		console.log(this.command.prototype);
 		this.keyboardEvents = this.keyboardEvents || [];
 		
 		(automakeable && this.Make.apply(this, arguments));
@@ -683,40 +744,50 @@ var Factory = (function() {
 	UIModule.prototype = Object.create(DependancyModule.prototype);
 	UIModule.prototype.objectType = 'UIModule';
 	UIModule.prototype.constructor = UIModule;
-	UIModule.prototype.beforeMake = function() {}				// virtual
-	UIModule.prototype.afterMake = function() {}				// virtual
-	UIModule.prototype.beforeCreateDOM = function() {}			// virtual
-	UIModule.prototype.createDOM = function() {}				// virtual
-	UIModule.prototype.afterCreateDOM = function() {}			// virtual
-	UIModule.prototype.beforeRegisterEvents = function() {}		// virtual
-	UIModule.prototype.registerClickEvents = function() {}		// virtual
-	UIModule.prototype.registerLearnEvents = function() {}		// virtual
-	UIModule.prototype.registerKeyboardEvents = function() {}	// virtual
-	UIModule.prototype.afterRegisterEvents = function() {}		// virtual
-	UIModule.prototype.registerValidators = function() {}		// virtual
-	UIModule.prototype.resize = function() {}					// virtual
+	UIModule.prototype.setDefaultDef = function() {}					// virtual
+	UIModule.prototype.beforeMake = function() {}						// virtual
+	UIModule.prototype.afterMake = function() {}						// virtual
+	UIModule.prototype.beforeCreateDOM = function() {}					// virtual
+	UIModule.prototype.createDOM = function() {}						// virtual
+	UIModule.prototype.passToShadow = function() {}						// virtual
+	UIModule.prototype.basicEarlyDOMExtend = function() {}				// virtual
+	UIModule.prototype.basicLateDOMExtend = function() {}				// virtual
+	UIModule.prototype.declareObservableDomAttributes =  function() {}	// virtual
+	UIModule.prototype.afterCreateDOM = function() {}					// virtual
+	UIModule.prototype.setDOMTypes = function() {}						// virtual
+	UIModule.prototype.setArias = function() {}							// virtual
+	UIModule.prototype.beforeRegisterEvents = function() {}				// virtual
+	UIModule.prototype.createObservables = function() {}				// virtual
+	UIModule.prototype.registerClickEvents = function() {}				// virtual
+	UIModule.prototype.registerLearnEvents = function() {}				// virtual
+	UIModule.prototype.registerKeyboardEvents = function() {}			// virtual
+	UIModule.prototype.registerDOMChangeObservers = function() {}		// virtual
+	UIModule.prototype.afterRegisterEvents = function() {}				// virtual
+	UIModule.prototype.registerValidators = function() {}				// virtual
+	UIModule.prototype.resize = function() {}							// virtual
 	UIModule.__factory_name = 'UIModule';
 	/**
 	 * @abstract
 	 */
 	UIModule.prototype.Make = function() {
+		this.raw = false;						// disable "raw" first : 
 		this.beforeMake(arguments);
 		this.init(arguments)
 		this.afterMake(arguments);
-		this.raw = false;
 	}
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.init = function(/* arguments : def, containerDOMId */) {
+	UIModule.prototype.init = function(/* arguments : def, parentSlotDOMId */) {
 		this.createEvents.apply(this, arguments);
+		this.createObservables();
 		this.create.apply(this, arguments);
-//		console.log(this.containerDOMId)
+//		console.log(this.parentSlotDOMId)
 //		this.initGenericEvent(); 						// REMINDER : Don't call. That could call the descendant's method before the events are created
 		this.registerEvents();
 		this.resizeAll();
 		this.firstRender();
-		this.renderChain.push();
+		this.execBindingQueue();
 	}
 	/**
 	 * @abstract
@@ -732,28 +803,116 @@ var Factory = (function() {
 	UIModule.prototype.create = function() {
 		this.beforeCreateDOM(arguments);
 		// Shortcut to allow children instanciation of non-appended parents (using a selector is not applicable at instantiation step, due to DOM update latency)
-		(this.containerDOMId && 
-				(this.containerDOMId instanceof $
-					? this.container = this.containerDOMId
-						: this.container = $('#' + this.containerDOMId)));
-//		console.log(this.containerDOMId);
-		this.createDOM(arguments)
+		(this.parentSlotDOMId && 
+				(this.parentSlotDOMId instanceof $
+					? this.parentSlotW = this.parentSlotDOMId
+						: this.parentSlotW = $('#' + this.parentSlotDOMId)));
+//		console.log(this.parentSlotDOMId);
+		this.createDOM(arguments);
+		this.passToShadow();
+		this.basicEarlyDOMExtend();
+		this.renderDOMQueue();
+		this.basicLateDOMExtend();
+		// binding can't happen on 'non connected' custom elems : attr missing...
+//		this.execBindingQueue();		// rejected at the end of the init process
+		this.declareObservableDomAttributes();
 		this.afterCreateDOM(arguments);
+		this.setDOMTypes();
+		this.setArias();
 	}
 	
 	UIModule.prototype.registerEvents = function() {
 		this.beforeRegisterEvents();
+		this.registerValidators();
+		this.registerDOMChangeObservers();
+		// binding can't happen on 'non connected' custom elems : attr missing...
+//		this.execBindingQueue();		// rejected at the end of the init process
 		this.registerClickEvents();
 		this.registerKeyboardEvents();
 		(this.hoverElem && this.registerLearnEvents());
 		this.afterRegisterEvents();
-		this.registerValidators();
+	}
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.renderDOMQueue = function() {
+		var componentDef = this.def.sections ? this.def.sections[0] : this.def,
+			def,
+			elem;
+//		console.log(this);
+		this.DOMRenderQueue.forEach(function(renderFunc, key) {
+			// DOM extension is considered as an "allowed" goal of the offered mixin mecanism
+			// BUT : renderFunc may not always return a def : this allow mixins to use "targeted composition" instead of "basic nodes concatenation"
+			// => they should then define and append themselves some child-modules (call to registerModule with a component as arg)
+			// but still, we encourage devs (in both cases) to use the 'renderQueue" mecanism, as it frees the lifecycle from "custom" lifecycle phases (these phases may then be used for "real" special cases)
+			if (!(def = renderFunc.call(this, componentDef)))
+				return;
+			
+			if (def.wrapper) {
+				if (this.rootElem)
+					this.rootElem.appendChild(def.wrapper[0]);
+				else
+					this.hostElem.appendChild(def.wrapper[0]);
+			}
+			if (def.members && def.members.length) {
+				if (def.wrapper) {
+					if (this.rootElem)
+						elem = this.rootElem.lastChild;
+					else
+						elem = this.hostElem.lastChild;
+					def.members.forEach(function(member, k) {
+						elem.appendChild(member[0])
+					});
+				}
+				else {
+					if (this.rootElem)
+						elem = this.rootElem;
+					else
+						elem = this.hostElem;
+					def.members.forEach(function(member, k) {
+						elem.appendChild(member[0])
+					});
+				}
+			}
+		}, this);
+	}
+	/**
+	 * @abstract
+	 */
+	// HACK - Y thing : although "childModules handling" pertains to the CoreModule Interface, UIModule handles here the special case of the autoReact-ive props in childModules
+	UIModule.prototype.execBindingQueue = function() {
+		this.bindingQueue.forEach(function(renderFunc, key) {
+			renderFunc.call(this);
+		}, this);
+		
+		// (UIModule handles the special case of the autoReact prop on childModules in this "execBindingQueue" method)
+		// case of the childComponents : autoReact on parent's observables
+		if (Object.keys(this.modules).length && this.streams && Object.keys(this.streams).length) {
+			var candidateModule;
+			for (var moduleName in this.modules) {
+				candidateModule = this.modules[moduleName];
+				if (this.raw && candidateModule.autoReact)
+					console.warn('Registering a child module on a raw Component ("Make" function not already called, then no DOM/Event exists) : Automatic Bindings won\'t work');
+				
+				for (moduleState in candidateModule.autoReact) {
+					desc = candidateModule.autoReact[moduleState];
+					if(!this.streams[desc.from])
+						continue;
+					(!this.streams[desc.from].transform && (this.streams[desc.from].transform = desc.transform));
+					(function(candidate, parentState, childState) {
+						this.streams[parentState].subscribe(candidate.hostElem, childState).filter(desc.filter).map(desc.map).reverse(desc.inverseTransform);
+					}).call(this, candidateModule, desc.from, moduleState);
+//					console.log('binding from parent ' + desc.from + ' to ' + moduleState, this.streams[desc.from]);
+				}
+			}
+		}
 	}
 	/**
 	 * @abstract
 	 */
 	UIModule.prototype.firstRender = function() {
-		(this.container && this.container.append(this.domElem));
+//		console.log(this.parentSlotW, this.hostElem, this);
+		(this.parentSlotW && this.parentSlotW.append(this.hostEW));
 	}
 	/**
 	 * @abstract
@@ -780,13 +939,31 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
+	UIModule.prototype.mergeDefaultDef = function(defaultDef) {
+//		console.log(this.def, defaultDef);
+		if (this.def) {
+//			console.log(this.objectType, this.def.title);
+			var defSetTitle = this.def.title;
+			this.def = optionSetter(defaultDef, this.def);
+			(this.def.sections && defSetTitle && (this.def.sections[0].title = defSetTitle));
+//			if (this.def.sections)
+//				console.log(this.objectType, this.def.sections[0].title);
+		}
+		else
+			this.def = defaultDef;
+//		console.log(this.def.states);
+//		console.log(this.def)
+	}
+	/**
+	 * @abstract
+	 */
 	UIModule.prototype.asyncCSSActiveState = function() {// helper (locks behavior as "always async", then command can be initialized before animation ends)
 		var self = this;
 		var asyncExec = new Promise(function(resolve, reject) {
-			self.domElem.addClass('actionated');
-			setTimeout(function() {
-				self.domElem.removeClass('actionated');
-			}, 64);
+//			self.domElem.addClass('actionated');
+//			setTimeout(function() {
+//				self.domElem.removeClass('actionated');
+//			}, 64);
 		});
 	}
 	/**
@@ -803,13 +980,13 @@ var Factory = (function() {
 		var self = this;
 //		console.log('resizeAll');
 //		console.log(this.resize)
-		this.resize();
-		setTimeout(function() {
-			for (var i in self.modules) {
-				if (self.modules[i].objectType === 'UIModule')
-					self.modules[i].resize();
-			}
-		}, 64);
+//		this.resize();
+//		setTimeout(function() {
+//			for (var i in self.modules) {
+//				if (self.modules[i].objectType === 'UIModule')
+//					self.modules[i].resize();
+//			}
+//		}, 64);
 	}
 	/**
 	 * @generic
@@ -857,9 +1034,11 @@ var Factory = (function() {
 	Command.prototype.constructor = Command;
 	
 	Command.prototype.act = function() {
-		var self = this, canActResult, args = Array.prototype.apply(arguments); 
+		var self = this, canActResult, args = Array.prototype.slice.call(arguments);
+
 		if (this.canAct === null) {
 			this.action.apply(this, args);
+			this.canActQuery = Promise.resolve();
 		}
 		else {
 			this.canActQuery = this.canAct.apply(this, args); 
@@ -893,6 +1072,292 @@ var Factory = (function() {
 //	Command.prototype.resetSiblings = false;
 
 	Command.__factory_name = 'Command';
+	
+	
+	
+	
+	
+	
+	/**
+	 * A constructor for STREAMS : streams may be instanciated by the implementation at "component" level (observableComponent automates the stream creation),
+	 * 					or as standalones when a view needs a simple "internal" reference to a stream (may also be totally elsewhere)
+	 */
+	
+	var Stream = function(name, value, reflectedObj, transform, lazy) {
+		if (!name) {
+			console.error('Stream constructor error : no name given');
+			return;
+		}
+		this.forward = true;
+		this.name = name || '';
+		this.lazy = typeof lazy !== 'undefined' ? lazy : false;
+		this.reflectedObj = reflectedObj;
+		this.transform = transform || undefined;
+		this.inverseTransform;
+		this.subscriptions = [];
+		
+		// by calling the "reflect" method, the property descriptor of the "value" prop may be reflected on another object 
+		Object.defineProperty(this, 'value', {
+			get : function() {
+				if (this.lazy) {
+					if (typeof this.transform === 'function')
+						this._value = this.transform(this.get());
+					this.dirty = false;
+				}
+				
+				return this.get();
+			}.bind(this),
+			
+			set : function(value) {
+				this.setAndUpdateConditional(value);
+				this.set(value);
+			}.bind(this)
+		})
+		this._value;
+		this.value = typeof reflectedObj === 'object' ? reflectedObj[name] : value;
+		this.dirty;
+	}
+	Stream.prototype.objectType = 'Stream';
+
+	Stream.prototype.get = function() {
+		return this._value;
+	}
+
+	Stream.prototype.set = function(value) {
+		if (this.reflectedObj) {
+			this.forward = false;
+			this.reflectedObj[name] = value;
+		}
+	}
+	
+	/**
+	 * @method setAndUpdateConditional
+	 * 		Avoid infinite recursion when setting a prop on a custom element : 
+	 * 			- when set from outside : update and set the prop on the custom element
+	 *			- after updating a prop on a custom element : update only
+	 * 			- don't update when set from downward (reflected stream shall only call "set")
+	 */
+	Stream.prototype.setAndUpdateConditional = function(value) {
+		this._value = value;
+		if (!this.lazy) {
+			if (this.forward) {
+				if (!this.transform)
+					this.update();
+				else if (typeof this.transform === 'function') {
+					this._value = this.transform(value);
+					this.update();
+				}
+			}
+			else
+				this.forward = true;
+		}
+		else {
+			this.dirty = true;
+			this.forward = true;
+		}
+	}
+	
+	Stream.prototype.update = function() {
+		this.subscriptions.forEach(function(subscription) {
+			subscription.execute(this._value);
+		}, this);
+	}
+	
+	Stream.prototype.lazyUpdate = function() {
+		if (typeof this.transform === 'function')
+			this._value = this.transform(this._value);
+		this.update();
+		this.dirty = false;
+	}
+
+	Stream.prototype.react = function(prop, reflectedHost) {
+		this.get = function() {
+			return reflectedHost[prop];
+		}
+		this.subscribe(prop, reflectedHost);
+	}
+	
+	/**
+	 * reflect method  :
+	 *	triggers the local update loop when the reflectedHost updates
+	 *	AND
+	 *		simply sets a reflection mecanism if the reflectedHost[prop] was a literal
+	 *		OR
+	 *		lazy "sets" the reflectedHost (no infinite recursion, but no change propagation neither on the host) and triggers the given event when the local stream updates
+	 */ 
+	Stream.prototype.reflect = function(prop, reflectedHost, transform, inverseTransform, event) {
+		this._value = reflectedHost[prop];
+		
+		if (transform && this.transform)
+			console.warn('Bad transform assignment : this.transform already exists');
+		else if (!this.transform)
+			this.transform = transform;
+		
+		var desc = Object.getOwnPropertyDescriptor(reflectedHost, prop);
+		
+		if (!desc.get && desc.writable)
+			Object.defineProperty(reflectedHost, prop, Object.getOwnPropertyDescriptor(this, 'value'));
+		
+		else if (reflectedHost.streams && reflectedHost.streams[prop]) {
+			this._value = reflectedHost.streams[prop].get(); // we need transformed value if lazy
+			
+			reflectedHost.streams[prop].subscribe(this);
+			
+			if (typeof reflectedHost.trigger === 'function')
+				this.subscribe(reflectedHost.trigger.bind(reflectedHost, event));
+			
+			return this.subscribe(reflectedHost.streams[prop].set, null, inverseTransform);
+		}
+	}
+
+	/**
+	 * subscribe method  :
+	 *	instanciates and registers a new subscription, and returns it for the caller to define the refinement functions (filter & map)
+	 */ 
+	Stream.prototype.subscribe = function(handlerOrHost, prop, inverseTransform) {
+		if (!handlerOrHost || (typeof handlerOrHost !== 'function' && typeof handlerOrHost !== 'object')) {
+			console.warn('Bad observable handlerOrHost assigned : handler type is ' + typeof handler + ' instead of "function or getter/setter"', 'StreamName ' + this.name);
+			return;
+		}
+		else {
+			var subscription = new Subscription(handlerOrHost, prop, this, inverseTransform);
+			this.subscriptions.push(subscription);
+			return subscription.subscribe();
+		}
+	}
+
+	Stream.prototype.unsubscribe = function(handler) {
+		if (typeof handler !== 'function') {
+			console.warn('Bad observableHandler given for removal : handler type is ' + typeof handler + ' instead of "function or object"', 'StreamName ' + this.name);
+			return;
+		}
+		for(var i = 0, l = this.subscriptions.length; i < l; i++) {
+			if (this.subscriptions[i] === handler || this.subscriptions[i].host === handler) {
+				(function(j) {this.subscriptions.splice(j, 1);})(i);
+			}
+		}
+	}
+	
+	
+	
+	
+	
+	/**
+	 * An Abstract Class to be used by the Stream Ctor
+	 * 
+	 * returns chainable callback assignment functions on subscription
+	 * e.g. : childModules make use of this mecanism when automatically subscribing to streams on their parent :
+	 * 		this.streams[parentState].subscribe(candidate.hostElem, childState).filter(desc.filter).map(desc.map);
+	 */
+	var Subscription = function(subscriberObjOrHandler, subscriberProp, parent, inverseTransform) {
+		this.subscriber = {
+				prop : typeof subscriberProp === 'string' ? subscriberProp : null,
+				obj : typeof subscriberObjOrHandler === 'object' ? subscriberObjOrHandler : null,
+				cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function() {return this._value},
+				inverseTransform : inverseTransform || function(value) {return value;},
+				stream : this
+		}
+		this._parent = parent;
+		Object.defineProperty(this, 'execute', Object.getOwnPropertyDescriptor(Subscription.prototype, 'execute')); // make immutable
+	}
+	
+	Subscription.prototype.subscribe = function(subscriberObjOrHandler, subscriberProp) {
+		if (typeof subscriberObjOrHandler !== 'function' && typeof subscriberObjOrHandler !== 'object' && !this.subscriber.obj && !this.subscriber.cb) {
+			console.warn('Bad observableHandler given : handler type is ' + typeof subscriberObjOrHandler + ' instead of "function or object"', 'StreamName ' + this._parent.name);
+			return;
+		}
+		if (typeof subscriberObjOrHandler === 'object')
+			this.subscriber.obj = subscriberObjOrHandler;
+		else if (typeof subscriberObjOrHandler === 'function')
+			this.subscriber.cb = subscriberObjOrHandler;
+		
+		if (typeof subscriberProp === 'string')
+			this.subscriber.prop = subscriberProp;
+		
+		return this;
+	}
+	
+	Subscription.prototype.filter = function(filterFunc) {
+		if (typeof filterFunc !== 'function') {
+//			if (typeof filterFunc === 'undefined')
+//				console.warn('Bad filterFunc given on observable : filterFunc type is ' + typeof filterFunc + ' instead of "function"', 'StreamName ' + this._parent.name);
+			return this;
+		}
+		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark needed)
+		var f = new Function('return (' + filterFunc.toString() + ').apply(null, arguments);');
+		Object.defineProperty(this, 'filter', {
+			value : function(value) {
+				return f(value) === true ? true : false;
+			},
+			enumerable : true
+		});
+		
+		return this;
+	}
+	
+	Subscription.prototype.map = function(mapFunc) {
+		if(typeof mapFunc !== 'function') {
+//			if (typeof mapFunc === 'undefined')
+//				console.warn('Bad mapFunc given on observable : mapFunc type is ' + typeof mapFunc + ' instead of "function"', 'StreamName ' + this._parent.name);
+			return this;
+		}
+		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark needed)
+		var f = new Function('return (' + mapFunc.toString() + ').apply(null, arguments);');
+		Object.defineProperty(this, 'map', {
+			value : function(value) {
+				return f(value);
+			},
+			enumerable : true
+		});
+		
+		return this;
+	}
+	
+	Subscription.prototype.reverse = function(inverseTransform) {
+		if(typeof inverseTransform !== 'function') {
+//			if (typeof mapFunc === 'undefined')
+//				console.warn('Bad inverseTransform given on observable : inverseTransform type is ' + typeof inverseTransform + ' instead of "function"', 'StreamName ' + this._parent.name);
+			return this;
+		}
+		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark needed)
+		this.subscriber.inverseTransform = new Function('return (' + inverseTransform.toString() + ').apply(null, arguments);');
+		
+		return this;
+	}
+	
+	Object.defineProperty(Subscription.prototype, 'execute', {
+		value : function(value) {
+//			console.log('value', value);
+			var flag = true, val, desc;
+			if (value !== undefined) {
+				if (this.hasOwnProperty('filter'))
+					flag = this.filter(value);
+				if (flag && this.hasOwnProperty('map'))
+					val = this.map(value);
+				else if (flag)
+					val = value;
+				else
+					return;
+//				console.log('val', val);
+				if (this.subscriber.obj !== null && this.subscriber.prop !== null) {
+//					console.log(this.subscriber.obj, this.subscriber.prop, val);
+					this.subscriber.obj[this.subscriber.prop] = val;
+//					console.log('this.subscriber.obj[this.subscriber.prop]', this.subscriber.obj[this.subscriber.prop], val);
+				}
+				else if (this.subscriber.obj && (desc = Object.getOwnPropertyDescriptor(this.subscriber.obj, 'value')) && typeof desc.set === 'function')
+					this.subscriber.obj.value = val;
+				else if (this.subscriber.obj === null)
+					this.subscriber.cb(this.subscriber.inverseTransform(val)); // inverseTransform may be a transparent function (is not when reflecting : we must not reflect the child state "as is" : the parent value may be "mapped requested" by the child)   
+			}
+		},
+		enumerable : true
+	});
+	
+	
+	
+	
+	
+	
 	
 	
 	/**
@@ -975,18 +1440,39 @@ var Factory = (function() {
 	
 	
 	/**
+	 * A static definition of some DOM attributes :
+	 * 		reminded here as useful for storing a component's "persistent state"
+	 * 		used by the visibleStateComponent to map glyphs on states
+	 */
+	var commonStates = {
+			hidden : false,
+			disabled : false,
+			checked : false,
+			focused : false,
+			selected : false,
+			highlighted : false,
+			blurred : false,
+			valid : false,
+			recent : false, 	// boolean otherwise handled by specific mecanism (component should be referenced in a list, etc.)
+			roleInTree : '',	// replaces CSS classes : enum ('root', 'branch', 'leaf') 
+			position : 0,		// position as a state : degrees, 'min', 'man', nbr of pixels from start, etc. 
+			size : 0,			// size as a state : length, height, radius
+			tabIndex : 0
+	}
+	
+	/**
 	 * A Factory to instanciate virtual-DOM element definitions
 	 */
-	var elementDef = FactoryMaker.getClassFactory(function(type, nodeName, uniqueId, sWrapper, section, title) {
+	var elementDef = FactoryMaker.getClassFactory(function(type, title, nodeName, uniqueId, sWrapper, section, states, command) {
 			return {
 				type : type || '',
 				nodeName : nodeName || '',
 				id : uniqueId || '',
-				sWrapper : sWrapper || {},
-				css : {},
+				sWrapper : sWrapper || null,
 				section : section || 0,
 				title : title || '',
-				command : null,
+				states : states || null,
+				command : command || null,
 				keyboardSettings : [{
 					ctrlKey : false,
 					shiftKey : false,
@@ -1001,7 +1487,8 @@ var Factory = (function() {
 	/**
 	 * A Factory to instanciate UI Modules definitions
 	 */
-	var UIModuleDef = FactoryMaker.getClassFactory(function(sections, subSections, members, sWrapper, options) {
+	var UIModuleDef = FactoryMaker.getClassFactory(function(sections, subSections, members, sWrapper, styles, options) {
+//		console.log(sWrapper)
 			return {
 				sections : sections || [],
 				subSections : subSections || [],
@@ -1013,12 +1500,19 @@ var Factory = (function() {
 		}
 	);
 	
+	
+	/**
+	 * A Helper function to merge two options hash
+	 */
 	var optionSetter = function(baseOptions, options) {
 		options = (typeof options === 'object' && Object.keys(options).length) ? options : {};
 		for(var prop in baseOptions) {
-			if (baseOptions.hasOwnProperty(prop) && typeof options[prop] === 'undefined')
+//			console.log(prop, options[prop], baseOptions[prop], baseOptions.hasOwnProperty(prop), !options[prop]);
+			if (baseOptions.hasOwnProperty(prop) && !options[prop]) {
 				options[prop] = baseOptions[prop];
+			}
 		};
+		
 		return options;
 	}
 	
@@ -1032,6 +1526,8 @@ var Factory = (function() {
 		Worker : WorkerInterface,
 		elementDef : elementDef,
 		UIModuleDef : UIModuleDef,
+		commonStates : commonStates,
+		Stream : Stream,
 		optionSetter : optionSetter,
 		Maker : FactoryMaker
 	}

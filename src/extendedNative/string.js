@@ -58,6 +58,18 @@ Object.defineProperty(String.prototype, 'dromedarToHyphens', { 						// accepts 
 	}
 );
 
+Object.defineProperty(String.prototype, 'hyphensToDromedar', {
+	value : function() {
+				return this.replace(/\-(\w)/g, function(match, p1, offset, str) {
+					return (offset > 0 ? p1.toUpperCase() : '');
+				});
+			},
+			enumerable : false,
+			writable : false,
+			configurable : false
+	}
+);
+
 Object.defineProperty(String.prototype, 'toFirstLetterUpperCase', {
 	value : function() {
 				return this.replace(/^[a-z]/, function(match, offset, str) {
@@ -144,33 +156,6 @@ Object.defineProperty(String.prototype, 'ws2nbsp', {
 	configurable : false
 	}
 );
-
-/**
- * Method sortByPropName
- * 
- * returns Array(obj[propNameA], obj[propNameB], obj[propNameC], etc.)
- */
-Object.defineProperty(Object.prototype, 'sortByPropName', {
-	writable : false,
-	value : function () {
-		var keys = Object.keys(this).sort();
-//		console.log(keys.join(''))
-		var arr = []; 
-		for(var i = 0, l = keys.length; i < l; i++) {
-			arr.push(this[keys[i]]);
-		}
-		return arr;
-	}
-});
-
-RegExp.escapeLitteral = /[-\/\\^$*+?.()|[\]{}]/g;
-
-RegExp.escape= function(s) {
-    return s.replace(this.escapeLitteral, '\\$&');
-};
-RegExp.protect= function(s) {
-	return s.replace(/\\/g, '\\\\');
-};
 
 // Source: http://www.antiyes.com/jquery-blink-plugin
 //http://www.antiyes.com/jquery-blink/jquery-blink.js
