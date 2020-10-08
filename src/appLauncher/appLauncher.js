@@ -118,7 +118,8 @@ var classConstructor = function() {
 		isKnownUID : isKnownUID,
 		setUID : setUID,
 		currentHostPath : currentHostPath,
-		browserName : browserName
+		browserName : browserName,
+		tmp : []
 	}
 }
 
