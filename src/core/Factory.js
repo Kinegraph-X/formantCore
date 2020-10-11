@@ -233,18 +233,26 @@ var Factory = (function() {
 			return;
 		
 		for (var module in this.modules) {
-			if (this.modules[module] === candidateModule || module === moduleName)
+			if (this.modules[module] === candidateModule || module === moduleName) {
+				console.warn(this.objectType, 'registerModule : module already registered or a module already exists with this name')
 				return;
+			}
 		}
 		candidateModule.__in_tree_name = moduleName;
 		candidateModule._parent = this;
 		this.modules[moduleName] = this[moduleName] = candidateModule;
 		(!this[moduleName] && (this[moduleName] = this.modules[moduleName]));	// allow "protected" aliasing
-		(!this[moduleName] && console.error('ModuleName Aliasing error'))
+		(!this[moduleName] && console.error('ModuleName Aliasing error'));
+		
+
+		// heuristic targetSlot definition
+		candidateModule.targetSlot = (typeof candidateModule.def.targetSlot === 'number' ? this.slots[candidateModule.def.targetSlot] : candidateModule.targetSlot) || this.slots['default'];
+		// DEBUG : reflect targetSlot on def (currently only for debug purpose)
+		candidateModule.def.targetSlot = candidateModule.targetSlot;
 		
 		// autoSubscribe to object own events
 		var handler, desc;
-		for (evt in candidateModule.autoSubscribe) {
+		for (let evt in candidateModule.autoSubscribe) {
 			if (!this['on' + evt])
 				console.warn(this.objectType, 'registers ' + candidateModule.objectType, ' : Registering a child module on a raw Component ("Make" function not already called, then no DOM/Event exists) : Automatic Bindings won\'t work');
 			handler = candidateModule.autoSubscribe[evt];
@@ -252,6 +260,7 @@ var Factory = (function() {
 			if (typeof desc !== 'undefined' && typeof desc.get === 'function')
 				this['on' + evt] = handler; 	// setter for event subscribtion
 		}
+
 		
 		// autoReact on parent's observables
 		// (DONE : as there is no insurance that the DOM/Streams are existent nor created in this abstract interface, this code-block may not work.
@@ -259,10 +268,10 @@ var Factory = (function() {
 		// Binding on "raw" childModules (module's "make" function hasn't still beeen called when "making" the parent) is tested and warned here & there
 		// We also test here the case where the component state is held elsewhere than on the DOM hostElem (needs an explicit callback function on subscription)
 		if (this.streams && Object.keys(this.streams).length && candidateModule.reactOnParent && Object.keys(candidateModule.reactOnParent).length) {
-//			console.log(optionSetter(candidateModule.def.reactOnParent, candidateModule.reactOnParent));
 			
-			for (let moduleState in (optionSetter(candidateModule.def.reactOnParent, candidateModule.reactOnParent))) {
-				desc = candidateModule.reactOnParent[moduleState];
+			// DEBUG but not so DEBUG : keep track of the bindings in the def, then merge the bunch here below, but delete them to treat them as "handled"
+			for (let moduleState in (optionSetter(candidateModule.reactOnParent, candidateModule.def.reactOnParent))) {
+				desc = candidateModule.def.reactOnParent[moduleState];
 				
 				if (!candidateModule.hostElem && !desc.subscribe) {
 					console.warn('reactOnParent binding of a "raw" child module (before calling "Make" or on a listComponent, which may have no hostElem) : childModule ' + moduleName + '=> From ' + desc.from + ' to ' + moduleState);
@@ -273,8 +282,11 @@ var Factory = (function() {
 					console.warn('reactOnParent binding of a child module (' + moduleName + ') on an unknown stream of the parent Component : From ' + desc.from + ' to ' + moduleState);
 					continue;
 				}
+				
 				CoreModule.bindModuleToStream.call(this, candidateModule, moduleState, desc);
 			}
+			// DEBUG but not so DEBUG
+			delete candidateModule.reactOnParent;
 		}
 		
 		// autoReact on self-contained observables
@@ -305,14 +317,11 @@ var Factory = (function() {
 	CoreModule.bindModuleToStream = function(candidateModule, moduleState, desc) {
 		var def = this.def.host ? this.def.host : this.def;
 		(!this.streams[desc.from].transform && (this.streams[desc.from].transform = desc.transform));
-		(function(candidate, parentState, childState) {
-			this.streams[parentState.from].subscribe(parentState.cbOnly ? parentState.subscribe : (candidate.hostElem || parentState.subscribe), childState).filter(parentState.filter).map(parentState.map).reverse(parentState.inverseTransform);
-			// for reactOnSelf : there may be a hostElem AND a callback, then if we want complex reaction (on an Array for example), we pass a cb and bypass the "on hostElem" magical binding (which won't happen anyway if it's not a custom elem)
-			(parentState.cbOnly && (this.streams[parentState.from].value = def.states[parentState.from]));
-			// Don't arm autoReact twice : if done here, don't repeat in UIModule
-			parentState.armed = true;
-		}).call(this, candidateModule, desc, moduleState);
-//			console.log('binding from parent ' + desc.from + ' to ' + moduleState, this.streams[desc.from]);
+		this.streams[desc.from].subscribe(desc.cbOnly ? desc.subscribe : (candidateModule.hostElem || desc.subscribe), moduleState).filter(desc.filter).map(desc.map).reverse(desc.inverseTransform);
+		// for reactOnSelf : there may be a hostElem AND a callback, then if we want complex reaction (on an Array for example), we pass a cb and bypass the "on hostElem" magical binding (which won't happen anyway if it's not a custom elem)
+		(desc.cbOnly && (this.streams[desc.from].value = def.states[desc.from]));
+		
+//		console.log('binding from parent ' + desc.from + ' to ' + moduleState, this.streams[desc.from]);
 	}
 	
 	/**
@@ -799,7 +808,7 @@ var Factory = (function() {
 		this.rootElem;
 		this.hoverElem = this.hoverElem;
 		this.slots = {};
-		(targetSlot && (this.slots['default'] = (this.rootElem || this.hostElem).children[targetSlot]));
+		(typeof targetSlot === 'number' && (this.slots['default'] = (this.rootElem || this.hostElem).children[targetSlot]));
 
 		this.command = this.def.command || undefined;
 //		(this.command && console.log(this.command, this.command.prototype));
@@ -850,40 +859,13 @@ var Factory = (function() {
 		this.createObservables();
 		this.registerValidators();
 		this.create.apply(this, arguments);
-//		console.log(this.parentSlotDOMId)
+		this.compose();
+
 //		this.initGenericEvent(); 						// REMINDER : Don't call. That could call the descendant's method before the events are created
 		this.registerEvents();
 		
-		// if the asyncAddChild method has been overridden, there could exist "non-raw" children we need to add
-		(this.hasOwnProperty('asyncAddChild') && this.asyncAddChild());
-		
-		this.asyncAddChildren();
-		
 		this.resizeAll();
 		this.firstRender();
-		
-		// define this.slots['default'] as :
-		// 		- this.hostElem
-		// 		OR
-		//		- firstChild of (this.rootElem || this.hostElem)
-		// define this.slots['key as number'] as :
-		//		- each of their children
-		if (!this.slots['default']) {
-			this.slots['default'] = (this.hostElem
-				? (
-					(this.rootElem || this.hostElem).childNodes.length 
-						? function() {
-							(this.rootElem || this.hostElem).childNodes.forEach(function(child, key) {
-								this.slots[parseInt(key)] = child;
-							}, this);
-							return ((this.rootElem || this.hostElem).firstChild.nodeName === 'STYLE' ? (this.rootElem || this.hostElem).children[1] : (this.rootElem || this.hostElem).firstChild);
-							}.call(this)
-						: this.hostElem) 
-				: undefined);
-		}
-		
-		// reflect default slot on def (currently only for debug purpose)
-		(this.slots['default'] && (this.def.defaultSlot = this.slots['default']));
 		
 		this.execBindingQueue();
 	}
@@ -900,23 +882,56 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.create = function() {
 		this.beforeCreateDOM(arguments);
-		// Shortcut to allow children instanciation of non-appended parents (using a selector is not applicable at instantiation step, due to DOM update latency)
-		(this.parentSlotDOMId && 
-				((this.parentSlotDOMId instanceof HTMLElement || this.parentSlotDOMId instanceof ShadowRoot)
-					? this.parentSlot = this.parentSlotDOMId
-						: this.parentSlot = document.querySelector('#' + this.parentSlotDOMId)));
-//		console.log(this.parentSlotDOMId);
 		this.createDOM(arguments);
 		this.passToShadow();
 		this.basicEarlyDOMExtend();
 		this.renderDOMQueue();
 		this.basicLateDOMExtend();
+		
 		// binding can't happen on 'non connected' custom elems : attr missing...
 //		this.execBindingQueue();		// rejected at the end of the init process
+		
 		this.declareObservableDomAttributes();
 		this.afterCreateDOM(arguments);
 		this.setDOMTypes();
 		this.setArias();
+	}
+	
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.compose = function() {
+		// if the asyncAddChild method has been overridden, there could exist "non-raw" children we need to add
+		(Object.getPrototypeOf(this).hasOwnProperty('asyncAddChild') && this.asyncAddChild());
+		
+		this.asyncAddChildren();
+		
+		// define this.slots['default'] as :
+		// 		- this.hostElem
+		// 		OR
+		//		- firstChild of (this.rootElem || this.hostElem)
+		//
+		// AND
+		//
+		// define this.slots['key as number'] as :
+		//		- each of their children
+		
+		if (!this.slots['default']) {
+			this.slots['default'] = (this.hostElem
+				? (
+					(this.rootElem || this.hostElem).childNodes.length 
+						? function() {
+							(this.rootElem || this.hostElem).childNodes.forEach(function(child, key) {
+								this.slots[parseInt(key)] = child;
+							}, this);
+							return ((this.rootElem || this.hostElem).firstChild.nodeName === 'STYLE' ? (this.rootElem || this.hostElem).children[1] : (this.rootElem || this.hostElem).firstChild);
+							}.call(this)
+						: this.hostElem) 
+				: undefined);
+		}
+		
+		// reflect default slot on def (currently only for debug purpose)
+		(this.slots['default'] && (this.def.defaultSlot = this.slots['default']));
 	}
 	
 	UIModule.prototype.registerEvents = function() {
@@ -1008,21 +1023,11 @@ var Factory = (function() {
 		this.childrenToAdd = this.childrenToAdd.filter(function(childDef) {
 			if (childDef.module.raw || (oneShot && childDef !== oneShot))
 				return true;	// allow another method to add the "raw" children (don't delete them, but don't make them reactive for now : they don't have any DOM)
-			
-			// DEBUG : reflect the reactOnParent definition in the def
-			// TODO : components should in the future be able to instanciate themselves independantly of the strategy chosen by the user : global def, inheritance, mixin... 
-			childDef.module.def.reactOnParent = optionSetter(childDef.module.reactOnParent, childDef.module.def.reactOnParent);
-			delete childDef.module.reactOnParent;
 
-			name = this.maintainUniqueNames(names, childDef.module.objectType)
+			name = this.maintainUniqueNames(names, childDef.module.objectType);
 			
 			// register subModule
 			this.registerModule(name, childDef.module);
-			
-			// heuristic targetSlot definition
-			childDef.module.targetSlot = (typeof childDef.module.def.targetSlot === 'number' ? this.slots[childDef.module.def.targetSlot] : childDef.module.targetSlot) || this.slots['default'];
-			// reflect targetSlot on def (currently only for debug purpose)
-			childDef.module.def.targetSlot = childDef.module.targetSlot;
 			
 			// bind requested events subModule
 			for (let eventName in childDef.eventBinding) {
@@ -1037,33 +1042,19 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 * This method is not defined in the CoreModule class (it's basically a loop with some tests in the registerModule method)
-	 * HERE : we test for the case of an "already handled" binding : desc.armed (in the CoreModule class, effectively)
+	 * HERE : we test for the case of an "already handled" binding : desc.armed (handled in the registerModule method, effectively)
+	 * @deprecated
 	 */
 	UIModule.prototype.reactOnParentBinding = function(candidateModule) {
-		for (let moduleState in (candidateModule.reactOnParent)) {
-//			console.log(candidateModule.objectType, candidateModule.reactOnParent[moduleState]);
-			let desc = candidateModule.reactOnParent[moduleState];
-			if(!this.streams[desc.from] || desc.armed)
-				continue;
-			CoreModule.bindModuleToStream.call(this, candidateModule, moduleState, desc);
-		}
-	}
-//	/**
-//	 * @abstract
-//	 */
-//	UIModule.prototype.reactOnSelfBinding = function() {
-//		console.log(this.reactOnSelf);
-//		for (let moduleState in this.reactOnSelf) {
-//			console.log(this.streams[moduleState]);
-//			let desc = this.reactOnSelf[moduleState];
-//			desc.from = moduleState;
-//			if(!this.streams[moduleState])
+		console.warn(candidateModule.objectType, 'Lately setting the reactive bindings is discouraged : consider it as deprecated');
+//		for (let moduleState in (candidateModule.reactOnParent)) {
+////			console.log(candidateModule.objectType, candidateModule.reactOnParent[moduleState]);
+//			let desc = candidateModule.reactOnParent[moduleState];
+//			if(!this.streams[desc.from] || desc.armed)
 //				continue;
-//			CoreModule.bindModuleToStream.call(this, this, moduleState, desc);
+//			CoreModule.bindModuleToStream.call(this, candidateModule, moduleState, desc);
 //		}
-//	}
-	
-	
+	}	
 	
 	
 	
@@ -1072,7 +1063,7 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	// HACK - Y thing : although "childModules handling" pertains to the CoreModule Interface, UIModule handles here the special case of the autoReact-ive props in childModules
-	// BUT : That should be only executed on very special cases : when the user choose to extend the def after having registered a childModule. Things should not be made that way 
+	// BUT : That should be only executed on very special cases : when the user choose to extend the def after having registered a childModule. Things should not be made that way
 	UIModule.prototype.execBindingQueue = function() {
 		this.bindingQueue.forEach(function(renderFunc, key) {
 			renderFunc.call(this);
@@ -1086,7 +1077,7 @@ var Factory = (function() {
 		// case of the childComponents (when "registered" before parent's "Make") : autoReact (lately) on parent's observables
 		if (this.streams && Object.keys(this.streams).length) {
 			for (let moduleName in this.modules) {
-				if (!this.modules[moduleName].reactOnParent)
+				if (!this.modules[moduleName].reactOnParent)	// std case shall fail here (and TODO: we should NOT allow this sort of "specialty")
 					continue;
 				
 				// DEBUG cf. line 1010
@@ -1111,6 +1102,12 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.firstRender = function() {
+		// Shortcut to allow children instanciation of non-appended parents (using a selector is not applicable at instantiation step, due to DOM update latency)
+		(this.parentSlotDOMId && 
+				((this.parentSlotDOMId instanceof HTMLElement || this.parentSlotDOMId instanceof ShadowRoot)
+					? this.parentSlot = this.parentSlotDOMId
+						: this.parentSlot = document.querySelector('#' + this.parentSlotDOMId)));
+		
 //		console.log(this.parentSlot, this.hostElem, this);
 		(this.parentSlot && this.hostElem && this.parentSlot.appendChild(this.hostElem));
 	}
@@ -1195,7 +1192,7 @@ var Factory = (function() {
 	UIModule.getCleanDesc = function(prop, obj, newObj) {
 //		if (!obj[newProp])
 //			obj[newProp] = {};
-		if (obj.hasOwnProperty(prop) && obj[prop] !== null && obj[prop] != '') {
+		if (obj.hasOwnProperty(prop) && obj[prop] && obj[prop] !== null && obj[prop] != '') {
 			
 			// Abstract the complex objects in the hierarchical despcription
 			if (obj[prop] instanceof Command)
@@ -1838,8 +1835,8 @@ var Factory = (function() {
 			title : title || null,					// String
 			states : states || null,				// Object : plain
 			command : command || null,				// Object : instanceof Command
-			reactOnParent : reactOnParent || null,	// Object : plain
-			reactOnSelf : reactOnSelf || null,		// Object : plain
+			reactOnParent : reactOnParent || {},	// Object : plain
+			reactOnSelf : reactOnSelf || {},		// Object : plain
 			children : children || null,			// Array
 			targetSlot : targetSlot || null,		// String
 			keyboardSettings : [{
@@ -1869,7 +1866,7 @@ var Factory = (function() {
 	 * A Factory to instanciate UI Modules definitions
 	 * @param host {elementDef} : eventually accepts receiving a fulldef {UIModuleDef} on the first args
 	 */
-	var UIModuleDef = FactoryMaker.getClassFactory(function(host, subSections, members, options, sWrapper, children, targetSlot) {
+	var UIModuleDef = FactoryMaker.getClassFactory(function(host, subSections, members, options, sWrapper, children, targetSlot, reactOnParent, reactOnSelf) {
 //		console.log(sWrapper)
 		var def = {
 			host : host || null,
@@ -1879,6 +1876,8 @@ var Factory = (function() {
 			sWrapper : sWrapper || null,
 			options : options || {},
 			targetSlot : targetSlot || null,
+			reactOnParent : reactOnParent || {},	// Object : plain
+			reactOnSelf : reactOnSelf || {},		// Object : plain
 			verticalMargins : 0
 		};
 		// allow "direct" instanciation : the user already knows all the params, and gives a full UIModule def as first arg
@@ -1911,18 +1910,18 @@ var Factory = (function() {
 	 * A Helper function to merge two options hash
 	 */
 	var optionSetter = function(baseOptions, options) {
-		options = (typeof options === 'object' && Object.keys(options).length) ? options : {};
+		options = (typeof options === 'object' && options !== null) ? options : {};
 		if (!baseOptions)
 			return options;
 		else if (!options)
 			return baseOptions;
 		for(var prop in baseOptions) {
-//			console.log(prop, options[prop], baseOptions[prop], baseOptions.hasOwnProperty(prop), options[prop]);
+//			console.log(prop, options[prop], baseOptions[prop], baseOptions.hasOwnProperty(prop), typeof (options[prop]) === 'undefined');
 			if (baseOptions.hasOwnProperty(prop) && (typeof (options[prop]) === 'undefined' || options[prop] === null)) {
 				options[prop] = baseOptions[prop];
 			}
 		};
-		
+//		console.log(baseOptions, options);
 		return options;
 	}
 	
