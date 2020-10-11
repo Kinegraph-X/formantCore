@@ -176,7 +176,7 @@ var Factory = (function() {
 	})();
 	
 	/**
-	 * An Interface to be implemented by a module supposed to host children singleton modules
+	 * An Interface to be implemented by a module which needs to host childModules
 	 * @implements an event emitter pattern
 	 * @constructor
 	 * @interface
@@ -219,6 +219,11 @@ var Factory = (function() {
 		});
 	};
 	
+	// Theses two methods should be implemented further down in the inheritance chain : 
+	// 		progressive creation in UIModule implies managing a "raw" status on the component
+	CoreModule.prototype.asyncAddChild = function(child) {} 						// Virtual
+	CoreModule.prototype.asyncAddChildren = function(oneShot) {} 					// Virtual
+	
 	/**
 	 * @param {object} candidateModule : an instance of another module
 	 */
@@ -253,7 +258,7 @@ var Factory = (function() {
 		// this functionnality is ALSO handled in UIModule.prototype.execBindingQueue = after DOM creation)
 		// Binding on "raw" childModules (module's "make" function hasn't still beeen called when "making" the parent) is tested and warned here & there
 		// We also test here the case where the component state is held elsewhere than on the DOM hostElem (needs an explicit callback function on subscription)
-		if (this.streams && Object.keys(this.streams).length) {
+		if (this.streams && Object.keys(this.streams).length && candidateModule.reactOnParent && Object.keys(candidateModule.reactOnParent).length) {
 //			console.log(optionSetter(candidateModule.def.reactOnParent, candidateModule.reactOnParent));
 			
 			for (let moduleState in (optionSetter(candidateModule.def.reactOnParent, candidateModule.reactOnParent))) {
@@ -274,14 +279,21 @@ var Factory = (function() {
 		
 		// autoReact on self-contained observables
 		if (candidateModule.reactOnSelf && candidateModule.streams && Object.keys(candidateModule.streams).length) {
-			for (let moduleState in candidateModule.reactOnSelf) {
-//				console.log(candidateModule.streams[moduleState]);
-				let desc = candidateModule.reactOnSelf[moduleState];
-				desc.from = moduleState;
-				if(!candidateModule.streams[moduleState])
-					continue;
-				CoreModule.bindModuleToStream.call(candidateModule, candidateModule, moduleState, desc);
-			}
+			CoreModule.setReactOnSelf.call(candidateModule);
+		}
+	}
+	
+	/**
+	 * HELPER : this structure is also used for async children binding in the UIModule class
+	 */
+	CoreModule.setReactOnSelf = function() {
+		for (let moduleState in this.reactOnSelf) {
+	//		console.log(candidateModule.streams[moduleState]);
+			let desc = this.reactOnSelf[moduleState];
+			desc.from = moduleState;
+			if(!this.streams[moduleState])
+				continue;
+			CoreModule.bindModuleToStream.call(this, this, moduleState, desc);
 		}
 	}
 	
@@ -782,7 +794,7 @@ var Factory = (function() {
 //		console.log(this.parentSlotDOMId);
 		this.parentSlotDOMId = parentSlotDOMId || this.parentSlotDOMId;
 //		console.log(this.parentSlotDOMId);
-		this.parentSlot = this.parentSlot;
+
 		this.hostElem;
 		this.rootElem;
 		this.hoverElem = this.hoverElem;
@@ -841,6 +853,12 @@ var Factory = (function() {
 //		console.log(this.parentSlotDOMId)
 //		this.initGenericEvent(); 						// REMINDER : Don't call. That could call the descendant's method before the events are created
 		this.registerEvents();
+		
+		// if the asyncAddChild method has been overridden, there could exist "non-raw" children we need to add
+		(this.hasOwnProperty('asyncAddChild') && this.asyncAddChild());
+		
+		this.asyncAddChildren();
+		
 		this.resizeAll();
 		this.firstRender();
 		
@@ -867,10 +885,6 @@ var Factory = (function() {
 		// reflect default slot on def (currently only for debug purpose)
 		(this.slots['default'] && (this.def.defaultSlot = this.slots['default']));
 		
-		// if the addChild method has been overridden, there could exist "non-raw" children we need to add
-		(this.hasOwnProperty('addChild') && this.addChild());
-		
-		this.addChildren();
 		this.execBindingQueue();
 	}
 	/**
@@ -915,6 +929,18 @@ var Factory = (function() {
 		(this.hoverElem && this.registerLearnEvents());
 		this.afterRegisterEvents();
 	}
+	
+	
+	
+	/**
+	 * A whole lot of async abilities for extending the DOM
+	 * 
+	 * @method renderDOMQueue : mixins may have set a list of DOM nodes to append
+	 * @method asyncAddChild : call this method in the ctor -or- overload it in the proto to add a child to the async children list
+	 * @method asyncAddChildren : ctors and/or component-override-in-the-proto may have set a list of non-raw components to append
+	 */
+	
+	
 	/**
 	 * @abstract
 	 */
@@ -957,62 +983,38 @@ var Factory = (function() {
 		}, this);
 	}
 	/**
-	 * @abstract
-	 */
-	// HACK - Y thing : although "childModules handling" pertains to the CoreModule Interface, UIModule handles here the special case of the autoReact-ive props in childModules
-	// BUT : That should be only executed on very special cases : when the user choose to extend the def after having registered a childModule. Things should not be made that way 
-	UIModule.prototype.execBindingQueue = function() {
-		this.bindingQueue.forEach(function(renderFunc, key) {
-			renderFunc.call(this);
-		}, this);
-		
-		if (this.reactOnSelf && this.streams && Object.keys(this.streams).length)
-			this.reactOnSelfBinding();
-		
-		// LATELY
-		// (UIModule handles the special case of the reactOnParent prop on childModules in this "execBindingQueue" method)
-		// case of the childComponents (when "registered" before parent's "Make") : autoReact (lately) on parent's observables
-		if (this.streams && Object.keys(this.streams).length) {
-			var candidateModule;
-			for (var moduleName in this.modules) {
-				candidateModule = this.modules[moduleName];
-				if (!candidateModule.reactOnParent)
-					continue;
-				candidateModule.def.reactOnParent = optionSetter(candidateModule.reactOnParent, candidateModule.def.reactOnParent);
-				this.reactOnParentBinding(candidateModule);
-				delete candidateModule.reactOnParent;
-			}
-		}
-	}
-	/**
 	 * @abstract (Model to be overloaded)
 	 */
-	UIModule.prototype.addChild = function(candidateModule, forceAdd, eventBinding) {
+	UIModule.prototype.asyncAddChild = function(candidateModule, forceAdd, eventBinding) {
 		forceAdd = forceAdd || false 
 		this.childrenToAdd.push({module : candidateModule, eventBinding : eventBinding});
-		(forceAdd && this.addChildren(this.childrenToAdd[this.childrenToAdd.length - 1]));
+		(forceAdd && this.asyncAddChildren(this.childrenToAdd[this.childrenToAdd.length - 1]));
 	}
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.addChildren = function(oneShot) {
+	UIModule.prototype.asyncAddChildren = function(oneShot) {
 		// interesting question here : does the compiler optimize the code better when we check for "zero length" or just when filtering a "zeror length" array and re-assigning it ?
 		// TODO : benchmark should be explicitly "talking" on long hierarchy
 		if (!this.childrenToAdd.length)
 			return;
-		var name, names = [];
+		
+		var name, names = {};
 		// prevent masking of already "incremented" subModule names
 		for (let moduleName in this.modules) {
 			(typeof names[this.modules[moduleName].objectType] === 'undefined' ? names[this.modules[moduleName].objectType] = 0 : ++names[this.modules[moduleName].objectType]);
 		}
+		
 		this.childrenToAdd = this.childrenToAdd.filter(function(childDef) {
 			if (childDef.module.raw || (oneShot && childDef !== oneShot))
 				return true;	// allow another method to add the "raw" children (don't delete them, but don't make them reactive for now : they don't have any DOM)
-			childDef.module.def.reactOnParent = optionSetter(childDef.module.reactOnParent, childDef.module.def.reactOnParent);
 			
-			// Naming is a bit quirky : cf. componentGroup.js where there is already a TODO : cf. comment
-			names[childDef.module.objectType] = typeof names[childDef.module.objectType] !=='undefined' ? ++names[childDef.module.objectType] : 0;
-			name = childDef.module.objectType.slice(0, 1).toLowerCase() + childDef.module.objectType.slice(1) + (names[childDef.module.objectType] ? names[childDef.module.objectType].toString() : '');
+			// DEBUG : reflect the reactOnParent definition in the def
+			// TODO : components should in the future be able to instanciate themselves independantly of the strategy chosen by the user : global def, inheritance, mixin... 
+			childDef.module.def.reactOnParent = optionSetter(childDef.module.reactOnParent, childDef.module.def.reactOnParent);
+			delete childDef.module.reactOnParent;
+
+			name = this.maintainUniqueNames(names, childDef.module.objectType)
 			
 			// register subModule
 			this.registerModule(name, childDef.module);
@@ -1021,9 +1023,6 @@ var Factory = (function() {
 			childDef.module.targetSlot = (typeof childDef.module.def.targetSlot === 'number' ? this.slots[childDef.module.def.targetSlot] : childDef.module.targetSlot) || this.slots['default'];
 			// reflect targetSlot on def (currently only for debug purpose)
 			childDef.module.def.targetSlot = childDef.module.targetSlot;
-			
-			this.reactOnParentBinding(childDef.module);
-			delete childDef.module.reactOnParent;
 			
 			// bind requested events subModule
 			for (let eventName in childDef.eventBinding) {
@@ -1037,6 +1036,8 @@ var Factory = (function() {
 	}
 	/**
 	 * @abstract
+	 * This method is not defined in the CoreModule class (it's basically a loop with some tests in the registerModule method)
+	 * HERE : we test for the case of an "already handled" binding : desc.armed (in the CoreModule class, effectively)
 	 */
 	UIModule.prototype.reactOnParentBinding = function(candidateModule) {
 		for (let moduleState in (candidateModule.reactOnParent)) {
@@ -1047,19 +1048,65 @@ var Factory = (function() {
 			CoreModule.bindModuleToStream.call(this, candidateModule, moduleState, desc);
 		}
 	}
+//	/**
+//	 * @abstract
+//	 */
+//	UIModule.prototype.reactOnSelfBinding = function() {
+//		console.log(this.reactOnSelf);
+//		for (let moduleState in this.reactOnSelf) {
+//			console.log(this.streams[moduleState]);
+//			let desc = this.reactOnSelf[moduleState];
+//			desc.from = moduleState;
+//			if(!this.streams[moduleState])
+//				continue;
+//			CoreModule.bindModuleToStream.call(this, this, moduleState, desc);
+//		}
+//	}
+	
+	
+	
+	
+	
+	
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.reactOnSelfBinding = function() {
-		console.log(this.reactOnSelf);
-		for (let moduleState in this.reactOnSelf) {
-			console.log(this.streams[moduleState]);
-			let desc = this.reactOnSelf[moduleState];
-			if(!this.streams[moduleState])
-				continue;
-			CoreModule.bindModuleToStream.call(this, this, moduleState, desc);
+	// HACK - Y thing : although "childModules handling" pertains to the CoreModule Interface, UIModule handles here the special case of the autoReact-ive props in childModules
+	// BUT : That should be only executed on very special cases : when the user choose to extend the def after having registered a childModule. Things should not be made that way 
+	UIModule.prototype.execBindingQueue = function() {
+		this.bindingQueue.forEach(function(renderFunc, key) {
+			renderFunc.call(this);
+		}, this);
+		
+		if (this.reactOnSelf && this.streams && Object.keys(this.streams).length)
+			CoreModule.setReactOnSelf.call(this);
+		
+		// LATELY
+		// (UIModule handles the special case of the reactOnParent prop on childModules in this "execBindingQueue" method)
+		// case of the childComponents (when "registered" before parent's "Make") : autoReact (lately) on parent's observables
+		if (this.streams && Object.keys(this.streams).length) {
+			for (let moduleName in this.modules) {
+				if (!this.modules[moduleName].reactOnParent)
+					continue;
+				
+				// DEBUG cf. line 1010
+				this.modules[moduleName].def.reactOnParent = optionSetter(this.modules[moduleName].reactOnParent, this.modules[moduleName].def.reactOnParent);
+				
+				this.reactOnParentBinding(this.modules[moduleName]);
+				
+				// DEBUG 
+				delete this.modules[moduleName].reactOnParent;
+			}
 		}
 	}
+	
+	
+	
+	
+	
+	
+	
+	
 	/**
 	 * @abstract
 	 */
@@ -1079,50 +1126,7 @@ var Factory = (function() {
 		// intermediate- (two levels uppon this abstract class) & end- classes should then call super.initGenericEvent()
 		// before connecting their own events to the generic event
 	}
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.isCalledFromFactory = function() {
-//		console.log(arguments);
-		var args = null,
-			bool = (arguments.length === 1 && (args = Array.prototype.slice.call(arguments[0])).length && typeof args[0].sections !== 'undefined');
-//		console.log(args);
-		return args;
-	}
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.mergeDefaultDef = function(defaultDef) {
-//		console.log(this.def, defaultDef);
-		if (this.def) {
-//			console.log(this.objectType, this.def.title);
-			var defSetTitle = this.def.title;
-//			this.def = 
-			optionSetter(defaultDef, this.def);
-			(this.def.host && defSetTitle && (this.def.host.title = defSetTitle)); // hack when given def is moduleDef and default def is elementDef
-			// TODO : fix that ugliness above
-//			if (this.def.sections)
-//				console.log(this.objectType, this.def.sections[0].title);
-		}
-		else
-			this.def = defaultDef;
-		
-		
-//		console.log(this.def.states);
-//		console.log(this.def)
-	}
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.asyncCSSActiveState = function() {// helper (locks behavior as "always async", then command can be initialized before animation ends)
-		var self = this;
-		var asyncExec = new Promise(function(resolve, reject) {
-//			self.domElem.addClass('actionated');
-//			setTimeout(function() {
-//				self.domElem.removeClass('actionated');
-//			}, 64);
-		});
-	}
+	
 	/**
 	 * @abstract
 	 */
@@ -1221,6 +1225,8 @@ var Factory = (function() {
 				(prop === 'defaultSlot' && (newObj['slots[\'default\']'] = obj[prop].nodeName)) || (newObj['targetSlotOnParent'] = obj[prop].nodeName);
 			else if (!Object.keys(obj[prop]).length)
 				return;
+			else if (prop === 'type')
+				newObj['isAutoBuiltType'] = obj[prop];
 			else if (prop !== 'keyboardSettings')
 				newObj[prop] = obj[prop];
 		}
@@ -1234,7 +1240,7 @@ var Factory = (function() {
 				"3" : "sample",
 				"4" : "sample",
 				"5" : "sample",
-				"type": "sample",
+				"isAutoBuiltType": "sample",
 				"nodeName": "sample",
 				"templateNodeName": "sample",
 				"host" : "sample",
@@ -1266,6 +1272,73 @@ var Factory = (function() {
 		});
 		return result;
 	}
+	
+	/**
+	 * HELPERS 
+	 */
+	
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.isCalledFromFactory = function() {
+//		console.log(arguments);
+		var args = null,
+			bool = (arguments.length === 1 && (args = Array.prototype.slice.call(arguments[0])).length && typeof args[0].sections !== 'undefined');
+//		console.log(args);
+		return args;
+	}
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.mergeDefaultDef = function(defaultDef) {
+//		console.log(this.def, defaultDef);
+		if (this.def) {
+//			console.log(this.objectType, this.def.title);
+			var defSetTitle = this.def.title;
+//			this.def = 
+			optionSetter(defaultDef, this.def);
+			(this.def.host && defSetTitle && (this.def.host.title = defSetTitle)); // hack when given def is moduleDef and default def is elementDef
+			// TODO : fix that ugliness above
+//			if (this.def.sections)
+//				console.log(this.objectType, this.def.sections[0].title);
+		}
+		else
+			this.def = defaultDef;
+		
+		
+//		console.log(this.def.states);
+//		console.log(this.def)
+	}
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.asyncCSSActiveState = function() {// helper (locks behavior as "always async", then command can be initialized before animation ends)
+		var self = this;
+		var asyncExec = new Promise(function(resolve, reject) {
+//			self.domElem.addClass('actionated');
+//			setTimeout(function() {
+//				self.domElem.removeClass('actionated');
+//			}, 64);
+		});
+	}
+	/**
+	 * @abstract
+	 * 		quite complicated way of maintaining uniqueness when naming the subModules :
+			subModules are referenced by the component through the "modules" prop (which is an associative array),
+			but we want to offer an easy access to subModules, and though also refence them as a prop in the component => we keep subModules names unique
+	 */
+	UIModule.prototype.maintainUniqueNames = function(names, type) {
+		if (!names || !type)
+			return;
+		names[type] = typeof names[type] !=='undefined' ? ++names[type] : 0;
+		return type.slice(0, 1).toLowerCase() + type.slice(1) + (names[type] ? names[type].toString() : '');
+	}
+	
+	
+	
+	
+	
+	
 	
 	
 	
@@ -1757,18 +1830,18 @@ var Factory = (function() {
 	var elementDef = FactoryMaker.getClassFactory(function(type, title, nodeName, uniqueId, sWrapper, section, states, command, reactOnParent, reactOnSelf, children, targetSlot) {
 		
 		var def = {
-			type : type || '',
-			nodeName : nodeName || '',
-			id : uniqueId || '',
+			type : type || null,					// String
+			nodeName : nodeName || null,			// String
+			id : uniqueId || null,					// String
 			sWrapper : sWrapper || null,			// Object : instanceof StylesheetWrapper
-			section : section || 0,
-			title : title || '',
+			section : section || null,				// Number
+			title : title || null,					// String
 			states : states || null,				// Object : plain
 			command : command || null,				// Object : instanceof Command
 			reactOnParent : reactOnParent || null,	// Object : plain
 			reactOnSelf : reactOnSelf || null,		// Object : plain
-			children : children || [],
-			targetSlot : targetSlot || null,
+			children : children || null,			// Array
+			targetSlot : targetSlot || null,		// String
 			keyboardSettings : [{
 				ctrlKey : false,
 				shiftKey : false,
@@ -1844,8 +1917,8 @@ var Factory = (function() {
 		else if (!options)
 			return baseOptions;
 		for(var prop in baseOptions) {
-//			console.log(prop, options[prop], baseOptions[prop], baseOptions.hasOwnProperty(prop), !options[prop]);
-			if (baseOptions.hasOwnProperty(prop) && !options[prop]) {
+//			console.log(prop, options[prop], baseOptions[prop], baseOptions.hasOwnProperty(prop), options[prop]);
+			if (baseOptions.hasOwnProperty(prop) && (typeof (options[prop]) === 'undefined' || options[prop] === null)) {
 				options[prop] = baseOptions[prop];
 			}
 		};
