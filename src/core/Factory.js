@@ -165,6 +165,7 @@ var Factory = (function() {
 
 	    instance = {
 	        extend: extend,
+	        getExtensionContext : getExtensionContext,
 	        getSingletonInstance: getSingletonInstance,
 	        setSingletonInstance: setSingletonInstance,
 	        getSingletonFactory: getSingletonFactory,
@@ -303,7 +304,7 @@ var Factory = (function() {
 					continue;
 				}
 				let desc = reactDefinitionInDef[moduleState];
-				desc.from = moduleState;
+				desc.from = moduleState; // Keep this hack : it enforces the failure case if the reactOnParent obj is wrongly defined (here should be the only forced case)
 				if(!this.streams[moduleState])
 					continue;
 				CoreModule.bindModuleToStream.call(this, null, moduleState, desc);
@@ -812,7 +813,7 @@ var Factory = (function() {
 		this.objectType = 'UIModule';
 
 		this.def = def || (this.def || undefined);
-		this.mergeDefaultDef(this.setDefaultDef()); 	// TODO : should say createDeafultDef here
+		this.mergeDefaultDef(this.setDefaultDef()); 	// TODO : should say createDefaultDef here
 		this.parentSlot = this.parentSlot || undefined;
 		
 //		console.log(this.parentSlotDOMId);
@@ -870,7 +871,7 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.Make = function() {
-		this.raw = false;						// disable "raw" first : 
+		this.raw = false;						// disable "raw" first (seems logical... TODO:  was there a purpose on that comment ?)
 		this.beforeMake(arguments);
 		this.init(arguments)
 		this.afterMake(arguments);
@@ -879,9 +880,6 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.init = function(/* arguments : def, parentSlotDOMId */) {
-//		this.createEvents.apply(this, arguments);
-//		this.createObservables();
-//		this.registerValidators();
 		this.create.apply(this, arguments);
 		this.compose();
 
@@ -1096,7 +1094,6 @@ var Factory = (function() {
 					? this.parentSlot = this.parentSlotDOMId
 						: this.parentSlot = document.querySelector('#' + this.parentSlotDOMId)));
 		
-//		console.log(this.parentSlot, this.hostElem, this);
 		(this.parentSlot && this.hostElem && this.parentSlot.appendChild(this.hostElem));
 	}
 	/**
@@ -1280,11 +1277,17 @@ var Factory = (function() {
 //		console.log(this.def, defaultDef);
 		if (this.def) {
 //			console.log(this.objectType, this.def.title);
+			// TODO : find a mechanism to solve in a "clean" manner the MESS that we have with those two def types. At first sight, 2 props identified as causing problems
+			// WE COULD AT LEAST deny "mixed type" defs merging...
+			// OR BETTER detect def type and call a helper function that assigns the elementDef on the host def...
+			// OR EVEN BETTER (OR WORSE) : get rid of the elementDef "easyness" after having offered the user an "allowed light def" : EVERY def is a UIModuleDef... (BUT THAT CREATES AN InnerComponent MESS : we may "wonder/have forgotten" why the def has been extended...) 
 			var defSetTitle = this.def.title;
+			var defSetSection = this.def.section;
 //			this.def = 
 			optionSetter(defaultDef, this.def);
 			(this.def.host && defSetTitle && (this.def.host.title = defSetTitle)); // hack when given def is moduleDef and default def is elementDef
-			// TODO : fix that ugliness above
+			(this.def.host && defSetSection && (this.def.host.section = defSetSection)); // hack when given def is moduleDef and default def is elementDef
+			// TODO : fix that ugliness above, FAST
 //			if (this.def.sections)
 //				console.log(this.objectType, this.def.sections[0].title);
 		}
