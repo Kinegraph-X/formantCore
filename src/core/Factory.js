@@ -244,13 +244,22 @@ var Factory = (function() {
 		(!this[moduleName] && (this[moduleName] = this.modules[moduleName]));	// allow "protected" aliasing
 		(!this[moduleName] && console.error('ModuleName Aliasing error'));
 		
-
-		// heuristic targetSlot definition
-		candidateModule.targetSlot = (typeof candidateModule.def.targetSlot === 'number' ? this.slots[candidateModule.def.targetSlot] : candidateModule.targetSlot) || this.slots['default'];
-		// DEBUG : reflect targetSlot on def (currently only for debug purpose)
-		candidateModule.def.targetSlot = candidateModule.targetSlot;
+		// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
+		this.handleSlotDefinitionRelativeToParent(candidateModule);
 		
 		// autoSubscribe to object own events
+		this.handleModuleSubscriptions(candidateModule);
+
+		// handle module's reactivity on parent's observables
+		this.handleModuleReactivityOnParent(candidateModule);
+		
+		// autoReact on self-contained observables
+		candidateModule.handleModuleReactivityOnSelf.call(candidateModule);
+	}
+//	if (this.reactOnSelf && this.streams && Object.keys(this.streams).length)
+//		CoreModule.setReactOnSelf.call(this);
+	
+	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule) {
 		var handler, desc;
 		for (let evt in candidateModule.autoSubscribe) {
 			if (!this['on' + evt])
@@ -259,54 +268,58 @@ var Factory = (function() {
 			desc = Object.getOwnPropertyDescriptor(this, 'on' + evt);
 			if (typeof desc !== 'undefined' && typeof desc.get === 'function')
 				this['on' + evt] = handler; 	// setter for event subscribtion
-		}
-
-		
-		// autoReact on parent's observables
-		// (DONE : as there is no insurance that the DOM/Streams are existent nor created in this abstract interface, this code-block may not work.
-		// this functionnality is ALSO handled in UIModule.prototype.execBindingQueue = after DOM creation)
-		// Binding on "raw" childModules (module's "make" function hasn't still beeen called when "making" the parent) is tested and warned here & there
-		// We also test here the case where the component state is held elsewhere than on the DOM hostElem (needs an explicit callback function on subscription)
-		if (this.streams && Object.keys(this.streams).length && candidateModule.reactOnParent && Object.keys(candidateModule.reactOnParent).length) {
-			
-			// DEBUG but not so DEBUG : keep track of the bindings in the def, then merge the bunch here below, but delete them to treat them as "handled"
-			for (let moduleState in (optionSetter(candidateModule.reactOnParent, candidateModule.def.reactOnParent))) {
-				desc = candidateModule.def.reactOnParent[moduleState];
-				
+		}	
+	}
+	
+	CoreModule.prototype.handleModuleReactivityOnParent = function(candidateModule) {
+		var reactDefinitionInDef = candidateModule.def.host ? candidateModule.def.host.reactOnParent : candidateModule.def.reactOnParent;
+		if (this.streams && Object.keys(this.streams).length && candidateModule.reactOnParent && Object.keys(optionSetter(candidateModule.reactOnParent, reactDefinitionInDef)).length) {
+			for (let moduleState in reactDefinitionInDef) {
+				desc = reactDefinitionInDef[moduleState];
 				if (!candidateModule.hostElem && !desc.subscribe) {
-					console.warn('reactOnParent binding of a "raw" child module (before calling "Make" or on a listComponent, which may have no hostElem) : childModule ' + moduleName + '=> From ' + desc.from + ' to ' + moduleState);
+					console.warn('reactOnParent binding of a "raw" child module (before calling "Make" or on a listComponent, which may have no hostElem) : childModule ' + moduleName + '=> From ' + desc.from + ' to ' + moduleState + '. --- Defining an explicit subscription via a callback may also solve the issue');
 					continue;
 				}
-				
 				if (!this.streams[desc.from]) {
 					console.warn('reactOnParent binding of a child module (' + moduleName + ') on an unknown stream of the parent Component : From ' + desc.from + ' to ' + moduleState);
 					continue;
 				}
-				
 				CoreModule.bindModuleToStream.call(this, candidateModule, moduleState, desc);
 			}
-			// DEBUG but not so DEBUG
 			delete candidateModule.reactOnParent;
-		}
-		
-		// autoReact on self-contained observables
-		if (candidateModule.reactOnSelf && candidateModule.streams && Object.keys(candidateModule.streams).length) {
-			CoreModule.setReactOnSelf.call(candidateModule);
 		}
 	}
 	
 	/**
-	 * HELPER : this structure is also used for async children binding in the UIModule class
+	 * this structure may also be used elsewhere (for async children binding in the UIModule class)
 	 */
-	CoreModule.setReactOnSelf = function() {
-		for (let moduleState in this.reactOnSelf) {
-	//		console.log(candidateModule.streams[moduleState]);
-			let desc = this.reactOnSelf[moduleState];
-			desc.from = moduleState;
-			if(!this.streams[moduleState])
-				continue;
-			CoreModule.bindModuleToStream.call(this, this, moduleState, desc);
+	CoreModule.prototype.handleModuleReactivityOnSelf = function() {
+		var reactDefinitionInDef = (this.def.host ? this.def.host.reactOnSelf : this.def.reactOnSelf) || (this.def.host && (this.def.host.reactOnSelf = {})); // we allowed a strange definition for the FormInfo : as the only relevant prop (slotsTextContent) is not part of the factory's possibility, there is no "default" value for this.def.host.reactOnSelf (and merging fails : so fallback to {})  
+//		console.log(reactDefinitionInDef);
+		if (this.reactOnSelf && this.streams && Object.keys(this.streams).length && Object.keys(optionSetter(this.reactOnSelf, reactDefinitionInDef)).length) {
+			for (let moduleState in reactDefinitionInDef) {
+				if (moduleState === 'slotsTextContent' && !Object.keys(this.slots).length) {
+					console.warn(this.objectType, 'Module reactivity on Self : injecting data via the slotsTextContent requires the module to be "made" first. Operation cancelled');
+					continue;
+				}
+				let desc = reactDefinitionInDef[moduleState];
+				desc.from = moduleState;
+				if(!this.streams[moduleState])
+					continue;
+				CoreModule.bindModuleToStream.call(this, null, moduleState, desc);
+			}
+			delete this.reactOnSelf;
 		}
+//		console.log(this.def);
+	}
+	
+	/**
+	 * Although in the prototype (for "this" to be correctly injected), this structure may also be used elsewhere (e.g. maybe on async children binding in the UIModule class)
+	 */
+	CoreModule.prototype.handleSlotDefinitionRelativeToParent = function(candidateModule) {
+		candidateModule.targetSlot = (typeof candidateModule.def.targetSlot === 'number' ? this.slots[candidateModule.def.targetSlot] : candidateModule.targetSlot) || this.slots['default'];
+		// DEBUG : reflect targetSlot on def (currently only for debug purpose)
+		candidateModule.def.targetSlot = candidateModule.targetSlot;
 	}
 	
 	/**
@@ -315,6 +328,8 @@ var Factory = (function() {
 	 * @param {object} desc
 	 */
 	CoreModule.bindModuleToStream = function(candidateModule, moduleState, desc) {
+		if (candidateModule === null)
+			candidateModule = this;
 		var def = this.def.host ? this.def.host : this.def;
 		(!this.streams[desc.from].transform && (this.streams[desc.from].transform = desc.transform));
 		this.streams[desc.from].subscribe(desc.cbOnly ? desc.subscribe : (candidateModule.hostElem || desc.subscribe), moduleState).filter(desc.filter).map(desc.map).reverse(desc.inverseTransform);
@@ -764,12 +779,12 @@ var Factory = (function() {
 	 * There are various allowed instanciation principles :
 	 * 
 	 * 	- composition of components, through the initial def => 2 cases :
-	 * 		- composition from flat def : the main path is to declare a type in the def, then the componentGroup ctor pushes the whole bunch in a hierarchy of components (3 levels max)
-	 * 		- extension through an inherited class : a special case has been defined for the "basically informative" pictograms (valid, disabled, etc.) : they are "secretly" appended through an inherited subClass 
+	 * 		-* composition from flat def : the main path is to declare a type in the def, then the componentGroup ctor pushes the whole bunch in a hierarchy of components (3 levels max)
+	 * 		-* extension through an inherited class : a special case has been defined for the "basically informative" pictograms (valid, disabled, etc.) : they are "secretly" appended through an inherited subClass 
 	 * 	- composition of "(not necessarily) passive" DOM nodes, through a default def on the child component,
 	 * 	- DOM extension, where we wish it'd be flat extension (but depth is allowed through innerHTML <== EVIL, use it with caution), through decorators, as mixins on a "child or host" component,
 	 * and last but not least,
-	 * 	- composition through "by default instanciated children" (in the component's ctor). You may give thanks, it's lazy.
+	 * 	- composition through "by default instanciated children" (mainly in the component's ctor). You may give thanks, it's queued (comes, in any case, after all other DOM extensions, and then children declared in the ctor, finally a unique child declared by overloading the addChild method).
 	 * 
 	 * @constructor
 	 * @extends DependancyModule
@@ -814,6 +829,7 @@ var Factory = (function() {
 //		(this.command && console.log(this.command, this.command.prototype));
 		this.keyboardEvents = this.keyboardEvents || [];
 		
+		this.immediateInit.apply(this, arguments);
 		(automakeable && this.Make.apply(this, arguments));
 	};
 
@@ -845,6 +861,14 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
+	UIModule.prototype.immediateInit = function(/* arguments : def, parentSlotDOMId */) {
+		this.createEvents.apply(this, arguments);
+		this.createObservables();
+		this.registerValidators();
+	}
+	/**
+	 * @abstract
+	 */
 	UIModule.prototype.Make = function() {
 		this.raw = false;						// disable "raw" first : 
 		this.beforeMake(arguments);
@@ -855,9 +879,9 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.init = function(/* arguments : def, parentSlotDOMId */) {
-		this.createEvents.apply(this, arguments);
-		this.createObservables();
-		this.registerValidators();
+//		this.createEvents.apply(this, arguments);
+//		this.createObservables();
+//		this.registerValidators();
 		this.create.apply(this, arguments);
 		this.compose();
 
@@ -915,23 +939,24 @@ var Factory = (function() {
 		//
 		// define this.slots['key as number'] as :
 		//		- each of their children
-		
-		if (!this.slots['default']) {
+
+		if (!this.slots['default']) {				// some components may set a default slot by themselves (they should if they want their child components to rely on it)
 			this.slots['default'] = (this.hostElem
 				? (
 					(this.rootElem || this.hostElem).childNodes.length 
-						? function() {
-							(this.rootElem || this.hostElem).childNodes.forEach(function(child, key) {
-								this.slots[parseInt(key)] = child;
-							}, this);
-							return ((this.rootElem || this.hostElem).firstChild.nodeName === 'STYLE' ? (this.rootElem || this.hostElem).children[1] : (this.rootElem || this.hostElem).firstChild);
-							}.call(this)
-						: this.hostElem) 
+						? 	((this.rootElem || this.hostElem).firstChild.nodeName === 'STYLE' ? (this.rootElem || this.hostElem).children[1] : (this.rootElem || this.hostElem).firstChild)
+						: 	this.hostElem
+					)
 				: undefined);
 		}
+		if (this.rootElem || this.hostElem) {
+			(this.rootElem || this.hostElem).childNodes.forEach(function(child, key) {
+				this.slots[parseInt(key)] = child;
+			}, this);
+		}
 		
-		// reflect default slot on def (currently only for debug purpose)
-		(this.slots['default'] && (this.def.defaultSlot = this.slots['default']));
+		// DEBUG : reflect default slot on def (currently only for debug purpose)
+		(this.slots['default'] && ((this.def.host ? this.def.host : this.def).defaultSlot = this.slots['default']));
 	}
 	
 	UIModule.prototype.registerEvents = function() {
@@ -1039,22 +1064,6 @@ var Factory = (function() {
 			return false;
 		}, this);
 	}
-	/**
-	 * @abstract
-	 * This method is not defined in the CoreModule class (it's basically a loop with some tests in the registerModule method)
-	 * HERE : we test for the case of an "already handled" binding : desc.armed (handled in the registerModule method, effectively)
-	 * @deprecated
-	 */
-	UIModule.prototype.reactOnParentBinding = function(candidateModule) {
-		console.warn(candidateModule.objectType, 'Lately setting the reactive bindings is discouraged : consider it as deprecated');
-//		for (let moduleState in (candidateModule.reactOnParent)) {
-////			console.log(candidateModule.objectType, candidateModule.reactOnParent[moduleState]);
-//			let desc = candidateModule.reactOnParent[moduleState];
-//			if(!this.streams[desc.from] || desc.armed)
-//				continue;
-//			CoreModule.bindModuleToStream.call(this, candidateModule, moduleState, desc);
-//		}
-	}	
 	
 	
 	
@@ -1068,27 +1077,6 @@ var Factory = (function() {
 		this.bindingQueue.forEach(function(renderFunc, key) {
 			renderFunc.call(this);
 		}, this);
-		
-		if (this.reactOnSelf && this.streams && Object.keys(this.streams).length)
-			CoreModule.setReactOnSelf.call(this);
-		
-		// LATELY
-		// (UIModule handles the special case of the reactOnParent prop on childModules in this "execBindingQueue" method)
-		// case of the childComponents (when "registered" before parent's "Make") : autoReact (lately) on parent's observables
-		if (this.streams && Object.keys(this.streams).length) {
-			for (let moduleName in this.modules) {
-				if (!this.modules[moduleName].reactOnParent)	// std case shall fail here (and TODO: we should NOT allow this sort of "specialty")
-					continue;
-				
-				// DEBUG cf. line 1010
-				this.modules[moduleName].def.reactOnParent = optionSetter(this.modules[moduleName].reactOnParent, this.modules[moduleName].def.reactOnParent);
-				
-				this.reactOnParentBinding(this.modules[moduleName]);
-				
-				// DEBUG 
-				delete this.modules[moduleName].reactOnParent;
-			}
-		}
 	}
 	
 	
@@ -1193,7 +1181,7 @@ var Factory = (function() {
 //		if (!obj[newProp])
 //			obj[newProp] = {};
 		if (obj.hasOwnProperty(prop) && obj[prop] && obj[prop] !== null && obj[prop] != '') {
-			
+
 			// Abstract the complex objects in the hierarchical despcription
 			if (obj[prop] instanceof Command)
 				newObj['Command'] = '[Object]';
@@ -1202,7 +1190,7 @@ var Factory = (function() {
 			else if ((prop === 'reactOnParent') && Object.keys(obj[prop]).length)
 				newObj['autoBindingOnParentStates'] = Object.keys(obj[prop]).map(function(item) {return item + ' <== ' + obj[prop][item].from});
 			else if ((prop === 'reactOnSelf') && Object.keys(obj[prop]).length)
-				newObj['autoBindingOnSelfStates'] = Object.keys(obj[prop]).map(function(item) {return item + ' <== ' + obj[prop][item].from});
+				newObj['autoBindingOnSelfStates'] = Object.keys(obj[prop]).map(function(item) {return item + ' ==> ' + obj[prop][item].subscribe.name});
 			else if (prop === 'autoSubscribe' && Object.keys(obj[prop]).length)
 				newObj['autoBindingOnDescendantEvents'] = Object.keys(obj[prop]);
 			else if (prop === 'states' && Object.keys(obj[prop]).length)
@@ -1243,6 +1231,7 @@ var Factory = (function() {
 				"host" : "sample",
 				"declaredObservableStates": "sample",
 				"autoBindingOnParentStates" : "sample",
+				"autoBindingOnSelfStates" : "sample",
 				"subSections" : "sample",
 				"members" : "sample",
 				"id": "sample",
