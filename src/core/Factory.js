@@ -184,46 +184,81 @@ var Factory = (function() {
 	 */
 	var CoreModule = function() {
 		
-		Object.defineProperty(this, 'objectType', {
-			enumerable : false,
-			writable : true,
-			configurable : true,
-			value : 'CoreModule'
-		});
+		// PERF OPTIMIZATION
+//		Object.defineProperty(this, 'objectType', {
+//			enumerable : false,
+//			writable : true,
+//			configurable : true,
+//			value : 'CoreModule'
+//		});
+//		
+//		Object.defineProperty(this, 'modules', {
+//			enumerable : false,
+//			writable : true,
+//			configurable : true,
+//			value : {}
+//		});
+//		
+//		Object.defineProperty(this, '_eventHandlers', {
+//			enumerable : false,
+//			writable : false,
+//			configurable : true,
+//			value : {}
+//		});
+//		
+//		Object.defineProperty(this, '_one_eventHandlers', {
+//			enumerable : false,
+//			writable : false,
+//			configurable : true,
+//			value : {}
+//		});
+//		
+//		Object.defineProperty(this, '_identified_eventHandlers', {
+//			enumerable : false,
+//			writable : false,
+//			configurable : true,
+//			value : {}
+//		});
 		
-		Object.defineProperty(this, 'modules', {
-			enumerable : false,
-			writable : true,
-			configurable : true,
-			value : {}
-		});
+		this.objectType = 'CoreModule';
+		this.modules = {};
+		this._eventHandlers = {};
+		this._one_eventHandlers = {};
+		this._identified_eventHandlers = {};
 		
-		Object.defineProperty(this, '_eventHandlers', {
-			enumerable : false,
-			writable : false,
-			configurable : true,
-			value : {}
-		});
-		
-		Object.defineProperty(this, '_one_eventHandlers', {
-			enumerable : false,
-			writable : false,
-			configurable : true,
-			value : {}
-		});
-		
-		Object.defineProperty(this, '_identified_eventHandlers', {
-			enumerable : false,
-			writable : false,
-			configurable : true,
-			value : {}
-		});
+		this.subscribeOnChild;
 	};
 	
-	// Theses two methods should be implemented further down in the inheritance chain : 
-	// 		progressive creation in UIModule implies managing a "raw" status on the component
+	CoreModule.onEventPropertyDescriptor = {
+			set : function(handler) {
+				if (typeof handler !== 'function') {
+					console.warn('Bad eventHandler assigned : handler type is ' + typeof handler + ' instead of "function or object"', 'EventType ' + eventType);
+					return;
+				}
+//				if (this._eventHandlers[eventType].indexOf(handler) === -1)
+					this._eventHandlers[eventType].push(handler);
+			}
+		}
+		
+	CoreModule.oneEventPropertyDescriptor = {
+		set : function(handler) {
+			if (typeof handler === 'function') {
+//					if (this._one_eventHandlers[eventType].indexOf(handler) === -1)
+					this._one_eventHandlers[eventType].push(handler);
+			}
+			else if (typeof handler === 'object' && typeof handler['f'] === 'function' && ['number', 'string'].indexOf(typeof handler['id']) !== -1) {
+//					if (this._one_eventHandlers[eventType].indexOf(handler) === -1)
+					this._identified_eventHandlers[eventType].push(handler);
+			}
+		}
+	}
+	
+	// Theses methods should be implemented further down in the inheritance chain : 
+	// 		asynchronously adding children : progressive creation in UIModule implies managing a "raw" status on the component
 	CoreModule.prototype.asyncAddChild = function(child) {} 						// Virtual
 	CoreModule.prototype.asyncAddChildren = function(oneShot) {} 					// Virtual
+	// 		attaching observables for reactivity : the ObservableComponent class is responsible for that
+	CoreModule.prototype.onRegisterModule = function() {} 							// Virtual
 	
 	/**
 	 * @param {object} candidateModule : an instance of another module
@@ -248,39 +283,9 @@ var Factory = (function() {
 		if (candidateModule instanceof HTMLElement)
 			return;
 		else {
-			var def;
-			if ((def = CoreModule.getSmoothedDef.call(candidateModule))
-					&& (def.subscribeOnParent
-					|| def.subscribeOnChild
-					|| def.reactOnParent
-					|| def.reactOnSelf
-					|| candidateModule.subscribeOnParent
-					|| candidateModule.subscribeOnChild
-					|| candidateModule.reactOnParent
-					|| candidateModule.reactOnSelf)) {
-//				console.log(def, candidateModule);
-				if (candidateModule.raw)
-					candidateModule.Make();
-			}
-			else
-				return;
-			
-			// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
-			this.handleSlotDefinitionRelativeToParent(candidateModule);
-			
-			// autoSubscribe to object own events
-			this.handleModuleSubscriptions(candidateModule);
-	
-			// handle module's reactivity on parent's observables
-			this.handleModuleReactivityOnParent(candidateModule);
-			
-			// autoReact on self-contained observables
-			candidateModule.handleModuleReactivityOnSelf.call(candidateModule);
+			this.onRegisterModule(candidateModule);
 		}
 	}
-//	if (this.reactOnSelf && this.streams && Object.keys(this.streams).length)
-//		CoreModule.setReactOnSelf.call(this);
-	
 	
 	CoreModule.getSmoothedDef = function(def) {
 		return this.def.host ? this.def.host : this.def;
@@ -320,78 +325,7 @@ var Factory = (function() {
 		delete subscriptionInDef;
 	}
 	
-	CoreModule.prototype.handleModuleReactivityOnParent = function(candidateModule) {
-		var reactDefinitionInDef = candidateModule.def.host ? candidateModule.def.host.reactOnParent : candidateModule.def.reactOnParent;
-
-		if (this.streams && Object.keys(this.streams).length && Object.keys(optionSetter(candidateModule.reactOnParent, reactDefinitionInDef)).length) {
-			for (let moduleState in reactDefinitionInDef) {
-				desc = reactDefinitionInDef[moduleState];
-				if (!candidateModule.hostElem && !desc.subscribe) {
-					console.warn('reactOnParent binding of a "raw" child module (before calling "Make" or on a listComponent, which may have no hostElem) : childModule ' + candidateModule.objectType + '=> From ' + desc.from + ' to ' + moduleState + '. --- Defining an explicit subscription via a callback may also solve the issue');
-					continue;
-				}
-				if (!this.streams[desc.from]) {
-					console.warn('reactOnParent binding of a child module (' + candidateModule.objectType + ') on an unknown stream of the parent Component : From ' + desc.from + ' to ' + moduleState);
-					continue;
-				}
-				CoreModule.bindModuleToStream.call(this, candidateModule, moduleState, desc);
-			}
-			delete candidateModule.reactOnParent;
-		}
-	}
 	
-	/**
-	 * this structure may also be used elsewhere (for async children binding in the UIModule class)
-	 */
-	CoreModule.prototype.handleModuleReactivityOnSelf = function() {
-//		console.log(this.def);
-		var reactDefinitionInDef;
-		if (!(reactDefinitionInDef = (this.def.host ? this.def.host.reactOnSelf : this.def.reactOnSelf) || ((this.def.host && (this.def.host.reactOnSelf = {})) || (this.def && this.def.reactOnSelf)))) // we allowed a strange definition for the FormInfo : as the only relevant prop (slotsTextContent) is not part of the factory's possibility, there is no "default" value for this.def.host.reactOnSelf (and merging fails : so fallback to {})
-			return;
-//		console.log(reactDefinitionInDef);
-		if ((this.reactOnSelf || Object.keys(reactDefinitionInDef).length) && this.streams && Object.keys(this.streams).length && Object.keys(optionSetter(this.reactOnSelf, reactDefinitionInDef)).length) {
-			for (let moduleState in reactDefinitionInDef) {
-				if (moduleState === 'slotsTextContent' && !Object.keys(this.slots).length) {
-					console.warn(this.objectType, 'Module reactivity on Self : injecting data via the slotsTextContent requires the module to be "made" first. Operation cancelled');
-					continue;
-				}
-				let desc = reactDefinitionInDef[moduleState];
-				desc.from = moduleState; // Keep this hack : it enforces the failure case if the reactOnParent obj is wrongly defined (here should be the only forced case)
-				if(!this.streams[moduleState])
-					continue;
-				CoreModule.bindModuleToStream.call(this, null, moduleState, desc);
-			}
-			delete this.reactOnSelf;
-		}
-//		console.log(this.def);
-	}
-	
-	/**
-	 * Although in the prototype (for "this" to be correctly injected), this structure may also be used elsewhere (e.g. maybe on async children binding in the UIModule class)
-	 */
-	CoreModule.prototype.handleSlotDefinitionRelativeToParent = function(candidateModule) {
-		candidateModule.targetSlot = (typeof candidateModule.def.targetSlot === 'number' ? this.slots[candidateModule.def.targetSlot] : candidateModule.targetSlot) || this.slots['default'];
-		// DEBUG : reflect targetSlot on def (currently only for debug purpose)
-		candidateModule.def.targetSlot = candidateModule.targetSlot;
-	}
-	
-	/**
-	 * @param {UIModule} candidateModule
-	 * @param {string} moduleState
-	 * @param {object} desc
-	 */
-	CoreModule.bindModuleToStream = function(candidateModule, moduleState, desc) {
-		if (candidateModule === null)
-			candidateModule = this;
-		var def = this.def.host ? this.def.host : this.def;
-		(!this.streams[desc.from].transform && (this.streams[desc.from].transform = desc.transform));
-//		console.log(moduleState, candidateModule.streams);
-		this.streams[desc.from].subscribe(desc.cbOnly ? desc.subscribe : (candidateModule.streams[moduleState] || desc.subscribe), 'value').filter(desc.filter).map(desc.map).reverse(desc.inverseTransform);
-		// for reactOnSelf : there may be a hostElem AND a callback, then if we want complex reaction (on an Array for example), we pass a cb and bypass the "on hostElem" magical binding (which won't happen anyway if it's not a custom elem)
-		(desc.cbOnly && (this.streams[desc.from].value = (def.states ? def.states[desc.from] : (def.props ? def.props[desc.from] : undefined))));
-		
-//		console.log('binding from parent ' + desc.from + ' to ' + moduleState, this.streams[desc.from]);
-	}
 	
 	/**
 	 * @param {string} moduleName
@@ -431,43 +365,17 @@ var Factory = (function() {
 		this._eventHandlers[eventType] = []; // ['forcejQueryExtension']
 		this._one_eventHandlers[eventType] = []; // ['forcejQueryExtension']
 		this._identified_eventHandlers[eventType] = []; // ['forcejQueryExtension'] 	// identified event handlers are meant to be disposable
-		
-		/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
-		Object.defineProperty(this, 'on' + eventType, {
-			enumerable : false,
-			configurable : true,
-			get : function() {
-//				this.trigger(eventType);
-			},
-			set : function(handler) {
-				if (typeof handler !== 'function') {
-					console.warn('Bad eventHandler assigned : handler type is ' + typeof handler + ' instead of "function or object"', 'EventType ' + eventType);
-					return;
-				}
-//				if (this._eventHandlers[eventType].indexOf(handler) === -1)
-					this._eventHandlers[eventType].push(handler);
-			}
-		});
-		
-		/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
-		Object.defineProperty(this, 'one_' + eventType, {
-			enumerable : false,
-			configurable : true,
-			get : function() {
-//				this.trigger(eventType);
-			},
-			set : function(handler) {
-				if (typeof handler === 'function') {
-//					console.log(eventType, handler, this);
-//					if (this._one_eventHandlers[eventType].indexOf(handler) === -1)
-						this._one_eventHandlers[eventType].push(handler);
-				}
-				else if (typeof handler === 'object' && typeof handler['f'] === 'function'&& ['number', 'string'].indexOf(typeof handler['id']) !== -1) {
-//					if (this._one_eventHandlers[eventType].indexOf(handler) === -1)
-						this._identified_eventHandlers[eventType].push(handler);
-				}
-			}
-		});
+//		
+		/*
+		 * THIS A HUGE PERF BOTTLENECK : potential optimization would be caching the propertyDescriptor 
+		 * 		As implemented and commented : HUGE benchmark improvement, although there are still 2ms to gain for real effectiveness in long lists...
+		 * 		Reserve this usage to "needed" cases. TODO : how ?
+		 */
+//		/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
+//		Object.defineProperty(this, 'on' + eventType, CoreModule.onEventPropertyDescriptor);
+//		
+//		/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
+//		Object.defineProperty(this, 'one_' + eventType, CoreModule.oneEventPropertyDescriptor);
 	}
 
 	/**
@@ -853,8 +761,6 @@ var Factory = (function() {
 		
 //		this.cDef = {};
 //		this.cDef.children = [];
-		
-		this.subscribeOnChild;
 		this.reactOnParent;
 		this.reactOnSelf;
 		
@@ -884,9 +790,12 @@ var Factory = (function() {
 		this.command = (this.def && this.def.command) ? this.def.command : undefined;
 //		(this.command && console.log(this.command, this.command.prototype));
 		this.keyboardEvents = this.keyboardEvents || [];
+		this.createEvent('clicked');
+		this.createEvent('update');
+		this.createEvent('stroke');
 		
 		(this.def && this.immediateInit.apply(this, arguments));
-		(automakeable && this.Make.apply(this, arguments));
+		(automakeable && this.raw && this.Make.apply(this, arguments));
 	};
 
 	UIModule.prototype = Object.create(DependancyModule.prototype);
@@ -897,7 +806,7 @@ var Factory = (function() {
 	UIModule.prototype.afterMake = function() {}						// virtual
 	UIModule.prototype.beforeCreateDOM = function() {}					// virtual
 	UIModule.prototype.createDOM = function() {}						// virtual
-	UIModule.prototype.passToShadow = function() {}						// virtual
+	UIModule.prototype.completeDOM = function() {}						// virtual
 	UIModule.prototype.basicEarlyDOMExtend = function() {}				// virtual
 	UIModule.prototype.basicLateDOMExtend = function() {}				// virtual
 	UIModule.prototype.declareObservableDomAttributes =  function() {}	// virtual
@@ -950,9 +859,9 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.createEvents = function() {
-		this.createEvent('clicked');
-		this.createEvent('update');
-		this.createEvent('stroke');
+//		this.createEvent('clicked');
+//		this.createEvent('update');
+//		this.createEvent('stroke');
 	}
 	/**
 	 * @abstract
@@ -960,7 +869,7 @@ var Factory = (function() {
 	UIModule.prototype.create = function() {
 		this.beforeCreateDOM(arguments);
 		this.createDOM(arguments);
-		this.passToShadow();
+		this.completeDOM();
 		this.basicEarlyDOMExtend();
 		this.renderDOMQueue();
 		this.basicLateDOMExtend();
@@ -981,7 +890,10 @@ var Factory = (function() {
 		// if the asyncAddChild method has been overridden, there could exist "non-raw" children we need to add
 		(Object.getPrototypeOf(this).hasOwnProperty('asyncAddChild') && this.asyncAddChild());
 		
-		this.asyncAddChildren();
+		// interesting question here : does the compiler optimize the code better when we check for "zero length" or just executing the func and let the "filter" method return on a zero-length array ?
+		// TODO : benchmark should be explicitly "talking" on long hierarchy : slight advantage to "checking first"
+		if (this.childrenToAdd.length)
+			this.asyncAddChildren();
 		
 		// define this.slots['default'] as :
 		// 		- this.hostElem
@@ -993,19 +905,27 @@ var Factory = (function() {
 		// define this.slots['key as number'] as :
 		//		- each of their children
 
-		if (!this.slots['default']) {				// some components may set a default slot by themselves (they should if they want their child components to rely on it)
-			this.slots['default'] = (this.hostElem
-				? (
-					(this.rootElem || this.hostElem).childNodes.length 
-						? 	((this.rootElem || this.hostElem).firstChild.nodeName === 'STYLE' ? (this.rootElem || this.hostElem).children[1] : (this.rootElem || this.hostElem).firstChild)
-						: 	this.hostElem
-					)
-				: undefined);
-		}
+		// (very slight...) PERF OPTIMIZATION
+		(!this.slots['default'] && (this.slots['default'] = (this.hostElem && (this.rootElem || this.hostElem).childNodes && (this.rootElem || this.hostElem).firstChild) || this.hostElem));
+		// THIS IS LESS "COMPILE-TIME OPTIMIZABLE" (benchmarked)
+//		if (!this.slots['default']) {				// some components may set a default slot by themselves (they should if they want their child components to rely on it)
+//			this.slots['default'] = (this.hostElem
+//				? (
+//					(this.rootElem || this.hostElem).childNodes.length 
+//						? 	((this.rootElem || this.hostElem).firstChild.nodeName === 'STYLE' ? (this.rootElem || this.hostElem).children[1] : (this.rootElem || this.hostElem).firstChild)
+//						: 	this.hostElem
+//					)
+//				: undefined);
+//		}
 		if (this.rootElem || this.hostElem) {
-			(this.rootElem || this.hostElem).childNodes.forEach(function(child, key) {
-				this.slots[parseInt(key)] = child;
-			}, this);
+			var defaultSlot = this.slots['default'];
+			this.slots = (this.rootElem || this.hostElem).childNodes;
+			this.slots['default'] = defaultSlot;
+//			this.slots = Array.prototype.slice.call([], (this.rootElem || this.hostElem).childNodes);
+//			arr.forEach(function(child, key) {
+//			(this.rootElem || this.hostElem).childNodes.forEach(function(child, key) {
+//				this.slots[parseInt(key)] = child;
+//			}, this);
 		}
 		
 		// DEBUG : reflect default slot on def (currently only for debug purpose)
@@ -1092,10 +1012,6 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.asyncAddChildren = function(oneShot) {
-		// interesting question here : does the compiler optimize the code better when we check for "zero length" or just when filtering a "zeror length" array and re-assigning it ?
-		// TODO : benchmark should be explicitly "talking" on long hierarchy
-		if (!this.childrenToAdd.length)
-			return;
 		
 		var name, names = {};
 		// prevent masking of already "incremented" subModule names
@@ -1497,7 +1413,14 @@ var Factory = (function() {
 		this.inverseTransform;
 		this.subscriptions = [];
 		
-		// by calling the "reflect" method, the property descriptor of the "value" prop may be reflected on another object 
+		// by calling the "reflect" method, the property descriptor of the "value" prop may be reflected on another object
+		// (the perf optimization hasn't really any effect: the bottleneck comes from the "bind" method)
+//		var propertyDescriptor = {
+//				get : Stream.defaultPropertyDescriptor.get.bind(this),
+//				set : Stream.defaultPropertyDescriptor.set.bind(this),
+//				enumerable : true
+//		};
+//		Object.defineProperty(this, 'value', propertyDescriptor);
 		Object.defineProperty(this, 'value', {
 			get : function() {
 				if (this.lazy) {
@@ -1514,12 +1437,29 @@ var Factory = (function() {
 				this.set(value);
 			}.bind(this),
 			enumerable : true
-		})
+		});
 		this._value;
 		this.value = typeof reflectedObj === 'object' ? reflectedObj[name] : value;
 		this.dirty;
 	}
 	Stream.prototype.objectType = 'Stream';
+//	Stream.defaultPropertyDescriptor = {
+//		get : function() {
+//			if (this.lazy) {
+//				if (typeof this.transform === 'function')
+//					this._value = this.transform(this.get());
+//				this.dirty = false;
+//			}
+//			
+//			return this.get();
+//		},//.bind(this),
+//		
+//		set : function(value) {
+//			this.setAndUpdateConditional(value);
+//			this.set(value);
+//		},//.bind(this),
+//		enumerable : true
+//	}
 
 	Stream.prototype.get = function() {
 		return this._value;
@@ -1888,7 +1828,7 @@ var Factory = (function() {
 	/**
 	 * A Factory to instanciate virtual-DOM element definitions
 	 */
-	var elementDef = FactoryMaker.getClassFactory(function(type, title, nodeName, uniqueId, sWrapper, section, states, props, command, reactOnParent, reactOnSelf, children, targetSlot) {
+	var elementDef = function(type, title, nodeName, uniqueId, sWrapper, section, states, props, command, reactOnParent, reactOnSelf, children, targetSlot) {
 		
 		var def = {
 			type : type || null,					// String
@@ -1922,8 +1862,8 @@ var Factory = (function() {
 		}
 		else
 			return def;
-		}
-	);
+	}
+//	);
 	// REMINDER : the DOM Element Constructor applies the whole elementDef based on the following test :
 	// if (typeof attributes[attr] === 'boolean' || (attributes[attr]  && attr in elem && ['type', 'nodeName', 'label'].indexOf(attr) === -1))
 	
@@ -1953,34 +1893,34 @@ var Factory = (function() {
 			host = UIModuleDef.apply(null, host);
 		
 		if (host && typeof host === 'object' && host.host) {
-			def.host = {};
-			// Ensure we don't reference an already used and immutable getter/setter
-			for (let param in host.host) {
-				if (!Object.getOwnPropertyDescriptor(host.host, param).writable
-						|| host.host[param] instanceof HTMLElement
-						|| param.indexOf('reactOn') !== -1)
-					def.host[param] = null;
-				else
-					def.host[param] = host.host[param];
-			}
-			
-			def.members = [];
-			host.members.forEach(function(obj, key) {
-				var newObj = {};
-				for (let param in obj) {
-					if (!Object.getOwnPropertyDescriptor(obj, param).writable
-							|| obj[param] instanceof HTMLElement
-							|| param.indexOf('reactOnSelf') !== -1)
-						newObj[param] = null;
-					else
-						newObj[param] = obj[param];
-				}
-				def.members.push(newObj);
-			});
+//			def.host = {};
+//			// Ensure we don't reference an already used and immutable getter/setter
+//			for (let param in host.host) {
+//				if (!Object.getOwnPropertyDescriptor(host.host, param).writable
+//						|| host.host[param] instanceof HTMLElement
+//						|| param.indexOf('reactOn') !== -1)
+//					def.host[param] = null;
+//				else
+//					def.host[param] = host.host[param];
+//			}
+//			
+//			def.members = [];
+//			host.members.forEach(function(obj, key) {
+//				var newObj = {};
+//				for (let param in obj) {
+//					if (!Object.getOwnPropertyDescriptor(obj, param).writable
+//							|| obj[param] instanceof HTMLElement
+//							|| param.indexOf('reactOnSelf') !== -1)
+//						newObj[param] = null;
+//					else
+//						newObj[param] = obj[param];
+//				}
+//				def.members.push(newObj);
+//			});
 
 			// then take care to keep the ref broken
 			for (let param in host) {
-				if (param !== 'host' && param !== 'members')
+//				if (param !== 'host' && param !== 'members')
 					def[param] = host[param];
 			} 
 			return def;
@@ -2089,8 +2029,8 @@ var Factory = (function() {
 		UIModule : UIModule,
 		Command : Command,
 		Worker : WorkerInterface,
-		elementDef : elementDef,
-		UIModuleDef : FactoryMaker.getClassFactory(UIModuleDef),
+		createElementDef : elementDef,
+		createUIModuleDef : UIModuleDef,
 		commonStates : commonStates,
 		Stream : Stream,
 		optionSetter : optionSetter,

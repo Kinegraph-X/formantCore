@@ -61,7 +61,8 @@ Object.defineProperty(String.prototype, 'dromedarToHyphens', { 						// accepts 
 Object.defineProperty(String.prototype, 'hyphensToDromedar', {
 	value : function() {
 				return this.replace(/\-(\w)/g, function(match, p1, offset, str) {
-					return (offset > 0 ? p1.toUpperCase() : '');
+//					return (offset > 0 ? p1.toUpperCase() : '');
+					return p1.toUpperCase();
 				});
 			},
 			enumerable : false,
