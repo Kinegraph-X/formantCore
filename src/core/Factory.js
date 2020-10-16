@@ -245,44 +245,93 @@ var Factory = (function() {
 		(!this[moduleName] && (this[moduleName] = this.modules[moduleName]));	// allow "protected" aliasing
 		(!this[moduleName] && console.error('ModuleName Aliasing error'));
 		
-		// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
-		this.handleSlotDefinitionRelativeToParent(candidateModule);
-		
-		// autoSubscribe to object own events
-		this.handleModuleSubscriptions(candidateModule);
-
-		// handle module's reactivity on parent's observables
-		this.handleModuleReactivityOnParent(candidateModule);
-		
-		// autoReact on self-contained observables
-		candidateModule.handleModuleReactivityOnSelf.call(candidateModule);
+		if (candidateModule instanceof HTMLElement)
+			return;
+		else {
+			var def;
+			if ((def = CoreModule.getSmoothedDef.call(candidateModule))
+					&& (def.subscribeOnParent
+					|| def.subscribeOnChild
+					|| def.reactOnParent
+					|| def.reactOnSelf
+					|| candidateModule.subscribeOnParent
+					|| candidateModule.subscribeOnChild
+					|| candidateModule.reactOnParent
+					|| candidateModule.reactOnSelf)) {
+//				console.log(def, candidateModule);
+				if (candidateModule.raw)
+					candidateModule.Make();
+			}
+			else
+				return;
+			
+			// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
+			this.handleSlotDefinitionRelativeToParent(candidateModule);
+			
+			// autoSubscribe to object own events
+			this.handleModuleSubscriptions(candidateModule);
+	
+			// handle module's reactivity on parent's observables
+			this.handleModuleReactivityOnParent(candidateModule);
+			
+			// autoReact on self-contained observables
+			candidateModule.handleModuleReactivityOnSelf.call(candidateModule);
+		}
 	}
 //	if (this.reactOnSelf && this.streams && Object.keys(this.streams).length)
 //		CoreModule.setReactOnSelf.call(this);
 	
+	
+	CoreModule.getSmoothedDef = function(def) {
+		return this.def.host ? this.def.host : this.def;
+	}
+	
 	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule) {
-		var handler, desc;
-		for (let evt in candidateModule.autoSubscribe) {
+		var handler,
+			desc,
+			subscriptionInDef = candidateModule.def.host ? candidateModule.def.host.subscribeOnParent : candidateModule.def.subscribeOnParent,
+			subscriptions;
+		for (let evt in (subscriptions = optionSetter(candidateModule.subscribeOnParent, subscriptionInDef))) {
 			if (!this['on' + evt])
 				console.warn(this.objectType, 'registers ' + candidateModule.objectType, ' : Registering a child module on a raw Component ("Make" function not already called, then no DOM/Event exists) : Automatic Bindings won\'t work');
-			handler = candidateModule.autoSubscribe[evt];
+			handler = subscriptions[evt];
 			desc = Object.getOwnPropertyDescriptor(this, 'on' + evt);
 			if (typeof desc !== 'undefined' && typeof desc.get === 'function')
 				this['on' + evt] = handler; 	// setter for event subscribtion
-		}	
+		}
+		delete subscriptionInDef;
+		subscriptionInDef = this.def.subscribeOnChild;
+		if (!subscriptionInDef)
+			return;
+		for (let evt in (subscriptions = optionSetter(this.subscribeOnChild, subscriptionInDef))) {
+			if (!candidateModule['on' + evt] && typeof candidateModule.hostElem['on' + evt] === 'undefined') { // DOM events are allowed to be handled by delegation
+				console.log(evt, candidateModule['_eventHandlers'], candidateModule['hostElem']['on' + evt]);
+				console.warn(this.objectType, 'registers on event ' + evt + '' + candidateModule.objectType, ' : Registering a raw child module on a Component ("Make" function not already called, then no DOM/Event exists) : Automatic Bindings won\'t work');
+			}
+			handler = subscriptionInDef[evt];
+			desc = Object.getOwnPropertyDescriptor(candidateModule, 'on' + evt);
+			if (typeof desc !== 'undefined' && typeof desc.get === 'function')
+				candidateModule['on' + evt] = handler; 	// setter for event subscribtion
+			else if ('on' + evt in candidateModule.hostElem)
+				candidateModule.hostElem['on' + evt] = handler.bind(this); 	// setter for delegated native event subscribtion
+//			console.log(candidateModule['hostElem']['on' + evt], candidateModule['on' + evt], this.hostElem.nodeName, 'registers on event ' + evt + ' ' + candidateModule.hostElem.nodeName);
+//			console.log(evt, desc, desc.get);
+		}
+		delete subscriptionInDef;
 	}
 	
 	CoreModule.prototype.handleModuleReactivityOnParent = function(candidateModule) {
 		var reactDefinitionInDef = candidateModule.def.host ? candidateModule.def.host.reactOnParent : candidateModule.def.reactOnParent;
-		if (this.streams && Object.keys(this.streams).length && candidateModule.reactOnParent && Object.keys(optionSetter(candidateModule.reactOnParent, reactDefinitionInDef)).length) {
+
+		if (this.streams && Object.keys(this.streams).length && Object.keys(optionSetter(candidateModule.reactOnParent, reactDefinitionInDef)).length) {
 			for (let moduleState in reactDefinitionInDef) {
 				desc = reactDefinitionInDef[moduleState];
 				if (!candidateModule.hostElem && !desc.subscribe) {
-					console.warn('reactOnParent binding of a "raw" child module (before calling "Make" or on a listComponent, which may have no hostElem) : childModule ' + moduleName + '=> From ' + desc.from + ' to ' + moduleState + '. --- Defining an explicit subscription via a callback may also solve the issue');
+					console.warn('reactOnParent binding of a "raw" child module (before calling "Make" or on a listComponent, which may have no hostElem) : childModule ' + candidateModule.objectType + '=> From ' + desc.from + ' to ' + moduleState + '. --- Defining an explicit subscription via a callback may also solve the issue');
 					continue;
 				}
 				if (!this.streams[desc.from]) {
-					console.warn('reactOnParent binding of a child module (' + moduleName + ') on an unknown stream of the parent Component : From ' + desc.from + ' to ' + moduleState);
+					console.warn('reactOnParent binding of a child module (' + candidateModule.objectType + ') on an unknown stream of the parent Component : From ' + desc.from + ' to ' + moduleState);
 					continue;
 				}
 				CoreModule.bindModuleToStream.call(this, candidateModule, moduleState, desc);
@@ -295,9 +344,12 @@ var Factory = (function() {
 	 * this structure may also be used elsewhere (for async children binding in the UIModule class)
 	 */
 	CoreModule.prototype.handleModuleReactivityOnSelf = function() {
-		var reactDefinitionInDef = (this.def.host ? this.def.host.reactOnSelf : this.def.reactOnSelf) || (this.def.host && (this.def.host.reactOnSelf = {})); // we allowed a strange definition for the FormInfo : as the only relevant prop (slotsTextContent) is not part of the factory's possibility, there is no "default" value for this.def.host.reactOnSelf (and merging fails : so fallback to {})  
+//		console.log(this.def);
+		var reactDefinitionInDef;
+		if (!(reactDefinitionInDef = (this.def.host ? this.def.host.reactOnSelf : this.def.reactOnSelf) || ((this.def.host && (this.def.host.reactOnSelf = {})) || (this.def && this.def.reactOnSelf)))) // we allowed a strange definition for the FormInfo : as the only relevant prop (slotsTextContent) is not part of the factory's possibility, there is no "default" value for this.def.host.reactOnSelf (and merging fails : so fallback to {})
+			return;
 //		console.log(reactDefinitionInDef);
-		if (this.reactOnSelf && this.streams && Object.keys(this.streams).length && Object.keys(optionSetter(this.reactOnSelf, reactDefinitionInDef)).length) {
+		if ((this.reactOnSelf || Object.keys(reactDefinitionInDef).length) && this.streams && Object.keys(this.streams).length && Object.keys(optionSetter(this.reactOnSelf, reactDefinitionInDef)).length) {
 			for (let moduleState in reactDefinitionInDef) {
 				if (moduleState === 'slotsTextContent' && !Object.keys(this.slots).length) {
 					console.warn(this.objectType, 'Module reactivity on Self : injecting data via the slotsTextContent requires the module to be "made" first. Operation cancelled');
@@ -333,9 +385,10 @@ var Factory = (function() {
 			candidateModule = this;
 		var def = this.def.host ? this.def.host : this.def;
 		(!this.streams[desc.from].transform && (this.streams[desc.from].transform = desc.transform));
-		this.streams[desc.from].subscribe(desc.cbOnly ? desc.subscribe : (candidateModule.hostElem || desc.subscribe), moduleState).filter(desc.filter).map(desc.map).reverse(desc.inverseTransform);
+//		console.log(moduleState, candidateModule.streams);
+		this.streams[desc.from].subscribe(desc.cbOnly ? desc.subscribe : (candidateModule.streams[moduleState] || desc.subscribe), 'value').filter(desc.filter).map(desc.map).reverse(desc.inverseTransform);
 		// for reactOnSelf : there may be a hostElem AND a callback, then if we want complex reaction (on an Array for example), we pass a cb and bypass the "on hostElem" magical binding (which won't happen anyway if it's not a custom elem)
-		(desc.cbOnly && (this.streams[desc.from].value = def.states[desc.from]));
+		(desc.cbOnly && (this.streams[desc.from].value = (def.states ? def.states[desc.from] : (def.props ? def.props[desc.from] : undefined))));
 		
 //		console.log('binding from parent ' + desc.from + ' to ' + moduleState, this.streams[desc.from]);
 	}
@@ -580,6 +633,7 @@ var Factory = (function() {
 			// cf. upper com ("CAUTION")
 //			(this.command && (this.command = new Command(this.command.action, this.command.canAct, this.command.undo)));
 //			console.log(this.def);
+//			console.log(this.objectType);
 			(extension.prototype.pushToRenderQueue && this.DOMRenderQueue.push(extension.prototype.pushToRenderQueue.call(this)));
 			(extension.prototype.pushToBindingQueue && this.bindingQueue.push(extension.prototype.pushToBindingQueue.call(this)));
 			
@@ -750,7 +804,7 @@ var Factory = (function() {
 	var DependancyModule = function() {
 		CoreModule.call(this);
 		this.objectType = 'DependancyModule';
-		this.autoSubscribe = {};
+		this.subscribeOnParent;
 		this.createEvent('destroy');
 		this.createEvent('exportdata');
 	};
@@ -800,8 +854,9 @@ var Factory = (function() {
 //		this.cDef = {};
 //		this.cDef.children = [];
 		
-		this.autoSubscribe = {};
-		this.reactOnParent = {};
+		this.subscribeOnChild;
+		this.reactOnParent;
+		this.reactOnSelf;
 		
 		this.raw = true;
 		
@@ -826,11 +881,11 @@ var Factory = (function() {
 		this.slots = {};
 		(typeof targetSlot === 'number' && (this.slots['default'] = (this.rootElem || this.hostElem).children[targetSlot]));
 
-		this.command = this.def.command || undefined;
+		this.command = (this.def && this.def.command) ? this.def.command : undefined;
 //		(this.command && console.log(this.command, this.command.prototype));
 		this.keyboardEvents = this.keyboardEvents || [];
 		
-		this.immediateInit.apply(this, arguments);
+		(this.def && this.immediateInit.apply(this, arguments));
 		(automakeable && this.Make.apply(this, arguments));
 	};
 
@@ -986,7 +1041,7 @@ var Factory = (function() {
 		var componentDef = this.def.host ? this.def.host : this.def,
 			def,
 			elem;
-//		console.log(componentDef);
+//		console.log(this.DOMRenderQueue);
 		this.DOMRenderQueue.forEach(function(renderFunc, key) {
 			// DOM extension is considered as an "allowed" goal of the offered mixin mecanism
 			// BUT : renderFunc may not always return a def : this allow mixins to use "targeted composition" instead of "basic nodes concatenation"
@@ -995,27 +1050,32 @@ var Factory = (function() {
 			if (!(def = renderFunc.call(this, componentDef)))
 				return;
 			
+			// DEBUG
+			(!this.def.children && (this.def.children = []));
+			
 			if (def.wrapper) {
-				if (this.rootElem) {
-//					console.log('rootElem', def.wrapper);
-					this.rootElem.appendChild(def.wrapper);
-				}
-				else
-					this.hostElem.appendChild(def.wrapper);
+				(this.rootElem || this.hostElem).appendChild(def.wrapper);
+				// DEBUG
+				this.def.children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : def.wrapper.nodeName});
 			}
-//			console.log(this, this.rootElem.children, this.rootElem.lastChild);
 			if (def.members && def.members.length) {
 				if (def.wrapper) {
+					// DEBUG
+					(!this.def.children[this.def.children.length - 1].children && (this.def.children[this.def.children.length - 1].children = []));
 					elem = this.rootElem ? this.rootElem.lastChild : this.hostElem.lastChild;
 					def.members.forEach(function(member, k) {
-						elem.appendChild(member)
-					});
+						elem.appendChild(member);
+						// DEBUG
+						this.def.children[this.def.children.length - 1].children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : member.nodeName});
+					}, this);
 				}
 				else {
 					elem = this.rootElem ? this.rootElem : this.hostElem;
 					def.members.forEach(function(member, k) {
-						elem.appendChild(member)
-					});
+						elem.appendChild(member);
+						// DEBUG
+						this.def.children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : member.nodeName});
+					}, this);
 				}
 			}
 		}, this);
@@ -1058,6 +1118,9 @@ var Factory = (function() {
 				if (!childDef.module.hasOwnProperty('on' + lowerCaseEventName))
 					continue;
 				childDef.module['on' + lowerCaseEventName] = childDef.eventBinding[eventName];
+				// DEBUG
+				(!this.def.host.subscribeOnChild && (this.def.host.subscribeOnChild = []));
+				this.def.host.subscribeOnChild.push('function ' + childDef.eventBinding[eventName].name + ' <== ' + childDef.module.objectType + ' : ' + eventName);
 			}
 			return false;
 		}, this);
@@ -1151,7 +1214,7 @@ var Factory = (function() {
 //				cDef[prop] = this.def[prop];
 //		}
 //		Object.assign(cDef, this.reactOnParent);
-//		Object.assign(cDef, this.autoSubscribe);
+//		Object.assign(cDef, this.subscribeOnParent);
 //
 //		if (this._parent)
 //			this._parent.cDef.children.push(cDef);
@@ -1167,7 +1230,7 @@ var Factory = (function() {
 		}
 //		console.log(comp);
 		if (Object.keys(comp.modules).length) {
-			comp.cDef.children = [];
+			comp.cDef.children = comp.def.children || [];
 			for (let name in comp.modules) {
 				comp.cDef.children.push(UIModule.traverseHierarchy(comp.modules[name]));
 			}
@@ -1188,7 +1251,11 @@ var Factory = (function() {
 				newObj['autoBindingOnParentStates'] = Object.keys(obj[prop]).map(function(item) {return item + ' <== ' + obj[prop][item].from});
 			else if ((prop === 'reactOnSelf') && Object.keys(obj[prop]).length)
 				newObj['autoBindingOnSelfStates'] = Object.keys(obj[prop]).map(function(item) {return item + ' ==> ' + obj[prop][item].subscribe.name});
-			else if (prop === 'autoSubscribe' && Object.keys(obj[prop]).length)
+			else if (prop === 'subscribeOnParent' && Object.keys(obj[prop]).length)
+				newObj['autoBindingOnDescendantEvents'] = Object.keys(obj[prop]).map(function(item) {return item + ' ==> ' + obj[prop][item].name});
+			else if (prop === 'subscribeOnChild' && Object.keys(obj[prop]).length)
+				newObj['autoBindingOnChildAscendantEvents'] = obj[prop];
+			else if (prop === 'eventBinding' && Object.keys(obj[prop]).length)
 				newObj['autoBindingOnDescendantEvents'] = Object.keys(obj[prop]);
 			else if (prop === 'states' && Object.keys(obj[prop]).length)
 				newObj['declaredObservableStates'] = Object.keys(obj[prop]);
@@ -1229,6 +1296,8 @@ var Factory = (function() {
 				"declaredObservableStates": "sample",
 				"autoBindingOnParentStates" : "sample",
 				"autoBindingOnSelfStates" : "sample",
+				"autoBindingOnDescendantEvents" : "sample",
+				"autoBindingOnChildAscendantEvents" : "sample",
 				"subSections" : "sample",
 				"members" : "sample",
 				"id": "sample",
@@ -1520,7 +1589,7 @@ var Factory = (function() {
 	 *		lazy "sets" the reflectedHost (no infinite recursion, but no change propagation neither on the host) and triggers the given event when the local stream updates
 	 */ 
 	Stream.prototype.reflect = function(prop, reflectedHost, transform, inverseTransform, event) {
-		console.log(prop, reflectedHost[prop]);
+//		console.log(prop, reflectedHost[prop]);
 		this._value = reflectedHost[prop];
 		
 		if (transform && this.transform)
@@ -1609,10 +1678,11 @@ var Factory = (function() {
 				obj : typeof subscriberObjOrHandler === 'object' ? subscriberObjOrHandler : null,
 				cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function() {return this._value},
 				inverseTransform : inverseTransform || function(value) {return value;},
-				stream : this
+				_subscription : this,
+				_stream : parent
 		}
 		
-		this._parent = parent;
+		this._stream = parent;
 		this._firstPass = true;
 		Object.defineProperty(this, 'execute', Object.getOwnPropertyDescriptor(Subscription.prototype, 'execute')); // make immutable
 	}
@@ -1640,7 +1710,7 @@ var Factory = (function() {
 			return this;
 		}
 		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark needed)
-		var f = new Function('value', 'return (' + filterFunc.toString() + ').call(this, value) === true ? true : false;');
+		var f = new Function('value', 'return (' + filterFunc.toString() + ').call(this.subscriber, value) === true ? true : false;');
 		Object.defineProperty(this, 'filter', {
 			value : f,
 			enumerable : true
@@ -1656,7 +1726,7 @@ var Factory = (function() {
 			return this;
 		}
 		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark needed)
-		var f = new Function('value', 'return (' + mapFunc.toString() + ').call(this, value);');
+		var f = new Function('value', 'return (' + mapFunc.toString() + ').call(this.subscriber, value);');
 		Object.defineProperty(this, 'map', {
 			value : f,
 			enumerable : true
@@ -1696,6 +1766,7 @@ var Factory = (function() {
 					this.subscriber.obj[this.subscriber.prop] = val;
 //					console.log('this.subscriber.obj[this.subscriber.prop]', this.subscriber.obj[this.subscriber.prop], this.subscriber.obj);
 				}
+				// second case shall only be reached if no prop is given : on a "reflected" subscription by a child component
 				else if (this.subscriber.obj && (desc = Object.getOwnPropertyDescriptor(this.subscriber.obj, 'value')) && typeof desc.set === 'function')
 					this.subscriber.obj.value = val;
 				else if (this.subscriber.obj === null)
@@ -1810,13 +1881,14 @@ var Factory = (function() {
 			roleInTree : '',	// replaces CSS classes : enum ('root', 'branch', 'leaf') 
 			position : 0,		// position as a state : degrees, 'min', 'man', nbr of pixels from start, etc. 
 			size : 0,			// size as a state : length, height, radius
-			tabIndex : 0
+			tabIndex : 0,
+			'delete' : false		// isn't a -persistent- state (cause it removes the node, hm) but deserves a glyph
 	}
 	
 	/**
 	 * A Factory to instanciate virtual-DOM element definitions
 	 */
-	var elementDef = FactoryMaker.getClassFactory(function(type, title, nodeName, uniqueId, sWrapper, section, states, command, reactOnParent, reactOnSelf, children, targetSlot) {
+	var elementDef = FactoryMaker.getClassFactory(function(type, title, nodeName, uniqueId, sWrapper, section, states, props, command, reactOnParent, reactOnSelf, children, targetSlot) {
 		
 		var def = {
 			type : type || null,					// String
@@ -1826,9 +1898,10 @@ var Factory = (function() {
 			section : section || null,				// Number
 			title : title || null,					// String
 			states : states || null,				// Object : plain
+			props : props || null,					// Object : plain
 			command : command || null,				// Object : instanceof Command
-			reactOnParent : reactOnParent || {},	// Object : plain
-			reactOnSelf : reactOnSelf || {},		// Object : plain
+			reactOnParent : reactOnParent || null,	// Object : plain
+			reactOnSelf : reactOnSelf || null,		// Object : plain
 			children : children || null,			// Array
 			targetSlot : targetSlot || null,		// String
 			keyboardSettings : [{
@@ -1836,11 +1909,12 @@ var Factory = (function() {
 				shiftKey : false,
 				altKey : false,
 				keyCode : 0
-			}]
+			}],
+			signed : 'elementDef'
 		};
 		
 		// allow "direct" instanciation : the user already knows all the params
-		if (type && typeof type === 'object' && (type.type || type.nodeName)) {
+		if (type && typeof type === 'object') {
 			for (let param in type) {
 				def[param] = type[param];
 			} 
@@ -1858,31 +1932,120 @@ var Factory = (function() {
 	 * A Factory to instanciate UI Modules definitions
 	 * @param host {elementDef} : eventually accepts receiving a fulldef {UIModuleDef} on the first args
 	 */
-	var UIModuleDef = FactoryMaker.getClassFactory(function(host, subSections, members, options, sWrapper, children, targetSlot, reactOnParent, reactOnSelf) {
+	var UIModuleDef = function(host, subSections, members, options, sWrapper, children, targetSlot, reactOnParent, reactOnSelf) {
 //		console.log(sWrapper)
 		var def = {
-			host : host || null,
+			host : !Array.isArray(host) ? Object.assign({}, host) : null,
 			subSections : subSections || [],
 			members : members || [],
 			children : children || [],
 			sWrapper : sWrapper || null,
 			options : options || {},
 			targetSlot : targetSlot || null,
-			reactOnParent : reactOnParent || {},	// Object : plain
-			reactOnSelf : reactOnSelf || {},		// Object : plain
+			reactOnParent : reactOnParent || null,	// Object : plain
+			reactOnSelf : reactOnSelf || null,		// Object : plain
 			verticalMargins : 0
 		};
+		
+		
 		// allow "direct" instanciation : the user already knows all the params, and gives a full UIModule def as first arg
+		if (Array.isArray(host) && host[0].signed === 'elementDef')
+			host = UIModuleDef.apply(null, host);
+		
 		if (host && typeof host === 'object' && host.host) {
+			def.host = {};
+			// Ensure we don't reference an already used and immutable getter/setter
+			for (let param in host.host) {
+				if (!Object.getOwnPropertyDescriptor(host.host, param).writable
+						|| host.host[param] instanceof HTMLElement
+						|| param.indexOf('reactOn') !== -1)
+					def.host[param] = null;
+				else
+					def.host[param] = host.host[param];
+			}
+			
+			def.members = [];
+			host.members.forEach(function(obj, key) {
+				var newObj = {};
+				for (let param in obj) {
+					if (!Object.getOwnPropertyDescriptor(obj, param).writable
+							|| obj[param] instanceof HTMLElement
+							|| param.indexOf('reactOnSelf') !== -1)
+						newObj[param] = null;
+					else
+						newObj[param] = obj[param];
+				}
+				def.members.push(newObj);
+			});
+
+			// then take care to keep the ref broken
 			for (let param in host) {
-				def[param] = host[param];
+				if (param !== 'host' && param !== 'members')
+					def[param] = host[param];
 			} 
 			return def;
 		}
 		else
 			return def;
-		}
-	);
+	}
+	
+//	var recomposeUIModuleDef = function(defToPreserve) {
+//		var newObj;
+//		if (Array.isArray(defToPreserve) && defToPreserve.length) {
+//			newObj = [...defToPreserve];
+//			newObj.forEach(function(obj, key){
+//				if (Array.isArray(obj) || (typeof obj === 'object' && obj !== null))
+//					obj = recomposeUIModuleDef(obj);
+//			});
+//		}
+//		else if (typeof defToPreserve === 'object' && defToPreserve !== null) {
+//			newObj = {...defToPreserve};
+//			for (let prop in newObj) {
+//				if (newObj.hasOwnProperty(prop) && Array.isArray(newObj[prop]) || (typeof newObj[prop] === 'object' && newObj[prop] !== null))
+//					newObj[prop] = recomposeUIModuleDef(newObj[prop]);
+//			}
+//		}
+////		console.log(newObj);
+//		return newObj || defToPreserve;
+//	}
+	
+//	var recomposeUIModuleDef = function(defToPreserve) {
+//		var def = [];
+//		defToPreserve.forEach(function(obj, prop) {
+//			if (!this.checkType(prop, def, defToPreserve))
+//				def[prop] = obj;
+//		}, this);
+////		console.log(def);
+//		return def;
+//	}
+//	recomposeUIModuleDef.prototype.checkType = function(prop, def, defToPreserve) {
+////		console.log(prop);
+//		if (Array.isArray(defToPreserve[prop]) && defToPreserve[prop].length) {
+//			(typeof def[prop] === 'undefined' && (def[prop] = []));
+//			this.loopOnArray(def[prop], defToPreserve[prop]);
+//		}
+//		else if (typeof defToPreserve[prop] === 'object' && defToPreserve[prop] !== null) {
+//			(typeof def[prop] === 'undefined' && (def[prop] = {}));
+//			this.loopOnObject(def[prop], defToPreserve[prop]);
+//		}
+//		else
+//			return false;
+//	}
+//	recomposeUIModuleDef.prototype.loopOnObject = function(def, defToPreserve) {
+//		for (let prop in defToPreserve) {
+//			if (!this.checkType(prop, def, defToPreserve))
+//				def[prop] = defToPreserve[prop];
+//		}
+////		console.log(def);
+//	}
+//	recomposeUIModuleDef.prototype.loopOnArray = function(def, defToPreserve) {
+//		defToPreserve.forEach(function(obj, key){
+//			if (!this.checkType(key, def, defToPreserve))
+//				def[key] = obj;
+//		}, this);
+////		console.log(def);
+//	}
+
 	
 	/**
 	 * A Factory to instanciate UI Lazy Module Hosts (e.g. a tab component)
@@ -1909,7 +2072,8 @@ var Factory = (function() {
 			return baseOptions;
 		for(var prop in baseOptions) {
 //			console.log(prop, options[prop], baseOptions[prop], baseOptions.hasOwnProperty(prop), typeof (options[prop]) === 'undefined');
-			if (baseOptions.hasOwnProperty(prop) && (typeof (options[prop]) === 'undefined' || options[prop] === null)) {
+			// always override any object if it IS set in the default def : simplest HACK to avoid blocked-reference when re-unsing the same def on a list
+			if (baseOptions.hasOwnProperty(prop) && (typeof (options[prop]) === 'undefined' || (typeof options[prop] === 'object' && baseOptions[prop] !== null))) {
 				options[prop] = baseOptions[prop];
 			}
 		};
@@ -1926,7 +2090,7 @@ var Factory = (function() {
 		Command : Command,
 		Worker : WorkerInterface,
 		elementDef : elementDef,
-		UIModuleDef : UIModuleDef,
+		UIModuleDef : FactoryMaker.getClassFactory(UIModuleDef),
 		commonStates : commonStates,
 		Stream : Stream,
 		optionSetter : optionSetter,
