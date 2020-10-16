@@ -182,7 +182,7 @@ var Factory = (function() {
 	 * @constructor
 	 * @interface
 	 */
-	var CoreModule = function(def, contanierID, automakeable, enableEventSetters) {
+	var CoreModule = function(def, containerID, automakeable, enableEventSetters) {
 		
 		// PERF OPTIMIZATION
 //		Object.defineProperty(this, 'objectType', {
@@ -2040,6 +2040,70 @@ var Factory = (function() {
 			return def;
 	}
 	
+	var ObjectCopy = function(source) {
+//		var newObj;
+//		var sources = Array.prototype.slice.call(arguments);
+//		sources.forEach(function(source) {
+//			newObj = this.iterate(source);
+//		}, this);
+//		return newObj;
+		return this.iterate(source);
+	}
+	ObjectCopy.prototype.merge = function(newObj, source) {
+			this.iterateOnObject(source);
+	}
+	ObjectCopy.prototype.iterate = function(obj) {
+		if (Array.isArray(obj))
+			return this.iterateOnArray(obj);
+		else if (obj && typeof obj === 'object')
+			return this.iterateOnObject(obj);
+		else
+			return obj;
+//			return this.copy(obj);
+	}
+	ObjectCopy.prototype.iterateOnArray = function(arr) {
+		var newObj = [];
+		for (let i = 0, l = arr.length ; i < l; i++) {
+			newObj.push(this.iterate(arr[i]));
+		}
+		return newObj;
+	}
+	ObjectCopy.prototype.iterateOnObject = function(obj) {
+		if (obj instanceof HTMLElement)
+			return obj;
+		var newObj = {};
+		for (let prop in obj) {
+			if (!obj.hasOwnProperty(prop))
+				continue;
+			newObj[prop] = this.iterate(obj[prop]);
+		}
+		return newObj;
+	}
+	ObjectCopy.prototype.copy = function(val) {
+		var type = (typeof val);
+		switch(type) {
+			case 'string' :
+				return val.slice(0);
+			case 'number' :
+				return val + 0;
+			case 'boolean' :
+				return Boolean.prototype.tryParse(val);
+			case 'undefined' :
+				return undefined;
+				// allow copying "pure" functions : they should return something related to their "value" or "e" named argument
+			case 'function' :
+				var str = val.toString(); 
+				if (str.indexOf('(e)') !== -1)
+					return new Function('e', val.toString().match(/^\{[.\s\S]+\}$/));
+				if (str.indexOf('(value)') !== -1)
+					return new Function('value', val.toString().match(/^\{[.\s\S]+\}$/));
+				else
+					return val;
+			default :
+				return null;
+		}
+	}
+	
 //	var recomposeUIModuleDef = function(defToPreserve) {
 //		var newObj;
 //		if (Array.isArray(defToPreserve) && defToPreserve.length) {
@@ -2124,7 +2188,7 @@ var Factory = (function() {
 		for(var prop in baseOptions) {
 //			console.log(prop, options[prop], baseOptions[prop], baseOptions.hasOwnProperty(prop), typeof (options[prop]) === 'undefined');
 			// always override any object if it IS set in the default def : simplest HACK to avoid blocked-reference when re-unsing the same def on a list
-			if (baseOptions.hasOwnProperty(prop) && (typeof (options[prop]) === 'undefined' || (typeof options[prop] === 'object' && baseOptions[prop] !== null))) {
+			if (baseOptions.hasOwnProperty(prop) && (typeof options[prop] === 'undefined' || options[prop] === null)) {
 				options[prop] = baseOptions[prop];
 			}
 		};
@@ -2145,6 +2209,7 @@ var Factory = (function() {
 		commonStates : commonStates,
 		Stream : Stream,
 		optionSetter : optionSetter,
+		ObjectCopy : ObjectCopy,
 		Maker : FactoryMaker
 	}
 	
