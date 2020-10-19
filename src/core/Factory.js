@@ -552,26 +552,12 @@ var Factory = (function() {
 		var self = this, objectType = base.prototype.objectType;
 
 		var mergedConstructor = function() {
-			// HISTORY : constructors seems unreachable after the second inheritance...
-			// base.apply(this, arguments);
-			// extension.apply(this, arguments);
-			
-			// creating dummy objects with new base(arguments) seems to be a more useable construct :
-			// CAUTION : jQuery objects (and other object of type "instance object") may loose their prototype (see com on mergeOwnProperties function)...
-			var args = UIModule.prototype.isCalledFromFactory.apply(this, arguments) || arguments;
-//			if (Object.getPrototypeOf(base) === Object.getPrototypeOf(Function)) {
-//				console.log('merge', args);
-//				self.mergeOwnProperties(this, new base(args));
-				base.apply(this, args);
-				extension.apply(this, args);
-//			}
-//			else {
-//				extension.apply(this, args);
-//			}
+			base.apply(this, arguments);
+			extension.apply(this, arguments);
+//			
 			// cf. upper com ("CAUTION")
-//			(this.command && (this.command = new Command(this.command.action, this.command.canAct, this.command.undo)));
-//			console.log(this.def);
-//			console.log(this.objectType);
+			(this.command && (this.command = new Command(this.command.action, this.command.canAct, this.command.undo)));
+
 			(extension.prototype.pushToRenderQueue && this.DOMRenderQueue.push(extension.prototype.pushToRenderQueue.call(this)));
 			(extension.prototype.pushToBindingQueue && this.bindingQueue.push(extension.prototype.pushToBindingQueue.call(this)));
 			
@@ -743,7 +729,6 @@ var Factory = (function() {
 		CoreModule.call(this);
 		this.objectType = 'DependancyModule';
 		this.subscribeOnParent;
-		this.createEvent('update');
 		this.createEvent('destroy');
 		this.createEvent('exportdata');
 	};
@@ -785,45 +770,36 @@ var Factory = (function() {
 	 * @interface
 	 * 
 	 * @param {Object} def : custom object that defines the UI (generally a list of properties and behaviors for a button)
-	 * @param {Object} (DOMElem Instance) parentSlot
+	 * @param {Object} (DOMElem Instance) parentNode
 	 * @param {string} buttonClassName
 	 */
-	var UIModule = function(def, parentSlotDOMId, automakeable, childrenToAdd, targetSlot) {
+	var UIModule = function(def, parentNodeDOMId, automakeable, childrenToAdd, targetSlot) {
+		this.raw = true;
 		
-//		this.cDef = {};
-//		this.cDef.children = [];
 		this.reactOnParent;
 		this.reactOnSelf;
 		
-		this.raw = true;
+		this.parentDOMNode;
+		this.hostElem;
+		this.rootElem;
+		this.hoverElem;
+		this.slots = {};
 		
-		this.DOMRenderQueue = this.DOMRenderQueue || [];
-		this.bindingQueue = this.bindingQueue || [];
-		this.childrenToAdd = (childrenToAdd && Array.isArray(childrenToAdd)) ? childrenToAdd : ((childrenToAdd && Array.isArray(childrenToAdd.DOMRenderQueue) ? [{module : childrenToAdd}] : [])); 	// DOMRenderQueue is used here as a "mark" : don't add children that don't come from this framework
+		this.DOMRenderQueue = [];
+		this.bindingQueue = [];
+		
+		this.def = def;
+//		this.mergeDefaultDef(this.setDefaultDef());
+		this.mergeComponentDef(this.createDefaultDef());
+		this.parentNodeDOMId = parentNodeDOMId;
+		this.command = ((this.def && this.def.command) && this.def.command);
+		this.keyboardEvents = this.def.keyboardEvents || [];
+		this.childrenToAdd = childrenToAdd ? (Array.isArray(childrenToAdd) ? childrenToAdd : [{module : childrenToAdd}]) : [];
 		
 		DependancyModule.call(this);
 		this.objectType = 'UIModule';
 
-		this.def = def || (this.def || undefined);
-		this.mergeDefaultDef(this.setDefaultDef()); 	// TODO : should say createDefaultDef here
-		this.parentSlot = this.parentSlot || undefined;
-		
-//		console.log(this.parentSlotDOMId);
-		this.parentSlotDOMId = parentSlotDOMId || this.parentSlotDOMId;
-//		console.log(this.parentSlotDOMId);
-
-		this.hostElem;
-		this.rootElem;
-		this.hoverElem = this.hoverElem;
-		this.slots = {};
 		(typeof targetSlot === 'number' && (this.slots['default'] = (this.rootElem || this.hostElem).children[targetSlot]));
-
-		this.command = (this.def && this.def.command) ? this.def.command : undefined;
-//		(this.command && console.log(this.command, this.command.prototype));
-		this.keyboardEvents = this.keyboardEvents || [];
-		this.createEvent('clicked');
-		this.createEvent('update');
-		this.createEvent('stroke');
 		
 		(this.def && this.immediateInit.apply(this, arguments));
 		(automakeable && this.raw && this.Make.apply(this, arguments));
@@ -832,7 +808,7 @@ var Factory = (function() {
 	UIModule.prototype = Object.create(DependancyModule.prototype);
 	UIModule.prototype.objectType = 'UIModule';
 	UIModule.prototype.constructor = UIModule;
-	UIModule.prototype.setDefaultDef = function() {}					// virtual
+	UIModule.prototype.createDefaultDef = function() {}					// virtual
 	UIModule.prototype.beforeMake = function() {}						// virtual
 	UIModule.prototype.afterMake = function() {}						// virtual
 	UIModule.prototype.beforeCreateDOM = function() {}					// virtual
@@ -855,7 +831,6 @@ var Factory = (function() {
 	UIModule.prototype.resize = function() {}							// virtual
 	UIModule.__factory_name = 'UIModule';
 	
-	
 	/**
 	 * @extends CoreModule (not virtual)
 	 */
@@ -868,7 +843,7 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.immediateInit = function(/* arguments : def, parentSlotDOMId */) {
+	UIModule.prototype.immediateInit = function(/* arguments : def, parentNodeDOMId */) {
 		this.createEvents.apply(this, arguments);
 		this.createObservables();
 		this.registerValidators();
@@ -885,7 +860,7 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.init = function(/* arguments : def, parentSlotDOMId */) {
+	UIModule.prototype.init = function(/* arguments : def, parentNodeDOMId */) {
 		this.create.apply(this, arguments);
 		this.compose();
 
@@ -901,9 +876,9 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.createEvents = function() {
-//		this.createEvent('clicked');
-//		this.createEvent('update');
-//		this.createEvent('stroke');
+		this.createEvent('clicked');
+		this.createEvent('update');
+		this.createEvent('stroke');
 	}
 	/**
 	 * @abstract
@@ -925,15 +900,49 @@ var Factory = (function() {
 		this.setArias();
 	}
 	
+	
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.mergeComponentDef = function(defaultDef) {
+		if (!defaultDef)
+			return;
+		else if (!defaultDef && !this.def) {
+			console.error('UIModule : Merging Component\'s definition with default failed')
+			return;
+		}
+		else if (!this.def)
+			this.def = {host : null};
+		
+		// Type Enforcement (TODO: See if we may enforce that elsewhere)
+		if (!defaultDef.host || !this.def.host || typeof this.def.subSections === 'undefined' || typeof this.def.members === 'undefined' || typeof this.def.options === 'undefined') {
+			console.error('UIModule : Merging wrongly typed Component\'s definitions');
+			return;
+		}
+		
+		for(var prop in baseOptions.host) {
+			if (this.def.host[prop] === null)
+				this.def.host[prop] = baseOptions.host[prop];
+			else if (typeof this.def.host[prop] === 'undefined') {
+				this.def.host.model[prop] = null;
+				this.def.host[prop] = baseOptions.host[prop];
+			}
+		}
+		if (this.def.subSections === null)
+			this.def.subSections = defaultDef.subSections;
+		if (this.def.members === null)
+			this.def.members = defaultDef.members;
+		if (this.def.options === null)
+			this.def.options = defaultDef.options;
+	}
+	
 	/**
 	 * @abstract
 	 */
 	UIModule.prototype.compose = function() {
 		// if the asyncAddChild method has been overridden, there could exist "non-raw" children we need to add
 		(Object.getPrototypeOf(this).hasOwnProperty('asyncAddChild') && this.asyncAddChild());
-		
-		// interesting question here : does the compiler optimize the code better when we check for "zero length" or just executing the func and let the "filter" method return on a zero-length array ?
-		// TODO : benchmark should be explicitly "talking" on long hierarchy : slight advantage to "checking first"
+
 		if (this.childrenToAdd.length)
 			this.asyncAddChildren();
 		
@@ -946,28 +955,13 @@ var Factory = (function() {
 		//
 		// define this.slots['key as number'] as :
 		//		- each of their children
-
 		// (very slight...) PERF OPTIMIZATION
 		(!this.slots['default'] && (this.slots['default'] = (this.hostElem && (this.rootElem || this.hostElem).childNodes && (this.rootElem || this.hostElem).firstChild) || this.hostElem));
-		// THIS IS LESS "COMPILE-TIME OPTIMIZABLE" (benchmarked)
-//		if (!this.slots['default']) {				// some components may set a default slot by themselves (they should if they want their child components to rely on it)
-//			this.slots['default'] = (this.hostElem
-//				? (
-//					(this.rootElem || this.hostElem).childNodes.length 
-//						? 	((this.rootElem || this.hostElem).firstChild.nodeName === 'STYLE' ? (this.rootElem || this.hostElem).children[1] : (this.rootElem || this.hostElem).firstChild)
-//						: 	this.hostElem
-//					)
-//				: undefined);
-//		}
+
 		if (this.rootElem || this.hostElem) {
 			var defaultSlot = this.slots['default'];
 			this.slots = (this.rootElem || this.hostElem).childNodes;
 			this.slots['default'] = defaultSlot;
-//			this.slots = Array.prototype.slice.call([], (this.rootElem || this.hostElem).childNodes);
-//			arr.forEach(function(child, key) {
-//			(this.rootElem || this.hostElem).childNodes.forEach(function(child, key) {
-//				this.slots[parseInt(key)] = child;
-//			}, this);
 		}
 		
 		// DEBUG : reflect default slot on def (currently only for debug purpose)
@@ -977,8 +971,6 @@ var Factory = (function() {
 	UIModule.prototype.registerEvents = function() {
 		this.beforeRegisterEvents();
 		this.registerDOMChangeObservers();
-		// binding can't happen on 'non connected' custom elems : attr missing...
-//		this.execBindingQueue();		// rejected at the end of the init process
 		this.registerClickEvents();
 		this.registerKeyboardEvents();
 		(this.hoverElem && this.registerLearnEvents());
@@ -1110,12 +1102,12 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.firstRender = function() {
 		// Shortcut to allow children instanciation of non-appended parents (using a selector is not applicable at instantiation step, due to DOM update latency)
-		(this.parentSlotDOMId && 
-				((this.parentSlotDOMId instanceof HTMLElement || this.parentSlotDOMId instanceof ShadowRoot)
-					? this.parentSlot = this.parentSlotDOMId
-						: this.parentSlot = document.querySelector('#' + this.parentSlotDOMId)));
+		(this.parentNodeDOMId && 
+				((this.parentNodeDOMId instanceof HTMLElement || this.parentNodeDOMId instanceof ShadowRoot)
+					? this.parentDOMNode = this.parentNodeDOMId
+						: this.parentDOMNode = document.querySelector('#' + this.parentNodeDOMId)));
 		
-		(this.parentSlot && this.hostElem && this.parentSlot.appendChild(this.hostElem));
+		(this.parentDOMNode && this.hostElem && this.parentDOMNode.appendChild(this.hostElem));
 	}
 	/**
 	 * @abstract
@@ -1315,6 +1307,8 @@ var Factory = (function() {
 			// we only merge hosts here, and (for now) -not at all- the rest of the def (just replacating the subSections & members) : 
 			// can't imagine the ComponentGroup having a defaultDef... nor a "multi-level" component that would accept refining his members with such a fine granularity
 			// TODO : make the above comment become true
+//			if (defaultDef.host && this.def.host)
+			
 			
 			optionSetter(defaultDef, this.def);
 			(this.def.host && defSetTitle && (this.def.host.title = defSetTitle)); // hack when given def is moduleDef and default def is elementDef
@@ -2159,6 +2153,7 @@ var Factory = (function() {
 //		console.log(baseOptions, options);
 		return options;
 	}
+
 	
 	
 	return {
