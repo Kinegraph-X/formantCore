@@ -1,3 +1,8 @@
+/**
+ * @Singletons : Core factories
+ */
+
+
 logLevelQuery = window.location.href.match(/(log_level=)(\d+)/); 					// Max log_level = 8 
 window.logLevel = Array.isArray(logLevelQuery) ? logLevelQuery[2] : undefined;
 delete window.logLevelQuery;
@@ -259,8 +264,16 @@ var Factory = (function() {
 	// 		asynchronously adding children : progressive creation in UIModule implies managing a "raw" status on the component
 	CoreModule.prototype.asyncAddChild = function(child) {} 						// Virtual
 	CoreModule.prototype.asyncAddChildren = function(oneShot) {} 					// Virtual
-	// 		attaching observables for reactivity : the ObservableComponent class is responsible for that
+	// 		attaching observables for reactivity : the ObservableComponent class is responsible for implementing this virtual method
 	CoreModule.prototype.onRegisterModule = function() {} 							// Virtual
+	
+	/**
+	 * HELPER
+	 * should be used enywhere it is usefull : shall enforce "function inlining" at compile time
+	 */
+	CoreModule.getSmoothedDef = function(def) {
+		return this.def.host ? this.def.host : this.def;
+	}
 	
 	/**
 	 * @param {object} candidateModule : an instance of another module
@@ -285,155 +298,54 @@ var Factory = (function() {
 		if (candidateModule instanceof HTMLElement)
 			return;
 		else {
-			this.onRegisterModule(candidateModule);
+			var def = CoreModule.getSmoothedDef.call(candidateModule);
+			// autoSubscribe to object own events
+			if (def.subscribeOnParent || this.def.subscribeOnChild || candidateModule.subscribeOnParent || this.subscribeOnChild)
+				this.handleModuleSubscriptions(moduleName);
+			this.onRegisterModule(moduleName);
 		}
 	}
 	
-	CoreModule.prototype.onRegisterModule = function(candidateModule) {
-		var def;
-//		console.log(Factory.CoreModule.getSmoothedDef.call(candidateModule));
-		if ((def = Factory.CoreModule.getSmoothedDef.call(candidateModule))
-				&& (def.subscribeOnParent
-				|| def.subscribeOnChild
-				|| def.reactOnParent
-				|| def.reactOnSelf
-				|| candidateModule.subscribeOnParent
-				|| candidateModule.subscribeOnChild
-				|| candidateModule.reactOnParent
-				|| candidateModule.reactOnSelf)) {
-//			console.log(def);//, 
-//			console.log(candidateModule);
-			if (candidateModule.raw)
-				candidateModule.Make();
-		}
-		else
-			return;
-		
-		// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
-		this.handleSlotDefinitionRelativeToParent(candidateModule);
-		
-		// autoSubscribe to object own events
-		this.handleModuleSubscriptions(candidateModule);
-
-		// handle module's reactivity on parent's observables
-		this.handleModuleReactivityOnParent(candidateModule);
-		
-		// autoReact on self-contained observables
-		candidateModule.handleModuleReactivityOnSelf.call(candidateModule);
-	}
-	
-	CoreModule.getSmoothedDef = function(def) {
-		return this.def.host ? this.def.host : this.def;
-	}
-	
-	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule) {
-		var handler,
+	CoreModule.prototype.handleModuleSubscriptions = function(moduleName) {
+		var candidateModule = this[moduleName],
+			handler,
 			desc,
 			subscriptionInDef = candidateModule.def.host ? candidateModule.def.host.subscribeOnParent : candidateModule.def.subscribeOnParent,
 			subscriptions;
 		for (let evt in (subscriptions = optionSetter(candidateModule.subscribeOnParent, subscriptionInDef))) {
-			if (!this['on' + evt])
-				console.warn(this.objectType, 'registers ' + candidateModule.objectType, ' : Registering a child module on a raw Component ("Make" function not already called, then no DOM/Event exists) : Automatic Bindings won\'t work');
+			if (!(evt in this._eventHandlers))
+				console.warn(this.objectType, 'registers ' + candidateModule.objectType, ' : Registering a child module on a raw Component ("Make" function not already called, then no DOM/Event exists) => Automatic Bindings won\'t work');
 			handler = subscriptions[evt];
-			desc = Object.getOwnPropertyDescriptor(this, 'on' + evt);
-			if (typeof desc !== 'undefined' && typeof desc.get === 'function')
-				this['on' + evt] = handler; 	// setter for event subscribtion
+
+			if (evt in candidateModule._eventHandlers)
+				this.addEventListener(evt, handler); 	// setter for event subscribtion
 		}
-		delete subscriptionInDef;
-		subscriptionInDef = this.def.subscribeOnChild;
-		if (!subscriptionInDef)
+//		delete subscriptionInDef;
+		
+		// A ComponentList may meet the case : it's been registered as a child of a component thas requires an event hook on his children
+		// 		but the actual children are the chidren of the ComponentList (registered on the right _parent, i.e. one level up, but only after the ComponentList)
+		if (candidateModule.objectType === 'ComponentList')
 			return;
+//		console.log(moduleName, candidateModule);
+		subscriptionInDef = this.def.subscribeOnChild;
 		for (let evt in (subscriptions = optionSetter(this.subscribeOnChild, subscriptionInDef))) {
-			if (!candidateModule['on' + evt] && typeof candidateModule.hostElem['on' + evt] === 'undefined') { // DOM events are allowed to be handled by delegation
-				console.log(evt, candidateModule['_eventHandlers'], candidateModule['hostElem']['on' + evt]);
-				console.warn(this.objectType, 'registers on event ' + evt + '' + candidateModule.objectType, ' : Registering a raw child module on a Component ("Make" function not already called, then no DOM/Event exists) : Automatic Bindings won\'t work');
-			}
+			if (!candidateModule['on' + evt] && !(evt in candidateModule._eventHandlers)) // DOM events are allowed to be handled by delegation
+				console.warn(this.objectType, 'registers on event ' + evt + ' ' + candidateModule.objectType, ' : unknown event on child when Registering a child module => Automatic Bindings won\'t work');
+
 			handler = subscriptionInDef[evt];
-			desc = Object.getOwnPropertyDescriptor(candidateModule, 'on' + evt);
-			if (typeof desc !== 'undefined' && typeof desc.get === 'function')
-				candidateModule['on' + evt] = handler; 	// setter for event subscribtion
+			if (evt in candidateModule._eventHandlers)
+				candidateModule.addEventListener(evt, handler.bind(this)); 	// setter for event subscribtion
 			else if ('on' + evt in candidateModule.hostElem)
 				candidateModule.hostElem['on' + evt] = handler.bind(this); 	// setter for delegated native event subscribtion
 //			console.log(candidateModule['hostElem']['on' + evt], candidateModule['on' + evt], this.hostElem.nodeName, 'registers on event ' + evt + ' ' + candidateModule.hostElem.nodeName);
 //			console.log(evt, desc, desc.get);
 		}
-		delete subscriptionInDef;
+//		delete subscriptionInDef;
 	}
 	
-	CoreModule.prototype.handleModuleReactivityOnParent = function(candidateModule) {
-		var reactDefinitionInDef;
-		if (!(reactDefinitionInDef = candidateModule.def.host ? candidateModule.def.host.reactOnParent : candidateModule.def.reactOnParent))
-			return;
-
-		if (this.streams && Object.keys(this.streams).length && Object.keys(Factory.optionSetter(candidateModule.reactOnParent, reactDefinitionInDef)).length) {
-			for (let moduleState in reactDefinitionInDef) {
-				desc = reactDefinitionInDef[moduleState];
-				if (!candidateModule.hostElem && !desc.subscribe) {
-					console.warn('reactOnParent binding of a "raw" child module (before calling "Make" or on a listComponent, which may have no hostElem) : childModule ' + candidateModule.objectType + '=> From ' + desc.from + ' to ' + moduleState + '. --- Defining an explicit subscription via a callback may also solve the issue');
-					continue;
-				}
-				if (!this.streams[desc.from]) {
-					console.warn('reactOnParent binding of a child module (' + candidateModule.objectType + ') on an unknown stream of the parent Component : From ' + desc.from + ' to ' + moduleState);
-					continue;
-				}
-				CoreModule.bindModuleToStream.call(this, candidateModule, moduleState, desc);
-			}
-			delete candidateModule.reactOnParent;
-		}
-	}
-
-	/**
-	 * this structure may also be used elsewhere (for async children binding in the UIModule class)
-	 */
-	CoreModule.prototype.handleModuleReactivityOnSelf = function() {
-//		console.log(this.def);
-		var reactDefinitionInDef;
-		if (!(reactDefinitionInDef = (this.def.host ? this.def.host.reactOnSelf : this.def.reactOnSelf) || ((this.def.host && (this.def.host.reactOnSelf = {})) || (this.def && this.def.reactOnSelf)))) // we allowed a strange definition for the FormInfo : as the only relevant prop (slotsTextContent) is not part of the factory's possibility, there is no "default" value for this.def.host.reactOnSelf (and merging fails : so fallback to {})
-			return;
-//		console.log(reactDefinitionInDef);
-		if ((this.reactOnSelf || Object.keys(reactDefinitionInDef).length) && this.streams && Object.keys(this.streams).length && Object.keys(Factory.optionSetter(this.reactOnSelf, reactDefinitionInDef)).length) {
-			for (let moduleState in reactDefinitionInDef) {
-				if (moduleState === 'slotsTextContent' && !Object.keys(this.slots).length) {
-					console.warn(this.objectType, 'Module reactivity on Self : injecting data via the slotsTextContent requires the module to be "made" first. Operation cancelled');
-					continue;
-				}
-				let desc = reactDefinitionInDef[moduleState];
-				desc.from = moduleState; // Keep this hack : it enforces the failure case if the reactOnParent obj is wrongly defined (here should be the only forced case)
-				if(!this.streams[moduleState])
-					continue;
-				CoreModule.bindModuleToStream.call(this, null, moduleState, desc);
-			}
-			delete this.reactOnSelf;
-		}
-//		console.log(this.def);
-	}
-
-	/**
-	 * Although in the prototype (for "this" to be correctly injected), this structure may also be used elsewhere (e.g. maybe on async children binding in the UIModule class)
-	 */
-	CoreModule.prototype.handleSlotDefinitionRelativeToParent = function(candidateModule) {
-		candidateModule.targetSlot = (typeof candidateModule.def.targetSlot === 'number' ? this.slots[candidateModule.def.targetSlot] : candidateModule.targetSlot) || this.slots['default'];
-		// DEBUG : reflect targetSlot on def (currently only for debug purpose)
-		candidateModule.def.targetSlot = candidateModule.targetSlot;
-	}
-
-	/**
-	 * @param {UIModule} candidateModule
-	 * @param {string} moduleState
-	 * @param {object} desc
-	 */
-	CoreModule.bindModuleToStream = function(candidateModule, moduleState, desc) {
-		if (candidateModule === null)
-			candidateModule = this;
-		var def = this.def.host ? this.def.host : this.def;
-		(!this.streams[desc.from].transform && (this.streams[desc.from].transform = desc.transform));
-//		console.log(moduleState, candidateModule.streams);
-		this.streams[desc.from].subscribe(desc.cbOnly ? desc.subscribe : (candidateModule.streams[moduleState] || desc.subscribe), 'value').filter(desc.filter).map(desc.map).reverse(desc.inverseTransform);
-		// for reactOnSelf : there may be a hostElem AND a callback, then if we want complex reaction (on an Array for example), we pass a cb and bypass the "on hostElem" magical binding (which won't happen anyway if it's not a custom elem)
-		(desc.cbOnly && (this.streams[desc.from].value = (def.states ? def.states[desc.from] : (def.props ? def.props[desc.from] : undefined))));
-		
-//		console.log('binding from parent ' + desc.from + ' to ' + moduleState, this.streams[desc.from]);
-	}
+	
+	
+	
 	
 	
 	/**
@@ -522,12 +434,19 @@ var Factory = (function() {
 		}
 	}
 	
+	
+	
 	/**
-	 * This method is only able to add "permanent" handlers : "one-shot" handlers must be added by another mean 
+	 * These methods are only able to add "permanent" handlers : "one-shot" handlers must be added by another mean 
 	 * @param {string} eventType
 	 * @param {function} handler : the handler to add 
 	 * @param {number} index : where to add
 	 */
+	CoreModule.prototype.addEventListener = function(eventType, handler) {
+		if (typeof this._eventHandlers[eventType] === 'undefined')
+			return;
+		this._eventHandlers[eventType].push(handler);
+	}
 	CoreModule.prototype.addEventListenerAt = function(eventType, handler, index) {
 		if (typeof this._eventHandlers[eventType] === 'undefined')
 			return;
@@ -824,6 +743,7 @@ var Factory = (function() {
 		CoreModule.call(this);
 		this.objectType = 'DependancyModule';
 		this.subscribeOnParent;
+		this.createEvent('update');
 		this.createEvent('destroy');
 		this.createEvent('exportdata');
 	};
@@ -934,6 +854,17 @@ var Factory = (function() {
 	UIModule.prototype.registerValidators = function() {}				// virtual
 	UIModule.prototype.resize = function() {}							// virtual
 	UIModule.__factory_name = 'UIModule';
+	
+	
+	/**
+	 * @extends CoreModule (not virtual)
+	 */
+	UIModule.prototype.makeAndRegisterModule = function(moduleName, candidateModule) {
+		if (candidateModule.raw)
+			candidateModule.Make();
+		this.registerModule(moduleName, candidateModule);
+	}
+	
 	/**
 	 * @abstract
 	 */
@@ -1372,18 +1303,24 @@ var Factory = (function() {
 	UIModule.prototype.mergeDefaultDef = function(defaultDef) {
 //		console.log(this.def, defaultDef);
 		if (this.def) {
-//			console.log(this.objectType, this.def.title);
+//			console.log(this.objectType, this.def, defaultDef);
 			// TODO : find a mechanism to solve in a "clean" manner the MESS that we have with those two def types. At first sight, 2 props identified as causing problems
 			// WE COULD AT LEAST deny "mixed type" defs merging...
 			// OR BETTER detect def type and call a helper function that assigns the elementDef on the host def...
 			// OR EVEN BETTER (OR WORSE) : get rid of the elementDef "easyness" after having offered the user an "allowed light def" : EVERY def is a UIModuleDef... (BUT THAT CREATES AN InnerComponent MESS : we may "wonder/have forgotten" why the def has been extended...) 
 			var defSetTitle = this.def.title;
 			var defSetSection = this.def.section;
-//			this.def = 
+//			(!this.def.host && !this.def.each && (this.def = {host : this.def}));
+			
+			// we only merge hosts here, and (for now) -not at all- the rest of the def (just replacating the subSections & members) : 
+			// can't imagine the ComponentGroup having a defaultDef... nor a "multi-level" component that would accept refining his members with such a fine granularity
+			// TODO : make the above comment become true
+			
 			optionSetter(defaultDef, this.def);
 			(this.def.host && defSetTitle && (this.def.host.title = defSetTitle)); // hack when given def is moduleDef and default def is elementDef
 			(this.def.host && defSetSection && (this.def.host.section = defSetSection)); // hack when given def is moduleDef and default def is elementDef
-			// TODO : fix that ugliness above, FAST
+			// TODO : fix that ugliness above, NOW!
+			
 //			if (this.def.sections)
 //				console.log(this.objectType, this.def.sections[0].title);
 		}
@@ -1948,12 +1885,11 @@ var Factory = (function() {
 			sWrapper : sWrapper || null,			// Object : instanceof StylesheetWrapper
 			section : section || null,				// Number
 			title : title || null,					// String
-			states : states || null,				// Object : plain
-			props : props || null,					// Object : plain
+			states : (states && typeof states === 'object') ? iterateOnObject(states) : null,				// Object : plain		// enforce type (def.state MUST have un unchanged prototype) TODO: benchmark
+			props : (props && typeof props === 'object') ? iterateOnObject(props) : null,					// Object : plain
 			command : command || null,				// Object : instanceof Command
 			reactOnParent : reactOnParent || null,	// Object : plain
 			reactOnSelf : reactOnSelf || null,		// Object : plain
-			children : children || null,			// Array
 			targetSlot : targetSlot || null,		// String
 			keyboardSettings : [{
 				ctrlKey : false,
@@ -1989,7 +1925,6 @@ var Factory = (function() {
 			host : !Array.isArray(host) ? Object.assign({}, host) : null,
 			subSections : subSections || [],
 			members : members || [],
-			children : children || [],
 			sWrapper : sWrapper || null,
 			options : options || {},
 			targetSlot : targetSlot || null,
@@ -2000,9 +1935,10 @@ var Factory = (function() {
 		
 		
 		// allow "direct" instanciation : the user already knows all the params, and gives a full UIModule def as first arg
+		// with a def as array
 		if (Array.isArray(host) && host[0].signed === 'elementDef')
 			host = UIModuleDef.apply(null, host);
-		
+		// with a def as object
 		if (host && typeof host === 'object' && host.host) {
 //			def.host = {};
 //			// Ensure we don't reference an already used and immutable getter/setter
@@ -2041,68 +1977,96 @@ var Factory = (function() {
 	}
 	
 	var ObjectCopy = function(source) {
-//		var newObj;
-//		var sources = Array.prototype.slice.call(arguments);
-//		sources.forEach(function(source) {
-//			newObj = this.iterate(source);
-//		}, this);
-//		return newObj;
-		return this.iterate(source);
+		return iterate(source);
 	}
-	ObjectCopy.prototype.merge = function(newObj, source) {
-			this.iterateOnObject(source);
-	}
-	ObjectCopy.prototype.iterate = function(obj) {
+	function iterate(obj) {
 		if (Array.isArray(obj))
-			return this.iterateOnArray(obj);
+			return iterateOnArray(obj);
 		else if (obj && typeof obj === 'object')
-			return this.iterateOnObject(obj);
+			return iterateOnObject(obj);
 		else
 			return obj;
-//			return this.copy(obj);
 	}
-	ObjectCopy.prototype.iterateOnArray = function(arr) {
+	function iterateOnArray(arr) {
 		var newObj = [];
 		for (let i = 0, l = arr.length ; i < l; i++) {
-			newObj.push(this.iterate(arr[i]));
+			newObj.push(iterate(arr[i]));
 		}
 		return newObj;
 	}
-	ObjectCopy.prototype.iterateOnObject = function(obj) {
+	function iterateOnObject(obj) {
 		if (obj instanceof HTMLElement)
 			return obj;
 		var newObj = {};
 		for (let prop in obj) {
 			if (!obj.hasOwnProperty(prop))
 				continue;
-			newObj[prop] = this.iterate(obj[prop]);
+			newObj[prop] = iterate(obj[prop]);
 		}
 		return newObj;
 	}
-	ObjectCopy.prototype.copy = function(val) {
-		var type = (typeof val);
-		switch(type) {
-			case 'string' :
-				return val.slice(0);
-			case 'number' :
-				return val + 0;
-			case 'boolean' :
-				return Boolean.prototype.tryParse(val);
-			case 'undefined' :
-				return undefined;
-				// allow copying "pure" functions : they should return something related to their "value" or "e" named argument
-			case 'function' :
-				var str = val.toString(); 
-				if (str.indexOf('(e)') !== -1)
-					return new Function('e', val.toString().match(/^\{[.\s\S]+\}$/));
-				if (str.indexOf('(value)') !== -1)
-					return new Function('value', val.toString().match(/^\{[.\s\S]+\}$/));
-				else
-					return val;
-			default :
-				return null;
-		}
-	}
+	
+//	var ObjectCopy = function(source) {
+////		var newObj;
+////		var sources = Array.prototype.slice.call(arguments);
+////		sources.forEach(function(source) {
+////			newObj = this.iterate(source);
+////		}, this);
+////		return newObj;
+//		return this.iterate(source);
+//	}
+//	ObjectCopy.prototype.iterate = function(obj) {
+//		if (Array.isArray(obj))
+//			return this.iterateOnArray(obj);
+//		else if (obj && typeof obj === 'object')
+//			return this.iterateOnObject(obj);
+//		else
+//			return obj;
+////			return this.copy(obj);
+//	}
+//	ObjectCopy.prototype.iterateOnArray = function(arr) {
+//		var newObj = [];
+//		for (let i = 0, l = arr.length ; i < l; i++) {
+//			newObj.push(this.iterate(arr[i]));
+//		}
+//		return newObj;
+//	}
+//	ObjectCopy.prototype.iterateOnObject = function(obj) {
+//		if (obj instanceof HTMLElement)
+//			return obj;
+//		var newObj = {};
+//		for (let prop in obj) {
+//			if (!obj.hasOwnProperty(prop))
+//				continue;
+//			newObj[prop] = this.iterate(obj[prop]);
+//		}
+//		return newObj;
+//	}
+//	
+//	ObjectCopy.prototype.copy = function(val) {
+//		var type = (typeof val);
+//		switch(type) {
+//			case 'string' :
+//				return val.slice(0);
+//			case 'number' :
+//				return val + 0;
+//			case 'boolean' :
+//				return Boolean.prototype.tryParse(val);
+//			case 'undefined' :
+//				return undefined;
+//				// allow copying "pure" functions : they should return something related to their "value" or "e" named argument
+//			case 'function' :
+//				var str = val.toString(); 
+//				if (str.indexOf('(e)') !== -1)
+//					return new Function('e', val.toString().match(/^\{[.\s\S]+\}$/));
+//				if (str.indexOf('(value)') !== -1)
+//					return new Function('value', val.toString().match(/^\{[.\s\S]+\}$/));
+//				else
+//					return val;
+//			default :
+//				return null;
+//		}
+//	}
 	
 //	var recomposeUIModuleDef = function(defToPreserve) {
 //		var newObj;

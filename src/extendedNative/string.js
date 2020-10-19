@@ -71,17 +71,11 @@ Object.defineProperty(String.prototype, 'hyphensToDromedar', {
 	}
 );
 
-Object.defineProperty(String.prototype, 'toFirstLetterUpperCase', {
+Object.defineProperty(String.prototype, 'capitalizeFirstChar', {
 	value : function() {
-				return this.replace(/^[a-z]/, function(match, offset, str) {
-					return String(match).toUpperCase();
-				});
-			},
-			enumerable : false,
-			writable : false,
-			configurable : false
+		return this.slice(0, 1).toUpperCase() + this.slice(1);
 	}
-);
+});
 
 Object.defineProperty(String.prototype, 'hexEncode', {
 	value : function(){

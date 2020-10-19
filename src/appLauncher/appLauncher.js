@@ -111,6 +111,7 @@ var classConstructor = function() {
 	});
 	
 	return {
+		options : options,
 		launch : launch,
 		checkSupport : checkSupport,
 		locks : locks,
@@ -118,8 +119,7 @@ var classConstructor = function() {
 		isKnownUID : isKnownUID,
 		setUID : setUID,
 		currentHostPath : currentHostPath,
-		browserName : browserName,
-		tmp : []
+		browserName : browserName
 	}
 }
 
