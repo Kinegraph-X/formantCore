@@ -37,17 +37,21 @@ Object.defineProperty(ValueObject.prototype, 'fromArray',{
 	}
 });
 Object.defineProperty(ValueObject.prototype, 'set', {
-	value : function(def, isSpecial) {
-//		console.log(Object.getPrototypeOf(this));
-		if (Object.getPrototypeOf(this).objectType === 'MComponentDef')
-			console.log(Object.getPrototypeOf(this).objectType, def);
-		this.init();
+	value : function(def, isSpecial, hasInit) {
+		
+//		if (Object.getPrototypeOf(this).objectType === 'MComponentDef')
+//			console.log(Object.getPrototypeOf(this).objectType, def);
+		
+//		if (Object.getPrototypeOf(this).objectType === 'AttributesList')
+//		console.log(Object.getPrototypeOf(this).objectType, def);
+		var objectType = Object.getPrototypeOf(this).objectType;
+		(!this.hasInit && this.init());
 		for (let p in def) {
 //			console.log(p);
-			if (typeof this[p] === 'undefined')
+			if (typeof this[p] === 'undefined' && objectType !== 'States' && objectType !== 'Props')
 				this.model[p] = null;
 			
-			const n = p.capitalizeFirstChar() + 'Model';
+			const n = p.slice(0, 1).toUpperCase() + p.slice(1) + 'Model';
 			if (n in exports) {
 				if (Array.isArray(def[p])) {
 					this[p] = [];
@@ -59,11 +63,16 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 					this[p] = new HierarchicalComponentDefModel(def[p]);
 				else if (def[p] && def[p].type === 'ComponentList')
 					this[p] = new ComponentListDefModel(def[p]);
-				else if (def[p] !== null)
+				else if (def[p] !== null) {
 					this[p] = new exports[n](def[p]);
+//					if (n === 'AttributesModel')
+//						console.log(Object.getPrototypeOf(this).objectType, p, this[p]);
+				}
 			}
 			else if (isSpecial === 'isQuery')
 				this[p] = new ReactivityQueryModel(def[p]);
+			else if (isSpecial === 'isSubscription')
+				this[p] = new EventSubscriptionModel(def[p]);
 			else
 				this[p] = def[p];
 
@@ -77,7 +86,7 @@ Object.defineProperty(ValueObject.prototype, 'set', {
  * @constructor AttributesListModel
  * @extends ValueObject
  */
-var AttributesListModel = function(defObj) {ValueObject.call(this, defObj)};
+var AttributesListModel = function(defObj) {ValueObject.call(this, defObj);};
 AttributesListModel.prototype = Object.create(ValueObject.prototype);
 exports.AttributesListModel = AttributesListModel
 Object.defineProperty(AttributesListModel.prototype, 'objectType', {value :  'AttributesList'});
@@ -165,8 +174,36 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'model', {value :  {
 	obj : null,								// Object [HTMLElement, Stream]
 	filter : null,							// function (GlorifiedPureFunction ;)
 	map : null,								// function (GlorifiedPureFunction ;)
-	subscribe : null,						// function CallBack
+	subscribe : null						// function CallBack
 }});
+
+/**
+ * @constructor EventSubscriptionsList
+ * @extends ValueObject
+ */
+var EventSubscriptionsListModel = function(defObj) {ValueObject.call(this, defObj, 'isSubscription')};
+EventSubscriptionsListModel.prototype = Object.create(ValueObject.prototype);
+exports.EventSubscriptionsListModel = EventSubscriptionsListModel;
+Object.defineProperty(EventSubscriptionsListModel.prototype, 'objectType', {value : 'EventSubscriptionsList'});
+Object.defineProperty(EventSubscriptionsListModel.prototype, 'model', {value :  {}});
+
+/**
+ * @constructor EventSubscription
+ * @extends ValueObject
+ */
+var EventSubscriptionModel = function(defObj) {ValueObject.call(this, defObj)};
+EventSubscriptionModel.prototype = Object.create(ValueObject.prototype);
+exports.EventSubscriptionModel = EventSubscriptionModel;
+Object.defineProperty(EventSubscriptionModel.prototype, 'objectType', {value : 'EventSubscription'});
+Object.defineProperty(EventSubscriptionModel.prototype, 'model', {value :  {
+	subscribe : null						// function CallBack
+}});
+
+
+
+
+
+
 
 
 /**
@@ -174,6 +211,7 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'model', {value :  {
  * @extends ValueObject
  */
 var SingleLevelComponentDefModel = function(initObj) {
+	this.hasInit = false;
 	if (initObj !== 'bare') {
 		// shorthand to create defs with just a "type", and optionnally an attributesList...
 		if (typeof initObj === 'string')
@@ -183,6 +221,7 @@ var SingleLevelComponentDefModel = function(initObj) {
 	}
 	else if (initObj === 'bare') {
 		this.init();
+		this.hasInit = true;
 	}
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
@@ -212,22 +251,7 @@ Object.defineProperty(SingleLevelComponentDefModel.prototype, 'model', {
  * @constructor HierarchicalComponentDefModel
  * @extends ValueObject
  */
-var HierarchicalComponentDefModel = function(defObj) {
-	var isMulti;
-//	console.log(defObj);
-//	if (!isSingle && typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props)) {
-//		defObj = {host : defObj};
-//		isSingle = 'isSingle';
-//		HierarchicalComponentDefModel.hostSeen = true;
-//	}
-//	else if (HierarchicalComponentDefModel.hostSeen)
-//		isSingle = 'isSingle';
-	
-//	if (typeof defObj === 'object' && defObj.host)
-//		isMulti = 'isMulti';
-
-	ValueObject.call(this, defObj);
-};
+var HierarchicalComponentDefModel = function(defObj) {ValueObject.call(this, defObj);};
 HierarchicalComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exports.HierarchicalComponentDefModel = HierarchicalComponentDefModel;
 Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {value : 'MComponentDef'});
@@ -336,15 +360,17 @@ exports.createComponentDef = createComponentDef;
  */
 Object.assign(exports, {
 	definitionsCache : new ComponentDefCache(),
-	AttributesModel : AttributesListModel,						// Object AttributesList
-	OptionsModel : OptionsListModel,							// Object OptionsList
-	HostModel : HierarchicalComponentDefModel,						// Object SingleLevelComponentDef
-	SubSectionsModel : HierarchicalComponentDefModel,				// Array [SingleLevelComponentDef]
-	MembersModel : HierarchicalComponentDefModel,					// Array [SingleLevelComponentDef]
+	AttributesModel : AttributesListModel,							// Object AttributesList
+	OptionsModel : OptionsListModel,								// Object OptionsList
+	// "host" key catch the special condition and should always be flat ("artificial" deepening of flat defs is handled in the factory function)
+	HostModel : SingleLevelComponentDefModel,						// Object SingleLevelComponentDef
+	// "numericaly indexed" keys (in an array) catch the HierarchicalComponentDefModel
+	SubSectionsModel : HierarchicalComponentDefModel,				// Array [HierarchicalComponentDefModel]
+	MembersModel : HierarchicalComponentDefModel,					// Array [HierarchicalComponentDefModel]
 	ReactOnParentModel : ReactivityQueriesListModel,				// Object ReactivityQueryList
 	ReactOnSelfModel : ReactivityQueriesListModel,					// Object ReactivityQueryList
-	SubscribeOnParentModel : ReactivityQueriesListModel,			// Object ReactivityQueryList
-	SubscribeOnChildModel : ReactivityQueriesListModel,				// Object ReactivityQueryList
+	SubscribeOnParentModel : EventSubscriptionsListModel,			// Object EventSubscriptionsList
+	SubscribeOnChildModel : EventSubscriptionsListModel,			// Object EventSubscriptionsList
 	createSimpleComponentDef : HierarchicalComponentDefModel		// Object HierarchicalComponentDef
 });
 module.exports = exports;
