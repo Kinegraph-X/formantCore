@@ -1,13 +1,13 @@
 /**
  * @Singletons : Core Object store
  */
-var appConstants = require('src/appLauncher/appLauncher')(factoryGlobalContext).getInstance();
+//var appConstants = require('src/appLauncher/appLauncher')(factoryGlobalContext).getInstance();
 var exports = {};
 
 /**
  * @constructor ValueObject
  */
-var ValueObject = function(defObj, isSpecial) {this.set.apply(this, arguments);};
+var ValueObject = function(defObj, isSpecial) {this.init(); this.set.apply(this, arguments);};
 ValueObject.prototype.objectType = 'ValueObject';
 exports.ValueObject = ValueObject;
 Object.defineProperty(ValueObject.prototype, 'model', {value : null});			// virtual
@@ -25,7 +25,8 @@ Object.defineProperty(ValueObject.prototype, 'getType',{
 });
 Object.defineProperty(ValueObject.prototype, 'init',{
 	value : function() {
-		Object.assign(this, {...this.model});
+//		if (!this.isEmpty(this.model))
+			Object.assign(this, this.model);
 	}
 });
 Object.defineProperty(ValueObject.prototype, 'fromArray',{
@@ -36,8 +37,16 @@ Object.defineProperty(ValueObject.prototype, 'fromArray',{
 		}
 	}
 });
+Object.defineProperty(ValueObject.prototype, 'isEmpty', {
+	value : function(obj) {
+		for(var prop in obj) {
+				return false;
+		};
+		return true;
+	}
+});
 Object.defineProperty(ValueObject.prototype, 'set', {
-	value : function(def, isSpecial, hasInit) {
+	value : function(def, isSpecial) {
 		
 //		if (Object.getPrototypeOf(this).objectType === 'MComponentDef')
 //			console.log(Object.getPrototypeOf(this).objectType, def);
@@ -45,26 +54,34 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 //		if (Object.getPrototypeOf(this).objectType === 'AttributesList')
 //		console.log(Object.getPrototypeOf(this).objectType, def);
 		var objectType = Object.getPrototypeOf(this).objectType;
-		(!this.hasInit && this.init());
+//		this.init();
 		for (let p in def) {
 //			console.log(p);
-			if (typeof this[p] === 'undefined' && objectType !== 'States' && objectType !== 'Props')
-				this.model[p] = null;
+//			if (typeof this[p] === 'undefined' && objectType !== 'States' && objectType !== 'Props')
+//				this.model[p] = null;
 			
 			const n = p.slice(0, 1).toUpperCase() + p.slice(1) + 'Model';
-			if (n in exports) {
+			
+			if (isSpecial !== 'noLog' && isSpecial !== 'isQuery' && isSpecial !== 'isSubscription')
+				console.log(p, isSpecial);
+			
+			if (isSpecial === 'hostOnly' && p === 'host' && !def[p].host)
+				this[p] = new SingleLevelComponentDefModel(def[p], 'noLog');
+			else if (isSpecial === 'rootOnly')
+				this[p] = def[p];
+			else if (n in exports) {
 				if (Array.isArray(def[p])) {
 					this[p] = [];
 					for(let i = 0, l = def[p].length; i < l; i++) {
-						this[p].push(new exports[n](def[p][i]));
+						this[p].push(new exports[n](def[p][i], isSpecial));
 					}
 				}
 				else if (def[p] && def[p].host)
-					this[p] = new HierarchicalComponentDefModel(def[p]);
+					this[p] = new HierarchicalComponentDefModel(def[p], isSpecial);
 				else if (def[p] && def[p].type === 'ComponentList')
-					this[p] = new ComponentListDefModel(def[p]);
+					this[p] = new ComponentListDefModel(def[p], isSpecial);
 				else if (def[p] !== null) {
-					this[p] = new exports[n](def[p]);
+					this[p] = new exports[n](def[p], isSpecial);
 //					if (n === 'AttributesModel')
 //						console.log(Object.getPrototypeOf(this).objectType, p, this[p]);
 				}
@@ -75,8 +92,8 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 				this[p] = new EventSubscriptionModel(def[p]);
 			else
 				this[p] = def[p];
-
 		}
+//		console.log(this, isSpecial);
 	}
 });
 
@@ -86,7 +103,7 @@ Object.defineProperty(ValueObject.prototype, 'set', {
  * @constructor AttributesListModel
  * @extends ValueObject
  */
-var AttributesListModel = function(defObj) {ValueObject.call(this, defObj);};
+var AttributesListModel = function(defObj) {ValueObject.apply(this, arguments);};
 AttributesListModel.prototype = Object.create(ValueObject.prototype);
 exports.AttributesListModel = AttributesListModel
 Object.defineProperty(AttributesListModel.prototype, 'objectType', {value :  'AttributesList'});
@@ -100,7 +117,7 @@ Object.defineProperty(AttributesListModel.prototype, 'model', {value :  {
  * @constructor OptionsListModel
  * @extends ValueObject
  */
-var OptionsListModel = function(defObj) {ValueObject.call(this, defObj)};
+var OptionsListModel = function(defObj) {ValueObject.apply(this, arguments)};
 OptionsListModel.prototype = Object.create(ValueObject.prototype);
 exports.OptionsListModel = OptionsListModel
 Object.defineProperty(OptionsListModel.prototype, 'objectType', {value :  'AttributesList'});
@@ -113,7 +130,7 @@ Object.defineProperty(OptionsListModel.prototype, 'model', {value :  {
  * @constructor KeyboardHotkeysModel
  * @extends ValueObject
  */
-var KeyboardHotkeysModel = function(defObj) {ValueObject.call(this, defObj)};
+var KeyboardHotkeysModel = function(defObj) {ValueObject.apply(this, arguments)};
 KeyboardHotkeysModel.prototype = Object.create(ValueObject.prototype);
 exports.KeyboardHotkeysModel = KeyboardHotkeysModel;
 Object.defineProperty(KeyboardHotkeysModel.prototype, 'objectType', {value : 'KeyboardHotkeys'});
@@ -129,7 +146,7 @@ Object.defineProperty(KeyboardHotkeysModel.prototype, 'model', {value : {
  * @constructor StatesModel
  * @extends ValueObject
  */
-var StatesModel = function(defObj) {ValueObject.call(this, defObj)};
+var StatesModel = function(defObj) {ValueObject.apply(this, arguments)};
 StatesModel.prototype = Object.create(ValueObject.prototype);
 exports.StatesModel = StatesModel;
 Object.defineProperty(StatesModel.prototype, 'objectType', {value : 'States'});
@@ -141,7 +158,7 @@ Object.defineProperty(StatesModel.prototype, 'model', {value :  {
  * @constructor PropsModel
  * @extends ValueObject
  */
-var PropsModel = function(defObj) {ValueObject.call(this, defObj)};
+var PropsModel = function(defObj) {ValueObject.apply(this, arguments)};
 PropsModel.prototype = Object.create(ValueObject.prototype);
 exports.PropsModel = PropsModel;
 Object.defineProperty(PropsModel.prototype, 'objectType', {value : 'Props'});
@@ -165,7 +182,7 @@ Object.defineProperty(ReactivityQueriesListModel.prototype, 'model', {value :  {
  * @constructor ReactivityQuery
  * @extends ValueObject
  */
-var ReactivityQueryModel = function(defObj) {ValueObject.call(this, defObj)};
+var ReactivityQueryModel = function(defObj) {ValueObject.apply(this, arguments)};
 ReactivityQueryModel.prototype = Object.create(ValueObject.prototype);
 exports.ReactivityQueryModel = ReactivityQueryModel;
 Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'ReactivityQuery'});
@@ -191,7 +208,7 @@ Object.defineProperty(EventSubscriptionsListModel.prototype, 'model', {value :  
  * @constructor EventSubscription
  * @extends ValueObject
  */
-var EventSubscriptionModel = function(defObj) {ValueObject.call(this, defObj)};
+var EventSubscriptionModel = function(defObj) {ValueObject.apply(this, arguments)};
 EventSubscriptionModel.prototype = Object.create(ValueObject.prototype);
 exports.EventSubscriptionModel = EventSubscriptionModel;
 Object.defineProperty(EventSubscriptionModel.prototype, 'objectType', {value : 'EventSubscription'});
@@ -210,19 +227,14 @@ Object.defineProperty(EventSubscriptionModel.prototype, 'model', {value :  {
  * @constructor SingleLevelComponentDefModel
  * @extends ValueObject
  */
-var SingleLevelComponentDefModel = function(initObj) {
-	this.hasInit = false;
+var SingleLevelComponentDefModel = function(initObj, isSpecial) {
+	// shorthand to create defs with just a "type", maybe an attributesList, but only the first props in the model
 	if (initObj !== 'bare') {
-		// shorthand to create defs with just a "type", and optionnally an attributesList...
-		if (typeof initObj === 'string')
-			this.set.apply(this, arguments);
-		else
-			this.set(initObj);
-	}
-	else if (initObj === 'bare') {
 		this.init();
-		this.hasInit = true;
+		this.set(initObj, isSpecial);
 	}
+	else if (initObj === 'bare')
+		this.init();
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exports.SingleLevelComponentDefModel = SingleLevelComponentDefModel;
@@ -251,7 +263,7 @@ Object.defineProperty(SingleLevelComponentDefModel.prototype, 'model', {
  * @constructor HierarchicalComponentDefModel
  * @extends ValueObject
  */
-var HierarchicalComponentDefModel = function(defObj) {ValueObject.call(this, defObj);};
+var HierarchicalComponentDefModel = function(defObj, isSpecial) {ValueObject.apply(this, arguments);};
 HierarchicalComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exports.HierarchicalComponentDefModel = HierarchicalComponentDefModel;
 Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {value : 'MComponentDef'});
@@ -269,7 +281,7 @@ HierarchicalComponentDefModel.prototype.set = SingleLevelComponentDefModel.proto
  * @constructor ComponentListDef
  * @extends ValueObject
  */
-var ComponentListDefModel = function(defObj) {ValueObject.call(this, defObj)};
+var ComponentListDefModel = function(defObj) {ValueObject.apply(this, arguments)};
 ComponentListDefModel.prototype = Object.create(ValueObject.prototype);
 exports.ComponentListDefModel = ComponentListDefModel;
 Object.defineProperty(ComponentListDefModel.prototype, 'objectType', {value : 'ComponentListDef'});
@@ -290,7 +302,7 @@ Object.defineProperty(ComponentListDefModel.prototype, 'model', {value :  {
  */
 var ComponentDefCache = function() {
 	this.knownIDs = {};
-	this.UIDPrefix = appConstants.options.UIDPrefix;
+//	this.UIDPrefix = appConstants.options.UIDPrefix;
 }
 ComponentDefCache.prototype = {};
 ComponentDefCache.prototype.getUID = function(uniqueID) {
@@ -324,7 +336,7 @@ ComponentDefCache.prototype.setUID = function(uniqueID, globalObj) {
  * @constructor ComponentDefModel
  * @extends ValueObject
  */
-var createComponentDef = function(defObj, useCache) {
+var createComponentDef = function(defObj, useCache, isSpecial) {
 	var def, UID;
 
 	if (useCache) {
@@ -332,18 +344,18 @@ var createComponentDef = function(defObj, useCache) {
 	}
 	
 	if (!UID || typeof UID === 'string') {
-		// shorthand to create defs with just a "type", and optionnally an attributesList...
+		// shorthand to create defs with just a "type", maybe an attributesList, but only the first props in the model...
 		if (typeof defObj === 'string') {
 			var c = new SingleLevelComponentDefModel('bare');
 			ValueObject.prototype.fromArray.call(c, arguments);
-			def = new HierarchicalComponentDefModel({host : c});
+			def = new HierarchicalComponentDefModel({host : c}, isSpecial);
 		}
 		if (typeof defObj === 'object' && defObj.host)
-			def = new HierarchicalComponentDefModel(defObj);
+			def = new HierarchicalComponentDefModel(defObj, isSpecial);
 		if (typeof defObj === 'object' && defObj.type === 'ComponentList')
-			def = new HierarchicalComponentDefModel({host : new ComponentListDefModel(defObj)});
+			def = new HierarchicalComponentDefModel({host : new ComponentListDefModel(defObj, isSpecial)}, isSpecial);
 		else if (typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props))
-			def = new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj)});
+			def = new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, isSpecial)}, isSpecial);
 	}
 //	console.log(def);
 	if (typeof UID === 'string')

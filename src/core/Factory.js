@@ -2,6 +2,7 @@
  * @Singletons : Core factories
  */
 
+var CacheManager = require('src/core/CacheManager');
 
 logLevelQuery = window.location.href.match(/(log_level=)(\d+)/); 					// Max log_level = 8 
 window.logLevel = Array.isArray(logLevelQuery) ? logLevelQuery[2] : undefined;
@@ -910,37 +911,37 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.mergeComponentDef = function(defaultDef) {
-		if (!defaultDef)
-			return;
-		else if (!defaultDef && !this.def) {
-			console.error('UIModule : Merging Component\'s definition with default failed : no def found');
-			return;
-		}
-		else if (!this.def)
-			this.def = {host : null};
-		
-		// Type Enforcement (TODO: See if we may enforce that elsewhere)
-		if (!defaultDef.host || !this.def.host || typeof this.def.subSections === 'undefined' || typeof this.def.members === 'undefined' || typeof this.def.options === 'undefined') {
-			console.error('UIModule : Merging wrongly typed Component\'s definitions');
-			return;
-		}
-//		console.log();
-		for(var prop in defaultDef.host) {
-			if (this.def.host[prop] === null)
-				this.def.host[prop] = defaultDef.host[prop];
-			else if (typeof this.def.host[prop] === 'undefined') {
-				this.def.host.model[prop] = null;
-				this.def.host[prop] = defaultDef.host[prop];
-			}
-		}
-		if (this.def.subSections === null)
-			this.def.subSections = defaultDef.subSections;
-		if (this.def.members === null)
-			this.def.members = defaultDef.members;
-		if (this.def.options === null)
-			this.def.options = defaultDef.options;
-	};
+//	UIModule.prototype.mergeComponentDef = function(defaultDef) {
+//		if (!defaultDef)
+//			return;
+//		else if (!defaultDef && !this.def) {
+//			console.error('UIModule : Merging Component\'s definition with default failed : no def found');
+//			return;
+//		}
+//		else if (!this.def)
+//			this.def = {host : null};
+//		
+//		// Type Enforcement (TODO: See if we may enforce that elsewhere)
+//		if (!defaultDef.host || !this.def.host || typeof this.def.subSections === 'undefined' || typeof this.def.members === 'undefined' || typeof this.def.options === 'undefined') {
+//			console.error('UIModule : Merging wrongly typed Component\'s definitions');
+//			return;
+//		}
+////		console.log();
+//		for(var prop in defaultDef.host) {
+//			if (this.def.host[prop] === null)
+//				this.def.host[prop] = defaultDef.host[prop];
+//			else if (typeof this.def.host[prop] === 'undefined') {
+//				this.def.host.model[prop] = null;
+//				this.def.host[prop] = defaultDef.host[prop];
+//			}
+//		}
+//		if (this.def.subSections === null)
+//			this.def.subSections = defaultDef.subSections;
+//		if (this.def.members === null)
+//			this.def.members = defaultDef.members;
+//		if (this.def.options === null)
+//			this.def.options = defaultDef.options;
+//	};
 	
 	/**
 	 * @abstract
@@ -961,18 +962,32 @@ var Factory = (function() {
 			return;
 		}
 //		console.log();
+		
+//		var host = CacheManager.createComponentDef(defaultDef.host);
+//		for(var prop in host.host) {
+//			if (definition.host[prop] === null)
+//				definition.host[prop] = host.host[prop];
+////			else if (typeof definition.host[prop] === 'undefined') {
+//////				definition.host.model[prop] = null;
+////				definition.host[prop] = host.host[prop];
+////			}
+//		}
+//		
 		for(var prop in defaultDef.host) {
 			if (definition.host[prop] === null)
 				definition.host[prop] = defaultDef.host[prop];
 			else if (typeof definition.host[prop] === 'undefined') {
-				definition.host.model[prop] = null;
+//				definition.host.model[prop] = null;
 				definition.host[prop] = defaultDef.host[prop];
 			}
 		}
+//		
 		if (definition.subSections === null)
 			definition.subSections = defaultDef.subSections;
 		if (definition.members === null)
 			definition.members = defaultDef.members;
+		if (definition.lists === null)
+			definition.lists = defaultDef.lists;
 		if (definition.options === null)
 			definition.options = defaultDef.options;
 	};
@@ -982,7 +997,8 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.compose = function(definition) {
 		// if the asyncAddChild method has been overridden, there could exist "non-raw" children we need to add
-		(Object.getPrototypeOf(this).hasOwnProperty('asyncAddChild') && this.asyncAddChild());
+		// This is slow...
+//		(Object.getPrototypeOf(this).hasOwnProperty('asyncAddChild') && this.asyncAddChild());
 
 		if (this.childrenToAdd.length)
 			this.asyncAddChildren();
@@ -1094,7 +1110,7 @@ var Factory = (function() {
 			(typeof names[this.modules[moduleName].objectType] === 'undefined' ? names[this.modules[moduleName].objectType] = 0 : ++names[this.modules[moduleName].objectType]);
 		}
 		
-		this.childrenToAdd = this.childrenToAdd.filter(function(childDef) {
+		this.childrenToAdd.forEach(function(childDef) {
 			if (childDef.module.raw || (oneShot && childDef !== oneShot))
 				return true;	// allow another method to add the "raw" children (don't delete them, but don't make them reactive for now : they don't have any DOM)
 
@@ -1113,7 +1129,7 @@ var Factory = (function() {
 				(!((definition || this.def).host.subscribeOnChild) && ((definition || this.def).host.subscribeOnChild = []));
 				(definition || this.def).host.subscribeOnChild.push('function ' + childDef.eventBinding[eventName].name + ' <== ' + childDef.module.objectType + ' : ' + eventName);
 			}
-			return false;
+//			return false;
 		}, this);
 	}
 	
@@ -1463,7 +1479,7 @@ var Factory = (function() {
 			return;
 		}
 		this.forward = true;
-		this.name = name || '';
+		this.name = name;
 		this.lazy = typeof lazy !== 'undefined' ? lazy : false;
 		this.reflectedObj = reflectedObj;
 		this.transform = transform || undefined;
@@ -1500,23 +1516,23 @@ var Factory = (function() {
 		this.dirty;
 	}
 	Stream.prototype.objectType = 'Stream';
-	Stream.defaultPropertyDescriptor = {
-		get : function() {
-			if (this.lazy) {
-				if (typeof this.transform === 'function')
-					this._value = this.transform(this.get());
-				this.dirty = false;
-			}
-			
-			return this.get();
-		},//.bind(this),
-		
-		set : function(value) {
-			this.setAndUpdateConditional(value);
-			this.set(value);
-		},//.bind(this),
-		enumerable : true
-	}
+//	Stream.defaultPropertyDescriptor = {
+//		get : function() {
+//			if (this.lazy) {
+//				if (typeof this.transform === 'function')
+//					this._value = this.transform(this.get());
+//				this.dirty = false;
+//			}
+//			
+//			return this.get();
+//		},//.bind(this),
+//		
+//		set : function(value) {
+//			this.setAndUpdateConditional(value);
+//			this.set(value);
+//		},//.bind(this),
+//		enumerable : true
+//	}
 
 	Stream.prototype.get = function() {
 		return this._value;
