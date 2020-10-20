@@ -226,6 +226,7 @@ var Factory = (function() {
 //		});
 		
 		this.objectType = 'CoreModule';
+		this._parent;
 		this.modules = {};
 		this._eventHandlers = {};
 		this._one_eventHandlers = {};
@@ -279,7 +280,7 @@ var Factory = (function() {
 	 * @param {object} candidateModule : an instance of another module
 	 */
 	CoreModule.prototype.registerModule = function(moduleName, candidateModule) {
-		
+//		console.log(moduleName, candidateModule);
 		if (!candidateModule)
 			return;
 		
@@ -908,7 +909,7 @@ var Factory = (function() {
 		if (!defaultDef)
 			return;
 		else if (!defaultDef && !this.def) {
-			console.error('UIModule : Merging Component\'s definition with default failed')
+			console.error('UIModule : Merging Component\'s definition with default failed : no def found');
 			return;
 		}
 		else if (!this.def)
@@ -919,13 +920,13 @@ var Factory = (function() {
 			console.error('UIModule : Merging wrongly typed Component\'s definitions');
 			return;
 		}
-		
-		for(var prop in baseOptions.host) {
+//		console.log();
+		for(var prop in defaultDef.host) {
 			if (this.def.host[prop] === null)
-				this.def.host[prop] = baseOptions.host[prop];
+				this.def.host[prop] = defaultDef.host[prop];
 			else if (typeof this.def.host[prop] === 'undefined') {
 				this.def.host.model[prop] = null;
-				this.def.host[prop] = baseOptions.host[prop];
+				this.def.host[prop] = defaultDef.host[prop];
 			}
 		}
 		if (this.def.subSections === null)
@@ -934,7 +935,7 @@ var Factory = (function() {
 			this.def.members = defaultDef.members;
 		if (this.def.options === null)
 			this.def.options = defaultDef.options;
-	}
+	};
 	
 	/**
 	 * @abstract

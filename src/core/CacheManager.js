@@ -14,13 +14,33 @@ Object.defineProperty(ValueObject.prototype, 'model', {value : null});			// virt
 Object.defineProperty(ValueObject.prototype, 'get',{
 	value : function() {}
 });
+Object.defineProperty(ValueObject.prototype, 'getGroupHostDef',{
+	value : function() {return (this.host && this.host.host);}
+});
+Object.defineProperty(ValueObject.prototype, 'getHostDef',{
+	value : function() {return this.host;}
+});
+Object.defineProperty(ValueObject.prototype, 'getType',{
+	value : function() {return this.type;}
+});
 Object.defineProperty(ValueObject.prototype, 'init',{
 	value : function() {
 		Object.assign(this, {...this.model});
 	}
 });
+Object.defineProperty(ValueObject.prototype, 'fromArray',{
+	value : function(arr) {
+		var i = 0;
+		for (let p in this.model) {
+			this[p] = arr[i++];
+		}
+	}
+});
 Object.defineProperty(ValueObject.prototype, 'set', {
 	value : function(def, isSpecial) {
+//		console.log(Object.getPrototypeOf(this));
+		if (Object.getPrototypeOf(this).objectType === 'MComponentDef')
+			console.log(Object.getPrototypeOf(this).objectType, def);
 		this.init();
 		for (let p in def) {
 //			console.log(p);
@@ -35,8 +55,10 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 						this[p].push(new exports[n](def[p][i]));
 					}
 				}
-				else if (isSpecial === 'isSingle')
-					this[p] = new SingleLevelComponentDefModel(def[p]);
+				else if (def[p] && def[p].host)
+					this[p] = new HierarchicalComponentDefModel(def[p]);
+				else if (def[p] && def[p].type === 'ComponentList')
+					this[p] = new ComponentListDefModel(def[p]);
 				else if (def[p] !== null)
 					this[p] = new exports[n](def[p]);
 			}
@@ -137,7 +159,7 @@ Object.defineProperty(ReactivityQueriesListModel.prototype, 'model', {value :  {
 var ReactivityQueryModel = function(defObj) {ValueObject.call(this, defObj)};
 ReactivityQueryModel.prototype = Object.create(ValueObject.prototype);
 exports.ReactivityQueryModel = ReactivityQueryModel;
-Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'Props'});
+Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'ReactivityQuery'});
 Object.defineProperty(ReactivityQueryModel.prototype, 'model', {value :  {
 	from : null,							// String
 	obj : null,								// Object [HTMLElement, Stream]
@@ -190,12 +212,21 @@ Object.defineProperty(SingleLevelComponentDefModel.prototype, 'model', {
  * @constructor HierarchicalComponentDefModel
  * @extends ValueObject
  */
-var HierarchicalComponentDefModel = function(defObj, isSingle) {
-	if (!isSingle && typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props)) {
-		defObj = {host : defObj};
-		isSingle = 'isSingle';
-	}
-	ValueObject.call(this, defObj, isSingle);
+var HierarchicalComponentDefModel = function(defObj) {
+	var isMulti;
+//	console.log(defObj);
+//	if (!isSingle && typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props)) {
+//		defObj = {host : defObj};
+//		isSingle = 'isSingle';
+//		HierarchicalComponentDefModel.hostSeen = true;
+//	}
+//	else if (HierarchicalComponentDefModel.hostSeen)
+//		isSingle = 'isSingle';
+	
+//	if (typeof defObj === 'object' && defObj.host)
+//		isMulti = 'isMulti';
+
+	ValueObject.call(this, defObj);
 };
 HierarchicalComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exports.HierarchicalComponentDefModel = HierarchicalComponentDefModel;
@@ -204,6 +235,7 @@ Object.defineProperty(HierarchicalComponentDefModel.prototype, 'model', {value :
 	host : null,							// Object SingleLevelComponentDef
 	subSections : null,						// Array [SingleLevelComponentDef]
 	members : null,							// Array [SingleLevelComponentDef]
+	lists : null,							// Array [ComponentListDef]
 	options : null							// Object : plain
 }});
 HierarchicalComponentDefModel.prototype.set = SingleLevelComponentDefModel.prototype.set;
@@ -270,6 +302,7 @@ ComponentDefCache.prototype.setUID = function(uniqueID, globalObj) {
  */
 var createComponentDef = function(defObj, useCache) {
 	var def, UID;
+
 	if (useCache) {
 		UID = exports.definitionsCache.isKnownUID(useCache);
 	}
@@ -278,14 +311,15 @@ var createComponentDef = function(defObj, useCache) {
 		// shorthand to create defs with just a "type", and optionnally an attributesList...
 		if (typeof defObj === 'string') {
 			var c = new SingleLevelComponentDefModel('bare');
-			def = c.apply(c, arguments);
+			ValueObject.prototype.fromArray.call(c, arguments);
+			def = new HierarchicalComponentDefModel({host : c});
 		}
 		if (typeof defObj === 'object' && defObj.host)
 			def = new HierarchicalComponentDefModel(defObj);
 		if (typeof defObj === 'object' && defObj.type === 'ComponentList')
-			def = new HierarchicalComponentDefModel(new ComponentListDefModel(defObj));
+			def = new HierarchicalComponentDefModel({host : new ComponentListDefModel(defObj)});
 		else if (typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props))
-			def = new HierarchicalComponentDefModel(new SingleLevelComponentDefModel(defObj));
+			def = new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj)});
 	}
 //	console.log(def);
 	if (typeof UID === 'string')
@@ -304,9 +338,9 @@ Object.assign(exports, {
 	definitionsCache : new ComponentDefCache(),
 	AttributesModel : AttributesListModel,						// Object AttributesList
 	OptionsModel : OptionsListModel,							// Object OptionsList
-	HostModel : HierarchicalComponentDefModel,						// Object HierarchicalComponentDef
-	SubSectionsModel : HierarchicalComponentDefModel,				// Array [HierarchicalComponentDef]
-	MembersModel : HierarchicalComponentDefModel,					// Array [HierarchicalComponentDef]
+	HostModel : HierarchicalComponentDefModel,						// Object SingleLevelComponentDef
+	SubSectionsModel : HierarchicalComponentDefModel,				// Array [SingleLevelComponentDef]
+	MembersModel : HierarchicalComponentDefModel,					// Array [SingleLevelComponentDef]
 	ReactOnParentModel : ReactivityQueriesListModel,				// Object ReactivityQueryList
 	ReactOnSelfModel : ReactivityQueriesListModel,					// Object ReactivityQueryList
 	SubscribeOnParentModel : ReactivityQueriesListModel,			// Object ReactivityQueryList
