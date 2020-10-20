@@ -2,7 +2,7 @@
  * @Singletons : Core factories
  */
 
-var CacheManager = require('src/core/CacheManager');
+//var TypeManager = require('src/core/TypeManager');
 
 logLevelQuery = window.location.href.match(/(log_level=)(\d+)/); 					// Max log_level = 8 
 window.logLevel = Array.isArray(logLevelQuery) ? logLevelQuery[2] : undefined;
@@ -790,24 +790,20 @@ var Factory = (function() {
 		this.DOMRenderQueue = [];
 		this.bindingQueue = [];
 		
-//		this.def = definition;
-//		this.mergeDefaultDef(this.setDefaultDef());
-//		this.mergeComponentDef(this.createDefaultDef());
-		// console.log(definition);
 		this.mergeWithComponentDefaultDef(definition, this.createDefaultDef());
-		// console.log(definition);
+		
 		this.parentNodeDOMId = parentNodeDOMId;
-		this.command = (((definition || this.def) && (definition || this.def).command) && (definition || this.def).command);
-		this.keyboardEvents = (definition || this.def).keyboardEvents || [];
+		this.command = (definition && definition.command);
+		this.keyboardEvents = definition.keyboardEvents || [];
 		this.childrenToAdd = childrenToAdd ? (Array.isArray(childrenToAdd) ? childrenToAdd : [{module : childrenToAdd}]) : [];
 		
 		DependancyModule.call(this);
 		this.objectType = 'UIModule';
 
 		(typeof targetSlot === 'number' && (this.slots['default'] = (this.rootElem || this.hostElem).children[targetSlot]));
-		// console.log(definition);
-		((definition || this.def) && this.immediateInit(definition, parentNodeDOMId, automakeable, childrenToAdd, targetSlot));
-		(automakeable && this.raw && this.Make(definition, parentNodeDOMId, automakeable, childrenToAdd, targetSlot));
+		
+		(definition && this.immediateInit.apply(this, arguments));
+		(automakeable && this.raw && this.Make.apply(this, arguments));
 	};
 
 	UIModule.prototype = Object.assign(Object.create(DependancyModule.prototype), {
@@ -847,17 +843,16 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.immediateInit = function(definition) {
+	UIModule.prototype.immediateInit = function() {
 		this.createEvents.apply(this, arguments);
-		this.createObservables(definition);
-		this.registerValidators(definition);
-		// console.log(definition);
+		this.createObservables.apply(this, arguments);
+		this.registerValidators.apply(this, arguments);
+		
 	}
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.Make = function(definition) {
-		// console.log(definition);
+	UIModule.prototype.Make = function() {
 		this.raw = false;						// disable "raw" first (seems logical... TODO:  was there a purpose on that comment ?)
 		this.beforeMake.apply(this, arguments);
 		this.init.apply(this, arguments);
@@ -866,18 +861,15 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.init = function(definition) {
-		// console.log(definition);
+	UIModule.prototype.init = function() {
 		this.create.apply(this, arguments);
-		this.compose(definition);
-
-//		this.initGenericEvent(); 						// REMINDER : Don't call. That could call the descendant's method before the events are created
-		this.registerEvents(definition);
+		this.compose.apply(this, arguments);
+		this.registerEvents.apply(this, arguments);
 		
-		this.resizeAll(definition);
-		this.firstRender(definition);
+		this.resizeAll.apply(this, arguments);
+		this.firstRender.apply(this, arguments);
 		
-		this.execBindingQueue(definition);
+		this.execBindingQueue.apply(this, arguments);
 	}
 	/**
 	 * @abstract
@@ -890,58 +882,17 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.create = function(definition) {
-		// console.log(definition);
+	UIModule.prototype.create = function() {
 		this.beforeCreateDOM.apply(this, arguments);
 		this.createDOM.apply(this, arguments);
 		this.completeDOM.apply(this, arguments);
-		this.basicEarlyDOMExtend(definition);
-		this.renderDOMQueue(definition);
-		this.basicLateDOMExtend(definition);
-		
-		// binding can't happen on 'non connected' custom elems : attr missing...
-//		this.execBindingQueue();		// rejected at the end of the init process
-		
+		this.basicEarlyDOMExtend.apply(this, arguments);
+		this.renderDOMQueue.apply(this, arguments);
+		this.basicLateDOMExtend.apply(this, arguments);
 		this.afterCreateDOM.apply(this, arguments);
-		this.setDOMTypes(definition);
-		this.setArias(definition);
+		this.setDOMTypes.apply(this, arguments);
+		this.setArias.apply(this, arguments);
 	}
-	
-	
-	/**
-	 * @abstract
-	 */
-//	UIModule.prototype.mergeComponentDef = function(defaultDef) {
-//		if (!defaultDef)
-//			return;
-//		else if (!defaultDef && !this.def) {
-//			console.error('UIModule : Merging Component\'s definition with default failed : no def found');
-//			return;
-//		}
-//		else if (!this.def)
-//			this.def = {host : null};
-//		
-//		// Type Enforcement (TODO: See if we may enforce that elsewhere)
-//		if (!defaultDef.host || !this.def.host || typeof this.def.subSections === 'undefined' || typeof this.def.members === 'undefined' || typeof this.def.options === 'undefined') {
-//			console.error('UIModule : Merging wrongly typed Component\'s definitions');
-//			return;
-//		}
-////		console.log();
-//		for(var prop in defaultDef.host) {
-//			if (this.def.host[prop] === null)
-//				this.def.host[prop] = defaultDef.host[prop];
-//			else if (typeof this.def.host[prop] === 'undefined') {
-//				this.def.host.model[prop] = null;
-//				this.def.host[prop] = defaultDef.host[prop];
-//			}
-//		}
-//		if (this.def.subSections === null)
-//			this.def.subSections = defaultDef.subSections;
-//		if (this.def.members === null)
-//			this.def.members = defaultDef.members;
-//		if (this.def.options === null)
-//			this.def.options = defaultDef.options;
-//	};
 	
 	/**
 	 * @abstract
@@ -955,33 +906,12 @@ var Factory = (function() {
 		}
 		else if (!definition)
 			definition = {host : null};
-		
-		// Type Enforcement (TODO: See if we may enforce that elsewhere)
-		if (!defaultDef.host || !definition.host || typeof definition.subSections === 'undefined' || typeof definition.members === 'undefined' || typeof definition.options === 'undefined') {
-			console.error('UIModule : Merging wrongly typed Component\'s definitions');
-			return;
-		}
-//		console.log();
-		
-//		var host = CacheManager.createComponentDef(defaultDef.host);
-//		for(var prop in host.host) {
-//			if (definition.host[prop] === null)
-//				definition.host[prop] = host.host[prop];
-////			else if (typeof definition.host[prop] === 'undefined') {
-//////				definition.host.model[prop] = null;
-////				definition.host[prop] = host.host[prop];
-////			}
-//		}
-//		
+
 		for(var prop in defaultDef.host) {
 			if (definition.host[prop] === null)
 				definition.host[prop] = defaultDef.host[prop];
-			else if (typeof definition.host[prop] === 'undefined') {
-//				definition.host.model[prop] = null;
-				definition.host[prop] = defaultDef.host[prop];
-			}
 		}
-//		
+
 		if (definition.subSections === null)
 			definition.subSections = defaultDef.subSections;
 		if (definition.members === null)
@@ -996,23 +926,9 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.compose = function(definition) {
-		// if the asyncAddChild method has been overridden, there could exist "non-raw" children we need to add
-		// This is slow...
-//		(Object.getPrototypeOf(this).hasOwnProperty('asyncAddChild') && this.asyncAddChild());
-
 		if (this.childrenToAdd.length)
 			this.asyncAddChildren();
-		
-		// define this.slots['default'] as :
-		// 		- this.hostElem
-		// 		OR
-		//		- firstChild of (this.rootElem || this.hostElem)
-		//
-		// AND
-		//
-		// define this.slots['key as number'] as :
-		//		- each of their children
-		// (very slight...) PERF OPTIMIZATION
+
 		(!this.slots['default'] && (this.slots['default'] = (this.hostElem && (this.rootElem || this.hostElem).childNodes && (this.rootElem || this.hostElem).firstChild) || this.hostElem));
 
 		if (this.rootElem || this.hostElem) {
@@ -1022,7 +938,7 @@ var Factory = (function() {
 		}
 		
 		// DEBUG : reflect default slot on def (currently only for debug purpose)
-		(this.slots['default'] && !((definition || this.def).getHostDef().host) && ((definition || this.def).getHostDef().defaultSlot = this.slots['default']));
+		(this.slots['default'] && !(definition.getHostDef().host) && (definition.getHostDef().defaultSlot = this.slots['default']));
 	}
 	
 	UIModule.prototype.registerEvents = function(definition) {
@@ -1049,7 +965,7 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.renderDOMQueue = function(definition) {
-		var componentDef = (definition || this.def).getHostDef(),
+		var componentDef = definition.getHostDef(),
 			def,
 			elem;
 //		console.log(this.DOMRenderQueue);
@@ -1062,22 +978,22 @@ var Factory = (function() {
 				return;
 			
 			// DEBUG
-			(!((definition || this.def).children) && ((definition || this.def).children = []));
+			(!(definition.children) && (definition.children = []));
 			
 			if (def.wrapper) {
 				(this.rootElem || this.hostElem).appendChild(def.wrapper);
 				// DEBUG
-				(definition || this.def).children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : def.wrapper.nodeName});
+				definition.children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : def.wrapper.nodeName});
 			}
 			if (def.members && def.members.length) {
 				if (def.wrapper) {
 					// DEBUG
-					(!((definition || this.def).children[this.def.children.length - 1].children) && ((definition || this.def).children[(definition || this.def).children.length - 1].children = []));
+					(!(definition.children[this.def.children.length - 1].children) && (definition.children[definition.children.length - 1].children = []));
 					elem = this.rootElem ? this.rootElem.lastChild : this.hostElem.lastChild;
 					def.members.forEach(function(member, k) {
 						elem.appendChild(member);
 						// DEBUG
-						(definition || this.def).children[(definition || this.def).children.length - 1].children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : member.nodeName});
+						definition.children[definition.children.length - 1].children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : member.nodeName});
 					}, this);
 				}
 				else {
@@ -1085,7 +1001,7 @@ var Factory = (function() {
 					def.members.forEach(function(member, k) {
 						elem.appendChild(member);
 						// DEBUG
-						(definition || this.def).children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : member.nodeName});
+						definition.children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : member.nodeName});
 					}, this);
 				}
 			}
@@ -1126,8 +1042,8 @@ var Factory = (function() {
 					continue;
 				childDef.module['on' + lowerCaseEventName] = childDef.eventBinding[eventName];
 				// DEBUG
-				(!((definition || this.def).host.subscribeOnChild) && ((definition || this.def).host.subscribeOnChild = []));
-				(definition || this.def).host.subscribeOnChild.push('function ' + childDef.eventBinding[eventName].name + ' <== ' + childDef.module.objectType + ' : ' + eventName);
+				(!definition.host.subscribeOnChild && (definition.host.subscribeOnChild = []));
+				definition.host.subscribeOnChild.push('function ' + childDef.eventBinding[eventName].name + ' <== ' + childDef.module.objectType + ' : ' + eventName);
 			}
 //			return false;
 		}, this);
@@ -1139,9 +1055,7 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	// HACK - Y thing : although "childModules handling" pertains to the CoreModule Interface, UIModule handles here the special case of the autoReact-ive props in childModules
-	// BUT : That should be only executed on very special cases : when the user choose to extend the def after having registered a childModule. Things should not be made that way
-	UIModule.prototype.execBindingQueue = function(definition) {
+	UIModule.prototype.execBindingQueue = function() {
 		this.bindingQueue.forEach(function(renderFunc, key) {
 			renderFunc.call(this);
 		}, this);
@@ -1157,7 +1071,7 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.firstRender = function(definition) {
+	UIModule.prototype.firstRender = function() {
 		// Shortcut to allow children instanciation of non-appended parents (using a selector is not applicable at instantiation step, due to DOM update latency)
 		(this.parentNodeDOMId && 
 				((this.parentNodeDOMId instanceof HTMLElement || this.parentNodeDOMId instanceof ShadowRoot)
@@ -1169,14 +1083,8 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.initGenericEvent = function(definition) {
+	UIModule.prototype.initGenericEvent = function() {
 		this.genericEvent();
-		// generic event may be : this.createEvent('action'); triggered by any individual event among the -whole- set of events the module may trigger
-		// CAUTION : only end-heriting object MAY call initGenericEvent in the constructor.
-		// The other classes (one level uppon this abstract class and upper) may define a default method,
-		// but would risk an init race failure when calling (calling to soon) the method from their constructor
-		// intermediate- (two levels uppon this abstract class) & end- classes should then call super.initGenericEvent()
-		// before connecting their own events to the generic event
 	}
 	
 	/**
@@ -1338,7 +1246,6 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.isEntirelyNull = function(obj) {
 		for(var prop in obj) {
-			// obj.hasOwnProperty(prop) && 
 			if (obj[prop] !== null)
 				return false;
 		};
@@ -1349,10 +1256,8 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.isCalledFromFactory = function() {
-//		console.log(arguments);
 		var args = null,
 			bool = (arguments.length === 1 && (args = Array.prototype.slice.call(arguments[0])).length && typeof args[0].sections !== 'undefined');
-//		console.log(args);
 		return args;
 	}
 	
