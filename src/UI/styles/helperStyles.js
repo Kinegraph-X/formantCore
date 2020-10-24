@@ -16,7 +16,7 @@ var styleDef = function() {
 	// If style node not already injected : the style node has the same class and id as the first defined class (?)
 	if (document.querySelector('.' + uniqueID + '_' + def.className) === null) {
 		
-		def.sWrapper = StylesheetWrapper(context).create(null, [
+		def.sWrapper = new StylesheetWrapper(null, [
 			{
 				id : uniqueID + '_' + def.className
 			}

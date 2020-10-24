@@ -2,7 +2,7 @@
  * @Singletons : Core Object store
  */
 //var appConstants = require('src/appLauncher/appLauncher')(factoryGlobalContext).getInstance();
-var exports = {};
+var exportedObjects = {};
 
 /**
  * @constructor ValueObject
@@ -12,7 +12,7 @@ var ValueObject = function(defObj, isSpecial) {
 	this.set.apply(this, arguments);
 }
 ValueObject.prototype.objectType = 'ValueObject';
-exports.ValueObject = ValueObject;
+exportedObjects.ValueObject = ValueObject;
 Object.defineProperty(ValueObject.prototype, 'model', {value : null});			// virtual
 Object.defineProperty(ValueObject.prototype, 'get',{
 	value : function() {}
@@ -53,26 +53,16 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 		var objectType = Object.getPrototypeOf(this).objectType;
 
 		for (let p in def) {
-//			if (typeof this[p] === 'undefined' && objectType !== 'States' && objectType !== 'Props')
-//				this.model[p] = null;
 
-			if (isSpecial === 'hostOnly') {
-				if (p === 'host' && !def[p].host)
-					this[p] = new SingleLevelComponentDefModel(def[p]);
-			}
-			else if (isSpecial === 'rootOnly')
+			if (isSpecial === 'rootOnly')
 				this[p] = def[p];
-			else if (isSpecial === 'isQuery')
-				this[p] = new ReactivityQueryModel(def[p]);
-			else if (isSpecial === 'isSubscription')
-				this[p] = new EventSubscriptionModel(def[p]);
 			else {
 				const n = p + 'Model';
-				if (n in exports) {
+				if (n in exportedObjects) {
 					if (Array.isArray(def[p])) {
 //						this[p] = [];
 						for(let i = 0, l = def[p].length; i < l; i++) {
-							this[p].push(new exports[n](def[p][i], isSpecial));
+							this[p].push(new exportedObjects[n](def[p][i], isSpecial));
 						}
 					}
 					else if (def[p] && def[p].host)
@@ -80,7 +70,7 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 					else if (def[p] && def[p].type === 'ComponentList')
 						this[p] = new ComponentListDefModel(def[p], isSpecial);
 					else if (def[p] !== null)
-						this[p] = new exports[n](def[p], isSpecial);
+						this[p] = new exportedObjects[n](def[p], isSpecial);
 				}
 				else
 					this[p] = def[p];
@@ -100,7 +90,7 @@ var OptionsListModel = function() {
 	ValueObject.apply(this, arguments);
 }
 OptionsListModel.prototype = Object.create(ValueObject.prototype);
-exports.OptionsListModel = OptionsListModel
+exportedObjects.OptionsListModel = OptionsListModel
 Object.defineProperty(OptionsListModel.prototype, 'objectType', {value :  'AttributesList'});
 
 
@@ -118,7 +108,7 @@ var KeyboardHotkeysModel = function() {
 	ValueObject.apply(this, arguments);
 };
 KeyboardHotkeysModel.prototype = Object.create(ValueObject.prototype);
-exports.KeyboardHotkeysModel = KeyboardHotkeysModel;
+exportedObjects.KeyboardHotkeysModel = KeyboardHotkeysModel;
 Object.defineProperty(KeyboardHotkeysModel.prototype, 'objectType', {value : 'KeyboardHotkeys'});
 
 
@@ -131,14 +121,24 @@ Object.defineProperty(KeyboardHotkeysModel.prototype, 'objectType', {value : 'Ke
  * @extends ValueObject
  */
 var AttributeModel = function(obj) {
-	var model, key = Object.keys(obj)[0];;
+	var model, key = typeof obj === 'string' ? obj : Object.keys(obj)[0];
 	if (model = dictionary.solveFromDictionary('attributes', key))
 		Object.assign(this, model);
 	this[key] = obj[key];
 }
 AttributeModel.prototype = Object.create(ValueObject.prototype);
-exports.AttributeModel = AttributeModel
+exportedObjects.AttributeModel = AttributeModel
 Object.defineProperty(AttributeModel.prototype, 'objectType', {value :  'Attribute'});
+Object.defineProperty(AttributeModel.prototype, 'getName', {
+	value :  function() {
+		for(let name in this)
+			return name; 
+}});
+Object.defineProperty(AttributeModel.prototype, 'getValue', {
+	value :  function() {
+		for(let name in this)
+			 return this[name]; 
+}});
 
 
 /**
@@ -146,14 +146,16 @@ Object.defineProperty(AttributeModel.prototype, 'objectType', {value :  'Attribu
  * @extends ValueObject
  */
 var StateModel = function(obj) {
-	var model, key = Object.keys(obj)[0];;
+	var model, key = Object.keys(obj)[0];
 	if (model = dictionary.solveFromDictionary('states', key))
 		Object.assign(this, model);
 	this[key] = obj[key];
 };
 StateModel.prototype = Object.create(ValueObject.prototype);
-exports.StateModel = StateModel;
+exportedObjects.StateModel = StateModel;
 Object.defineProperty(StateModel.prototype, 'objectType', {value : 'States'});
+Object.defineProperty(StateModel.prototype, 'getName', Object.getOwnPropertyDescriptor(AttributeModel.prototype, 'getName'));
+Object.defineProperty(StateModel.prototype, 'getValue', Object.getOwnPropertyDescriptor(AttributeModel.prototype, 'getValue'));
 
 
 /**
@@ -167,8 +169,10 @@ var PropModel = function(obj) {
 	this[key] = obj[key];
 };
 PropModel.prototype = Object.create(ValueObject.prototype);
-exports.PropModel = PropModel;
+exportedObjects.PropModel = PropModel;
 Object.defineProperty(PropModel.prototype, 'objectType', {value : 'Props'});
+Object.defineProperty(PropModel.prototype, 'getName', Object.getOwnPropertyDescriptor(AttributeModel.prototype, 'getName'));
+Object.defineProperty(PropModel.prototype, 'getValue', Object.getOwnPropertyDescriptor(AttributeModel.prototype, 'getValue'));
 
 
 
@@ -177,19 +181,29 @@ Object.defineProperty(PropModel.prototype, 'objectType', {value : 'Props'});
  * @constructor ReactivityQuery
  * @extends ValueObject
  */
-var ReactivityQueryModel = function(defObj) {
+var ReactivityQueryModel = function() {
 	Object.assign(this, {
+		cbOnly : false,							// Boolean
 		from : null,							// String
+		to : null,								// String
 		obj : null,								// Object [HTMLElement, Stream]
 		filter : null,							// function (GlorifiedPureFunction ;)
 		map : null,								// function (GlorifiedPureFunction ;)
-		subscribe : null						// function CallBack
+		subscribe : null,						// function CallBack
+		inverseTransform : null					// function CallBack
 	});
-	ValueObject.apply(this, [defObj]);
+	ValueObject.apply(this, arguments);
 }
 ReactivityQueryModel.prototype = Object.create(ValueObject.prototype);
-exports.ReactivityQueryModel = ReactivityQueryModel;
+exportedObjects.ReactivityQueryModel = ReactivityQueryModel;
 Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'ReactivityQuery'});
+Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
+	value : function(stream, queriedOrQueryingObj) {
+		stream.subscribe(this.cbOnly ? this.subscribe.bind(queriedOrQueryingObj) : (queriedOrQueryingObj.streams[this.to] || this.subscribe.bind(queriedOrQueryingObj)), 'value')
+			.filter(this.filter)
+			.map(this.map)
+			.reverse(this.inverseTransform);
+}});
 
 
 
@@ -197,14 +211,15 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'Re
  * @constructor EventSubscription
  * @extends ValueObject
  */
-var EventSubscriptionModel = function(defObj) {
+var EventSubscriptionModel = function() {
 	Object.assign(this, {
-		subscribe : null							// function CallBack
+		on : null,								// String
+		subscribe : null						// function CallBack
 	});
-	ValueObject.apply(this, [defObj]);
+	ValueObject.apply(this, arguments);
 }
 EventSubscriptionModel.prototype = Object.create(ValueObject.prototype);
-exports.EventSubscriptionModel = EventSubscriptionModel;
+exportedObjects.EventSubscriptionModel = EventSubscriptionModel;
 Object.defineProperty(EventSubscriptionModel.prototype, 'objectType', {value : 'EventSubscription'});
 
 
@@ -236,6 +251,10 @@ var SingleLevelComponentDefModel = function(initObj, isSpecial) {
 		subscribeOnChild : [],					// Array [ReactivityQuery]
 		keyboardSettings : []					// Array [KeyboardHotkeys]
 	});
+	
+	// Object.getPrototypeOf(Object.getPrototypeOf(this.states)) === Array.prototype
+	// typeof this.states.copyWithin === 'function'; // ==> true
+	
 	// shorthand to create defs with just a "type", maybe an attributesList, but only the first props in the model
 	if (initObj !== 'bare') {
 		this.init();
@@ -245,7 +264,7 @@ var SingleLevelComponentDefModel = function(initObj, isSpecial) {
 		this.init();
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
-exports.SingleLevelComponentDefModel = SingleLevelComponentDefModel;
+exportedObjects.SingleLevelComponentDefModel = SingleLevelComponentDefModel;
 Object.defineProperty(SingleLevelComponentDefModel.prototype, 'objectType', {value : 'SComponentDef'});
 
 
@@ -265,7 +284,7 @@ var HierarchicalComponentDefModel = function() {
 	ValueObject.apply(this, arguments);
 }
 HierarchicalComponentDefModel.prototype = Object.create(ValueObject.prototype);
-exports.HierarchicalComponentDefModel = HierarchicalComponentDefModel;
+exportedObjects.HierarchicalComponentDefModel = HierarchicalComponentDefModel;
 Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {value : 'MComponentDef'});
 
 
@@ -285,7 +304,7 @@ var ComponentListDefModel = function() {
 	ValueObject.apply(this, arguments);
 }
 ComponentListDefModel.prototype = Object.create(ValueObject.prototype);
-exports.ComponentListDefModel = ComponentListDefModel;
+exportedObjects.ComponentListDefModel = ComponentListDefModel;
 Object.defineProperty(ComponentListDefModel.prototype, 'objectType', {value : 'ComponentListDef'});
 
 
@@ -334,9 +353,9 @@ ComponentDefCache.prototype.setUID = function(uniqueID, globalObj) {
  */
 var createComponentDef = function(defObj, useCache, isSpecial) {
 	var def, UID;
-
+//	console.log(useCache);
 	if (useCache) {
-		UID = exports.definitionsCache.isKnownUID(useCache);
+		UID = exportedObjects.definitionsCache.isKnownUID(useCache);
 	}
 	
 	if (!UID || typeof UID === 'string') {
@@ -349,19 +368,19 @@ var createComponentDef = function(defObj, useCache, isSpecial) {
 		if (typeof defObj === 'object' && defObj.host)
 			def = new HierarchicalComponentDefModel(defObj, isSpecial);
 		if (typeof defObj === 'object' && defObj.type === 'ComponentList')
-			def = new HierarchicalComponentDefModel({host : new ComponentListDefModel(defObj, isSpecial)}, isSpecial);
+			def = new HierarchicalComponentDefModel({host : new ComponentListDefModel(defObj, isSpecial)}, 'rootOnly');
 		else if (typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props))
 			def = new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, isSpecial)}, 'rootOnly');
 	}
 //	console.log(def);
 	if (typeof UID === 'string')
-		return exports.definitionsCache.setUID(UID, def);
+		return exportedObjects.definitionsCache.setUID(UID, def);
 	else if (typeof UID !== 'undefined')
 		return UID;
 	else
 		return def;
 };
-exports.createComponentDef = createComponentDef;
+exportedObjects.createComponentDef = createComponentDef;
 
 
 
@@ -378,14 +397,12 @@ var Dictionary = function() {
 Dictionary.prototype.solveFromDictionary = function(type, key) {
 		
 	if (!(this[type] && this[type][key])) {
-		if (this[type]) {
-			this[type][key] = {};
-			this[type][key][key] = null;
-		}
-		else {
+		if (!this[type]) {
 			this[type] = {};
-			this[type][key] = {};
-			this[type][key][key] = null;
+			if (!this[type][key]) {
+				this[type][key] = {};
+				this[type][key][key] = type === 'states' ? undefined : null;
+			}
 		}
 	}
 	
@@ -393,19 +410,23 @@ Dictionary.prototype.solveFromDictionary = function(type, key) {
 }
 var dictionary = new Dictionary();
 
-
-
-
+/**
+ * @finder function
+ */
+exportedObjects.findProp = function(value, item) {
+	for(let prop in item)
+		return prop === value;
+}
 
 
 /**
  * @aliases
  */
-Object.assign(exports, {
+Object.assign(exportedObjects, {
 	definitionsCache : new ComponentDefCache(),
-	attributesModel : AttributeModel,								// Object AttributesList
-	statesModel : StateModel,										// Object AttributesList
-	propModel : PropModel,											// Object AttributesList
+	attributesModel : AttributeModel,								// Object AttributeModel
+	statesModel : StateModel,										// Object StateModel
+	propsModel : PropModel,											// Object PropModel
 	optionsModel : OptionsListModel,								// Object OptionsList
 	// "host" key catch the special condition and should always be flat ("artificial" deepening of flat defs is handled in the factory function)
 	hostModel : SingleLevelComponentDefModel,						// Object SingleLevelComponentDef
@@ -418,4 +439,7 @@ Object.assign(exports, {
 	subscribeOnChildModel : EventSubscriptionModel,					// Object EventSubscriptionsList
 	createSimpleComponentDef : HierarchicalComponentDefModel		// Object HierarchicalComponentDef
 });
-module.exports = exports;
+
+//console.log(exportedObjects.definitionsCache);
+
+module.exports = exportedObjects;

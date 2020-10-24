@@ -35,7 +35,8 @@ var classConstructor = function() {
 		options.UIDPrefix = (options.UIDPrefix.lastIndexOf('_') === options.UIDPrefix.length - 1) ? options.UIDPrefix : options.UIDPrefix + '_';
 		
 		// helper styles
-		require('src/UI/styles/helperStyles')(context).getInstance();
+//		require('src/UI/styles/helperStyles')(context).getInstance();
+		
 		// Validate init
 		Validate.options = {format: "flat"};
 		

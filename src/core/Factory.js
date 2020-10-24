@@ -2,7 +2,7 @@
  * @Singletons : Core factories
  */
 
-//var TypeManager = require('src/core/TypeManager');
+var TypeManager = require('src/core/TypeManager');
 
 logLevelQuery = window.location.href.match(/(log_level=)(\d+)/); 					// Max log_level = 8 
 window.logLevel = Array.isArray(logLevelQuery) ? logLevelQuery[2] : undefined;
@@ -228,14 +228,15 @@ var Factory = (function() {
 		
 		this.objectType = 'CoreModule';
 		this._parent;
-		this.modules = {};
+		this.hostComponent;
+		this.modules = [];
 		this._eventHandlers = {};
 		this._one_eventHandlers = {};
 		this._identified_eventHandlers = {};
 		
 		this.enableEventSetters = enableEventSetters || false;
 		
-		this.subscribeOnChild;
+		this.subscribeOnChild = [];
 	};
 	
 	CoreModule.onEventPropertyDescriptor = {
@@ -280,69 +281,68 @@ var Factory = (function() {
 	/**
 	 * @param {object} candidateModule : an instance of another module
 	 */
-	CoreModule.prototype.registerModule = function(moduleName, candidateModule, moduleDefinition, selfDefinition) {
+	CoreModule.prototype.registerModule = function(moduleName, candidateModule, moduleDefinition) {
 //		console.log(moduleName, candidateModule);
 		if (!candidateModule)
 			return;
 		
-		for (var module in this.modules) {
-			if (this.modules[module] === candidateModule || module === moduleName) {
-				console.warn(this.objectType, 'registerModule : module already registered or a module already exists with this name')
+		if (moduleName in this.modules) {
+				console.warn(this.objectType, 'registerModule : a module already exists with this name')
 				return;
-			}
 		}
 		candidateModule.__in_tree_name = moduleName;
 		candidateModule._parent = this;
-		this.modules[moduleName] = this[moduleName] = candidateModule;
-		(!this[moduleName] && (this[moduleName] = this.modules[moduleName]));	// allow "protected" aliasing
-		(!this[moduleName] && console.error('ModuleName Aliasing error'));
+		this.modules.push({moduleName : candidateModule});
+//		(!this[moduleName] && (this[moduleName] = this.modules[moduleName]));	// allow "protected" aliasing
+//		(!this[moduleName] && console.error('ModuleName Aliasing error'));
 		
 		if (candidateModule instanceof HTMLElement)
-			return;
+			return candidateModule;
 		else {
-			var def = moduleDefinition.getHostDef();
 			// autoSubscribe to object own events
-			if (def.subscribeOnParent || (selfDefinition || this.def).subscribeOnChild || candidateModule.subscribeOnParent || this.subscribeOnChild)
-				this.handleModuleSubscriptions(moduleName);
-			this.onRegisterModule(moduleName, moduleDefinition, selfDefinition);
+			if (moduleDefinition.getHostDef().subscribeOnParent || candidateModule.subscribeOnParent || this.subscribeOnChild)
+				this.handleModuleSubscriptions(candidateModule, moduleDefinition);
+			this.onRegisterModule(candidateModule, moduleDefinition);
 		}
+		
+		return candidateModule;
 	}
 	
-	CoreModule.prototype.handleModuleSubscriptions = function(moduleName) {
-		var candidateModule = this[moduleName],
+	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule, moduleDefinition) {
+//		var candidateModule = this[moduleName];
+		// A ComponentList may meet the case : 2 cases :
+		//		- subscribeOnChild : it's been registered as a child of a component thas requires an event hook on his children
+		// 			but the actual children are the chidren of the ComponentList (registered on the right _parent, i.e. one level up, but only after the ComponentList)
+		//		- subscribeOnParent : that's not allowed : only the host of a component may subscribe on parent
+		if (candidateModule.objectType === 'ComponentList')
+			return;
+		
+		var evt,
 			handler,
 			desc,
-			subscriptionInDef = candidateModule.def.host ? candidateModule.def.host.subscribeOnParent : candidateModule.def.subscribeOnParent,
-			subscriptions;
-		for (let evt in (subscriptions = optionSetter(candidateModule.subscribeOnParent, subscriptionInDef))) {
+			subscriptionInDef = (moduleDefinition.getGroupHostDef() || moduleDefinition.getHostDef()).subscribeOnParent;
+		
+		subscriptionInDef.forEach(function(subscription, key) {
+			evt = subscription.on;
 			if (!(evt in this._eventHandlers))
 				console.warn(this.objectType, 'registers ' + candidateModule.objectType, ' : Registering a child module on a raw Component ("Make" function not already called, then no DOM/Event exists) => Automatic Bindings won\'t work');
-			handler = subscriptions[evt];
+			handler = subscription.subscribe;
 
 			if (evt in candidateModule._eventHandlers)
 				this.addEventListener(evt, handler); 	// setter for event subscribtion
-		}
-//		delete subscriptionInDef;
-		
-		// A ComponentList may meet the case : it's been registered as a child of a component thas requires an event hook on his children
-		// 		but the actual children are the chidren of the ComponentList (registered on the right _parent, i.e. one level up, but only after the ComponentList)
-		if (candidateModule.objectType === 'ComponentList')
-			return;
-//		console.log(moduleName, candidateModule);
-		subscriptionInDef = this.def.subscribeOnChild;
-		for (let evt in (subscriptions = optionSetter(this.subscribeOnChild, subscriptionInDef))) {
-			if (!candidateModule['on' + evt] && !(evt in candidateModule._eventHandlers)) // DOM events are allowed to be handled by delegation
-				console.warn(this.objectType, 'registers on event ' + evt + ' ' + candidateModule.objectType, ' : unknown event on child when Registering a child module => Automatic Bindings won\'t work');
+		}, this);
 
-			handler = subscriptionInDef[evt];
+		this.subscribeOnChild.forEach(function(subscription, key) {
+			evt = subscription.on;
+
+			handler = subscription.subscribe;
 			if (evt in candidateModule._eventHandlers)
-				candidateModule.addEventListener(evt, handler.bind(this)); 	// setter for event subscribtion
+				candidateModule.addEventListener(evt, handler); 	// setter for event subscribtion
 			else if ('on' + evt in candidateModule.hostElem)
-				candidateModule.hostElem['on' + evt] = handler.bind(this); 	// setter for delegated native event subscribtion
-//			console.log(candidateModule['hostElem']['on' + evt], candidateModule['on' + evt], this.hostElem.nodeName, 'registers on event ' + evt + ' ' + candidateModule.hostElem.nodeName);
-//			console.log(evt, desc, desc.get);
-		}
-//		delete subscriptionInDef;
+				candidateModule.hostElem['on' + evt] = handler; 	// setter for delegated native event subscribtion
+			else
+				console.warn(this.objectType, 'registers on event ' + evt + ' on his child : ' + candidateModule.objectType, ' : unknown event on child when Registering a child module => Automatic Bindings won\'t work');
+		}, this);
 	}
 	
 	
@@ -778,14 +778,18 @@ var Factory = (function() {
 	var UIModule = function(definition, parentNodeDOMId, automakeable, childrenToAdd, targetSlot) {
 		this.raw = true;
 		
-		this.reactOnParent;
-		this.reactOnSelf;
+		this.reactOnParent = [];
+		this.reactOnSelf = [];
+		
+		// TODO : this.attributes IS an Array
+		this.attributes = [];
 		
 		this.parentDOMNode;
 		this.hostElem;
 		this.rootElem;
 		this.hoverElem;
-		this.slots = {};
+		this.defaultSlot;
+		this.slots;
 		
 		this.DOMRenderQueue = [];
 		this.bindingQueue = [];
@@ -800,12 +804,15 @@ var Factory = (function() {
 		DependancyModule.call(this);
 		this.objectType = 'UIModule';
 
-		(typeof targetSlot === 'number' && (this.slots['default'] = (this.rootElem || this.hostElem).children[targetSlot]));
+		(typeof targetSlot === 'number' && (this.defaultSlot = (this.rootElem || this.hostElem).children[targetSlot]));
 		
 		(definition && this.immediateInit.apply(this, arguments));
 		(automakeable && this.raw && this.Make.apply(this, arguments));
 	};
 
+	/**
+	 * HOOKS
+	 */
 	UIModule.prototype = Object.assign(Object.create(DependancyModule.prototype), {
 		objectType : 'UIModule',
 		constructor : UIModule,
@@ -834,10 +841,11 @@ var Factory = (function() {
 	/**
 	 * @extends CoreModule (not virtual)
 	 */
-	UIModule.prototype.makeAndRegisterModule = function(moduleName, candidateModule, moduleDefinition, selfDefinition) {
+	UIModule.prototype.makeAndRegisterModule = function(moduleName, candidateModule, moduleDefinition) {
 		if (candidateModule.raw)
 			candidateModule.Make(moduleDefinition);
-		this.registerModule(moduleName, candidateModule, moduleDefinition, selfDefinition);
+		this.registerModule(moduleName, candidateModule, moduleDefinition);
+		return candidateModule;
 	}
 	
 	/**
@@ -904,13 +912,15 @@ var Factory = (function() {
 			console.error('UIModule : Merging Component\'s definition with default failed : no def found');
 			return;
 		}
-		else if (!definition)
-			definition = {host : null};
 
 		for(var prop in defaultDef.host) {
-			if (definition.host[prop] === null)
+			if (definition.host[prop] === null || !definition.host[prop].length)
 				definition.host[prop] = defaultDef.host[prop];
 		}
+		definition.host['subscribeOnChild'].forEach(function(subscription) {
+			this.subscribeOnChild.push(new TypeManager.EventSubscriptionModel({on : subscription.on.slice(0), subscribe : subscription.subscribe.bind(this)}));
+//			this.subscribeOnChild.push(subscription);
+		}, this);
 
 		if (definition.subSections === null)
 			definition.subSections = defaultDef.subSections;
@@ -926,19 +936,14 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.compose = function(definition) {
+		// finalize DOM composition
 		if (this.childrenToAdd.length)
 			this.asyncAddChildren();
-
-		(!this.slots['default'] && (this.slots['default'] = (this.hostElem && (this.rootElem || this.hostElem).childNodes && (this.rootElem || this.hostElem).firstChild) || this.hostElem));
-
+		// define "slots" for DOM children fast access from child components
 		if (this.rootElem || this.hostElem) {
-			var defaultSlot = this.slots['default'];
+			(!this.defaultSlot && (this.defaultSlot = (this.rootElem || this.hostElem).firstChild) || this.hostElem);
 			this.slots = (this.rootElem || this.hostElem).childNodes;
-			this.slots['default'] = defaultSlot;
 		}
-		
-		// DEBUG : reflect default slot on def (currently only for debug purpose)
-		(this.slots['default'] && !(definition.getHostDef().host) && (definition.getHostDef().defaultSlot = this.slots['default']));
 	}
 	
 	UIModule.prototype.registerEvents = function(definition) {
@@ -977,31 +982,19 @@ var Factory = (function() {
 			if (!(def = renderFunc.call(this, componentDef)))
 				return;
 			
-			// DEBUG
-			(!(definition.children) && (definition.children = []));
-			
-			if (def.wrapper) {
+			if (def.wrapper)
 				(this.rootElem || this.hostElem).appendChild(def.wrapper);
-				// DEBUG
-				definition.children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : def.wrapper.nodeName});
-			}
 			if (def.members && def.members.length) {
 				if (def.wrapper) {
-					// DEBUG
-					(!(definition.children[this.def.children.length - 1].children) && (definition.children[definition.children.length - 1].children = []));
 					elem = this.rootElem ? this.rootElem.lastChild : this.hostElem.lastChild;
 					def.members.forEach(function(member, k) {
 						elem.appendChild(member);
-						// DEBUG
-						definition.children[definition.children.length - 1].children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : member.nodeName});
 					}, this);
 				}
 				else {
 					elem = this.rootElem ? this.rootElem : this.hostElem;
 					def.members.forEach(function(member, k) {
 						elem.appendChild(member);
-						// DEBUG
-						definition.children.push({hasAdditionalPropsAndCb : 'addedByDecorator', nodeName : member.nodeName});
 					}, this);
 				}
 			}
@@ -1027,25 +1020,22 @@ var Factory = (function() {
 		}
 		
 		this.childrenToAdd.forEach(function(childDef) {
+			// it's not allowed to add "raw" children
 			if (childDef.module.raw || (oneShot && childDef !== oneShot))
-				return true;	// allow another method to add the "raw" children (don't delete them, but don't make them reactive for now : they don't have any DOM)
+				return;
 
 			name = this.maintainUniqueNames(names, childDef.module.objectType);
 			
 			// register subModule
 			this.registerModule(name, childDef.module);
 			
-			// bind requested events subModule
+			// bind requested self events subModule TODO : what's that ? is it really usefull ?
 			for (let eventName in childDef.eventBinding) {
 				let lowerCaseEventName = eventName.toLowerCase();
-				if (!childDef.module.hasOwnProperty('on' + lowerCaseEventName))
+				if (!(lowerCaseEventName in childDef.module._eventListeners))
 					continue;
-				childDef.module['on' + lowerCaseEventName] = childDef.eventBinding[eventName];
-				// DEBUG
-				(!definition.host.subscribeOnChild && (definition.host.subscribeOnChild = []));
-				definition.host.subscribeOnChild.push('function ' + childDef.eventBinding[eventName].name + ' <== ' + childDef.module.objectType + ' : ' + eventName);
+				childDef.module.addEventListener(lowerCaseEventName, childDef.eventBinding[eventName]);
 			}
-//			return false;
 		}, this);
 	}
 	
@@ -1232,13 +1222,7 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.safeMerge = function(target, source) {
-		if (!source || !target)
-			return;
-		for(var prop in source) {
-			if ((!(prop in target) || target[prop] === null || this.isEntirelyNull(target[prop])) && (typeof source[prop] === 'object' && !this.isEntirelyNull(source[prop]))) {
-				target[prop] = source[prop];
-			}
-		};
+		return [].concat(source, target);
 	}
 	
 	/**
@@ -1517,7 +1501,7 @@ var Factory = (function() {
 		
 		var desc = Object.getOwnPropertyDescriptor(reflectedHost, prop);
 		
-		if (!desc.get && desc.writable)
+		if (!desc || (!desc.get && desc.writable))
 			Object.defineProperty(reflectedHost, prop, Object.getOwnPropertyDescriptor(this, 'value'));
 		
 		else if (reflectedHost.streams && reflectedHost.streams[prop]) {
@@ -1594,7 +1578,7 @@ var Factory = (function() {
 		this.subscriber = {
 				prop : typeof subscriberProp === 'string' ? subscriberProp : null,
 				obj : typeof subscriberObjOrHandler === 'object' ? subscriberObjOrHandler : null,
-				cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function() {return this._value},
+				cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function() {return this._stream._value},
 				inverseTransform : inverseTransform || function(value) {return value;},
 				_subscription : this,
 				_stream : parent
