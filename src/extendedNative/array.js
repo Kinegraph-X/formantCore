@@ -190,10 +190,20 @@ Object.defineProperty(ArrayBuffer.prototype, 'append', {
 );
 
 
-Object.defineProperty(Array.prototype, 'findObjectByKey', {
+Object.defineProperty(Array.prototype, 'hasObjectByKey', {
 	value : function(key) {
 		for (let i = 0, l = this.length; i < l; i++) {
 			if (typeof this[i][key] !== 'undefined')
+				return true;
+		}
+		return false;
+	}
+});
+
+Object.defineProperty(Array.prototype, 'findObjectByKey', {
+	value : function(key) {
+		for (let i = 0, l = this.length; i < l; i++) {
+			if (typeof this[i][key] !== 'undefined' || this[i][key] === undefined)
 				return this[i];
 		}
 		return false;
