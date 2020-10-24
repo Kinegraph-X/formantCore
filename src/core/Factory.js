@@ -302,6 +302,9 @@ var Factory = (function() {
 			// autoSubscribe to object own events
 			if (moduleDefinition.getHostDef().subscribeOnParent || candidateModule.subscribeOnParent || this.subscribeOnChild)
 				this.handleModuleSubscriptions(candidateModule, moduleDefinition);
+			
+			// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
+			this.handleSlotDefinitionRelativeToParent(candidateModule, moduleDefinition);
 			this.onRegisterModule(candidateModule, moduleDefinition);
 		}
 		
@@ -824,11 +827,15 @@ var Factory = (function() {
 		completeDOM : function() {},					// virtual
 		basicEarlyDOMExtend : function() {},			// virtual
 		basicLateDOMExtend : function() {},				// virtual
+		asyncAddChild : function() {},					// virtual
 		afterCreateDOM : function() {},					// virtual
 		setDOMTypes : function() {},					// virtual
 		setArias : function() {},						// virtual
 		beforeRegisterEvents : function() {},			// virtual
 		createObservables : function() {},				// virtual
+		initGenericEvent : function() {					// virtual		// this is implemented by the genericComponent : and is of no use here
+//			return this.genericEvent();
+		},
 		registerClickEvents : function() {},			// virtual
 		registerLearnEvents : function() {},			// virtual
 		registerKeyboardEvents : function() {},			// virtual
@@ -871,10 +878,9 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.init = function() {
 		this.create.apply(this, arguments);
-		this.compose.apply(this, arguments);
 		this.registerEvents.apply(this, arguments);
 		
-		this.resizeAll.apply(this, arguments);
+//		this.resizeAll.apply(this, arguments);
 		this.firstRender.apply(this, arguments);
 		
 		this.execBindingQueue.apply(this, arguments);
@@ -897,6 +903,7 @@ var Factory = (function() {
 		this.basicEarlyDOMExtend.apply(this, arguments);
 		this.renderDOMQueue.apply(this, arguments);
 		this.basicLateDOMExtend.apply(this, arguments);
+		this.compose.apply(this, arguments);
 		this.afterCreateDOM.apply(this, arguments);
 		this.setDOMTypes.apply(this, arguments);
 		this.setArias.apply(this, arguments);
@@ -909,7 +916,7 @@ var Factory = (function() {
 		if (!defaultDef)
 			return;
 		else if (!defaultDef && !definition) {
-			console.error('UIModule : Merging Component\'s definition with default failed : no def found');
+			console.error('UIModule : Merging Component\'s definition with default failed : neither a specific nor a default def found');
 			return;
 		}
 
@@ -935,7 +942,8 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.compose = function(definition) {
+	UIModule.prototype.compose = function() {
+		this.asyncAddChild();
 		// finalize DOM composition
 		if (this.childrenToAdd.length)
 			this.asyncAddChildren();
@@ -1000,14 +1008,7 @@ var Factory = (function() {
 			}
 		}, this);
 	}
-	/**
-	 * @abstract (Model to be overloaded)
-	 */
-	UIModule.prototype.asyncAddChild = function(candidateModule, forceAdd, eventBinding) {
-		forceAdd = forceAdd || false 
-		this.childrenToAdd.push({module : candidateModule, eventBinding : eventBinding});
-		(forceAdd && this.asyncAddChildren(this.childrenToAdd[this.childrenToAdd.length - 1]));
-	}
+
 	/**
 	 * @abstract
 	 */
@@ -1015,9 +1016,9 @@ var Factory = (function() {
 		
 		var name, names = {};
 		// prevent masking of already "incremented" subModule names
-		for (let moduleName in this.modules) {
-			(typeof names[this.modules[moduleName].objectType] === 'undefined' ? names[this.modules[moduleName].objectType] = 0 : ++names[this.modules[moduleName].objectType]);
-		}
+		this.modules.forEach(function(module) {
+			(typeof names[module.objectType] === 'undefined' ? names[module.objectType] = 0 : ++names[module.objectType])
+		});
 		
 		this.childrenToAdd.forEach(function(childDef) {
 			// it's not allowed to add "raw" children
@@ -1027,7 +1028,7 @@ var Factory = (function() {
 			name = this.maintainUniqueNames(names, childDef.module.objectType);
 			
 			// register subModule
-			this.registerModule(name, childDef.module);
+			this.makeAndRegisterModule(name, childDef.module);
 			
 			// bind requested self events subModule TODO : what's that ? is it really usefull ?
 			for (let eventName in childDef.eventBinding) {
@@ -1040,14 +1041,20 @@ var Factory = (function() {
 	}
 	
 	
+	/**
+	 * @abstract
+	 */
+	UIModule.prototype.handleSlotDefinitionRelativeToParent = function(candidateModule, def) {
+		candidateModule.targetSlot = (typeof def.targetSlot === 'number' ? this.slots[def.targetSlot] : candidateModule.targetSlot) || this.slots['default'];
+	}
 	
 	
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.execBindingQueue = function() {
+	UIModule.prototype.execBindingQueue = function(definition) {
 		this.bindingQueue.forEach(function(renderFunc, key) {
-			renderFunc.call(this);
+			renderFunc.call(this, definition);
 		}, this);
 	}
 	
@@ -1070,20 +1077,7 @@ var Factory = (function() {
 		
 		(this.parentDOMNode && this.hostElem && this.parentDOMNode.appendChild(this.hostElem));
 	}
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.initGenericEvent = function() {
-		this.genericEvent();
-	}
 	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.update = function() {
-		// code here //
-		this.trigger('update');
-	}
 	/**
 	 * @generic
 	 */
@@ -1099,164 +1093,12 @@ var Factory = (function() {
 //			}
 //		}, 64);
 	}
-	/**
-	 * @generic
-	 */
-	UIModule.prototype.updateAll = function() {
-		this.update();
-		for (var i in self.modules) {
-				this.modules[i].update();
-		}
-	}
 	
-	UIModule.traverseHierarchy = function(comp) {
-		comp.cDef = {};
-		if (comp.objectType !== 'ComponentGroup') {
-			for (let prop in comp.def) {
-				this.getCleanDesc(prop, comp.def, comp.cDef);
-			}
-			comp.cDef = this.sortDesc(comp.cDef);
-		}
-//		console.log(comp);
-		if (Object.keys(comp.modules).length) {
-			comp.cDef.children = comp.def.children || [];
-			for (let name in comp.modules) {
-				comp.cDef.children.push(UIModule.traverseHierarchy(comp.modules[name]));
-			}
-		}
-		return comp.cDef;
-	}
-	UIModule.getCleanDesc = function(prop, obj, newObj) {
-//		if (!obj[newProp])
-//			obj[newProp] = {};
-		if (obj.hasOwnProperty(prop) && obj[prop] && obj[prop] !== null && obj[prop] != '') {
-
-			// Abstract the complex objects in the hierarchical despcription
-			if (obj[prop] instanceof Command)
-				newObj['Command'] = '[Object]';
-			else if (obj[prop] instanceof StylesheetWrapper || obj[prop].styleElem)
-				newObj['StylesheetWrapper'] = '[Object]';
-			else if ((prop === 'reactOnParent') && Object.keys(obj[prop]).length)
-				newObj['autoBindingOnParentStates'] = Object.keys(obj[prop]).map(function(item) {return item + ' <== ' + obj[prop][item].from});
-			else if ((prop === 'reactOnSelf') && Object.keys(obj[prop]).length)
-				newObj['autoBindingOnSelfStates'] = Object.keys(obj[prop]).map(function(item) {return item + ' ==> ' + obj[prop][item].subscribe.name});
-			else if (prop === 'subscribeOnParent' && Object.keys(obj[prop]).length)
-				newObj['autoBindingOnDescendantEvents'] = Object.keys(obj[prop]).map(function(item) {return item + ' ==> ' + obj[prop][item].name});
-			else if (prop === 'subscribeOnChild' && Object.keys(obj[prop]).length)
-				newObj['autoBindingOnChildAscendantEvents'] = obj[prop];
-			else if (prop === 'eventBinding' && Object.keys(obj[prop]).length)
-				newObj['autoBindingOnDescendantEvents'] = Object.keys(obj[prop]);
-			else if (prop === 'states' && Object.keys(obj[prop]).length)
-				newObj['declaredObservableStates'] = Object.keys(obj[prop]);
-			// clean the elementDef
-			else if (prop === 'host' || prop === 'subSections' || prop === 'members' || prop === 'options' || !isNaN(parseInt(prop))) {
-				if (Object.keys(obj[prop]).length) {
-					newObj[prop] = {};
-					
-					for (let p in obj[prop]) {
-						this.getCleanDesc(p, obj[prop], newObj[prop]);
-					}
-					newObj[prop] = this.sortDesc(newObj[prop]);
-				}
-			}
-			else if (typeof obj[prop] === 'object' && obj[prop].nodeName) 		// prop === 'defaultSlot'
-				(prop === 'defaultSlot' && (newObj['slots[\'default\']'] = obj[prop].nodeName)) || (newObj['targetSlotOnParent'] = obj[prop].nodeName);
-			else if (!Object.keys(obj[prop]).length)
-				return;
-			else if (prop === 'type')
-				newObj['isAutoBuiltType'] = obj[prop];
-			else if (prop !== 'keyboardSettings')
-				newObj[prop] = obj[prop];
-		}
-	}
-	
-	UIModule.sortDesc = function(desc) {
-		var sampleDesc = {
-				"0" : "sample",
-				"1" : "sample",
-				"2" : "sample",
-				"3" : "sample",
-				"4" : "sample",
-				"5" : "sample",
-				"isAutoBuiltType": "sample",
-				"nodeName": "sample",
-				"templateNodeName": "sample",
-				"host" : "sample",
-				"declaredObservableStates": "sample",
-				"autoBindingOnParentStates" : "sample",
-				"autoBindingOnSelfStates" : "sample",
-				"autoBindingOnDescendantEvents" : "sample",
-				"autoBindingOnChildAscendantEvents" : "sample",
-				"subSections" : "sample",
-				"members" : "sample",
-				"id": "sample",
-				"title": "sample",
-				"label": "sample",
-				"name": "sample",
-				"options" : "sample",
-				"glyphNotvalid": "sample",
-				"glyphValid": "sample",
-				"glyphNotactive": "sample",
-				"glyphActive": "sample",
-				"glyphNotfocus": "sample",
-				"glyphFocus": "sample",
-				"StylesheetWrapper": "sample",
-				"slots['default']": "sample",
-				"targetSlotOnParent": "sample",
-				"children": "sample"
-			},
-			result = {};
-		
-		Object.keys(sampleDesc).forEach(function(prop) {
-			if (typeof desc[prop] !== 'undefined')
-				result[prop] = desc[prop]; 
-		});
-		return result;
-	}
 	
 	/**
 	 * HELPERS 
 	 */
-	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.safeMerge = function(target, source) {
-		return [].concat(source, target);
-	}
-	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.isEntirelyNull = function(obj) {
-		for(var prop in obj) {
-			if (obj[prop] !== null)
-				return false;
-		};
-		return true;
-	}
-	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.isCalledFromFactory = function() {
-		var args = null,
-			bool = (arguments.length === 1 && (args = Array.prototype.slice.call(arguments[0])).length && typeof args[0].sections !== 'undefined');
-		return args;
-	}
-	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.asyncCSSActiveState = function() {// helper (locks behavior as "always async", then command can be initialized before animation ends)
-		var self = this;
-		var asyncExec = new Promise(function(resolve, reject) {
-//			self.domElem.addClass('actionated');
-//			setTimeout(function() {
-//				self.domElem.removeClass('actionated');
-//			}, 64);
-		});
-	}
+
 	/**
 	 * @abstract
 	 * 		quite complicated way of maintaining uniqueness when naming the subModules :
@@ -1546,9 +1388,8 @@ var Factory = (function() {
 	}
 	
 	Stream.prototype.addSubscription = function(handlerOrHost, prop, inverseTransform) {
-		var subscription = new Subscription(handlerOrHost, prop, this, inverseTransform);
-		this.subscriptions.push(subscription);
-		return subscription;
+		this.subscriptions.push(new Subscription(handlerOrHost, prop, this, inverseTransform));
+		return this.subscriptions[this.subscriptions.length - 1];
 	}
 
 	Stream.prototype.unsubscribe = function(handler) {

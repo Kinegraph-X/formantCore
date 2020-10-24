@@ -1,7 +1,7 @@
 /**
  * @Singletons : Core Object store
  */
-//var appConstants = require('src/appLauncher/appLauncher')(factoryGlobalContext).getInstance();
+var appConstants = require('src/appLauncher/appLauncher');
 var exportedObjects = {};
 
 /**
@@ -199,6 +199,8 @@ exportedObjects.ReactivityQueryModel = ReactivityQueryModel;
 Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'ReactivityQuery'});
 Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 	value : function(stream, queriedOrQueryingObj) {
+		if (!stream)
+			return;
 		stream.subscribe(this.cbOnly ? this.subscribe.bind(queriedOrQueryingObj) : (queriedOrQueryingObj.streams[this.to] || this.subscribe.bind(queriedOrQueryingObj)), 'value')
 			.filter(this.filter)
 			.map(this.map)
@@ -317,7 +319,7 @@ Object.defineProperty(ComponentListDefModel.prototype, 'objectType', {value : 'C
  */
 var ComponentDefCache = function() {
 	this.knownIDs = {};
-//	this.UIDPrefix = appConstants.options.UIDPrefix;
+	this.UIDPrefix = appConstants.options.UIDPrefix;
 }
 ComponentDefCache.prototype = {};
 ComponentDefCache.prototype.getUID = function(uniqueID) {
@@ -413,9 +415,9 @@ var dictionary = new Dictionary();
 /**
  * @finder function
  */
-exportedObjects.findProp = function(value, item) {
+exportedObjects.findProp = function(name, item) {
 	for(let prop in item)
-		return prop === value;
+		return prop === name;
 }
 
 

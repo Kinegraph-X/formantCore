@@ -190,6 +190,16 @@ Object.defineProperty(ArrayBuffer.prototype, 'append', {
 );
 
 
+Object.defineProperty(Array.prototype, 'findObjectByKey', {
+	value : function(key) {
+		for (let i = 0, l = this.length; i < l; i++) {
+			if (typeof this[i][key] !== 'undefined')
+				return this[i];
+		}
+		return false;
+	}
+});
+
 
 sortObject = function (obj) {
 	var arr = Object.keys(obj).sort(), newObj = {};
