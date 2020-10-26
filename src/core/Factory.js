@@ -190,42 +190,6 @@ var Factory = (function() {
 	 */
 	var CoreModule = function(def, containerID, automakeable, enableEventSetters) {
 		
-		// PERF OPTIMIZATION
-//		Object.defineProperty(this, 'objectType', {
-//			enumerable : false,
-//			writable : true,
-//			configurable : true,
-//			value : 'CoreModule'
-//		});
-//		
-//		Object.defineProperty(this, 'modules', {
-//			enumerable : false,
-//			writable : true,
-//			configurable : true,
-//			value : {}
-//		});
-//		
-//		Object.defineProperty(this, '_eventHandlers', {
-//			enumerable : false,
-//			writable : false,
-//			configurable : true,
-//			value : {}
-//		});
-//		
-//		Object.defineProperty(this, '_one_eventHandlers', {
-//			enumerable : false,
-//			writable : false,
-//			configurable : true,
-//			value : {}
-//		});
-//		
-//		Object.defineProperty(this, '_identified_eventHandlers', {
-//			enumerable : false,
-//			writable : false,
-//			configurable : true,
-//			value : {}
-//		});
-		
 		this.objectType = 'CoreModule';
 		this._parent;
 		this.hostComponent;
@@ -239,30 +203,6 @@ var Factory = (function() {
 		this.subscribeOnChild = [];
 	};
 	
-	CoreModule.onEventPropertyDescriptor = {
-			set : function(handler) {
-				if (typeof handler !== 'function') {
-					console.warn('Bad eventHandler assigned : handler type is ' + typeof handler + ' instead of "function or object"', 'EventType ' + eventType);
-					return;
-				}
-//				if (this._eventHandlers[eventType].indexOf(handler) === -1)
-					this._eventHandlers[eventType].push(handler);
-			}
-		}
-		
-	CoreModule.oneEventPropertyDescriptor = {
-		set : function(handler) {
-			if (typeof handler === 'function') {
-//					if (this._one_eventHandlers[eventType].indexOf(handler) === -1)
-					this._one_eventHandlers[eventType].push(handler);
-			}
-			else if (typeof handler === 'object' && typeof handler['f'] === 'function' && ['number', 'string'].indexOf(typeof handler['id']) !== -1) {
-//					if (this._one_eventHandlers[eventType].indexOf(handler) === -1)
-					this._identified_eventHandlers[eventType].push(handler);
-			}
-		}
-	}
-	
 	// Theses methods should be implemented further down in the inheritance chain : 
 	// 		asynchronously adding children : progressive creation in UIModule implies managing a "raw" status on the component
 	CoreModule.prototype.asyncAddChild = function(child) {} 						// Virtual
@@ -271,26 +211,16 @@ var Factory = (function() {
 	CoreModule.prototype.onRegisterModule = function() {} 							// Virtual
 	
 	/**
-	 * HELPER
-	 * should be used enywhere it is usefull : shall enforce "function inlining" at compile time
-	 */
-	CoreModule.getSmoothedDef = function(def) {
-		return this.def.host ? this.def.host : this.def;
-	}
-	
-	/**
 	 * @param {object} candidateModule : an instance of another module
 	 */
 	CoreModule.prototype.registerModule = function(moduleName, candidateModule, moduleDefinition) {
-//		console.log(moduleName, candidateModule);
+
 		if (!candidateModule)
 			return;
 
 		candidateModule.__in_tree_name = moduleName;
 		candidateModule._parent = this;
-		this.modules.push({moduleName : candidateModule});
-//		(!this[moduleName] && (this[moduleName] = this.modules[moduleName]));	// allow "protected" aliasing
-//		(!this[moduleName] && console.error('ModuleName Aliasing error'));
+		this.modules.push(candidateModule);
 		
 		if (candidateModule instanceof HTMLElement)
 			return candidateModule;
@@ -332,7 +262,7 @@ var Factory = (function() {
 			if (evt in candidateModule._eventHandlers)
 				this.addEventListener(evt, handler); 	// setter for event subscribtion
 		}, this);
-//		console.log(candidateModule);
+
 		this.subscribeOnChild.forEach(function(subscription, key) {
 			evt = subscription.on;
 
@@ -389,19 +319,6 @@ var Factory = (function() {
 		this._eventHandlers[eventType] = []; // ['forcejQueryExtension']
 		this._one_eventHandlers[eventType] = []; // ['forcejQueryExtension']
 		this._identified_eventHandlers[eventType] = []; // ['forcejQueryExtension'] 	// identified event handlers are meant to be disposable
-//		
-		/*
-		 * THIS A HUGE PERF BOTTLENECK : potential optimization would be caching the propertyDescriptor 
-		 * 		As implemented and commented : HUGE benchmark improvement, although there are still 2ms to gain for real effectiveness in long lists...
-		 * 		Reserve this usage to "needed" cases. TODO : how ?
-		 */
-//		if (this.enableEventSetters) {
-//			/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
-//			Object.defineProperty(this, 'on' + eventType, CoreModule.onEventPropertyDescriptor);
-//
-//			/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
-//			Object.defineProperty(this, 'one_' + eventType, CoreModule.oneEventPropertyDescriptor);
-//		}
 	}
 
 	/**
@@ -799,9 +716,6 @@ var Factory = (function() {
 		this.DOMRenderQueue = [];
 		this.bindingQueue = [];
 		
-//		this.definition = this.mergeWithComponentDefaultDef(definition, this.createDefaultDef()) || definition;
-//		console.log(this.definition);
-		
 		this.mergeWithComponentDefaultDef(definition, this.createDefaultDef());
 		
 		this.parentNodeDOMId = parentNodeDOMId;
@@ -854,9 +768,7 @@ var Factory = (function() {
 	UIModule.prototype.makeAndRegisterModule = function(moduleName, candidateModule, moduleDefinition) {
 		if (candidateModule.raw)
 			candidateModule.Make(moduleDefinition);
-//			candidateModule.Make(candidateModule.definition);
 		this.registerModule(moduleName, candidateModule, moduleDefinition);
-//		this.registerModule(moduleName, candidateModule, candidateModule.definition);
 		return candidateModule;
 	}
 	
@@ -919,7 +831,6 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.mergeWithComponentDefaultDef = function(definition, defaultDef) {
-//		console.log(definition);
 		
 		if (!defaultDef && !definition) {
 			console.error('UIModule : Merging Component\'s definition with default failed : neither a specific nor a default def found');
@@ -929,39 +840,9 @@ var Factory = (function() {
 			return;
 		else if (!defaultDef)
 			defaultDef = TypeManager.createComponentDef({host : {}}, 'defaultDef');
-		
-		// defaultDef = new TypeManager.HierarchicalComponentDefModel({host : new TypeManager.SingleLevelComponentDefModel({})}, 'defaultDef', 'rootOnly');
 
 		var defaultHostDef = defaultDef.getHostDef(),
 		hostDef = definition.getHostDef();
-		
-//		var def,
-//			UID = this.__proto__.objectType
-//					+ '_' + hostDef.nodeName
-//					+ '_' + hostDef.attributes.reduce((accu, val) => accu + '_' + val.getName(), '')
-//					+ '_' + hostDef.reactOnParent.reduce((accu, val) => accu + '_' + val.from, ''),
-//			cache = TypeManager.getUID(UID);
-//		
-//		
-//		if (typeof cache === 'string')
-//			def = TypeManager.createComponentDef(new TypeManager.SingleLevelComponentDefModel(hostDef, undefined, defaultHostDef), UID, 'rootOnly');
-//		else
-//			def = cache;
-//		console.clear();
-//		return TypeManager.createComponentDef({host : new TypeManager.SingleLevelComponentDefModel(hostDef, undefined, defaultHostDef)}, null, 'rootOnly');
-			
-		
-//		console.log(this.__proto__.objectType, UID);
-		
-//		if (!definition.subSections.length)
-//			definition.subSections = defaultDef.subSections;
-//		if (!definition.members.length)
-//			definition.members = defaultDef.members;
-//		if (!definition.lists.length)
-//			definition.lists = defaultDef.lists;
-//		if (definition.options === null)
-//			definition.options = defaultDef.options;
-		
 		
 		for(var prop in defaultHostDef) {
 			// TODO : try to precisely avoid to keep references on reactOnParent, reactOnSelf, subscribeOnChild, subscribeOnParent
@@ -973,8 +854,6 @@ var Factory = (function() {
 			else if (hostDef[prop] === null)
 				hostDef[prop] = defaultHostDef[prop];
 		}
-//		console.log(defaultDef);
-//		console.log(this);
 	};
 	
 	/**
@@ -1185,10 +1064,8 @@ var Factory = (function() {
 		this.canAct = canAct;
 		this.undo = undo;
 		this.resetSiblings = false;
-//		this.createEvent('action');
-//		this.createEvent('actionrefused');
 	}
-//	Command.prototype = Object.create(CoreModule.prototype);
+
 	Command.prototype.objectType = 'Command';
 	Command.prototype.constructor = Command;
 	
@@ -1206,11 +1083,9 @@ var Factory = (function() {
 						function(queryResult) {
 							args.push(queryResult);
 							self.action.apply(self, args);
-//							self.trigger('action');
 							return queryResult;
 						},
 						function(queryResult) {
-//							self.trigger('actionrefused');
 							return queryResult;
 						}
 				);
@@ -1218,17 +1093,14 @@ var Factory = (function() {
 			else if (this.canActQuery) {
 				this.canActQuery = Promise.resolve(this.canActQuery);
 				this.action.apply(this, args);
-//				this.trigger('action');
 			}
 			else {
 				this.canActQuery = Promise.reject(this.canActQuery);
-//				this.trigger('actionrefused', ['canActQuery', this.canActQuery]);
 			}
 		}
 		return this.canActQuery;
 	}
-	
-//	Command.prototype.resetSiblings = false;
+
 
 	Command.__factory_name = 'Command';
 	
@@ -1255,31 +1127,6 @@ var Factory = (function() {
 		this.inverseTransform;
 		this.subscriptions = [];
 		
-		// by calling the "reflect" method, the property descriptor of the "value" prop may be reflected on another object
-		// (the perf optimization hasn't really any effect: the bottleneck comes from the "bind" method)
-//		var propertyDescriptor = {
-//				get : Stream.defaultPropertyDescriptor.get.bind(this),
-//				set : Stream.defaultPropertyDescriptor.set.bind(this),
-//				enumerable : true
-//		};
-//		Object.defineProperty(this, 'value', propertyDescriptor);
-//		Object.defineProperty(this, 'value', {
-//			get : function() {
-//				if (this.lazy) {
-//					if (typeof this.transform === 'function')
-//						this._value = this.transform(this.get());
-//					this.dirty = false;
-//				}
-//				
-//				return this.get();
-//			}.bind(this),
-//			
-//			set : function(value) {
-//				this.setAndUpdateConditional(value);
-//				this.set(value);
-//			}.bind(this),
-//			enumerable : true
-//		});
 		this._value;
 		this.value = typeof reflectedObj === 'object' ? reflectedObj[name] : value;
 		this.dirty;
@@ -1301,23 +1148,6 @@ var Factory = (function() {
 			this.set(value);
 		}
 	});
-//	Stream.defaultPropertyDescriptor = {
-//		get : function() {
-//			if (this.lazy) {
-//				if (typeof this.transform === 'function')
-//					this._value = this.transform(this.get());
-//				this.dirty = false;
-//			}
-//			
-//			return this.get();
-//		},//.bind(this),
-//		
-//		set : function(value) {
-//			this.setAndUpdateConditional(value);
-//			this.set(value);
-//		},//.bind(this),
-//		enumerable : true
-//	}
 
 	Stream.prototype.get = function() {
 		return this._value;
@@ -1486,7 +1316,6 @@ var Factory = (function() {
 		
 		this._stream = parent;
 		this._firstPass = true;
-//		Object.defineProperty(this, 'execute', Object.getOwnPropertyDescriptor(Subscription.prototype, 'execute')); // make immutable : DELETED for perf improvement...
 	}
 	
 	Subscription.prototype.subscribe = function(subscriberObjOrHandler, subscriberProp, inverseTransform) {
@@ -1534,11 +1363,9 @@ var Factory = (function() {
 	}
 	
 	Subscription.prototype.reverse = function(inverseTransform) {
-		if(typeof inverseTransform !== 'function') {
-//			if (typeof mapFunc === 'undefined')
-//				console.warn('Bad inverseTransform given on observable : inverseTransform type is ' + typeof inverseTransform + ' instead of "function"', 'StreamName ' + this._parent.name);
+		if(typeof inverseTransform !== 'function')
 			return this;
-		}
+
 		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark needed)
 		this.subscriber.inverseTransform = new Function('return (' + inverseTransform.toString() + ').apply(null, arguments);');
 		
@@ -1561,11 +1388,8 @@ var Factory = (function() {
 //				console.log('val', val);
 				
 //				console.log('subscriber', this.subscriber);
-				if (this.subscriber.obj !== null && this.subscriber.prop !== null) {
-//					console.log(this.subscriber.obj, this.subscriber.prop, val);
+				if (this.subscriber.obj !== null && this.subscriber.prop !== null)
 					this.subscriber.obj[this.subscriber.prop] = val;
-//					console.log('this.subscriber.obj[this.subscriber.prop]', this.subscriber.obj[this.subscriber.prop], this.subscriber.obj);
-				}
 				// second case shall only be reached if no prop is given : on a "reflected" subscription by a child component
 				else if (this.subscriber.obj && (desc = Object.getOwnPropertyDescriptor(this.subscriber.obj, 'value')) && typeof desc.set === 'function')
 					this.subscriber.obj.value = val;
@@ -1606,7 +1430,7 @@ var Factory = (function() {
 
 	WorkerInterface.prototype.postMessage = function(action, e) { 	// e.data = File Object (blob)
 		// syntax [(messageContent:any)arg0, (transferableObjectsArray:[transferable, transferable, etc.])arg1]
-//		console.log(e);
+
 		if (typeof e === 'undefined')
 			this.worker.postMessage.call(this.worker, [action]);
 		else if (e.data instanceof ArrayBuffer)
@@ -1641,9 +1465,6 @@ var Factory = (function() {
 	}
 
 	WorkerInterface.prototype.handleError = function(response) {
-//		var errorHandler = FactoryMaker.getSingletonInstance(this.factory.context, 'errorHandler'); // unusable here as factory context hasn't yet been initialized
-//		if (typeof errorHandler === 'undefined')
-//			return;
 		if (response.data.constructor !== Array) {
 			console.log([this.name + ' error generic', '']);
 			return;
@@ -1686,273 +1507,6 @@ var Factory = (function() {
 	}
 	
 	/**
-	 * A Factory to instanciate virtual-DOM element definitions
-	 */
-	var elementDef = function(type, title, nodeName, uniqueId, sWrapper, section, states, props, command, reactOnParent, reactOnSelf, children, targetSlot) {
-		
-		var def = {
-			type : type || null,					// String
-			nodeName : nodeName || null,			// String
-			id : uniqueId || null,					// String
-			sWrapper : sWrapper || null,			// Object : instanceof StylesheetWrapper
-			section : section || null,				// Number
-			title : title || null,					// String
-			states : (states && typeof states === 'object') ? iterateOnObject(states) : null,				// Object : plain		// enforce type (def.state MUST have un unchanged prototype) TODO: benchmark
-			props : (props && typeof props === 'object') ? iterateOnObject(props) : null,					// Object : plain
-			command : command || null,				// Object : instanceof Command
-			reactOnParent : reactOnParent || null,	// Object : plain
-			reactOnSelf : reactOnSelf || null,		// Object : plain
-			targetSlot : targetSlot || null,		// String
-			keyboardSettings : [{
-				ctrlKey : false,
-				shiftKey : false,
-				altKey : false,
-				keyCode : 0
-			}],
-			signed : 'elementDef'
-		};
-		
-		// allow "direct" instanciation : the user already knows all the params
-		if (type && typeof type === 'object') {
-			for (let param in type) {
-				def[param] = type[param];
-			} 
-			return def;
-		}
-		else
-			return def;
-	}
-//	);
-	// REMINDER : the DOM Element Constructor applies the whole elementDef based on the following test :
-	// if (typeof attributes[attr] === 'boolean' || (attributes[attr]  && attr in elem && ['type', 'nodeName', 'label'].indexOf(attr) === -1))
-	
-	
-	/**
-	 * A Factory to instanciate UI Modules definitions
-	 * @param host {elementDef} : eventually accepts receiving a fulldef {UIModuleDef} on the first args
-	 */
-	var UIModuleDef = function(host, subSections, members, options, sWrapper, children, targetSlot, reactOnParent, reactOnSelf) {
-//		console.log(sWrapper)
-		var def = {
-			host : !Array.isArray(host) ? Object.assign({}, host) : null,
-			subSections : subSections || [],
-			members : members || [],
-			sWrapper : sWrapper || null,
-			options : options || {},
-			targetSlot : targetSlot || null,
-			reactOnParent : reactOnParent || null,	// Object : plain
-			reactOnSelf : reactOnSelf || null,		// Object : plain
-			verticalMargins : 0
-		};
-		
-		
-		// allow "direct" instanciation : the user already knows all the params, and gives a full UIModule def as first arg
-		// with a def as array
-		if (Array.isArray(host) && host[0].signed === 'elementDef')
-			host = UIModuleDef.apply(null, host);
-		// with a def as object
-		if (host && typeof host === 'object' && host.host) {
-//			def.host = {};
-//			// Ensure we don't reference an already used and immutable getter/setter
-//			for (let param in host.host) {
-//				if (!Object.getOwnPropertyDescriptor(host.host, param).writable
-//						|| host.host[param] instanceof HTMLElement
-//						|| param.indexOf('reactOn') !== -1)
-//					def.host[param] = null;
-//				else
-//					def.host[param] = host.host[param];
-//			}
-//			
-//			def.members = [];
-//			host.members.forEach(function(obj, key) {
-//				var newObj = {};
-//				for (let param in obj) {
-//					if (!Object.getOwnPropertyDescriptor(obj, param).writable
-//							|| obj[param] instanceof HTMLElement
-//							|| param.indexOf('reactOnSelf') !== -1)
-//						newObj[param] = null;
-//					else
-//						newObj[param] = obj[param];
-//				}
-//				def.members.push(newObj);
-//			});
-
-			// then take care to keep the ref broken
-			for (let param in host) {
-//				if (param !== 'host' && param !== 'members')
-					def[param] = host[param];
-			} 
-			return def;
-		}
-		else
-			return def;
-	}
-	
-	var ObjectCopy = function(source) {
-		return iterate(source);
-	}
-	function iterate(obj) {
-		if (Array.isArray(obj))
-			return iterateOnArray(obj);
-		else if (obj && typeof obj === 'object')
-			return iterateOnObject(obj);
-		else
-			return obj;
-	}
-	function iterateOnArray(arr) {
-		var newObj = [];
-		for (let i = 0, l = arr.length ; i < l; i++) {
-			newObj.push(iterate(arr[i]));
-		}
-		return newObj;
-	}
-	function iterateOnObject(obj) {
-		if (obj instanceof HTMLElement)
-			return obj;
-		var newObj = {};
-		for (let prop in obj) {
-			if (!obj.hasOwnProperty(prop))
-				continue;
-			newObj[prop] = iterate(obj[prop]);
-		}
-		return newObj;
-	}
-	
-//	var ObjectCopy = function(source) {
-////		var newObj;
-////		var sources = Array.prototype.slice.call(arguments);
-////		sources.forEach(function(source) {
-////			newObj = this.iterate(source);
-////		}, this);
-////		return newObj;
-//		return this.iterate(source);
-//	}
-//	ObjectCopy.prototype.iterate = function(obj) {
-//		if (Array.isArray(obj))
-//			return this.iterateOnArray(obj);
-//		else if (obj && typeof obj === 'object')
-//			return this.iterateOnObject(obj);
-//		else
-//			return obj;
-////			return this.copy(obj);
-//	}
-//	ObjectCopy.prototype.iterateOnArray = function(arr) {
-//		var newObj = [];
-//		for (let i = 0, l = arr.length ; i < l; i++) {
-//			newObj.push(this.iterate(arr[i]));
-//		}
-//		return newObj;
-//	}
-//	ObjectCopy.prototype.iterateOnObject = function(obj) {
-//		if (obj instanceof HTMLElement)
-//			return obj;
-//		var newObj = {};
-//		for (let prop in obj) {
-//			if (!obj.hasOwnProperty(prop))
-//				continue;
-//			newObj[prop] = this.iterate(obj[prop]);
-//		}
-//		return newObj;
-//	}
-//	
-//	ObjectCopy.prototype.copy = function(val) {
-//		var type = (typeof val);
-//		switch(type) {
-//			case 'string' :
-//				return val.slice(0);
-//			case 'number' :
-//				return val + 0;
-//			case 'boolean' :
-//				return Boolean.prototype.tryParse(val);
-//			case 'undefined' :
-//				return undefined;
-//				// allow copying "pure" functions : they should return something related to their "value" or "e" named argument
-//			case 'function' :
-//				var str = val.toString(); 
-//				if (str.indexOf('(e)') !== -1)
-//					return new Function('e', val.toString().match(/^\{[.\s\S]+\}$/));
-//				if (str.indexOf('(value)') !== -1)
-//					return new Function('value', val.toString().match(/^\{[.\s\S]+\}$/));
-//				else
-//					return val;
-//			default :
-//				return null;
-//		}
-//	}
-	
-//	var recomposeUIModuleDef = function(defToPreserve) {
-//		var newObj;
-//		if (Array.isArray(defToPreserve) && defToPreserve.length) {
-//			newObj = [...defToPreserve];
-//			newObj.forEach(function(obj, key){
-//				if (Array.isArray(obj) || (typeof obj === 'object' && obj !== null))
-//					obj = recomposeUIModuleDef(obj);
-//			});
-//		}
-//		else if (typeof defToPreserve === 'object' && defToPreserve !== null) {
-//			newObj = {...defToPreserve};
-//			for (let prop in newObj) {
-//				if (newObj.hasOwnProperty(prop) && Array.isArray(newObj[prop]) || (typeof newObj[prop] === 'object' && newObj[prop] !== null))
-//					newObj[prop] = recomposeUIModuleDef(newObj[prop]);
-//			}
-//		}
-////		console.log(newObj);
-//		return newObj || defToPreserve;
-//	}
-	
-//	var recomposeUIModuleDef = function(defToPreserve) {
-//		var def = [];
-//		defToPreserve.forEach(function(obj, prop) {
-//			if (!this.checkType(prop, def, defToPreserve))
-//				def[prop] = obj;
-//		}, this);
-////		console.log(def);
-//		return def;
-//	}
-//	recomposeUIModuleDef.prototype.checkType = function(prop, def, defToPreserve) {
-////		console.log(prop);
-//		if (Array.isArray(defToPreserve[prop]) && defToPreserve[prop].length) {
-//			(typeof def[prop] === 'undefined' && (def[prop] = []));
-//			this.loopOnArray(def[prop], defToPreserve[prop]);
-//		}
-//		else if (typeof defToPreserve[prop] === 'object' && defToPreserve[prop] !== null) {
-//			(typeof def[prop] === 'undefined' && (def[prop] = {}));
-//			this.loopOnObject(def[prop], defToPreserve[prop]);
-//		}
-//		else
-//			return false;
-//	}
-//	recomposeUIModuleDef.prototype.loopOnObject = function(def, defToPreserve) {
-//		for (let prop in defToPreserve) {
-//			if (!this.checkType(prop, def, defToPreserve))
-//				def[prop] = defToPreserve[prop];
-//		}
-////		console.log(def);
-//	}
-//	recomposeUIModuleDef.prototype.loopOnArray = function(def, defToPreserve) {
-//		defToPreserve.forEach(function(obj, key){
-//			if (!this.checkType(key, def, defToPreserve))
-//				def[key] = obj;
-//		}, this);
-////		console.log(def);
-//	}
-
-	
-	/**
-	 * A Factory to instanciate UI Lazy Module Hosts (e.g. a tab component)
-	 */
-	var UILazyHostDef = FactoryMaker.getClassFactory(function(host, headers, pages, options, sWrapper) {
-		var def = {
-			host : host || null,
-			headers : headers || [],
-			pages : pages || [],
-			options : options,
-			sWrapper : sWrapper || null
-		};
-	});
-	
-	
-	/**
 	 * A Helper function to merge two options hash
 	 */
 	var optionSetter = function(baseOptions, options) {
@@ -1962,13 +1516,10 @@ var Factory = (function() {
 		else if (!options)
 			return baseOptions;
 		for(var prop in baseOptions) {
-//			console.log(prop, options[prop], baseOptions[prop], baseOptions.hasOwnProperty(prop), typeof (options[prop]) === 'undefined');
-			// always override any object if it IS set in the default def : simplest HACK to avoid blocked-reference when re-unsing the same def on a list
 			if (baseOptions.hasOwnProperty(prop) && (typeof options[prop] === 'undefined' || options[prop] === null)) {
 				options[prop] = baseOptions[prop];
 			}
 		};
-//		console.log(baseOptions, options);
 		return options;
 	}
 
@@ -1981,12 +1532,9 @@ var Factory = (function() {
 		UIModule : UIModule,
 		Command : Command,
 		Worker : WorkerInterface,
-		createElementDef : elementDef,
-		createUIModuleDef : UIModuleDef,
 		commonStates : commonStates,
 		Stream : Stream,
 		optionSetter : optionSetter,
-		ObjectCopy : ObjectCopy,
 		Maker : FactoryMaker
 	}
 	

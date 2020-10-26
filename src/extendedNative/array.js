@@ -213,7 +213,7 @@ Object.defineProperty(Array.prototype, 'findObjectByKey', {
 Object.defineProperty(Array.prototype, 'findObjectByValue', {
 	value : function(prop, value) {
 		for (let i = 0, l = this.length; i < l; i++) {
-			if (typeof this[i][prop] === value)
+			if (this[i][prop] === value)
 				return this[i];
 		}
 		return false;
