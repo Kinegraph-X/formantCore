@@ -8,7 +8,6 @@ var exportedObjects = {};
  * @constructor ValueObject
  */
 var ValueObject = function(defObj, isSpecial) {
-//	this.init();
 	this.set.apply(this, arguments);
 }
 ValueObject.prototype.objectType = 'ValueObject';
@@ -25,12 +24,6 @@ Object.defineProperty(ValueObject.prototype, 'getHostDef',{
 });
 Object.defineProperty(ValueObject.prototype, 'getType',{
 	value : function() {return this.type;}
-});
-Object.defineProperty(ValueObject.prototype, 'init',{
-	value : function() {
-//		if (!this.isEmpty(this.model))
-			Object.assign(this, this.model);
-	}
 });
 Object.defineProperty(ValueObject.prototype, 'fromArray',{
 	value : function(arr) {
@@ -53,8 +46,8 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 		var objectType = Object.getPrototypeOf(this).objectType;
 
 		for (let p in def) {
-
-			if (isSpecial === 'rootOnly')
+//			console.log(p, this[p], def[p]);
+			if (isSpecial === 'rootOnly' && def[p])
 				this[p] = def[p];
 			else {
 				const n = p + 'Model';
@@ -62,7 +55,7 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 					if (Array.isArray(def[p])) {
 //						this[p] = [];
 						for(let i = 0, l = def[p].length; i < l; i++) {
-							this[p].push(new exportedObjects[n](def[p][i], isSpecial));
+							this[p][i] = new exportedObjects[n](def[p][i], isSpecial);
 						}
 					}
 					else if (def[p] && def[p].host)
@@ -75,6 +68,7 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 				else
 					this[p] = def[p];
 			}
+//			console.log(p, this[p], def[p]);
 		}
 	}
 });
@@ -99,12 +93,12 @@ Object.defineProperty(OptionsListModel.prototype, 'objectType', {value :  'Attri
  * @extends ValueObject
  */
 var KeyboardHotkeysModel = function() {
-	Object.assign(this, {
-		ctrlKey : false,						// Boolean
-		shiftKey : false,						// Boolean
-		altKey : false,							// Boolean
-		keyCode : 0								// Number
-	});
+//	Object.assign(this, {
+		this.ctrlKey = false;						// Boolean
+		this.shiftKey = false;						// Boolean
+		this.altKey = false;						// Boolean
+		this.keyCode = 0;							// Number
+//	});
 	ValueObject.apply(this, arguments);
 };
 KeyboardHotkeysModel.prototype = Object.create(ValueObject.prototype);
@@ -121,9 +115,10 @@ Object.defineProperty(KeyboardHotkeysModel.prototype, 'objectType', {value : 'Ke
  * @extends ValueObject
  */
 var AttributeModel = function(obj) {
-	var model, key = typeof obj === 'string' ? obj : Object.keys(obj)[0];
-	if (model = dictionary.solveFromDictionary('attributes', key))
-		Object.assign(this, model);
+//	var model;
+	var key = typeof obj === 'string' ? obj : this.getName.call(obj);
+//	if (model = dictionary.solveFromDictionary('attributes', key))
+//		Object.assign(this, model);
 	this[key] = obj[key];
 }
 AttributeModel.prototype = Object.create(ValueObject.prototype);
@@ -146,9 +141,10 @@ Object.defineProperty(AttributeModel.prototype, 'getValue', {
  * @extends ValueObject
  */
 var StateModel = function(obj) {
-	var model, key = Object.keys(obj)[0];
-	if (model = dictionary.solveFromDictionary('states', key))
-		Object.assign(this, model);
+//	var model;
+	var key = typeof obj === 'string' ? obj : this.getName.call(obj);
+//	if (model = dictionary.solveFromDictionary('states', key))
+//		Object.assign(this, model);
 	this[key] = obj[key];
 };
 StateModel.prototype = Object.create(ValueObject.prototype);
@@ -163,9 +159,10 @@ Object.defineProperty(StateModel.prototype, 'getValue', Object.getOwnPropertyDes
  * @extends ValueObject
  */
 var PropModel = function(obj) {
-	var model, key = Object.keys(obj)[0];
-	if (model = dictionary.solveFromDictionary('props', key))
-		Object.assign(this, model);
+//	var model;
+	var key = typeof obj === 'string' ? obj : this.getName.call(obj);
+//	if (model = dictionary.solveFromDictionary('props', key))
+//		Object.assign(this, model);
 	this[key] = obj[key];
 };
 PropModel.prototype = Object.create(ValueObject.prototype);
@@ -182,16 +179,16 @@ Object.defineProperty(PropModel.prototype, 'getValue', Object.getOwnPropertyDesc
  * @extends ValueObject
  */
 var ReactivityQueryModel = function() {
-	Object.assign(this, {
-		cbOnly : false,							// Boolean
-		from : null,							// String
-		to : null,								// String
-		obj : null,								// Object [HTMLElement, Stream]
-		filter : null,							// function (GlorifiedPureFunction ;)
-		map : null,								// function (GlorifiedPureFunction ;)
-		subscribe : null,						// function CallBack
-		inverseTransform : null					// function CallBack
-	});
+//	Object.assign(this, {
+		this.cbOnly = false;						// Boolean
+		this.from = null;							// String
+		this.to = null;								// String
+		this.obj = null,							// Object [HTMLElement; Stream]
+		this.filter = null;							// function (GlorifiedPureFunction ;)
+		this.map = null;							// function (GlorifiedPureFunction ;)
+		this.subscribe = null;						// function CallBack
+		this.inverseTransform = null;				// function CallBack
+//	});
 	ValueObject.apply(this, arguments);
 }
 ReactivityQueryModel.prototype = Object.create(ValueObject.prototype);
@@ -214,10 +211,10 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
  * @extends ValueObject
  */
 var EventSubscriptionModel = function() {
-	Object.assign(this, {
-		on : null,								// String
-		subscribe : null						// function CallBack
-	});
+//	Object.assign(this, {
+		this.on = null;								// String
+		this.subscribe = null;						// function CallBack
+//	});
 	ValueObject.apply(this, arguments);
 }
 EventSubscriptionModel.prototype = Object.create(ValueObject.prototype);
@@ -236,34 +233,29 @@ Object.defineProperty(EventSubscriptionModel.prototype, 'objectType', {value : '
  * @constructor SingleLevelComponentDefModel
  * @extends ValueObject
  */
-var SingleLevelComponentDefModel = function(initObj, isSpecial) {
-	Object.assign(this, {
-		type : null,							// String
-		nodeName : null,						// String
-		attributes : [],						// Array [AttributeDesc]
-		parentNodeIndex : null,					// Number
-		targetSlotIndex : null,					// Number
-		sWrapper : null,						// Object StylesheetWrapper
-		states : [],							// Array [State]
-		props : [],								// Array [Prop]
-		command : null,							// Object Command
-		reactOnParent : [],						// Array [ReactivityQuery]
-		reactOnSelf : [],						// Array [ReactivityQuery]
-		subscribeOnParent : [],					// Array [ReactivityQuery]
-		subscribeOnChild : [],					// Array [ReactivityQuery]
-		keyboardSettings : []					// Array [KeyboardHotkeys]
-	});
-	
-	// Object.getPrototypeOf(Object.getPrototypeOf(this.states)) === Array.prototype
-	// typeof this.states.copyWithin === 'function'; // ==> true
+var SingleLevelComponentDefModel = function(initObj, isSpecial, givenDef) {
+	if (givenDef)
+		Object.assign(this, givenDef);
+	else {
+		this.type = null,							// String
+		this.nodeName = null;						// String
+		this.attributes = [];						// Array [AttributeDesc]
+		this.props = [];							// Array [Prop]
+		this.states = [];							// Array [State]
+		this.parentNodeIndex = null;				// Number
+		this.targetSlotIndex = null;				// Number
+		this.sWrapper = null;						// Object StylesheetWrapper
+		this.command = null;						// Object Command
+		this.reactOnParent = [];					// Array [ReactivityQuery]
+		this.reactOnSelf = [];						// Array [ReactivityQuery]
+		this.subscribeOnParent = [];				// Array [ReactivityQuery]
+		this.subscribeOnChild = [];					// Array [ReactivityQuery]
+		this.keyboardSettings = [];					// Array [KeyboardHotkeys]
+	}
 	
 	// shorthand to create defs with just a "type", maybe an attributesList, but only the first props in the model
-	if (initObj !== 'bare') {
-		this.init();
-		this.set(initObj, isSpecial);
-	}
-	else if (initObj === 'bare')
-		this.init();
+	if (initObj !== 'bare')
+		ValueObject.apply(this, arguments);
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.SingleLevelComponentDefModel = SingleLevelComponentDefModel;
@@ -276,13 +268,13 @@ Object.defineProperty(SingleLevelComponentDefModel.prototype, 'objectType', {val
  * @extends ValueObject
  */
 var HierarchicalComponentDefModel = function() {
-	Object.assign(this, {
-		host : null,							// Object SingleLevelComponentDef
-		subSections : [],						// Array [SingleLevelComponentDef]
-		members : [],							// Array [SingleLevelComponentDef]
-		lists : [],								// Array [ComponentListDef]
-		options : null							// Object : plain
-	});
+//	Object.assign(this, {
+		this.host = null;							// Object SingleLevelComponentDef
+		this.subSections = [];						// Array [SingleLevelComponentDef]
+		this.members = [];							// Array [SingleLevelComponentDef]
+		this.lists = [];							// Array [ComponentListDef]
+		this.options = null;						// Object : plain
+//	});
 	ValueObject.apply(this, arguments);
 }
 HierarchicalComponentDefModel.prototype = Object.create(ValueObject.prototype);
@@ -296,13 +288,13 @@ Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {va
  * @extends ValueObject
  */
 var ComponentListDefModel = function() {
-	Object.assign(this, {
-		type : 'ComponentList',					// String
-		reflectOnModel : null,					// Boolean
-		each : null,							// Array [unknown_type] (model to iterate on)
-		template : null,						// Object HierarchicalComponentDef
-		section : null,							// Number
-	});
+//	Object.assign(this, {
+		this.type = 'ComponentList';					// String
+		this.reflectOnModel = null;					// Boolean
+		this.each = null;							// Array [unknown_type] (model to iterate on)
+		this.template = null;						// Object HierarchicalComponentDef
+		this.section = null;							// Number
+//	});
 	ValueObject.apply(this, arguments);
 }
 ComponentListDefModel.prototype = Object.create(ValueObject.prototype);
@@ -319,21 +311,17 @@ Object.defineProperty(ComponentListDefModel.prototype, 'objectType', {value : 'C
  */
 var ComponentDefCache = function() {
 	this.knownIDs = {};
-	this.UIDPrefix = appConstants.options.UIDPrefix;
+	this.randomUID = 0;
 }
 ComponentDefCache.prototype = {};
 ComponentDefCache.prototype.getUID = function(uniqueID) {
-	if ((this.UIDPrefix + uniqueID) in this.knownIDs) {
-//		console.log(uniqueID, this.knownIDs);
-		return this.knownIDs[this.UIDPrefix + uniqueID];
-	}
-	else if (!((this.UIDPrefix + uniqueID) in this.knownIDs) || !uniqueID || !uniqueID.length) {
-		uniqueID = uniqueID ? (this.UIDPrefix + uniqueID) : (this.UIDPrefix + ($.guid++).toString());
+	if (uniqueID in this.knownIDs)
+		return this.knownIDs[uniqueID];
+	else if (!(uniqueID in this.knownIDs) || !uniqueID || !uniqueID.length) {
+		uniqueID = uniqueID ? uniqueID : (this.randomUID++).toString();
 		this.knownIDs[uniqueID] = uniqueID;
 		return this.knownIDs[uniqueID];
 	}
-	else if (uniqueID in this.knownIDs) // Hacky : this.knownIDs.hasOwnProperty('') won't ever return truthy
-		return this.knownIDs[uniqueID];
 }
 
 ComponentDefCache.prototype.isKnownUID = function(uniqueID) {

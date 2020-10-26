@@ -285,11 +285,7 @@ var Factory = (function() {
 //		console.log(moduleName, candidateModule);
 		if (!candidateModule)
 			return;
-		
-		if (moduleName in this.modules) {
-				console.warn(this.objectType, 'registerModule : a module already exists with this name')
-				return;
-		}
+
 		candidateModule.__in_tree_name = moduleName;
 		candidateModule._parent = this;
 		this.modules.push({moduleName : candidateModule});
@@ -300,7 +296,9 @@ var Factory = (function() {
 			return candidateModule;
 		else {
 			// autoSubscribe to object own events
-			if (moduleDefinition.getHostDef().subscribeOnParent || candidateModule.subscribeOnParent || this.subscribeOnChild)
+			if (!moduleDefinition.getHostDef().subscribeOnParent)
+				return candidateModule;
+			if (moduleDefinition.getHostDef().subscribeOnParent.length || candidateModule.subscribeOnParent.length || this.subscribeOnChild.length)
 				this.handleModuleSubscriptions(candidateModule, moduleDefinition);
 			
 			// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
@@ -334,15 +332,15 @@ var Factory = (function() {
 			if (evt in candidateModule._eventHandlers)
 				this.addEventListener(evt, handler); 	// setter for event subscribtion
 		}, this);
-
+		console.log(this);
 		this.subscribeOnChild.forEach(function(subscription, key) {
 			evt = subscription.on;
 
 			handler = subscription.subscribe;
 			if (evt in candidateModule._eventHandlers)
-				candidateModule.addEventListener(evt, handler); 	// setter for event subscribtion
+				candidateModule.addEventListener(evt, handler.bind(this)); 	// setter for event subscribtion
 			else if ('on' + evt in candidateModule.hostElem)
-				candidateModule.hostElem['on' + evt] = handler; 	// setter for delegated native event subscribtion
+				candidateModule.hostElem['on' + evt] = handler.bind(this); 	// setter for delegated native event subscribtion
 			else
 				console.warn(this.objectType, 'registers on event ' + evt + ' on his child : ' + candidateModule.objectType, ' : unknown event on child when Registering a child module => Automatic Bindings won\'t work');
 		}, this);
@@ -733,7 +731,7 @@ var Factory = (function() {
 	var DependancyModule = function() {
 		CoreModule.call(this);
 		this.objectType = 'DependancyModule';
-		this.subscribeOnParent;
+		this.subscribeOnParent = [];
 		this.createEvent('destroy');
 		this.createEvent('exportdata');
 	};
@@ -781,11 +779,15 @@ var Factory = (function() {
 	var UIModule = function(definition, parentNodeDOMId, automakeable, childrenToAdd, targetSlot) {
 		this.raw = true;
 		
+		DependancyModule.call(this);
+		this.objectType = 'UIModule';
+		
 		this.reactOnParent = [];
 		this.reactOnSelf = [];
 		
-		// TODO : this.attributes IS an Array
 		this.attributes = [];
+		this.props = [];
+		this.states = [];
 		
 		this.parentDOMNode;
 		this.hostElem;
@@ -797,15 +799,14 @@ var Factory = (function() {
 		this.DOMRenderQueue = [];
 		this.bindingQueue = [];
 		
-		this.mergeWithComponentDefaultDef(definition, this.createDefaultDef());
+		this.definition = this.mergeWithComponentDefaultDef(definition, this.createDefaultDef()) || definition;
+//		console.log(this.definition);
 		
 		this.parentNodeDOMId = parentNodeDOMId;
 		this.command = (definition && definition.command);
+		this.keyboardSettings;
 		this.keyboardEvents = definition.keyboardEvents || [];
 		this.childrenToAdd = childrenToAdd ? (Array.isArray(childrenToAdd) ? childrenToAdd : [{module : childrenToAdd}]) : [];
-		
-		DependancyModule.call(this);
-		this.objectType = 'UIModule';
 
 		(typeof targetSlot === 'number' && (this.defaultSlot = (this.rootElem || this.hostElem).children[targetSlot]));
 		
@@ -850,8 +851,10 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.makeAndRegisterModule = function(moduleName, candidateModule, moduleDefinition) {
 		if (candidateModule.raw)
-			candidateModule.Make(moduleDefinition);
-		this.registerModule(moduleName, candidateModule, moduleDefinition);
+//			candidateModule.Make(moduleDefinition);
+			candidateModule.Make(candidateModule.definition);
+//		this.registerModule(moduleName, candidateModule, moduleDefinition);
+		this.registerModule(moduleName, candidateModule, candidateModule.definition);
 		return candidateModule;
 	}
 	
@@ -913,30 +916,58 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.mergeWithComponentDefaultDef = function(definition, defaultDef) {
-		if (!defaultDef)
-			return;
-		else if (!defaultDef && !definition) {
+//		console.log(definition);
+		
+		if (!defaultDef && !definition) {
 			console.error('UIModule : Merging Component\'s definition with default failed : neither a specific nor a default def found');
 			return;
 		}
+		else if (definition.getGroupHostDef() || definition.getHostDef().getType() === 'ComponentList')
+			return;
+		else if (!defaultDef)
+			defaultDef = TypeManager.createComponentDef({host : {}}, 'defaultDef');
 
-		for(var prop in defaultDef.host) {
-			if (definition.host[prop] === null || !definition.host[prop].length)
-				definition.host[prop] = defaultDef.host[prop];
-		}
-		definition.host['subscribeOnChild'].forEach(function(subscription) {
-			this.subscribeOnChild.push(new TypeManager.EventSubscriptionModel({on : subscription.on.slice(0), subscribe : subscription.subscribe.bind(this)}));
-//			this.subscribeOnChild.push(subscription);
-		}, this);
-
-		if (definition.subSections === null)
-			definition.subSections = defaultDef.subSections;
-		if (definition.members === null)
-			definition.members = defaultDef.members;
-		if (definition.lists === null)
-			definition.lists = defaultDef.lists;
-		if (definition.options === null)
-			definition.options = defaultDef.options;
+		var defaultHostDef = defaultDef.getHostDef(),
+		hostDef = definition.getHostDef();
+		
+//		var def,
+//			UID = this.__proto__.objectType
+//					+ '_' + hostDef.nodeName
+//					+ '_' + hostDef.attributes.reduce((accu, val) => accu + '_' + val.getName(), '')
+//					+ '_' + hostDef.reactOnParent.reduce((accu, val) => accu + '_' + val.from, ''),
+//			cache = TypeManager.getUID(UID);
+//		
+//		
+//		if (typeof cache === 'string')
+//			def = TypeManager.createComponentDef(new TypeManager.SingleLevelComponentDefModel(hostDef, undefined, defaultHostDef), UID, 'rootOnly');
+//		else
+//			def = cache;
+//		console.clear();
+		return TypeManager.createComponentDef({host : new TypeManager.SingleLevelComponentDefModel(hostDef, undefined, defaultHostDef)}, null, 'rootOnly');
+			
+		
+//		console.log(this.__proto__.objectType, UID);
+		
+//		if (!definition.subSections.length)
+//			definition.subSections = defaultDef.subSections;
+//		if (!definition.members.length)
+//			definition.members = defaultDef.members;
+//		if (!definition.lists.length)
+//			definition.lists = defaultDef.lists;
+//		if (definition.options === null)
+//			definition.options = defaultDef.options;
+		
+		
+//		for(var prop in defaultHostDef) {
+//			if (Array.isArray(this[prop]))
+//				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
+//			else if (prop === 'sWrapper')
+//				this[prop] = defaultHostDef[prop] || hostDef[prop];
+//			else if (hostDef[prop] === null)
+//				hostDef[prop] = defaultHostDef[prop];
+//		}
+//		console.log(defaultDef);
+//		console.log(this);
 	};
 	
 	/**
@@ -1225,28 +1256,44 @@ var Factory = (function() {
 //				enumerable : true
 //		};
 //		Object.defineProperty(this, 'value', propertyDescriptor);
-		Object.defineProperty(this, 'value', {
-			get : function() {
-				if (this.lazy) {
-					if (typeof this.transform === 'function')
-						this._value = this.transform(this.get());
-					this.dirty = false;
-				}
-				
-				return this.get();
-			}.bind(this),
-			
-			set : function(value) {
-				this.setAndUpdateConditional(value);
-				this.set(value);
-			}.bind(this),
-			enumerable : true
-		});
+//		Object.defineProperty(this, 'value', {
+//			get : function() {
+//				if (this.lazy) {
+//					if (typeof this.transform === 'function')
+//						this._value = this.transform(this.get());
+//					this.dirty = false;
+//				}
+//				
+//				return this.get();
+//			}.bind(this),
+//			
+//			set : function(value) {
+//				this.setAndUpdateConditional(value);
+//				this.set(value);
+//			}.bind(this),
+//			enumerable : true
+//		});
 		this._value;
 		this.value = typeof reflectedObj === 'object' ? reflectedObj[name] : value;
 		this.dirty;
 	}
 	Stream.prototype.objectType = 'Stream';
+	Object.defineProperty(Stream.prototype, 'value', {
+		get : function() {
+			if (this.lazy) {
+				if (typeof this.transform === 'function')
+					this._value = this.transform(this.get());
+				this.dirty = false;
+			}
+			
+			return this.get();
+		},
+		
+		set : function(value) {
+			this.setAndUpdateConditional(value);
+			this.set(value);
+		}
+	});
 //	Stream.defaultPropertyDescriptor = {
 //		get : function() {
 //			if (this.lazy) {
@@ -1342,9 +1389,14 @@ var Factory = (function() {
 			this.transform = transform;
 		
 		var desc = Object.getOwnPropertyDescriptor(reflectedHost, prop);
+		var stdDesc = Object.getOwnPropertyDescriptor(Stream.prototype, 'value');
+		var propertyDescriptor = {
+				get : stdDesc.get.bind(this),
+				set : stdDesc.set.bind(this)
+		};
 		
 		if (!desc || (!desc.get && desc.writable))
-			Object.defineProperty(reflectedHost, prop, Object.getOwnPropertyDescriptor(this, 'value'));
+			Object.defineProperty(reflectedHost, prop, propertyDescriptor);
 		
 		else if (reflectedHost.streams && reflectedHost.streams[prop]) {
 			this._value = reflectedHost.streams[prop].get(); // we need transformed value if lazy
@@ -1427,7 +1479,7 @@ var Factory = (function() {
 		
 		this._stream = parent;
 		this._firstPass = true;
-		Object.defineProperty(this, 'execute', Object.getOwnPropertyDescriptor(Subscription.prototype, 'execute')); // make immutable
+//		Object.defineProperty(this, 'execute', Object.getOwnPropertyDescriptor(Subscription.prototype, 'execute')); // make immutable : DELETED for perf improvement...
 	}
 	
 	Subscription.prototype.subscribe = function(subscriberObjOrHandler, subscriberProp, inverseTransform) {
@@ -1447,12 +1499,10 @@ var Factory = (function() {
 	}
 	
 	Subscription.prototype.filter = function(filterFunc) {
-		if (typeof filterFunc !== 'function') {
-//			if (typeof filterFunc === 'undefined')
-//				console.warn('Bad filterFunc given on observable : filterFunc type is ' + typeof filterFunc + ' instead of "function"', 'StreamName ' + this._parent.name);
+		if (typeof filterFunc !== 'function')
 			return this;
-		}
-		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark needed)
+
+		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark shows a slight improvement, as timings are identical although there is an overhaed with defineProperty)
 		var f = new Function('value', 'return (' + filterFunc.toString() + ').call(this.subscriber, value) === true ? true : false;');
 		Object.defineProperty(this, 'filter', {
 			value : f,
@@ -1463,12 +1513,10 @@ var Factory = (function() {
 	}
 	
 	Subscription.prototype.map = function(mapFunc) {
-		if(typeof mapFunc !== 'function') {
-//			if (typeof mapFunc === 'undefined')
-//				console.warn('Bad mapFunc given on observable : mapFunc type is ' + typeof mapFunc + ' instead of "function"', 'StreamName ' + this._parent.name);
+		if(typeof mapFunc !== 'function')
 			return this;
-		}
-		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark needed)
+
+		// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark shows a slight improvement, as timings are identical although there is an overhaed with defineProperty)
 		var f = new Function('value', 'return (' + mapFunc.toString() + ').call(this.subscriber, value);');
 		Object.defineProperty(this, 'map', {
 			value : f,
@@ -1504,6 +1552,8 @@ var Factory = (function() {
 				else
 					return;
 //				console.log('val', val);
+				
+//				console.log('subscriber', this.subscriber);
 				if (this.subscriber.obj !== null && this.subscriber.prop !== null) {
 //					console.log(this.subscriber.obj, this.subscriber.prop, val);
 					this.subscriber.obj[this.subscriber.prop] = val;

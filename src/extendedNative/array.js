@@ -193,7 +193,7 @@ Object.defineProperty(ArrayBuffer.prototype, 'append', {
 Object.defineProperty(Array.prototype, 'hasObjectByKey', {
 	value : function(key) {
 		for (let i = 0, l = this.length; i < l; i++) {
-			if (typeof this[i][key] !== 'undefined')
+			if (typeof this[i][key] !== 'undefined' || this[i].hasOwnProperty(key))
 				return true;
 		}
 		return false;
@@ -203,8 +203,28 @@ Object.defineProperty(Array.prototype, 'hasObjectByKey', {
 Object.defineProperty(Array.prototype, 'findObjectByKey', {
 	value : function(key) {
 		for (let i = 0, l = this.length; i < l; i++) {
-			if (typeof this[i][key] !== 'undefined' || this[i][key] === undefined)
+			if (typeof this[i][key] !== 'undefined' || this[i].hasOwnProperty(key))
 				return this[i];
+		}
+		return false;
+	}
+});
+
+Object.defineProperty(Array.prototype, 'findObjectByValue', {
+	value : function(prop, value) {
+		for (let i = 0, l = this.length; i < l; i++) {
+			if (typeof this[i][prop] === value)
+				return this[i];
+		}
+		return false;
+	}
+});
+
+Object.defineProperty(Array.prototype, 'indexOfObjectByKey', {
+	value : function(key) {
+		for (let i = 0, l = this.length; i < l; i++) {
+			if (typeof this[i][key] !== 'undefined' || this[i].hasOwnProperty(key))
+				return i;
 		}
 		return false;
 	}
