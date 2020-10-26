@@ -799,8 +799,10 @@ var Factory = (function() {
 		this.DOMRenderQueue = [];
 		this.bindingQueue = [];
 		
-		this.definition = this.mergeWithComponentDefaultDef(definition, this.createDefaultDef()) || definition;
+//		this.definition = this.mergeWithComponentDefaultDef(definition, this.createDefaultDef()) || definition;
 //		console.log(this.definition);
+		
+		this.mergeWithComponentDefaultDef(definition, this.createDefaultDef());
 		
 		this.parentNodeDOMId = parentNodeDOMId;
 		this.command = (definition && definition.command);
@@ -851,10 +853,10 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.makeAndRegisterModule = function(moduleName, candidateModule, moduleDefinition) {
 		if (candidateModule.raw)
-//			candidateModule.Make(moduleDefinition);
-			candidateModule.Make(candidateModule.definition);
-//		this.registerModule(moduleName, candidateModule, moduleDefinition);
-		this.registerModule(moduleName, candidateModule, candidateModule.definition);
+			candidateModule.Make(moduleDefinition);
+//			candidateModule.Make(candidateModule.definition);
+		this.registerModule(moduleName, candidateModule, moduleDefinition);
+//		this.registerModule(moduleName, candidateModule, candidateModule.definition);
 		return candidateModule;
 	}
 	
@@ -943,7 +945,7 @@ var Factory = (function() {
 //		else
 //			def = cache;
 //		console.clear();
-		return TypeManager.createComponentDef({host : new TypeManager.SingleLevelComponentDefModel(hostDef, undefined, defaultHostDef)}, null, 'rootOnly');
+//		return TypeManager.createComponentDef({host : new TypeManager.SingleLevelComponentDefModel(hostDef, undefined, defaultHostDef)}, null, 'rootOnly');
 			
 		
 //		console.log(this.__proto__.objectType, UID);
@@ -958,14 +960,14 @@ var Factory = (function() {
 //			definition.options = defaultDef.options;
 		
 		
-//		for(var prop in defaultHostDef) {
-//			if (Array.isArray(this[prop]))
-//				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
-//			else if (prop === 'sWrapper')
-//				this[prop] = defaultHostDef[prop] || hostDef[prop];
-//			else if (hostDef[prop] === null)
-//				hostDef[prop] = defaultHostDef[prop];
-//		}
+		for(var prop in defaultHostDef) {
+			if (Array.isArray(this[prop]))
+				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
+			else if (prop === 'sWrapper')
+				this[prop] = defaultHostDef[prop] || hostDef[prop];
+			else if (hostDef[prop] === null)
+				hostDef[prop] = defaultHostDef[prop];
+		}
 //		console.log(defaultDef);
 //		console.log(this);
 	};
