@@ -296,9 +296,9 @@ var Factory = (function() {
 			return candidateModule;
 		else {
 			// autoSubscribe to object own events
-			if (!moduleDefinition.getHostDef().subscribeOnParent)
+			if (candidateModule.__proto__.objectType === 'ComponentList')
 				return candidateModule;
-			if (moduleDefinition.getHostDef().subscribeOnParent.length || candidateModule.subscribeOnParent.length || this.subscribeOnChild.length)
+			if ((moduleDefinition.getGroupHostDef() || moduleDefinition.getHostDef()).subscribeOnParent.length || candidateModule.subscribeOnParent.length || this.subscribeOnChild.length)
 				this.handleModuleSubscriptions(candidateModule, moduleDefinition);
 			
 			// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
@@ -332,7 +332,7 @@ var Factory = (function() {
 			if (evt in candidateModule._eventHandlers)
 				this.addEventListener(evt, handler); 	// setter for event subscribtion
 		}, this);
-		console.log(this);
+//		console.log(candidateModule);
 		this.subscribeOnChild.forEach(function(subscription, key) {
 			evt = subscription.on;
 
@@ -355,28 +355,28 @@ var Factory = (function() {
 	 * @param {string} moduleName
 	 */
 	CoreModule.prototype.removeModule = function(moduleName) {
-		if (typeof this.modules[moduleName] !== 'undefined')
-			delete this.modules[moduleName];
+//		if (typeof this.modules[moduleName] !== 'undefined')
+//			delete this.modules[moduleName];
 	}
 	
 	/**
 	 * @param {string} moduleName
 	 */
 	CoreModule.prototype.getModule = function(moduleName) {
-		if (typeof this.modules[moduleName] !== 'undefined')
-			return this.modules[moduleName];
+//		if (typeof this.modules[moduleName] !== 'undefined')
+//			return this.modules[moduleName];
 	}
 	
 	/**
 	 * @param {string} moduleName
 	 */
 	CoreModule.prototype.queryModules = function(moduleName) {
-		var ret = [];
-		for (var name in this.modules) {
-			if (name.toLowerCase().indexOf(moduleName.toLowerCase()) !== -1)
-				ret.push(this.modules[name]);
-		}
-		return ret;
+//		var ret = [];
+//		for (var name in this.modules) {
+//			if (name.toLowerCase().indexOf(moduleName.toLowerCase()) !== -1)
+//				ret.push(this.modules[name]);
+//		}
+//		return ret;
 	}
 	
 	
@@ -395,13 +395,13 @@ var Factory = (function() {
 		 * 		As implemented and commented : HUGE benchmark improvement, although there are still 2ms to gain for real effectiveness in long lists...
 		 * 		Reserve this usage to "needed" cases. TODO : how ?
 		 */
-		if (this.enableEventSetters) {
-			/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
-			Object.defineProperty(this, 'on' + eventType, CoreModule.onEventPropertyDescriptor);
-
-			/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
-			Object.defineProperty(this, 'one_' + eventType, CoreModule.oneEventPropertyDescriptor);
-		}
+//		if (this.enableEventSetters) {
+//			/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
+//			Object.defineProperty(this, 'on' + eventType, CoreModule.onEventPropertyDescriptor);
+//
+//			/**@memberOf a CoreModule instance : each event is given 2 handy functions to register listeners : oneventType & one_eventType*/
+//			Object.defineProperty(this, 'one_' + eventType, CoreModule.oneEventPropertyDescriptor);
+//		}
 	}
 
 	/**
@@ -913,6 +913,7 @@ var Factory = (function() {
 		this.setDOMTypes.apply(this, arguments);
 		this.setArias.apply(this, arguments);
 	}
+
 	
 	/**
 	 * @abstract
@@ -928,6 +929,8 @@ var Factory = (function() {
 			return;
 		else if (!defaultDef)
 			defaultDef = TypeManager.createComponentDef({host : {}}, 'defaultDef');
+		
+		// defaultDef = new TypeManager.HierarchicalComponentDefModel({host : new TypeManager.SingleLevelComponentDefModel({})}, 'defaultDef', 'rootOnly');
 
 		var defaultHostDef = defaultDef.getHostDef(),
 		hostDef = definition.getHostDef();
@@ -961,9 +964,11 @@ var Factory = (function() {
 		
 		
 		for(var prop in defaultHostDef) {
+			// TODO : try to precisely avoid to keep references on reactOnParent, reactOnSelf, subscribeOnChild, subscribeOnParent
 			if (Array.isArray(this[prop]))
 				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
-			else if (prop === 'sWrapper')
+//				this[prop] = this[prop].concat(defaultHostDef[prop], TypeManager.ValueObject.prototype.renewArray(hostDef[prop], prop));
+			else if (prop === 'sWrapper')							// TODO : use the cache for stylesheets : in a shadowRoot, appending many times won't work, so we need here a clone of the styleElem
 				this[prop] = defaultHostDef[prop] || hostDef[prop];
 			else if (hostDef[prop] === null)
 				hostDef[prop] = defaultHostDef[prop];

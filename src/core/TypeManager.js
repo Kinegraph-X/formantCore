@@ -55,7 +55,7 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 					if (Array.isArray(def[p])) {
 //						this[p] = [];
 						for(let i = 0, l = def[p].length; i < l; i++) {
-							this[p][i] = new exportedObjects[n](def[p][i], isSpecial);
+							this[p].push(new exportedObjects[n](def[p][i], isSpecial));
 						}
 					}
 					else if (def[p] && def[p].host)
@@ -74,6 +74,18 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 });
 
 
+//Object.defineProperty(ValueObject.prototype, 'renewArray', {
+//	value : function(arr, prop) {
+//		var objType = prop + 'Model';
+//		if (!(objType in exportedObjects))
+//			return [];
+//		var ret = [];
+//		for(let i = 0, l = arr.length; i < l; i++) {
+//			ret.push(new exportedObjects[objType](arr[i]));
+//		}
+//		return ret;
+//	}
+//});
 
 /**
  * @constructor OptionsListModel
@@ -353,7 +365,7 @@ var createComponentDef = function(defObj, useCache, isSpecial) {
 		if (typeof defObj === 'string') {
 			var c = new SingleLevelComponentDefModel('bare');
 			ValueObject.prototype.fromArray.call(c, arguments);
-			def = new HierarchicalComponentDefModel({host : c}, isSpecial);
+			def = new HierarchicalComponentDefModel({host : c}, 'rootOnly');
 		}
 		if (typeof defObj === 'object' && defObj.host)
 			def = new HierarchicalComponentDefModel(defObj, isSpecial);
