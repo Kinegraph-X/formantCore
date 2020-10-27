@@ -208,8 +208,6 @@ exportedObjects.ReactivityQueryModel = ReactivityQueryModel;
 Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'ReactivityQuery'});
 Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 	value : function(stream, queriedOrQueryingObj) {
-		if (!stream)
-			return;
 		stream.subscribe(this.cbOnly ? this.subscribe.bind(queriedOrQueryingObj) : (queriedOrQueryingObj.streams[this.to] || this.subscribe.bind(queriedOrQueryingObj)), 'value')
 			.filter(this.filter)
 			.map(this.map)
@@ -232,6 +230,10 @@ var EventSubscriptionModel = function() {
 EventSubscriptionModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.EventSubscriptionModel = EventSubscriptionModel;
 Object.defineProperty(EventSubscriptionModel.prototype, 'objectType', {value : 'EventSubscription'});
+Object.defineProperty(EventSubscriptionModel.prototype, 'subscribeToEvent', {
+	value : function(targetComponent, requestingComponent) {
+		targetComponent.addEventListener(this.on, this.subscribe.bind(requestingComponent));
+}});
 
 
 
@@ -260,8 +262,9 @@ var SingleLevelComponentDefModel = function(initObj, isSpecial, givenDef) {
 		this.command = null;						// Object Command
 		this.reactOnParent = [];					// Array [ReactivityQuery]
 		this.reactOnSelf = [];						// Array [ReactivityQuery]
-		this.subscribeOnParent = [];				// Array [ReactivityQuery]
-		this.subscribeOnChild = [];					// Array [ReactivityQuery]
+		this.subscribeOnParent = [];				// Array [EventSubscription]
+		this.subscribeOnChild = [];					// Array [EventSubscription]
+		this.subscribeOnSelf = [];					// Array [EventSubscription]
 		this.keyboardSettings = [];					// Array [KeyboardHotkeys]
 	}
 	
@@ -439,6 +442,7 @@ Object.assign(exportedObjects, {
 	reactOnSelfModel : ReactivityQueryModel,						// Object ReactivityQueryList
 	subscribeOnParentModel : EventSubscriptionModel,				// Object EventSubscriptionsList
 	subscribeOnChildModel : EventSubscriptionModel,					// Object EventSubscriptionsList
+	subscribeOnSelfModel : EventSubscriptionModel,					// Object EventSubscriptionsList
 	createSimpleComponentDef : HierarchicalComponentDefModel		// Object HierarchicalComponentDef
 });
 

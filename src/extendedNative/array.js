@@ -230,6 +230,27 @@ Object.defineProperty(Array.prototype, 'indexOfObjectByKey', {
 	}
 });
 
+Object.defineProperty(Array.prototype, 'indexOfObjectByValue',  {
+	value : function(prop, value) {
+		for (let i = 0, l = this.length; i < l; i++) {
+			if (this[i][prop] === value)
+				return i;
+		}
+		return false;
+	}
+});
+
+Object.defineProperty(Array.prototype, 'findObjectsByPartialValue',  {
+	value : function(prop, value) {
+		var arr = [];
+		for (let i = 0, l = this.length; i < l; i++) {
+			if (this[i][prop].indexOf(value) !== -1)
+				arr.push(this[i]);
+		}
+		return arr.length ? arr : false;
+	}
+});
+
 
 sortObject = function (obj) {
 	var arr = Object.keys(obj).sort(), newObj = {};

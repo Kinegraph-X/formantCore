@@ -201,6 +201,7 @@ var Factory = (function() {
 		this.enableEventSetters = enableEventSetters || false;
 		
 		this.subscribeOnChild = [];
+		this.subscribeOnSelf = [];
 	};
 	
 	// Theses methods should be implemented further down in the inheritance chain : 
@@ -213,14 +214,18 @@ var Factory = (function() {
 	/**
 	 * @param {object} candidateModule : an instance of another module
 	 */
-	CoreModule.prototype.registerModule = function(moduleName, candidateModule, moduleDefinition) {
-
+	CoreModule.prototype.registerModule = function(moduleName, candidateModule, moduleDefinition, atIndex) {
 		if (!candidateModule)
 			return;
 
 		candidateModule.__in_tree_name = moduleName;
 		candidateModule._parent = this;
-		this.modules.push(candidateModule);
+		if (parseInt(atIndex)) {
+			(candidateModule.hostElem && this.modules[atIndex - 1].hostElem.insertAdjacentElement('afterEnd', candidateModule.hostElem));
+			this.modules.splice(atIndex, 0, candidateModule);
+		}
+		else
+			this.modules.push(candidateModule);
 		
 		if (candidateModule instanceof HTMLElement)
 			return candidateModule;
@@ -228,52 +233,34 @@ var Factory = (function() {
 			// autoSubscribe to object own events
 			if (candidateModule.__proto__.objectType === 'ComponentList')
 				return candidateModule;
-			if ((moduleDefinition.getGroupHostDef() || moduleDefinition.getHostDef()).subscribeOnParent.length || candidateModule.subscribeOnParent.length || this.subscribeOnChild.length)
-				this.handleModuleSubscriptions(candidateModule, moduleDefinition);
 			
-			// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
-			this.handleSlotDefinitionRelativeToParent(candidateModule, moduleDefinition);
-			this.onRegisterModule(candidateModule, moduleDefinition);
+			// Subscribing to events pertains to the CoreModule
+			this.handleModuleSubscriptions(candidateModule);
+			
+			if (moduleDefinition)
+				// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
+				this.handleSlotDefinitionRelativeToParent(candidateModule, moduleDefinition);
+			
+			// The ObservableComponent class is responsible for implementing the reactions on parent and on self (binding to streams) 
+			this.onRegisterModule(candidateModule);
 		}
 		
 		return candidateModule;
 	}
 	
-	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule, moduleDefinition) {
-//		var candidateModule = this[moduleName];
-		// A ComponentList may meet the case : 2 cases :
-		//		- subscribeOnChild : it's been registered as a child of a component thas requires an event hook on his children
-		// 			but the actual children are the chidren of the ComponentList (registered on the right _parent, i.e. one level up, but only after the ComponentList)
-		//		- subscribeOnParent : that's not allowed : only the host of a component may subscribe on parent
-		if (candidateModule.objectType === 'ComponentList')
-			return;
-		
-		var evt,
-			handler,
-			desc,
-			subscriptionInDef = (moduleDefinition.getGroupHostDef() || moduleDefinition.getHostDef()).subscribeOnParent;
-		
-		subscriptionInDef.forEach(function(subscription, key) {
-			evt = subscription.on;
-			if (!(evt in this._eventHandlers))
-				console.warn(this.objectType, 'registers ' + candidateModule.objectType, ' : Registering a child module on a raw Component ("Make" function not already called, then no DOM/Event exists) => Automatic Bindings won\'t work');
-			handler = subscription.subscribe;
-
-			if (evt in candidateModule._eventHandlers)
-				this.addEventListener(evt, handler); 	// setter for event subscribtion
-		}, this);
-
-		this.subscribeOnChild.forEach(function(subscription, key) {
-			evt = subscription.on;
-
-			handler = subscription.subscribe;
-			if (evt in candidateModule._eventHandlers)
-				candidateModule.addEventListener(evt, handler.bind(this)); 	// setter for event subscribtion
-			else if ('on' + evt in candidateModule.hostElem)
-				candidateModule.hostElem['on' + evt] = handler.bind(this); 	// setter for delegated native event subscribtion
-			else
-				console.warn(this.objectType, 'registers on event ' + evt + ' on his child : ' + candidateModule.objectType, ' : unknown event on child when Registering a child module => Automatic Bindings won\'t work');
-		}, this);
+	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule) {		
+		if (candidateModule.subscribeOnParent.length)
+			candidateModule.subscribeOnParent.forEach(function(subscription, key) {
+				subscription.subscribeToEvent(this, candidateModule);
+			}, this);
+		if (this.subscribeOnChild.length)
+			this.subscribeOnChild.forEach(function(subscription, key) {
+				subscription.subscribeToEvent(candidateModule, this);
+			}, this);
+		if (this.subscribeOnSelf.length)
+			this.subscribeOnSelf.forEach(function(subscription, key) {
+				subscription.subscribeToEvent(this, this);
+			}, this);
 	}
 	
 	
@@ -285,28 +272,108 @@ var Factory = (function() {
 	 * @param {string} moduleName
 	 */
 	CoreModule.prototype.removeModule = function(moduleName) {
-//		if (typeof this.modules[moduleName] !== 'undefined')
-//			delete this.modules[moduleName];
+		if (!this.modules.length)
+			return false;
+		var idx;
+		if (!isNaN(parseInt(idx = this.modules.indexOfObjectByValue('__in_tree_name', moduleName)))) {
+			this.modules[idx].hostElem.remove();
+			return this.modules.splice(idx, 1)[0];
+		}
+		return false;
 	}
 	
 	/**
 	 * @param {string} moduleName
 	 */
 	CoreModule.prototype.getModule = function(moduleName) {
-//		if (typeof this.modules[moduleName] !== 'undefined')
-//			return this.modules[moduleName];
+		if (!this.modules.length)
+			return false;
+		var idx;
+		if (!isNaN(parseInt(idx = this.modules.indexOfObjectByValue('__in_tree_name', moduleName)))) {
+			return this.modules[idx];
+		}
+		return false;
 	}
 	
 	/**
 	 * @param {string} moduleName
 	 */
 	CoreModule.prototype.queryModules = function(moduleName) {
-//		var ret = [];
-//		for (var name in this.modules) {
-//			if (name.toLowerCase().indexOf(moduleName.toLowerCase()) !== -1)
-//				ret.push(this.modules[name]);
-//		}
-//		return ret;
+		if (!this.modules.length)
+			return false;
+		var arr;
+		if (Array.isArray((arr = this.modules.findObjectsByPartialValue('__in_tree_name', moduleName)))) {
+			return arr;
+		}
+		return false;
+	}
+	
+	/**
+	 * @param {TypeManager.HierarchicalComponentDefModel{
+	 * 		host : ComponentListDefModel
+	 * 	}
+	 * } cListDef
+	 * @param {Number} atIndex
+	 */
+	CoreModule.prototype.addModules = function(cGroupCtor, cListDef, atIndex) {
+		if (atIndex > this.modules.length)
+			return false;
+		atIndex = (isNaN(parseInt(atIndex)) || atIndex > this.modules.length) ? this.modules.length : atIndex;
+		var shouldRename, name, def, root, componentGroup, hostAttr, attributeName, valueFromModel;
+		(atIndex <= this.modules.length - 1 && (shouldRename = true));
+		root = ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1 ? this.hostElem : this.hostElem.lastChild;
+		
+		cListDef.getHostDef().each.forEach(function(item, key) {
+			name = 'ComponentListItem' + (key + atIndex).toString();
+			def = cListDef.getHostDef().template;
+
+			this.makeAndRegisterModule(name, (componentGroup = new cGroupCtor(def, root)), def, atIndex++);
+
+			hostAttr = componentGroup.hostComponent.attributes;
+			if (cListDef.host.reflectOnModel) {
+				hostAttr.forEach(function(attributeObj) {
+					attributeName = attributeObj.getName();
+					valueFromModel = item[attributeName];
+					Object.defineProperty(item, attributeName, Object.getOwnPropertyDescriptor(attributeObj, attributeName));
+					item[attributeName] = valueFromModel;
+				}, this);
+			}
+			else {
+				hostAttr.forEach(function(attributeObj) {
+					attributeName = attributeObj.getName();
+					attributeObj[attributeName] = item[attributeName];
+				}, this);
+			}
+		}, this);
+		
+		if (shouldRename) {
+			var radix;
+			for (var i = atIndex + cListDef.getHostDef().each.length, l = this.modules.length; i < l; i++) {
+				radix = this.modules[i].__in_tree_name.match(/[a-zA-Z]+/);
+				this.modules[i].__in_tree_name = radix + i.toString();
+			}
+		}
+	}
+	
+	/**
+	 * @param {string} moduleName
+	 */
+	CoreModule.prototype.clearAllModules = function() {
+		(this.hostElem && this.hostElem.remove());
+		this.modules.length = 0;
+		return true;
+	}
+	
+	/**
+	 * @param {string} moduleName
+	 */
+	CoreModule.prototype.remove = function() {
+		if (!this.modules.length)
+			return false;
+		if (this._parent.modules.indexOf(this) !== -1) {
+			return this._parent.removeModule(this.__in_tree_name);
+		}
+		return false;
 	}
 	
 	
@@ -349,7 +416,7 @@ var Factory = (function() {
 		}
 		for(var i = 0, l = this._identified_eventHandlers[eventType].length; i < l; i++) {
 			if (this._identified_eventHandlers[eventType][i] === handler) {
-				this._identified_eventHandlers[eventType].splice(i, 1);
+				this._identified_eventHandlers[even-tType].splice(i, 1);
 			}
 		}
 	}
@@ -693,7 +760,7 @@ var Factory = (function() {
 	 * @param {Object} (DOMElem Instance) parentNode
 	 * @param {string} buttonClassName
 	 */
-	var UIModule = function(definition, parentNodeDOMId, automakeable, childrenToAdd, targetSlot) {
+	var UIModule = function(definition, parentNodeDOMId, automakeable) {
 		this.raw = true;
 		
 		DependancyModule.call(this);
@@ -714,20 +781,20 @@ var Factory = (function() {
 		this.slots;
 		
 		this.DOMRenderQueue = [];
+		this.childrenToAdd = [];
 		this.bindingQueue = [];
 		
 		this.mergeWithComponentDefaultDef(definition, this.createDefaultDef());
 		
 		this.parentNodeDOMId = parentNodeDOMId;
-		this.command = (definition && definition.command);
+		this.command = (definition.getHostDef() && definition.getHostDef().command);
 		this.keyboardSettings;
-		this.keyboardEvents = definition.keyboardEvents || [];
-		this.childrenToAdd = childrenToAdd ? (Array.isArray(childrenToAdd) ? childrenToAdd : [{module : childrenToAdd}]) : [];
+		this.keyboardEvents = definition.getHostDef().keyboardEvents || [];
 
-		(typeof targetSlot === 'number' && (this.defaultSlot = (this.rootElem || this.hostElem).children[targetSlot]));
+//		(typeof targetSlot === 'number' && (this.defaultSlot = (this.rootElem || this.hostElem).children[targetSlot]));
 		
-		(definition && this.immediateInit.apply(this, arguments));
-		(automakeable && this.raw && this.Make.apply(this, arguments));
+		(definition && this.immediateInit());
+		(automakeable && this.raw && this.Make(definition));
 	};
 
 	/**
@@ -765,10 +832,10 @@ var Factory = (function() {
 	/**
 	 * @extends CoreModule (not virtual)
 	 */
-	UIModule.prototype.makeAndRegisterModule = function(moduleName, candidateModule, moduleDefinition) {
+	UIModule.prototype.makeAndRegisterModule = function(moduleName, candidateModule, moduleDefinition, atIndex) {
 		if (candidateModule.raw)
 			candidateModule.Make(moduleDefinition);
-		this.registerModule(moduleName, candidateModule, moduleDefinition);
+		this.registerModule(moduleName, candidateModule, moduleDefinition, atIndex);
 		return candidateModule;
 	}
 	
@@ -776,31 +843,30 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.immediateInit = function() {
-		this.createEvents.apply(this, arguments);
-		this.createObservables.apply(this, arguments);
-		this.registerValidators.apply(this, arguments);
+		this.createEvents();
+		this.createObservables();
+		this.registerValidators();
 		
 	}
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.Make = function() {
+	UIModule.prototype.Make = function(definition) {
 		this.raw = false;						// disable "raw" first (seems logical... TODO:  was there a purpose on that comment ?)
-		this.beforeMake.apply(this, arguments);
-		this.init.apply(this, arguments);
-		this.afterMake.apply(this, arguments);
+		this.beforeMake(definition);
+		this.init(definition);
+		this.afterMake(definition);
 	}
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.init = function() {
-		this.create.apply(this, arguments);
-		this.registerEvents.apply(this, arguments);
+	UIModule.prototype.init = function(definition) {
+		this.create(definition);
+		this.registerEvents();
+
+		this.firstRender();
 		
-//		this.resizeAll.apply(this, arguments);
-		this.firstRender.apply(this, arguments);
-		
-		this.execBindingQueue.apply(this, arguments);
+		this.execBindingQueue(definition);
 	}
 	/**
 	 * @abstract
@@ -813,17 +879,17 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
-	UIModule.prototype.create = function() {
-		this.beforeCreateDOM.apply(this, arguments);
-		this.createDOM.apply(this, arguments);
-		this.completeDOM.apply(this, arguments);
-		this.basicEarlyDOMExtend.apply(this, arguments);
-		this.renderDOMQueue.apply(this, arguments);
-		this.basicLateDOMExtend.apply(this, arguments);
-		this.compose.apply(this, arguments);
-		this.afterCreateDOM.apply(this, arguments);
-		this.setDOMTypes.apply(this, arguments);
-		this.setArias.apply(this, arguments);
+	UIModule.prototype.create = function(definition) {
+		this.beforeCreateDOM(definition);
+		this.createDOM(definition);
+		this.completeDOM();
+		this.basicEarlyDOMExtend();
+		this.renderDOMQueue(definition);
+		this.basicLateDOMExtend();
+		this.compose();
+		this.afterCreateDOM(definition);
+		this.setDOMTypes();
+		this.setArias();
 	}
 
 	
@@ -871,13 +937,13 @@ var Factory = (function() {
 		}
 	}
 	
-	UIModule.prototype.registerEvents = function(definition) {
-		this.beforeRegisterEvents(definition);
-		this.registerDOMChangeObservers(definition);
-		this.registerClickEvents(definition);
+	UIModule.prototype.registerEvents = function() {
+		this.beforeRegisterEvents();
+		this.registerDOMChangeObservers();
+		this.registerClickEvents();
 		this.registerKeyboardEvents();
-		(this.hoverElem && this.registerLearnEvents(definition));
-		this.afterRegisterEvents(definition);
+		(this.hoverElem && this.registerLearnEvents());
+		this.afterRegisterEvents();
 	}
 	
 	
@@ -931,29 +997,19 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.asyncAddChildren = function(oneShot) {
 		
-		var name, names = {};
+		var names = {};
 		// prevent masking of already "incremented" subModule names
 		this.modules.forEach(function(module) {
 			(typeof names[module.objectType] === 'undefined' ? names[module.objectType] = 0 : ++names[module.objectType])
 		});
 		
-		this.childrenToAdd.forEach(function(childDef) {
+		this.childrenToAdd.forEach(function(module) {
 			// it's not allowed to add "raw" children
-			if (childDef.module.raw || (oneShot && childDef !== oneShot))
+			// if the module is referenced in the array AND as a parameter, it'll be registered immediately
+			if (module.raw || (oneShot && module !== oneShot))
 				return;
-
-			name = this.maintainUniqueNames(names, childDef.module.objectType);
-			
 			// register subModule
-			this.makeAndRegisterModule(name, childDef.module);
-			
-			// bind requested self events subModule TODO : what's that ? is it really usefull ?
-			for (let eventName in childDef.eventBinding) {
-				let lowerCaseEventName = eventName.toLowerCase();
-				if (!(lowerCaseEventName in childDef.module._eventListeners))
-					continue;
-				childDef.module.addEventListener(lowerCaseEventName, childDef.eventBinding[eventName]);
-			}
+			this.makeAndRegisterModule(this.maintainUniqueNames(names, module.objectType), module);
 		}, this);
 	}
 	
@@ -962,7 +1018,7 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.handleSlotDefinitionRelativeToParent = function(candidateModule, def) {
-		candidateModule.targetSlot = (typeof def.targetSlot === 'number' ? this.slots[def.targetSlot] : candidateModule.targetSlot) || this.slots['default'];
+		candidateModule.targetSlot = (typeof def.targetSlot === 'number' ? this.slots[def.targetSlot] : candidateModule.targetSlot) || this.defaultSlot;
 	}
 	
 	
@@ -999,16 +1055,7 @@ var Factory = (function() {
 	 * @generic
 	 */
 	UIModule.prototype.resizeAll = function() {
-		var self = this;
-//		console.log('resizeAll');
-//		console.log(this.resize)
-//		this.resize();
-//		setTimeout(function() {
-//			for (var i in self.modules) {
-//				if (self.modules[i].objectType === 'UIModule')
-//					self.modules[i].resize();
-//			}
-//		}, 64);
+
 	}
 	
 	
@@ -1061,7 +1108,7 @@ var Factory = (function() {
 		this.objectType = 'Command ' + action.name;
 		this.canActQuery = false;
 		this.action = action;
-		this.canAct = canAct;
+		this.canAct = canAct || null;
 		this.undo = undo;
 		this.resetSiblings = false;
 	}
@@ -1073,16 +1120,16 @@ var Factory = (function() {
 		var self = this, canActResult, args = Array.prototype.slice.call(arguments);
 
 		if (this.canAct === null) {
-			this.action.apply(this, args);
+			this.action.apply(null, args);
 			this.canActQuery = Promise.resolve();
 		}
 		else {
-			this.canActQuery = this.canAct.apply(this, args); 
+			this.canActQuery = this.canAct.apply(null, args); 
 			if (typeof this.canActQuery === 'object' && this.canActQuery instanceof Promise) {
 				this.canActQuery.then(
 						function(queryResult) {
 							args.push(queryResult);
-							self.action.apply(self, args);
+							self.action.apply(null, args);
 							return queryResult;
 						},
 						function(queryResult) {
@@ -1092,7 +1139,7 @@ var Factory = (function() {
 			}
 			else if (this.canActQuery) {
 				this.canActQuery = Promise.resolve(this.canActQuery);
-				this.action.apply(this, args);
+				this.action.apply(null, args);
 			}
 			else {
 				this.canActQuery = Promise.reject(this.canActQuery);
