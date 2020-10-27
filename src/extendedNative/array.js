@@ -267,7 +267,7 @@ Object.defineProperty(Array.prototype, 'spliceComponentList',  {
 		else if (Array.isArray(replacedBy)) {
 			ComponentListObj.registerModule(replacedBy[2], replacedBy[1], null, index + 1);
 			
-			this.splice(index, 0, replacedBy[0]);
+			this.splice(index, 1, replacedBy[0]);
 			
 			return true;
 		}

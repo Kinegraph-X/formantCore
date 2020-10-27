@@ -230,8 +230,8 @@ var Factory = (function() {
 		if (candidateModule instanceof HTMLElement)
 			return candidateModule;
 		else {
-			// autoSubscribe to object own events
-			if (candidateModule.__proto__.objectType === 'ComponentList')
+			// autoSubscribe to object own events, BUT for now, not when we're inserting a component (it smells like it's already done) TODO: find a better test
+			if (candidateModule.__proto__.objectType === 'ComponentList' || !isNaN(parseInt(atIndex)))
 				return candidateModule;
 			
 			// Subscribing to events pertains to the CoreModule
@@ -248,15 +248,18 @@ var Factory = (function() {
 		return candidateModule;
 	}
 	
-	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule) {		
+	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule) {
+		
 		if (candidateModule.subscribeOnParent.length)
 			candidateModule.subscribeOnParent.forEach(function(subscription, key) {
 				subscription.subscribeToEvent(this, candidateModule);
 			}, this);
+		
 		if (this.subscribeOnChild.length)
 			this.subscribeOnChild.forEach(function(subscription, key) {
 				subscription.subscribeToEvent(candidateModule, this);
 			}, this);
+		
 		if (this.subscribeOnSelf.length)
 			this.subscribeOnSelf.forEach(function(subscription, key) {
 				subscription.subscribeToEvent(this, this);
