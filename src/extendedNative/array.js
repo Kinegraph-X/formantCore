@@ -251,6 +251,29 @@ Object.defineProperty(Array.prototype, 'findObjectsByPartialValue',  {
 	}
 });
 
+Object.defineProperty(Array.prototype, 'spliceComponentList',  {
+	value : function(index, length, replacedBy, ComponentListObj) { 	// length is not used for now. TODO: Fix that
+		var c1, c2, mBackup;
+		
+		if (typeof replacedBy === 'number') {
+			c1 = ComponentListObj.modules[index + 1].remove();
+			c2 = ComponentListObj.modules[replacedBy].remove();
+			ComponentListObj.registerModule(c1.__in_tree_name, c2, null, index + 1);
+			
+			mBackup = this.splice(index, 1, this[replacedBy])[0];
+			
+			return [mBackup, c1, c2.__in_tree_name];
+		}
+		else if (Array.isArray(replacedBy)) {
+			ComponentListObj.registerModule(replacedBy[2], replacedBy[1], null, index + 1);
+			
+			this.splice(index, 0, replacedBy[0]);
+			
+			return true;
+		}
+	}
+});
+
 
 sortObject = function (obj) {
 	var arr = Object.keys(obj).sort(), newObj = {};
