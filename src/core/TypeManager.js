@@ -43,7 +43,7 @@ Object.defineProperty(ValueObject.prototype, 'isEmpty', {
 });
 Object.defineProperty(ValueObject.prototype, 'set', {
 	value : function(def, isSpecial) {
-		var objectType = Object.getPrototypeOf(this).objectType;
+//		var objectType = Object.getPrototypeOf(this).objectType;
 
 		for (let p in def) {
 //			console.log(p, this[p], def[p]);
@@ -53,9 +53,15 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 				const n = p + 'Model';
 				if (n in exportedObjects) {
 					if (Array.isArray(def[p])) {
-//						this[p] = [];
-						for(let i = 0, l = def[p].length; i < l; i++) {
-							this[p].push(new exportedObjects[n](def[p][i], isSpecial));
+						if (exportedObjects[n] === PropFactory) {
+							for(let i = 0, l = def[p].length; i < l; i++) {
+								this[p].push(PropFactory(def[p][i]));
+							}
+						}
+						else {
+							for(let i = 0, l = def[p].length; i < l; i++) {
+								this[p].push(new exportedObjects[n](def[p][i], isSpecial));
+							}
 						}
 					}
 					else if (def[p] && def[p].host)
@@ -121,27 +127,54 @@ Object.defineProperty(KeyboardHotkeysModel.prototype, 'objectType', {value : 'Ke
 
 
 
+/**
+ * @factory PropFactory
+ * 
+ */
+var PropFactory = function(obj) {
+	
+	var key = typeof obj === 'string' ? obj : (obj.getName ? obj.getName() : AbstractProp.prototype.getName.call(obj));
+	
+	if (!(key in PropFactory.props)) {
+		PropFactory.props[key] = new Function('obj', 'this["' + key + '"] = obj["' + key + '"];');
+		PropFactory.props[key].prototype = {};
+		Object.defineProperty(PropFactory.props[key].prototype, 'getName', {
+			value :  new Function('return "' + key + '";')
+		});
+		Object.defineProperty(PropFactory.props[key].prototype, 'getValue', {
+			value :  new Function('return this["' + key + '"];')
+		});
+		Object.defineProperty(PropFactory.props[key].prototype, 'key', {
+			value :  key
+		});
+		
+		return (new PropFactory.props[key](obj));
+	}
+	else
+		return (new PropFactory.props[key](obj));
+}
+PropFactory.props = {};
+exportedObjects.PropFactory = PropFactory;
+
+
 
 /**
- * @constructor AttributeModel
+ * @constructor AbstractProp
  * @extends ValueObject
  */
-var AttributeModel = function(obj) {
-//	var model;
+var AbstractProp = function(obj){
 	var key = typeof obj === 'string' ? obj : this.getName.call(obj);
 //	if (model = dictionary.solveFromDictionary('attributes', key))
 //		Object.assign(this, model);
 	this[key] = obj[key];
 }
-AttributeModel.prototype = Object.create(ValueObject.prototype);
-exportedObjects.AttributeModel = AttributeModel
-Object.defineProperty(AttributeModel.prototype, 'objectType', {value :  'Attribute'});
-Object.defineProperty(AttributeModel.prototype, 'getName', {
+AbstractProp.prototype = Object.create(ValueObject.prototype);
+Object.defineProperty(AbstractProp.prototype, 'getName', {
 	value :  function() {
 		for(let name in this)
 			return name; 
 }});
-Object.defineProperty(AttributeModel.prototype, 'getValue', {
+Object.defineProperty(AbstractProp.prototype, 'getValue', {
 	value :  function() {
 		for(let name in this)
 			 return this[name]; 
@@ -149,39 +182,39 @@ Object.defineProperty(AttributeModel.prototype, 'getValue', {
 
 
 /**
+ * @constructor AttributeModel
+ * @extends AbstractProp
+ */
+var AttributeModel = function(obj) {
+	AbstractProp.call(this, obj);
+}
+AttributeModel.prototype = Object.create(AbstractProp.prototype);
+exportedObjects.AttributeModel = AttributeModel;
+Object.defineProperty(AttributeModel.prototype, 'objectType', {value :  'Attribute'});
+
+
+/**
  * @constructor StateModel
- * @extends ValueObject
+ * @extends AbstractProp
  */
 var StateModel = function(obj) {
-//	var model;
-	var key = typeof obj === 'string' ? obj : this.getName.call(obj);
-//	if (model = dictionary.solveFromDictionary('states', key))
-//		Object.assign(this, model);
-	this[key] = obj[key];
+	AbstractProp.call(this, obj);
 };
-StateModel.prototype = Object.create(ValueObject.prototype);
+StateModel.prototype = Object.create(AbstractProp.prototype);
 exportedObjects.StateModel = StateModel;
 Object.defineProperty(StateModel.prototype, 'objectType', {value : 'States'});
-Object.defineProperty(StateModel.prototype, 'getName', Object.getOwnPropertyDescriptor(AttributeModel.prototype, 'getName'));
-Object.defineProperty(StateModel.prototype, 'getValue', Object.getOwnPropertyDescriptor(AttributeModel.prototype, 'getValue'));
 
 
 /**
  * @constructor PropModel
- * @extends ValueObject
+ * @extends AbstractProp
  */
 var PropModel = function(obj) {
-//	var model;
-	var key = typeof obj === 'string' ? obj : this.getName.call(obj);
-//	if (model = dictionary.solveFromDictionary('props', key))
-//		Object.assign(this, model);
-	this[key] = obj[key];
+	AbstractProp.call(this, obj);
 };
-PropModel.prototype = Object.create(ValueObject.prototype);
+PropModel.prototype = Object.create(AbstractProp.prototype);
 exportedObjects.PropModel = PropModel;
 Object.defineProperty(PropModel.prototype, 'objectType', {value : 'Props'});
-Object.defineProperty(PropModel.prototype, 'getName', Object.getOwnPropertyDescriptor(AttributeModel.prototype, 'getName'));
-Object.defineProperty(PropModel.prototype, 'getValue', Object.getOwnPropertyDescriptor(AttributeModel.prototype, 'getValue'));
 
 
 
@@ -429,9 +462,9 @@ exportedObjects.findProp = function(name, item) {
  */
 Object.assign(exportedObjects, {
 	definitionsCache : new ComponentDefCache(),
-	attributesModel : AttributeModel,								// Object AttributeModel
-	statesModel : StateModel,										// Object StateModel
-	propsModel : PropModel,											// Object PropModel
+	attributesModel : PropFactory,									// Object AbstractProp
+	statesModel : PropFactory,										// Object AbstractProp
+	propsModel : PropFactory,										// Object AbstractProp
 	optionsModel : OptionsListModel,								// Object OptionsList
 	// "host" key catch the special condition and should always be flat ("artificial" deepening of flat defs is handled in the factory function)
 	hostModel : SingleLevelComponentDefModel,						// Object SingleLevelComponentDef
