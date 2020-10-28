@@ -806,7 +806,6 @@ var Factory = (function() {
 	UIModule.prototype = Object.assign(Object.create(DependancyModule.prototype), {
 		objectType : 'UIModule',
 		constructor : UIModule,
-		createDefaultDef : function() {},				// virtual
 		beforeMake : function() {},						// virtual
 		afterMake : function() {},						// virtual
 		beforeCreateDOM : function() {},				// virtual
@@ -895,26 +894,26 @@ var Factory = (function() {
 		this.setArias();
 	}
 
+	/**
+	 * @virtual with default implementation
+	 */
+	UIModule.prototype.createDefaultDef = function() {				// virtual
+		return TypeManager.createComponentDef({host : {}}, 'defaultDef');
+	}
 	
 	/**
 	 * @abstract
 	 */
 	UIModule.prototype.mergeWithComponentDefaultDef = function(definition, defaultDef) {
 		
-		if (!defaultDef && !definition) {
-			console.error('UIModule : Merging Component\'s definition with default failed : neither a specific nor a default def found');
+		if (definition.getGroupHostDef() || definition.getHostDef().getType() === 'ComponentList')
 			return;
-		}
-		else if (definition.getGroupHostDef() || definition.getHostDef().getType() === 'ComponentList')
-			return;
-		else if (!defaultDef)
-			defaultDef = TypeManager.createComponentDef({host : {}}, 'defaultDef');
 
 		var defaultHostDef = defaultDef.getHostDef(),
 		hostDef = definition.getHostDef();
 		
 		for(var prop in defaultHostDef) {
-			// TODO : try to precisely avoid to keep references on reactOnParent, reactOnSelf, subscribeOnChild, subscribeOnParent
+			// TODO : try to precisely avoid to keep references on attributes, props & states (and more difficult : on reactOnParent, reactOnSelf, subscribeOnChild, subscribeOnParent)
 			if (Array.isArray(this[prop]))
 				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
 //				this[prop] = this[prop].concat(defaultHostDef[prop], TypeManager.ValueObject.prototype.renewArray(hostDef[prop], prop));
