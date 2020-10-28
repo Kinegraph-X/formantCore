@@ -284,6 +284,27 @@ Object.defineProperty(Array.prototype, 'spliceComponentList',  {
 	}
 });
 
+Object.defineProperty(Array.prototype, 'clearAll',  {
+	value : function(ComponentListObj) {
+		if (ComponentListObj)
+			ComponentListObj.clearAllModules();
+		else
+			return;
+		this.length = 0;
+	}
+});
+
+Object.defineProperty(Array.prototype, 'appendComponents',  {
+	value : function(cListDef, ComponentListObj) {
+		ComponentListObj.addModules(cListDef, ComponentListObj.modules.length);
+		this.push.apply(this, cListDef.each);
+	}
+});
+
+
+
+
+
 
 sortObject = function (obj) {
 	var arr = Object.keys(obj).sort(), newObj = {};

@@ -337,11 +337,12 @@ Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {va
  */
 var ComponentListDefModel = function() {
 //	Object.assign(this, {
-		this.type = 'ComponentList';					// String
+		this.type = 'ComponentList';				// String
 		this.reflectOnModel = null;					// Boolean
 		this.each = null;							// Array [unknown_type] (model to iterate on)
 		this.template = null;						// Object HierarchicalComponentDef
-		this.section = null;							// Number
+		this.section = null;						// Number
+		this.templateCtor = null;					// Object (some Component Type)
 //	});
 	ValueObject.apply(this, arguments);
 }

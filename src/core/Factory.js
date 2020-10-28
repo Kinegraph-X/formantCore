@@ -318,11 +318,13 @@ var Factory = (function() {
 	 * } cListDef
 	 * @param {Number} atIndex
 	 */
-	CoreModule.prototype.addModules = function(cGroupCtor, cListDef, atIndex) {
+	CoreModule.prototype.addModules = function(cListDef, atIndex) {
 		if (atIndex > this.modules.length)
 			return false;
 		atIndex = (isNaN(parseInt(atIndex)) || atIndex > this.modules.length) ? this.modules.length : atIndex;
-		var shouldRename, name, def, root, componentGroup, hostAttr, attributeName, valueFromModel;
+		var shouldRename, name, def, root, componentGroup, hostAttr, attributeName, valueFromModel,
+			componentCtor = cListDef.getHostDef().templateCtor;
+
 		(atIndex <= this.modules.length - 1 && (shouldRename = true));
 		root = ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1 ? this.hostElem : this.hostElem.lastChild;
 		
@@ -330,7 +332,7 @@ var Factory = (function() {
 			name = 'ComponentListItem' + (key + atIndex).toString();
 			def = cListDef.getHostDef().template;
 
-			this.makeAndRegisterModule(name, (componentGroup = new cGroupCtor(def, root)), def, atIndex++);
+			this.makeAndRegisterModule(name, (componentGroup = new componentCtor(def, root)), def, atIndex++);
 
 			hostAttr = componentGroup.hostComponent.attributes;
 			if (cListDef.host.reflectOnModel) {
