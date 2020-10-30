@@ -221,7 +221,7 @@ var Factory = (function() {
 		candidateModule.__in_tree_name = moduleName;
 		candidateModule._parent = this;
 		if (parseInt(atIndex)) {
-			(candidateModule.hostElem && this.modules[atIndex - 1].hostElem.insertAdjacentElement('afterEnd', candidateModule.hostElem));
+			((candidateModule.hostElem && this.modules[atIndex - 1].hostElem) ? this.modules[atIndex - 1].hostElem.insertAdjacentElement('afterEnd', candidateModule.hostElem) : this.hostElem.appendChild(candidateModule.hostElem));
 			this.modules.splice(atIndex, 0, candidateModule);
 		}
 		else
@@ -231,7 +231,7 @@ var Factory = (function() {
 			return candidateModule;
 		else {
 			// autoSubscribe to object own events, BUT for now, not when we're inserting a component (it smells like it's already done) TODO: find a better test
-			if (candidateModule.__proto__.objectType === 'ComponentList' || !isNaN(parseInt(atIndex)))
+			if (candidateModule.__proto__.objectType === 'ComponentList' || candidateModule.__proto__.objectType === 'ComponentGroup' || !isNaN(parseInt(atIndex)))
 				return candidateModule;
 			
 			// Subscribing to events pertains to the CoreModule
@@ -249,7 +249,7 @@ var Factory = (function() {
 	}
 	
 	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule) {
-		
+//		console.log(candidateModule);
 		if (candidateModule.subscribeOnParent.length)
 			candidateModule.subscribeOnParent.forEach(function(subscription, key) {
 				subscription.subscribeToEvent(this, candidateModule);
@@ -326,7 +326,7 @@ var Factory = (function() {
 			componentCtor = cListDef.getHostDef().templateCtor;
 
 		(atIndex <= this.modules.length - 1 && (shouldRename = true));
-		root = ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1 ? this.hostElem : this.hostElem.lastChild;
+		root = (this.modules[1] && ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1) ? this.hostElem : this.hostElem.lastChild;
 		
 		cListDef.getHostDef().each.forEach(function(item, key) {
 			name = 'ComponentListItem' + (key + atIndex).toString();
@@ -334,7 +334,7 @@ var Factory = (function() {
 
 			this.makeAndRegisterModule(name, (componentGroup = new componentCtor(def, root)), def, atIndex++);
 
-			hostAttr = componentGroup.hostComponent.attributes;
+			hostAttr = componentGroup.hostComponent.attributes; // host Component may be DOM node...
 			if (cListDef.host.reflectOnModel) {
 				hostAttr.forEach(function(attributeObj) {
 					attributeName = attributeObj.getName();
@@ -924,6 +924,15 @@ var Factory = (function() {
 			else if (hostDef[prop] === null)
 				hostDef[prop] = defaultHostDef[prop];
 		}
+		
+		if (defaultDef.subSections.length || defaultDef.members.length) {
+			if (defaultDef.subSections.length)
+				definition.subSections = defaultDef.subSections.concat(definition.subSections);
+			if (defaultDef.members.length)
+				definition.members = defaultDef.members.concat(definition.members);
+		}
+		
+		console.log(this);
 	};
 	
 	/**
@@ -1436,7 +1445,7 @@ var Factory = (function() {
 					val = value;
 				else
 					return;
-//				console.log('val', val);
+				console.log('val', this._stream.name, val);
 				
 //				console.log('subscriber', this.subscriber);
 				if (this.subscriber.obj !== null && this.subscriber.prop !== null)

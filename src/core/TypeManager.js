@@ -44,7 +44,7 @@ Object.defineProperty(ValueObject.prototype, 'isEmpty', {
 Object.defineProperty(ValueObject.prototype, 'set', {
 	value : function(def, isSpecial) {
 //		var objectType = Object.getPrototypeOf(this).objectType;
-
+//		console.trace(def, isSpecial);
 		for (let p in def) {
 //			console.log(p, this[p], def[p]);
 			if (isSpecial === 'rootOnly' && def[p])
@@ -241,6 +241,13 @@ exportedObjects.ReactivityQueryModel = ReactivityQueryModel;
 Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'ReactivityQuery'});
 Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 	value : function(stream, queriedOrQueryingObj) {
+		if (!this.cbOnly && !queriedOrQueryingObj.streams[this.to] && !this.subscribe) {
+			console.warn('missing stream or subscription callback on child subscribing to ' + stream.name);
+			return;
+		}
+		else if (typeof stream === 'undefined')
+			console.log(queriedOrQueryingObj);
+		console.log(stream, queriedOrQueryingObj, this.to);
 		stream.subscribe(this.cbOnly ? this.subscribe.bind(queriedOrQueryingObj) : (queriedOrQueryingObj.streams[this.to] || this.subscribe.bind(queriedOrQueryingObj)), 'value')
 			.filter(this.filter)
 			.map(this.map)
@@ -286,7 +293,9 @@ var SingleLevelComponentDefModel = function(initObj, isSpecial, givenDef) {
 	else {
 		this.type = null,							// String
 		this.nodeName = null;						// String
+		this.templateNodeName = null;				// String
 		this.attributes = [];						// Array [AttributeDesc]
+		this.section = null;						// Number
 		this.props = [];							// Array [Prop]
 		this.states = [];							// Array [State]
 		this.parentNodeIndex = null;				// Number
@@ -316,13 +325,14 @@ Object.defineProperty(SingleLevelComponentDefModel.prototype, 'objectType', {val
  * @extends ValueObject
  */
 var HierarchicalComponentDefModel = function() {
-//	Object.assign(this, {
+
+		this.type = null;
 		this.host = null;							// Object SingleLevelComponentDef
 		this.subSections = [];						// Array [SingleLevelComponentDef]
 		this.members = [];							// Array [SingleLevelComponentDef]
 		this.lists = [];							// Array [ComponentListDef]
 		this.options = null;						// Object : plain
-//	});
+
 	ValueObject.apply(this, arguments);
 }
 HierarchicalComponentDefModel.prototype = Object.create(ValueObject.prototype);
@@ -336,14 +346,14 @@ Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {va
  * @extends ValueObject
  */
 var ComponentListDefModel = function() {
-//	Object.assign(this, {
+
 		this.type = 'ComponentList';				// String
 		this.reflectOnModel = null;					// Boolean
 		this.each = null;							// Array [unknown_type] (model to iterate on)
 		this.template = null;						// Object HierarchicalComponentDef
 		this.section = null;						// Number
 		this.templateCtor = null;					// Object (some Component Type)
-//	});
+
 	ValueObject.apply(this, arguments);
 }
 ComponentListDefModel.prototype = Object.create(ValueObject.prototype);
@@ -404,9 +414,12 @@ var createComponentDef = function(defObj, useCache, isSpecial) {
 			ValueObject.prototype.fromArray.call(c, arguments);
 			def = new HierarchicalComponentDefModel({host : c}, 'rootOnly');
 		}
-		if (typeof defObj === 'object' && defObj.host)
+		if (typeof defObj === 'object' && defObj.host) {
+//			console.log('HierarchicalComponentDefModel', defObj, isSpecial);
 			def = new HierarchicalComponentDefModel(defObj, isSpecial);
-		if (typeof defObj === 'object' && defObj.type === 'ComponentList')
+//			console.log(def);
+		}
+		else if (typeof defObj === 'object' && defObj.type === 'ComponentList')
 			def = new HierarchicalComponentDefModel({host : new ComponentListDefModel(defObj, isSpecial)}, 'rootOnly');
 		else if (typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props))
 			def = new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, isSpecial)}, 'rootOnly');

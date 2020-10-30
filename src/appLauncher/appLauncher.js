@@ -9,7 +9,7 @@ var Arr = require('src/extendedNative/array');
 var Bool = require('src/extendedNative/boolean');
 var Obj = require('src/extendedNative/object');
 var Regex = require('src/extendedNative/regexp');
-var Validate = require('src/validate_js/validate');
+var Validate = require('src/UI/integrated_fork/Validate');
 
 var classConstructor = function() {	
 	var context = this.context,

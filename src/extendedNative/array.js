@@ -220,6 +220,16 @@ Object.defineProperty(Array.prototype, 'findObjectByKey', {
 	}
 });
 
+Object.defineProperty(Array.prototype, 'getObjectValueByKey', {
+	value : function(key) {
+		for (let i = 0, l = this.length; i < l; i++) {
+			if (typeof this[i][key] !== 'undefined' || this[i].hasOwnProperty(key))
+				return this[i][key];
+		}
+		return false;
+	}
+});
+
 Object.defineProperty(Array.prototype, 'findObjectByValue', {
 	value : function(prop, value) {
 		for (let i = 0, l = this.length; i < l; i++) {
