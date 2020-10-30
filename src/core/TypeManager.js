@@ -242,12 +242,14 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'Re
 Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 	value : function(stream, queriedOrQueryingObj) {
 		if (!this.cbOnly && !queriedOrQueryingObj.streams[this.to] && !this.subscribe) {
-			console.warn('missing stream or subscription callback on child subscribing to ' + stream.name);
+			console.warn('missing stream or subscription callback on child subscribing to ' + stream.name + ' from ' + this.from);
 			return;
 		}
-		else if (typeof stream === 'undefined')
-			console.log(queriedOrQueryingObj);
-		console.log(stream, queriedOrQueryingObj, this.to);
+		else if (typeof stream === 'undefined') {
+			console.log(queriedOrQueryingObj, this.from, this.to);
+			return;
+		}
+
 		stream.subscribe(this.cbOnly ? this.subscribe.bind(queriedOrQueryingObj) : (queriedOrQueryingObj.streams[this.to] || this.subscribe.bind(queriedOrQueryingObj)), 'value')
 			.filter(this.filter)
 			.map(this.map)
@@ -348,7 +350,7 @@ Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {va
 var ComponentListDefModel = function() {
 
 		this.type = 'ComponentList';				// String
-		this.reflectOnModel = null;					// Boolean
+		this.reflectOnModel = true;					// Boolean
 		this.each = null;							// Array [unknown_type] (model to iterate on)
 		this.template = null;						// Object HierarchicalComponentDef
 		this.section = null;						// Number

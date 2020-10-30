@@ -1,3 +1,4 @@
+
 Object.defineProperty(String.prototype, 'splice', {
 	enumerable : false,
 	configurable : false,
@@ -14,7 +15,6 @@ Object.defineProperty(String.prototype, 'splice', {
 		return this.slice(0, index) + (add || '') + this.slice(index + count);
 	}
 });
-
 function padNumber(n, width, z) {
   z = String(z) || '0';
   n = n + '';

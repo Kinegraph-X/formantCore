@@ -231,7 +231,7 @@ var Factory = (function() {
 			return candidateModule;
 		else {
 			// autoSubscribe to object own events, BUT for now, not when we're inserting a component (it smells like it's already done) TODO: find a better test
-			if (candidateModule.__proto__.objectType === 'ComponentList' || candidateModule.__proto__.objectType === 'ComponentGroup' || !isNaN(parseInt(atIndex)))
+			if (candidateModule.__proto__.objectType === 'ComponentList')
 				return candidateModule;
 			
 			// Subscribing to events pertains to the CoreModule
@@ -260,10 +260,10 @@ var Factory = (function() {
 				subscription.subscribeToEvent(candidateModule, this);
 			}, this);
 		
-		if (this.subscribeOnSelf.length)
-			this.subscribeOnSelf.forEach(function(subscription, key) {
+		if (candidateModule.subscribeOnSelf.length)
+			candidateModule.subscribeOnSelf.forEach(function(subscription, key) {
 				subscription.subscribeToEvent(this, this);
-			}, this);
+			}, candidateModule);
 	}
 	
 	
@@ -920,7 +920,7 @@ var Factory = (function() {
 				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
 //				this[prop] = this[prop].concat(defaultHostDef[prop], TypeManager.ValueObject.prototype.renewArray(hostDef[prop], prop));
 			else if (prop === 'sWrapper')							// TODO : use the cache for stylesheets : in a shadowRoot, appending many times won't work, so we need here a clone of the styleElem
-				this[prop] = defaultHostDef[prop] || hostDef[prop];
+				this[prop] = hostDef[prop] || defaultHostDef[prop];
 			else if (hostDef[prop] === null)
 				hostDef[prop] = defaultHostDef[prop];
 		}
@@ -931,8 +931,6 @@ var Factory = (function() {
 			if (defaultDef.members.length)
 				definition.members = defaultDef.members.concat(definition.members);
 		}
-		
-		console.log(this);
 	};
 	
 	/**
@@ -1217,6 +1215,7 @@ var Factory = (function() {
 		if (this.reflectedObj) {
 			this.forward = false;
 			this.reflectedObj[this.name] = value;
+//			console.log(this.reflectedObj, this.name, value, this.reflectedObj[this.name]);
 		}
 	}
 	
@@ -1445,7 +1444,7 @@ var Factory = (function() {
 					val = value;
 				else
 					return;
-				console.log('val', this._stream.name, val);
+//				console.log('val', this._stream.name, val);
 				
 //				console.log('subscriber', this.subscriber);
 				if (this.subscriber.obj !== null && this.subscriber.prop !== null)

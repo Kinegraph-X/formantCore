@@ -204,7 +204,7 @@ Object.defineProperty(Array.prototype, 'fastHasObjectByKey', {
 	value : function(key) {
 		for (let i = 0, l = this.length; i < l; i++) {
 			if (this[i].__proto__.key === key)
-				return true;
+				return i;
 		}
 		return false;
 	}
