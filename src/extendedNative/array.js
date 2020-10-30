@@ -276,13 +276,19 @@ Object.defineProperty(Array.prototype, 'spliceComponentList',  {
 		var c1, c2, mBackup;
 		
 		if (typeof replacedBy === 'number') {
-			c1 = ComponentListObj.modules[index + 1].remove();
+			c1 = ComponentListObj.modules[index].remove();
 			c2 = ComponentListObj.modules[replacedBy].remove();
-			ComponentListObj.registerModule(c1.__in_tree_name, c2, null, index + 1);
+			ComponentListObj.registerModule(c1.__in_tree_name, c2, null, index);
 			
 			mBackup = this.splice(index, 1, this[replacedBy])[0];
 			
 			return [mBackup, c1, c2.__in_tree_name];
+		}
+		else if (replacedBy === null) {
+			c1 = ComponentListObj.modules[index].remove();
+			mBackup = this.splice(index, 1)[0];
+			
+			return [mBackup, c1, null];
 		}
 		else if (Array.isArray(replacedBy)) {
 			ComponentListObj.registerModule(replacedBy[2], replacedBy[1], null, index + 1);

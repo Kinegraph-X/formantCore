@@ -217,7 +217,7 @@ var Factory = (function() {
 	CoreModule.prototype.registerModule = function(moduleName, candidateModule, moduleDefinition, atIndex) {
 		if (!candidateModule)
 			return;
-
+		
 		candidateModule.__in_tree_name = moduleName;
 		candidateModule._parent = this;
 		if (parseInt(atIndex)) {
@@ -230,9 +230,6 @@ var Factory = (function() {
 		if (candidateModule instanceof HTMLElement)
 			return candidateModule;
 		else {
-			// autoSubscribe to object own events, BUT for now, not when we're inserting a component (it smells like it's already done) TODO: find a better test
-			if (candidateModule.__proto__.objectType === 'ComponentList')
-				return candidateModule;
 			
 			// Subscribing to events pertains to the CoreModule
 			this.handleModuleSubscriptions(candidateModule);
@@ -266,6 +263,13 @@ var Factory = (function() {
 			}, candidateModule);
 	}
 	
+	CoreModule.prototype.generateNumeration = function(atIndex) {
+		var radix;
+		for (var i = atIndex, l = this.modules.length; i < l; i++) {
+			radix = this.modules[i].__in_tree_name.match(/[a-zA-Z]+/);
+			this.modules[i].__in_tree_name = radix + i.toString();
+		}
+	}
 	
 	
 	
@@ -319,18 +323,20 @@ var Factory = (function() {
 	 * @param {Number} atIndex
 	 */
 	CoreModule.prototype.addModules = function(cListDef, atIndex) {
+		
 		if (atIndex > this.modules.length)
 			return false;
-		atIndex = (isNaN(parseInt(atIndex)) || atIndex > this.modules.length) ? this.modules.length : atIndex;
+		
 		var shouldRename, name, def, root, componentGroup, hostAttr, attributeName, valueFromModel,
 			componentCtor = cListDef.getHostDef().templateCtor;
-
-		(atIndex <= this.modules.length - 1 && (shouldRename = true));
-		root = (this.modules[1] && ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1) ? this.hostElem : this.hostElem.lastChild;
+		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : ((shouldRename = true) && (atIndex || 0));
 		
-		cListDef.getHostDef().each.forEach(function(item, key) {
-			name = 'ComponentListItem' + (key + atIndex).toString();
-			def = cListDef.getHostDef().template;
+		var root = ((this.modules[1] && ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1) || !this.modules.length) ? this.hostElem : this.hostElem.lastChild,
+			def = cListDef.getHostDef().template,
+			name = this.modules[idx - 1] ? this.modules[idx - 1].__in_tree_name : 'componentListItem';
+
+		cListDef.getHostDef().each.forEach(function(item, key, arr) {
+			name = name + (key + idx).toString();
 
 			this.makeAndRegisterModule(name, (componentGroup = new componentCtor(def, root)), def, atIndex++);
 
@@ -350,14 +356,6 @@ var Factory = (function() {
 				}, this);
 			}
 		}, this);
-		
-		if (shouldRename) {
-			var radix;
-			for (var i = atIndex + cListDef.getHostDef().each.length, l = this.modules.length; i < l; i++) {
-				radix = this.modules[i].__in_tree_name.match(/[a-zA-Z]+/);
-				this.modules[i].__in_tree_name = radix + i.toString();
-			}
-		}
 	}
 	
 	/**
@@ -1444,7 +1442,7 @@ var Factory = (function() {
 					val = value;
 				else
 					return;
-//				console.log('val', this._stream.name, val);
+				console.log('val', this._stream.name, val);
 				
 //				console.log('subscriber', this.subscriber);
 				if (this.subscriber.obj !== null && this.subscriber.prop !== null)
