@@ -242,18 +242,22 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'Re
 Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 	value : function(stream, queriedOrQueryingObj) {
 		if (!this.cbOnly && !queriedOrQueryingObj.streams[this.to] && !this.subscribe) {
-			console.warn('missing stream or subscription callback on child subscribing to ' + stream.name + ' from ' + this.from);
+			console.trace('missing stream or subscription callback on child subscribing to ' + stream.name + ' from ' + this.from);
 			return;
 		}
 		else if (typeof stream === 'undefined') {
 			console.log(queriedOrQueryingObj, this.from, this.to);
 			return;
 		}
-
-		stream.subscribe(this.cbOnly ? this.subscribe.bind(queriedOrQueryingObj) : (queriedOrQueryingObj.streams[this.to] || this.subscribe.bind(queriedOrQueryingObj)), 'value')
+		if (this.cbOnly)
+			stream.subscribe(this.subscribe.bind(queriedOrQueryingObj));
+		else {
+			stream.subscribe(queriedOrQueryingObj.streams[this.to], 'value')
 			.filter(this.filter)
 			.map(this.map)
 			.reverse(this.inverseTransform);
+		}
+		stream.subscriptions[stream.subscriptions.length - 1].execute(stream._value);
 }});
 
 

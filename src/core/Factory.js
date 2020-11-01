@@ -340,20 +340,38 @@ var Factory = (function() {
 
 			this.makeAndRegisterModule(name, (componentGroup = new componentCtor(def, root)), def, atIndex++);
 
-			hostAttr = componentGroup.hostComponent.attributes; // host Component may be DOM node...
+//			hostAttr = componentGroup.hostComponent.attributes; // host Component may be DOM node...
+//			if (cListDef.host.reflectOnModel) {
+//				hostAttr.forEach(function(attributeObj) {
+//					attributeName = attributeObj.getName();
+//					valueFromModel = item[attributeName];
+//					Object.defineProperty(item, attributeName, Object.getOwnPropertyDescriptor(attributeObj, attributeName));
+//					item[attributeName] = valueFromModel;
+//				}, this);
+//			}
+//			else {
+//				hostAttr.forEach(function(attributeObj) {
+//					attributeName = attributeObj.getName();
+//					attributeObj[attributeName] = item[attributeName];
+//				}, this);
+//			}
+			
+			hostStreams = componentGroup.hostComponent.streams;
 			if (cListDef.host.reflectOnModel) {
-				hostAttr.forEach(function(attributeObj) {
-					attributeName = attributeObj.getName();
-					valueFromModel = item[attributeName];
-					Object.defineProperty(item, attributeName, Object.getOwnPropertyDescriptor(attributeObj, attributeName));
-					item[attributeName] = valueFromModel;
-				}, this);
+//				console.log('reflectOnModel');
+				for (var s in hostStreams) {
+					streamName = hostStreams[s].name;
+					valueFromModel = item[streamName];
+//					console.log(streamName, valueFromModel);
+					hostStreams[s].reflect(streamName, item);
+					item[streamName] = valueFromModel;
+				}
 			}
 			else {
-				hostAttr.forEach(function(attributeObj) {
-					attributeName = attributeObj.getName();
-					attributeObj[attributeName] = item[attributeName];
-				}, this);
+				console.log('dontReflectOnModel');
+				for (var s in hostStreams) {
+					hostStreams[s].value = item[s];
+				}
 			}
 		}, this);
 	}
@@ -1442,7 +1460,7 @@ var Factory = (function() {
 					val = value;
 				else
 					return;
-				console.log('val', this._stream.name, val);
+//				console.log('val', this._stream.name, val);
 				
 //				console.log('subscriber', this.subscriber);
 				if (this.subscriber.obj !== null && this.subscriber.prop !== null)

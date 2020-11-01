@@ -260,6 +260,17 @@ Object.defineProperty(Array.prototype, 'indexOfObjectByValue',  {
 	}
 });
 
+Object.defineProperty(Array.prototype, 'findObjectsByValue',  {
+	value : function(prop, value) {
+		var arr = [];
+		for (let i = 0, l = this.length; i < l; i++) {
+			if (this[i][prop] === value)
+				arr.push(this[i]);
+		}
+		return arr.length ? arr : false;
+	}
+});
+
 Object.defineProperty(Array.prototype, 'findObjectsByPartialValue',  {
 	value : function(prop, value) {
 		var arr = [];
@@ -302,18 +313,34 @@ Object.defineProperty(Array.prototype, 'spliceComponentList',  {
 
 Object.defineProperty(Array.prototype, 'clearAll',  {
 	value : function(ComponentListObj) {
-		if (ComponentListObj)
+		if (ComponentListObj) {
 			ComponentListObj.clearAllModules();
+			this.length = 0;
+		}
 		else
-			return;
-		this.length = 0;
+			return false;
+	}
+});
+
+Object.defineProperty(Array.prototype, 'clearOnProp',  {
+	value : function(prop, value, ComponentListObj) {
+		if (ComponentListObj && ComponentListObj.modules.length) {
+			ComponentListObj.modules.forEach(function(module, key) {
+				if (module.streams[prop] && module.streams[prop].value === value) {
+					module.remove();
+					this.splice(key, 1);
+				}
+			}, this);
+		}
+		else
+			return false;
 	}
 });
 
 Object.defineProperty(Array.prototype, 'appendComponents',  {
 	value : function(cListDef, ComponentListObj) {
 		ComponentListObj.addModules(cListDef, ComponentListObj.modules.length);
-		this.push.apply(this, cListDef.each);
+		this.push.apply(this, cListDef.host.each);
 	}
 });
 
