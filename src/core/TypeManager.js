@@ -355,7 +355,9 @@ var ComponentListDefModel = function() {
 
 		this.type = 'ComponentList';				// String
 		this.reflectOnModel = true;					// Boolean
+		this.augmentModel = false;					// Boolean
 		this.each = null;							// Array [unknown_type] (model to iterate on)
+		this.item = null;							// Object (an item of the model)
 		this.template = null;						// Object HierarchicalComponentDef
 		this.section = null;						// Number
 		this.templateCtor = null;					// Object (some Component Type)
@@ -427,8 +429,12 @@ var createComponentDef = function(defObj, useCache, isSpecial) {
 		}
 		else if (typeof defObj === 'object' && defObj.type === 'ComponentList')
 			def = new HierarchicalComponentDefModel({host : new ComponentListDefModel(defObj, isSpecial)}, 'rootOnly');
-		else if (typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props))
-			def = new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, isSpecial)}, 'rootOnly');
+		else if (typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props)) {
+			if (isSpecial !== 'hostOnly')
+				def = new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, isSpecial)}, 'rootOnly');
+			else
+				def = new SingleLevelComponentDefModel(defObj);
+		}
 	}
 //	console.log(def);
 	if (typeof UID === 'string')

@@ -282,27 +282,27 @@ Object.defineProperty(Array.prototype, 'findObjectsByPartialValue',  {
 	}
 });
 
-Object.defineProperty(Array.prototype, 'spliceComponentList',  {
-	value : function(index, length, replacedBy, ComponentListObj) { 	// length is not used for now. TODO: Fix that
+Object.defineProperty(Array.prototype, 'recitalSplice',  {
+	value : function(index, length, replacedBy, ComponentGroupObj) { 	// length is not used for now. TODO: Fix that
 		var c1, c2, mBackup;
 		
 		if (typeof replacedBy === 'number') {
-			c1 = ComponentListObj.modules[index].remove();
-			c2 = ComponentListObj.modules[replacedBy].remove();
-			ComponentListObj.registerModule(c1.__in_tree_name, c2, null, index);
+			c1 = ComponentGroupObj.modules[index].remove();
+			c2 = ComponentGroupObj.modules[replacedBy].remove();
+			ComponentGroupObj.registerModule(c1.__in_tree_name, c2, null, index);
 			
 			mBackup = this.splice(index, 1, this[replacedBy])[0];
 			
 			return [mBackup, c1, c2.__in_tree_name];
 		}
 		else if (replacedBy === null) {
-			c1 = ComponentListObj.modules[index].remove();
+			c1 = ComponentGroupObj.modules[index].remove();
 			mBackup = this.splice(index, 1)[0];
 			
 			return [mBackup, c1, null];
 		}
 		else if (Array.isArray(replacedBy)) {
-			ComponentListObj.registerModule(replacedBy[2], replacedBy[1], null, index + 1);
+			ComponentGroupObj.registerModule(replacedBy[2], replacedBy[1], null, index + 1);
 			
 			this.splice(index, 1, replacedBy[0]);
 			
@@ -311,10 +311,10 @@ Object.defineProperty(Array.prototype, 'spliceComponentList',  {
 	}
 });
 
-Object.defineProperty(Array.prototype, 'clearAll',  {
-	value : function(ComponentListObj) {
-		if (ComponentListObj) {
-			ComponentListObj.clearAllModules();
+Object.defineProperty(Array.prototype, 'recitalClearAll',  {
+	value : function(ComponentGroupObj) {
+		if (ComponentGroupObj) {
+			ComponentGroupObj.clearAllModules();
 			this.length = 0;
 		}
 		else
@@ -322,24 +322,33 @@ Object.defineProperty(Array.prototype, 'clearAll',  {
 	}
 });
 
-Object.defineProperty(Array.prototype, 'clearOnProp',  {
-	value : function(prop, value, ComponentListObj) {
-		if (ComponentListObj && ComponentListObj.modules.length) {
-			ComponentListObj.modules.forEach(function(module, key) {
+Object.defineProperty(Array.prototype, 'recitalSpliceOnProp',  {
+	value : function(prop, value, ComponentGroupObj) {
+		if (ComponentGroupObj && ComponentGroupObj.modules.length) {
+			var module;
+			for (var i = ComponentGroupObj.modules.length - 1; i >= 0; i--) {
+				module = ComponentGroupObj.modules[i];
 				if (module.streams[prop] && module.streams[prop].value === value) {
 					module.remove();
-					this.splice(key, 1);
+					this.splice(i, 1);
 				}
-			}, this);
+			}
 		}
 		else
 			return false;
 	}
 });
 
-Object.defineProperty(Array.prototype, 'appendComponents',  {
-	value : function(cListDef, ComponentListObj) {
-		ComponentListObj.addModules(cListDef, ComponentListObj.modules.length);
+Object.defineProperty(Array.prototype, 'recitalAppendItem',  {
+	value : function(cListDef, ComponentGroupObj) {
+		ComponentGroupObj.addModule(cListDef, ComponentGroupObj.modules.length);
+		this.push(cListDef.host.item);
+	}
+});
+
+Object.defineProperty(Array.prototype, 'recitalAppendItems',  {
+	value : function(cListDef, ComponentGroupObj) {
+		ComponentGroupObj.addModules(cListDef, ComponentGroupObj.modules.length);
 		this.push.apply(this, cListDef.host.each);
 	}
 });

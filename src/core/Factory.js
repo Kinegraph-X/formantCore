@@ -264,9 +264,8 @@ var Factory = (function() {
 	}
 	
 	CoreModule.prototype.generateNumeration = function(atIndex) {
-		var radix;
+		var radix = this.modules[atIndex].__in_tree_name.match(/[a-zA-Z]+/);
 		for (var i = atIndex, l = this.modules.length; i < l; i++) {
-			radix = this.modules[i].__in_tree_name.match(/[a-zA-Z]+/);
 			this.modules[i].__in_tree_name = radix + i.toString();
 		}
 	}
@@ -281,10 +280,12 @@ var Factory = (function() {
 	CoreModule.prototype.removeModule = function(moduleName) {
 		if (!this.modules.length)
 			return false;
-		var idx;
+		var idx, removed;
 		if (!isNaN(parseInt(idx = this.modules.indexOfObjectByValue('__in_tree_name', moduleName)))) {
 			this.modules[idx].hostElem.remove();
-			return this.modules.splice(idx, 1)[0];
+			removed = this.modules.splice(idx, 1)[0];
+			(idx < this.modules.length && this.generateNumeration(idx));
+			return removed;
 		}
 		return false;
 	}
@@ -327,53 +328,45 @@ var Factory = (function() {
 		if (atIndex > this.modules.length)
 			return false;
 		
-		var shouldRename, name, def, root, componentGroup, hostAttr, attributeName, valueFromModel,
+		var baseName, name, def, root, componentGroup,
 			componentCtor = cListDef.getHostDef().templateCtor;
-		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : ((shouldRename = true) && (atIndex || 0));
-		
+		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0);
+
+		// TODO : handle the case where a listItem is appended to a "not last child" subSection
 		var root = ((this.modules[1] && ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1) || !this.modules.length) ? this.hostElem : this.hostElem.lastChild,
 			def = cListDef.getHostDef().template,
-			name = this.modules[idx - 1] ? this.modules[idx - 1].__in_tree_name : 'componentListItem';
+			baseName = 'componentListItem';
 
-		cListDef.getHostDef().each.forEach(function(item, key, arr) {
-			name = name + (key + idx).toString();
+		cListDef.getHostDef().each.forEach(function(item, key) {
+			name = baseName + (key + idx).toString();
 
-			this.makeAndRegisterModule(name, (componentGroup = new componentCtor(def, root)), def, atIndex++);
-
-//			hostAttr = componentGroup.hostComponent.attributes; // host Component may be DOM node...
-//			if (cListDef.host.reflectOnModel) {
-//				hostAttr.forEach(function(attributeObj) {
-//					attributeName = attributeObj.getName();
-//					valueFromModel = item[attributeName];
-//					Object.defineProperty(item, attributeName, Object.getOwnPropertyDescriptor(attributeObj, attributeName));
-//					item[attributeName] = valueFromModel;
-//				}, this);
-//			}
-//			else {
-//				hostAttr.forEach(function(attributeObj) {
-//					attributeName = attributeObj.getName();
-//					attributeObj[attributeName] = item[attributeName];
-//				}, this);
-//			}
-			
-			hostStreams = componentGroup.hostComponent.streams;
-			if (cListDef.host.reflectOnModel) {
-//				console.log('reflectOnModel');
-				for (var s in hostStreams) {
-					streamName = hostStreams[s].name;
-					valueFromModel = item[streamName];
-//					console.log(streamName, valueFromModel);
-					hostStreams[s].reflect(streamName, item);
-					item[streamName] = valueFromModel;
-				}
-			}
-			else {
-				console.log('dontReflectOnModel');
-				for (var s in hostStreams) {
-					hostStreams[s].value = item[s];
-				}
-			}
+			UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(def, root)), def, atIndex++);
+			componentCtor.prototype.handleReflectionOnModel.call(this, cListDef, componentGroup.streams, item);
 		}, this);
+	}
+	
+	/**
+	 * @param {TypeManager.HierarchicalComponentDefModel{
+	 * 		host : ComponentListDefModel
+	 * 	}
+	 * } cListDef
+	 * @param {Number} atIndex
+	 */
+	CoreModule.prototype.addModule = function(cListDef, atIndex) {
+		
+		if (atIndex > this.modules.length)
+			return false;
+		
+		var name, def, root, componentGroup, componentCtor = cListDef.getHostDef().templateCtor;
+		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0),
+			name = 'componentListItem' + idx;
+
+		// TODO : handle the case where a listItem is appended to a "not last child" subSection
+		var root = ((this.modules[1] && ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1) || !this.modules.length) ? this.hostElem : this.hostElem.lastChild,
+			def = cListDef.getHostDef().template;
+
+		UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(def, root)), def, atIndex++);
+		componentCtor.prototype.handleReflectionOnModel.call(this, cListDef, componentGroup.streams, cListDef.getHostDef().item);
 	}
 	
 	/**
