@@ -1221,11 +1221,14 @@ var Factory = (function() {
 	}
 
 	Stream.prototype.set = function(value) {
-		if (this.reflectedObj) {
+		if (this.forward && this.reflectedObj) {
 			this.forward = false;
 			this.reflectedObj[this.name] = value;
+			this.forward = true;
 //			console.log(this.reflectedObj, this.name, value, this.reflectedObj[this.name]);
 		}
+		else
+			this.forward = true;
 	}
 	
 	/**
@@ -1247,12 +1250,12 @@ var Factory = (function() {
 					this.update();
 				}
 			}
-			else
-				this.forward = true;
+//			else
+//				this.forward = true;
 		}
 		else {
 			this.dirty = true;
-			this.forward = true;
+//			this.forward = true;
 		}
 	}
 	
