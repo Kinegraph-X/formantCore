@@ -191,6 +191,7 @@ var Factory = (function() {
 	var CoreModule = function(def, containerID, automakeable, enableEventSetters) {
 		
 		this.objectType = 'CoreModule';
+		this._key;
 		this._parent;
 		this.hostComponent;
 		this.modules = [];
@@ -214,15 +215,17 @@ var Factory = (function() {
 	/**
 	 * @param {object} candidateModule : an instance of another module
 	 */
-	CoreModule.prototype.registerModule = function(moduleName, candidateModule, moduleDefinition, atIndex) {
+	CoreModule.prototype.registerModule = function(moduleName, candidateModule, moduleDefinition, atIndex, noNum) {
 		if (!candidateModule)
 			return;
 		
-		candidateModule.__in_tree_name = moduleName;
+		candidateModule.__created_as_name = moduleName;
 		candidateModule._parent = this;
-		if (parseInt(atIndex)) {
-			((candidateModule.hostElem && this.modules[atIndex - 1].hostElem) ? this.modules[atIndex - 1].hostElem.insertAdjacentElement('afterEnd', candidateModule.hostElem) : this.hostElem.appendChild(candidateModule.hostElem));
+		if (!isNaN(parseInt(atIndex))) {
+			((candidateModule.hostElem && this.modules[atIndex - 1] && this.modules[atIndex - 1].hostElem) ? this.modules[atIndex - 1].hostElem.insertAdjacentElement('afterEnd', candidateModule.hostElem) : this.hostElem.appendChild(candidateModule.hostElem));
 			this.modules.splice(atIndex, 0, candidateModule);
+			if (!noNum)
+				this.generateNumeration(atIndex);
 		}
 		else
 			this.modules.push(candidateModule);
@@ -264,9 +267,8 @@ var Factory = (function() {
 	}
 	
 	CoreModule.prototype.generateNumeration = function(atIndex) {
-		var radix = this.modules[atIndex].__in_tree_name.match(/[a-zA-Z]+/);
 		for (var i = atIndex, l = this.modules.length; i < l; i++) {
-			this.modules[i].__in_tree_name = radix + i.toString();
+			this.modules[i]._key = atIndex + i;
 		}
 	}
 	
@@ -277,17 +279,14 @@ var Factory = (function() {
 	/**
 	 * @param {string} moduleName
 	 */
-	CoreModule.prototype.removeModule = function(moduleName) {
+	CoreModule.prototype.removeModule = function(moduleKey) {
 		if (!this.modules.length)
 			return false;
-		var idx, removed;
-		if (!isNaN(parseInt(idx = this.modules.indexOfObjectByValue('__in_tree_name', moduleName)))) {
-			this.modules[idx].hostElem.remove();
-			removed = this.modules.splice(idx, 1)[0];
-			(idx < this.modules.length && this.generateNumeration(idx));
-			return removed;
-		}
-		return false;
+		var removed;
+		this.modules[moduleKey].hostElem.remove();
+		removed = this.modules.splice(moduleKey, 1)[0];
+		(moduleKey < this.modules.length && this.generateNumeration(moduleKey));
+		return removed;
 	}
 	
 	/**
@@ -297,7 +296,7 @@ var Factory = (function() {
 		if (!this.modules.length)
 			return false;
 		var idx;
-		if (!isNaN(parseInt(idx = this.modules.indexOfObjectByValue('__in_tree_name', moduleName)))) {
+		if (!isNaN(parseInt(idx = this.modules.indexOfObjectByValue('__created_as_name', moduleName)))) {
 			return this.modules[idx];
 		}
 		return false;
@@ -310,7 +309,7 @@ var Factory = (function() {
 		if (!this.modules.length)
 			return false;
 		var arr;
-		if (Array.isArray((arr = this.modules.findObjectsByPartialValue('__in_tree_name', moduleName)))) {
+		if (Array.isArray((arr = this.modules.findObjectsByPartialValue('__created_as_name', moduleName)))) {
 			return arr;
 		}
 		return false;
@@ -328,21 +327,24 @@ var Factory = (function() {
 		if (atIndex > this.modules.length)
 			return false;
 		
-		var baseName, name, def, root, componentGroup,
+		var baseName, name, key, def, root, componentGroup,
 			componentCtor = cListDef.getHostDef().templateCtor;
 		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0);
 
-		// TODO : handle the case where a listItem is appended to a "not last child" subSection
-		var root = ((this.modules[1] && ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1) || !this.modules.length) ? this.hostElem : this.hostElem.lastChild,
+		// TODO : handle the case where a listItem is appended to a "not last child" subSection  (NOT WORKING)
+		var root = this.hostElem,
 			def = cListDef.getHostDef().template,
 			baseName = 'componentListItem';
 
 		cListDef.getHostDef().each.forEach(function(item, key) {
-			name = baseName + (key + idx).toString();
+			key = key + idx;
+			name = baseName + key.toString();
 
-			UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(def, root)), def, atIndex++);
+			UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(def, root)), def, atIndex++, 'noNum');
+			componentGroup._key = key;
 			componentCtor.prototype.handleReflectionOnModel.call(this, cListDef, componentGroup.streams, item);
 		}, this);
+		this.generateNumeration(idx);
 	}
 	
 	/**
@@ -361,11 +363,11 @@ var Factory = (function() {
 		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0),
 			name = 'componentListItem' + idx;
 
-		// TODO : handle the case where a listItem is appended to a "not last child" subSection
-		var root = ((this.modules[1] && ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1) || !this.modules.length) ? this.hostElem : this.hostElem.lastChild,
-			def = cListDef.getHostDef().template;
+		// TODO : handle the case where a listItem is appended to a "not last child" subSection (NOT WORKING)
+//		var root = ((this.modules[1] && ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1) || !this.modules.length) ? this.hostElem : this.hostElem.lastChild,
 
-		UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(def, root)), def, atIndex++);
+		UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(cListDef.host.template, this.hostElem)), cListDef.host.template, atIndex);
+		componentGroup._key = idx;
 		componentCtor.prototype.handleReflectionOnModel.call(this, cListDef, componentGroup.streams, cListDef.getHostDef().item);
 	}
 	
@@ -385,7 +387,7 @@ var Factory = (function() {
 		if (!this.modules.length)
 			return false;
 		if (this._parent.modules.indexOf(this) !== -1) {
-			return this._parent.removeModule(this.__in_tree_name);
+			return this._parent.removeModule(this._key);
 		}
 		return false;
 	}
@@ -474,7 +476,7 @@ var Factory = (function() {
 	 * @param {string} eventType
 	 * @param {any} payload 
 	 */ 
-	CoreModule.prototype.trigger = function(eventType, payload, eventID) {
+	CoreModule.prototype.trigger = function(eventType, payload, eventIdOrBubble, eventID) {
 		if (typeof this._eventHandlers[eventType] === 'undefined' && typeof this._one_eventHandlers[eventType] === 'undefined' && typeof this._identified_eventHandlers[eventType] === 'undefined') {
 			if (logLevel > 7)
 				console.warn(this.objectType, 'event ' + eventType + ' triggered', 'Not an event');
@@ -486,6 +488,12 @@ var Factory = (function() {
 			return;
 		}
 		
+		var bubble = false;
+		if (typeof eventIdOrBubble === 'boolean')
+			bubble = eventIdOrBubble;
+		else
+			eventID = eventIdOrBubble;
+		
 		if (logLevel > 7)
 			console.log(this.objectType, 'event ' + eventType + ' triggered', payload, eventID);//, this._eventHandlers);
 //		if (logLevel > 7)
@@ -496,14 +504,14 @@ var Factory = (function() {
 		for(var i = 0, l = this._eventHandlers[eventType].length; i < l; i++) {
 //			console.log(eventType);
 			if (typeof this._eventHandlers[eventType][i] === 'function')
-				this._eventHandlers[eventType][i]({type : eventType, data : payload});
+				this._eventHandlers[eventType][i]({type : eventType, data : payload, bubble : bubble});
 		}
 		
 //		console.log('trigger ' + eventType, this._one_eventHandlers[eventType])
 		for(var i = this._one_eventHandlers[eventType].length - 1; i >= 0; i--) {
 //			console.log('trigger ' + typeof this._one_eventHandlers[eventType][i])
 			if (typeof this._one_eventHandlers[eventType][i] === 'function') {
-				this._one_eventHandlers[eventType][i]({type : eventType, data : payload});
+				this._one_eventHandlers[eventType][i]({type : eventType, data : payload, bubble : bubble});
 				delete this._one_eventHandlers[eventType][i];
 			}
 		}
@@ -522,7 +530,7 @@ var Factory = (function() {
 					deleted++;
 				else if (eventID === this._identified_eventHandlers[eventType][i]['id']) {
 					if (typeof this._identified_eventHandlers[eventType][i] === 'object') {
-						this._identified_eventHandlers[eventType][i].f({type : eventType, data : payload})
+						this._identified_eventHandlers[eventType][i].f({type : eventType, data : payload, bubble : bubble})
 						delete this._identified_eventHandlers[eventType][i];
 					}
 				}
