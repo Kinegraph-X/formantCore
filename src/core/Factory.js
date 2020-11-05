@@ -3,6 +3,7 @@
  */
 
 var TypeManager = require('src/core/TypeManager');
+var ElementFactory = require('src/UI/generics/GenericElementConstructor');
 
 logLevelQuery = window.location.href.match(/(log_level=)(\d+)/); 					// Max log_level = 8 
 window.logLevel = Array.isArray(logLevelQuery) ? logLevelQuery[2] : undefined;
@@ -761,6 +762,369 @@ var Factory = (function() {
 	
 	
 	
+	
+	
+	
+	
+	
+	
+	
+	/**
+	 * @constructor DOMview
+	 * @extends DependancyModule
+	 * @interface
+	 * 
+	 * A lot of methods to sequence the creation process of a view
+	 * and to navigate through DOM subtleties when instanciating & appending a view
+	 * 
+	 * @param {Object} def : custom object that defines the UI (a typed object that tries to meet all cases of UI instanciation : see TypeManager.js)
+	 * @param {Object} (DOMElem Instance) parentNode
+	 */
+	var DOMView = function(definition, parentNodeDOMId, automakeable) {
+		DependancyModule.call(this);
+		this.objectType = 'DOMView';
+		
+		this.attributes = [];
+		
+		this.parentNodeDOMId = parentNodeDOMId; 
+		this.parentDOMNode;
+		this.hostElem;
+		this.rootElem;
+		this.hoverElem;
+		this.defaultSlot;
+		this.slots;
+		
+		this.stylesheetCausesChildOffset = 0;
+		
+		this.DOMRenderQueue = [];
+		this.childrenToAdd = [];
+	}
+	DOMView.prototype = Object.assign(Object.create(DependancyModule.prototype), {
+		objectType : 'DOMView',
+		constructor : DOMView,
+		elaborateView : function(definition) {},				// virtual
+		completeCompositeTreeView : function(definition) {},	// virtual
+		hasNoShadow : function() {},							// virtual
+		completeDOM : function() {},							// virtual
+		basicEarlyDOMExtend : function() {},					// virtual
+		basicLateDOMExtend : function() {},						// virtual
+		asyncAddChild : function() {},							// virtual
+		setDOMTypes : function() {},							// virtual
+		setArias : function() {},								// virtual
+	});
+	
+	/**
+	 * @abstract
+	 * INIT SEQUENCE : called in UIModule to have the ability to defines hooks in the construction process
+	 */
+	DOMView.prototype.prepareView = function(definition) {
+		if(this.attributes.length)
+			this.attributesDecorator(definition.getHostDef().nodeName);
+	}
+	
+	/**
+	 * @abstract
+	 * INIT SEQUENCE : called in UIModule to have the ability to defines hooks in the construction process
+	 */
+	DOMView.prototype.createView = function(definition, states) {
+		if (!definition.getHostDef().nodeName)
+			return;
+		this.hostElem = ElementFactory.createElement(definition, states || []);
+		this.applyAttributes();
+		this.hasShadow();
+		this.appendStylesheet(definition);
+		this.hostElem.component = this;
+	}
+	/**
+	 * @abstract
+	 * see upper: <code> DOMView.prototype.createView </code>
+	 */
+	DOMView.prototype.applyAttributes = function() {
+		this.attributes.forEach(function(attrObject) {
+			this.hostElem[attrObject.getName()] = attrObject.getValue();
+		}, this);
+	}
+	/**
+	 * @abstract
+	 * HELPER : used for example to decorate the "bare" DOM nodes in the ComponentGroup class
+	 * <code>
+	 * 		module = ElementFactory.createElement(def);
+			this.applyAttributes(def.attributes, module); 
+	 * </code>
+	 */
+	DOMView.prototype.setAttributesHelper = function(attributes, node) {
+		attributes.forEach(function(attrObject) {
+			node[attrObject.getName()] = attrObject.getValue();
+		});
+	}
+	/**
+	 * @abstract
+	 * INIT SEQUENCE : the shadowDOM tech implies that the root node is EITHER "hostElem" OR "rootElem"
+	 *  	- calls hasNoShadow() which is implemented by the StatefullUIModule :
+	 *  		non-custom elements have no lifecycle callback where to set the reflectedObj (here a DOM Node) for the component's states
+	 */
+	DOMView.prototype.hasShadow = function(definition) {
+		if (this.hostElem.shadowRoot) {
+			this.rootElem = this.hostElem.shadowRoot;
+		}
+		else {
+			this.hasNoShadow();
+		}
+	}
+	/**
+	 * @abstract
+	 * HELPER : => ALL methods of a component MUST test the presence of the shadowRoot before appending-to or querying the hostElem
+	 * The root node being EITHER "hostElem" OR "rootElem", call this method EVERYWHERE 
+	 * @example <code> this.getRootNode().appendChild(node); </code>
+	 */
+	DOMView.prototype.getRootNode = function(definition) {
+		return (this.rootElem || this.hostElem);
+	}
+	/**
+	 * @abstract
+	 * HELPER : => when appending a child, should we append to rootNode or to a subSection ?
+	 * 
+	 */
+	DOMView.prototype.getChildEffectiveRootNode = function(section) {
+		// (section === null) is an allowed case for subSections : they'll be appended to the root Node
+		return (section !== -1 && this.stylesheetCausesChildOffset !== null)
+					? this.getRootNode().children[section + this.stylesheetCausesChildOffset]
+						: this.getRootNode();
+	}
+	/**
+	 * @abstract
+	 * VIEW COMPOSITION SEQUENCE : Allows a component to "hoist" its view on an parent or sibling component (called in ComponentGroup for example)
+	 */
+	DOMView.prototype.acquireView = function(domElem) {
+		this.hostElem = domElem;
+		this.hasShadow();
+	}
+	/**
+	 * @abstract
+	 * @variant DOMView.prototype.acquireView at a "component" level
+	 * VIEW COMPOSITION SEQUENCE : Allows a component to "hoist" its view on an parent or sibling component (called in ComponentGroup for example) 
+	 */
+	DOMView.prototype.acquireViewFromComponent = function(component) {
+		this.hostElem = component.domElem;
+		this.hasShadow();
+	}
+	/**
+	 * @abstract
+	 * INIT SEQUENCE : end of basic sequence, the stylesheet is first child of the shadowRoot|hostElem 
+	 */
+	DOMView.prototype.appendStylesheet = function(definition) {
+		if (this.sWrapper && this.sWrapper.styleElem) {
+			this.getRootNode().appendChild(this.sWrapper.styleElem);
+			this.stylesheetCausesChildOffset = 1;
+		}
+	}
+	/**
+	 * @abstract
+	 * HELPER : get a definition object representing a collection
+	 */
+	DOMView.prototype.getFragment = function(defAsArray) {
+		return {fragment : defAsArray};
+	}
+	/**
+	 * @abstract
+	 * VIEW COMPOSITION SEQUENCE : called in ComponentGroup or elsewhere to have the ability create DOM trees
+	 */
+	DOMView.prototype.completeSimpleTreeView = function(definition) {
+		// "hostOrRoot" : ALL parts of the component MUST test the presence of the rootElem before appending or querying the hostElem
+		var hostOrRoot = this.getRootNode();
+		
+		if (definition.subSections.length) {
+			hostOrRoot.appendChild(ElementFactory.createElement(this.getFragment(definition.subSections)));
+		}
+		if (definition.members.length) {
+			hostOrRoot.appendChild(ElementFactory.createElement(this.getFragment(definition.members)));
+		}
+	}
+	
+	/**
+	 * @abstract
+	 * HELPER : => when reflecting the hostComponent on the ComponentGroup, does the hostComponent has a stylesheet AND the group has subSections ?
+	 * 
+	 */
+	DOMView.prototype.getReflectedstylesheetCausesChildOffset = function(definition) {
+		return definition.subSections.length ? this.hostComponent.stylesheetCausesChildOffset : null;
+	}
+	
+
+	
+	/**
+	 * @abstract
+	 */
+	DOMView.prototype.attributesDecorator = function(nodeName) {
+		ElementFactory['Hyphen-Star-Dash'].decorateAttributes(nodeName, this.attributes);
+	}
+
+	
+	/**
+	 * @abstract
+	 * INIT SEQUENCE : called in UIModule to have the ability to defines hooks in the construction process
+	 */
+	DOMView.prototype.extendView = function(definition) {					// *GenericComponent refered as : Hooks in the component's construction cycle
+		this.completeDOM();
+		this.basicEarlyDOMExtend();
+		this.renderDOMQueue(definition);
+		this.basicLateDOMExtend();
+		this.compose();
+		this.setDOMTypes();
+		this.setArias();
+	}
+	
+	
+	/**
+	 * @abstract
+	 */
+	DOMView.prototype.compose = function() {
+		this.asyncAddChild();
+		// finalize DOM composition
+		if (this.childrenToAdd.length)
+			this.asyncAddChildren();
+		// define "slots" for DOM children fast access from child components
+		if (this.rootElem || this.hostElem) {
+			(!this.defaultSlot && (this.defaultSlot = (this.rootElem || this.hostElem).firstChild) || this.hostElem);
+			this.slots = (this.rootElem || this.hostElem).childNodes;
+		}
+	}
+	
+	/**
+	 * A whole lot of async abilities for extending the DOM
+	 * 
+	 * @method renderDOMQueue : mixins may have set a list of DOM nodes to append
+	 * @method asyncAddChild : call this method in the ctor -or- overload it in the proto to add a child to the async children list
+	 * @method asyncAddChildren : ctors and/or component-override-in-the-proto may have set a list of non-raw components to append
+	 */
+	/**
+	 * @abstract
+	 */
+	DOMView.prototype.renderDOMQueue = function(definition) {
+		var componentDef = definition.getHostDef(),
+			def,
+			elem;
+//		console.log(this.DOMRenderQueue);
+		this.DOMRenderQueue.forEach(function(renderFunc, key) {
+			// DOM extension is considered as an "allowed" goal of the offered mixin mecanism
+			// BUT : renderFunc may not always return a def : this allow mixins to use "targeted composition" instead of "basic nodes concatenation"
+			// => they should then define and append themselves some child-modules (call to registerModule with a component as arg)
+			// but still, we encourage devs (in both cases) to use the 'renderQueue" mecanism, as it frees the lifecycle from "custom" lifecycle phases (these phases may then be used for "real" special cases)
+			if (!(def = renderFunc.call(this, componentDef)))
+				return;
+			
+			if (def.wrapper)
+				(this.rootElem || this.hostElem).appendChild(def.wrapper);
+			if (def.members && def.members.length) {
+				if (def.wrapper) {
+					elem = this.rootElem ? this.rootElem.lastChild : this.hostElem.lastChild;
+					def.members.forEach(function(member, k) {
+						elem.appendChild(member);
+					}, this);
+				}
+				else {
+					elem = this.rootElem ? this.rootElem : this.hostElem;
+					def.members.forEach(function(member, k) {
+						elem.appendChild(member);
+					}, this);
+				}
+			}
+		}, this);
+	}
+
+	/**
+	 * @abstract
+	 */
+	DOMView.prototype.asyncAddChildren = function(oneShot) {
+		
+		var names = {};
+		// prevent masking of already "incremented" subModule names
+		this.modules.forEach(function(module) {
+			(typeof names[module.objectType] === 'undefined' ? names[module.objectType] = 0 : ++names[module.objectType])
+		});
+		
+		this.childrenToAdd.forEach(function(module) {
+			// it's not allowed to add "raw" children
+			// if the module is referenced in the array AND as a parameter, it'll be registered immediately
+			if (module.raw || (oneShot && module !== oneShot))
+				return;
+			// register subModule
+			this.makeAndRegisterModule(this.maintainUniqueNames(names, module.objectType), module);
+		}, this);
+	}
+	
+	/**
+	 * @abstract
+	 */
+	DOMView.prototype.firstRender = function() {
+		// Shortcut to allow children instanciation of non-appended parents (using a selector is not applicable at instantiation step, due to DOM update latency)
+		(this.parentNodeDOMId && 
+				((this.parentNodeDOMId instanceof HTMLElement || this.parentNodeDOMId instanceof ShadowRoot)
+					? this.parentDOMNode = this.parentNodeDOMId
+						: this.parentDOMNode = document.querySelector('#' + this.parentNodeDOMId)));
+		
+		(this.parentDOMNode && this.hostElem && this.parentDOMNode.appendChild(this.hostElem));
+	}
+	
+	
+	
+	
+	
+	/**
+	 * @constructor ViewInjectionStrategies
+	 * @extends DOMView
+	 * @interface
+	 * 
+	 * @param {Object} def : custom object that defines the UI (a typed object that tries to meet all cases of UI instanciation : see TypeManager.js)
+	 * @param {Object} (DOMElem Instance) parentNode
+	 */
+	var InViewInjectionStrategies = function(definition, parentNodeDOMId, automakeable) {
+		DOMView.apply(this, arguments);
+		this.objectType = 'InViewInjectionStrategies';
+	}
+	InViewInjectionStrategies.prototype = Object.assign(Object.create(DOMView.prototype), {
+		objectType : 'InViewInjectionStrategies',
+		constructor : InViewInjectionStrategies
+	});
+	
+	/**
+	 * @abstract
+	 */
+	InViewInjectionStrategies.prototype.populateSlots = function(values) {
+		console.log(values, this.slots);
+		if (!Array.isArray(values) || !values.length) {
+			if (typeof value === 'string')
+				values = [values];
+			else
+				return '';										// TODO : why return empty string ?
+		}
+		values.forEach(function(val, key) {
+			if (typeof val !== 'string')
+				return;
+			this.slots[key].textContent = val;
+		}, this);
+	}
+	
+	/**
+	 * @abstract
+	 */
+	InViewInjectionStrategies.prototype.populateSelf = function(value) {
+		if (typeof value !== 'string' && isNaN(parseInt(value)))
+			return;
+		if (this.hostElem.nodeName === 'INPUT')
+			this.hostElem.value = value.toString();
+		else
+			this.hostElem.textContent = value.toString();
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	/**
 	 * An Interface to be implemented by a UI Module
 	 * 
@@ -774,46 +1138,40 @@ var Factory = (function() {
 	 * and last but not least,
 	 * 	- composition through "by default instanciated children" (mainly in the component's ctor). You may give thanks, it's queued (comes, in any case, after all other DOM extensions, and then children declared in the ctor, finally a unique child declared by overloading the addChild method).
 	 * 
-	 * @constructor
-	 * @extends DependancyModule
+	 * @constructor UIModule
+	 * @extends DOMView
 	 * @interface
 	 * 
-	 * @param {Object} def : custom object that defines the UI (generally a list of properties and behaviors for a button)
+	 * @param {Object} def : custom object that defines the UI (a typed object that tries to meet all cases of UI instanciation : see TypeManager.js)
 	 * @param {Object} (DOMElem Instance) parentNode
-	 * @param {string} buttonClassName
+	 * @param {boolean} automakeable
 	 */
 	var UIModule = function(definition, parentNodeDOMId, automakeable) {
 		this.raw = true;
 		
-		DependancyModule.call(this);
+		InViewInjectionStrategies.apply(this, arguments);
 		this.objectType = 'UIModule';
 		
 		this.reactOnParent = [];
 		this.reactOnSelf = [];
 		
-		this.attributes = [];
 		this.props = [];
 		this.states = [];
 		
-		this.parentDOMNode;
-		this.hostElem;
-		this.rootElem;
-		this.hoverElem;
-		this.defaultSlot;
-		this.slots;
-		
-		this.DOMRenderQueue = [];
-		this.childrenToAdd = [];
+		// These props are inherited the componentDef "SingleLevelComponentDefModel" type
+		this.type = null,
+		this.nodeName = null;
+		this.templateNodeName = null;
+		this.section = null;
+		this.sWrapper = null;
+
 		this.bindingQueue = [];
 		
 		this.mergeWithComponentDefaultDef(definition, this.createDefaultDef());
 		
-		this.parentNodeDOMId = parentNodeDOMId;
 		this.command = (definition.getHostDef() && definition.getHostDef().command);
 		this.keyboardSettings;
 		this.keyboardEvents = definition.getHostDef().keyboardEvents || [];
-
-//		(typeof targetSlot === 'number' && (this.defaultSlot = (this.rootElem || this.hostElem).children[targetSlot]));
 		
 		(definition && this.immediateInit());
 		(automakeable && this.raw && this.Make(definition));
@@ -822,20 +1180,14 @@ var Factory = (function() {
 	/**
 	 * HOOKS
 	 */
-	UIModule.prototype = Object.assign(Object.create(DependancyModule.prototype), {
+	UIModule.prototype = Object.assign(Object.create(InViewInjectionStrategies.prototype), {
 		objectType : 'UIModule',
 		constructor : UIModule,
 		beforeMake : function() {},						// virtual
 		afterMake : function() {},						// virtual
 		beforeCreateDOM : function() {},				// virtual
 		createDOM : function() {},						// virtual
-		completeDOM : function() {},					// virtual
-		basicEarlyDOMExtend : function() {},			// virtual
-		basicLateDOMExtend : function() {},				// virtual
-		asyncAddChild : function() {},					// virtual
 		afterCreateDOM : function() {},					// virtual
-		setDOMTypes : function() {},					// virtual
-		setArias : function() {},						// virtual
 		beforeRegisterEvents : function() {},			// virtual
 		createObservables : function() {},				// virtual
 		initGenericEvent : function() {					// virtual		// this is implemented by the genericComponent : and is of no use here
@@ -877,6 +1229,7 @@ var Factory = (function() {
 		this.beforeMake(definition);
 		this.init(definition);
 		this.afterMake(definition);
+		return this;
 	}
 	/**
 	 * @abstract
@@ -902,15 +1255,17 @@ var Factory = (function() {
 	 */
 	UIModule.prototype.create = function(definition) {
 		this.beforeCreateDOM(definition);
-		this.createDOM(definition);
-		this.completeDOM();
-		this.basicEarlyDOMExtend();
-		this.renderDOMQueue(definition);
-		this.basicLateDOMExtend();
-		this.compose();
+		this.elaborateView(definition);
 		this.afterCreateDOM(definition);
-		this.setDOMTypes();
-		this.setArias();
+	}
+
+	UIModule.prototype.registerEvents = function() {
+		this.beforeRegisterEvents();
+		this.registerDOMChangeObservers();
+		this.registerClickEvents();
+		this.registerKeyboardEvents();
+//		(this.hoverElem && this.registerLearnEvents());
+		this.afterRegisterEvents();
 	}
 
 	/**
@@ -934,7 +1289,8 @@ var Factory = (function() {
 		for(var prop in defaultHostDef) {
 			// TODO : try to precisely avoid to keep references on attributes, props & states (and more difficult : on reactOnParent, reactOnSelf, subscribeOnChild, subscribeOnParent)
 			if (Array.isArray(this[prop]))
-				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
+				Array.prototype.push.apply(this[prop], defaultHostDef[prop].concat(hostDef[prop]));
+//				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
 //				this[prop] = this[prop].concat(defaultHostDef[prop], TypeManager.ValueObject.prototype.renewArray(hostDef[prop], prop));
 			else if (prop === 'sWrapper')							// TODO : use the cache for stylesheets : in a shadowRoot, appending many times won't work, so we need here a clone of the styleElem
 				this[prop] = hostDef[prop] || defaultHostDef[prop];
@@ -950,96 +1306,6 @@ var Factory = (function() {
 		}
 	};
 	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.compose = function() {
-		this.asyncAddChild();
-		// finalize DOM composition
-		if (this.childrenToAdd.length)
-			this.asyncAddChildren();
-		// define "slots" for DOM children fast access from child components
-		if (this.rootElem || this.hostElem) {
-			(!this.defaultSlot && (this.defaultSlot = (this.rootElem || this.hostElem).firstChild) || this.hostElem);
-			this.slots = (this.rootElem || this.hostElem).childNodes;
-		}
-	}
-	
-	UIModule.prototype.registerEvents = function() {
-		this.beforeRegisterEvents();
-		this.registerDOMChangeObservers();
-		this.registerClickEvents();
-		this.registerKeyboardEvents();
-		(this.hoverElem && this.registerLearnEvents());
-		this.afterRegisterEvents();
-	}
-	
-	
-	
-	/**
-	 * A whole lot of async abilities for extending the DOM
-	 * 
-	 * @method renderDOMQueue : mixins may have set a list of DOM nodes to append
-	 * @method asyncAddChild : call this method in the ctor -or- overload it in the proto to add a child to the async children list
-	 * @method asyncAddChildren : ctors and/or component-override-in-the-proto may have set a list of non-raw components to append
-	 */
-	
-	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.renderDOMQueue = function(definition) {
-		var componentDef = definition.getHostDef(),
-			def,
-			elem;
-//		console.log(this.DOMRenderQueue);
-		this.DOMRenderQueue.forEach(function(renderFunc, key) {
-			// DOM extension is considered as an "allowed" goal of the offered mixin mecanism
-			// BUT : renderFunc may not always return a def : this allow mixins to use "targeted composition" instead of "basic nodes concatenation"
-			// => they should then define and append themselves some child-modules (call to registerModule with a component as arg)
-			// but still, we encourage devs (in both cases) to use the 'renderQueue" mecanism, as it frees the lifecycle from "custom" lifecycle phases (these phases may then be used for "real" special cases)
-			if (!(def = renderFunc.call(this, componentDef)))
-				return;
-			
-			if (def.wrapper)
-				(this.rootElem || this.hostElem).appendChild(def.wrapper);
-			if (def.members && def.members.length) {
-				if (def.wrapper) {
-					elem = this.rootElem ? this.rootElem.lastChild : this.hostElem.lastChild;
-					def.members.forEach(function(member, k) {
-						elem.appendChild(member);
-					}, this);
-				}
-				else {
-					elem = this.rootElem ? this.rootElem : this.hostElem;
-					def.members.forEach(function(member, k) {
-						elem.appendChild(member);
-					}, this);
-				}
-			}
-		}, this);
-	}
-
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.asyncAddChildren = function(oneShot) {
-		
-		var names = {};
-		// prevent masking of already "incremented" subModule names
-		this.modules.forEach(function(module) {
-			(typeof names[module.objectType] === 'undefined' ? names[module.objectType] = 0 : ++names[module.objectType])
-		});
-		
-		this.childrenToAdd.forEach(function(module) {
-			// it's not allowed to add "raw" children
-			// if the module is referenced in the array AND as a parameter, it'll be registered immediately
-			if (module.raw || (oneShot && module !== oneShot))
-				return;
-			// register subModule
-			this.makeAndRegisterModule(this.maintainUniqueNames(names, module.objectType), module);
-		}, this);
-	}
 	
 	
 	/**
@@ -1048,7 +1314,6 @@ var Factory = (function() {
 	UIModule.prototype.handleSlotDefinitionRelativeToParent = function(candidateModule, def) {
 		candidateModule.targetSlot = (typeof def.targetSlot === 'number' ? this.slots[def.targetSlot] : candidateModule.targetSlot) || this.defaultSlot;
 	}
-	
 	
 	/**
 	 * @abstract
@@ -1059,25 +1324,6 @@ var Factory = (function() {
 		}, this);
 	}
 	
-	
-	
-	
-	
-	
-	
-	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.firstRender = function() {
-		// Shortcut to allow children instanciation of non-appended parents (using a selector is not applicable at instantiation step, due to DOM update latency)
-		(this.parentNodeDOMId && 
-				((this.parentNodeDOMId instanceof HTMLElement || this.parentNodeDOMId instanceof ShadowRoot)
-					? this.parentDOMNode = this.parentNodeDOMId
-						: this.parentDOMNode = document.querySelector('#' + this.parentNodeDOMId)));
-		
-		(this.parentDOMNode && this.hostElem && this.parentDOMNode.appendChild(this.hostElem));
-	}
 	
 	/**
 	 * @generic
@@ -1106,8 +1352,7 @@ var Factory = (function() {
 	
 	
 	
-	
-	
+
 	
 	
 	
@@ -1608,6 +1853,7 @@ var Factory = (function() {
 		CoreModule : CoreModule,
 		AsynchronousModule : AsynchronousModule,
 		DependancyModule : DependancyModule,
+		DOMViewGetterSetter : ElementFactory.propGetterSetter,
 		UIModule : UIModule,
 		Command : Command,
 		Worker : WorkerInterface,

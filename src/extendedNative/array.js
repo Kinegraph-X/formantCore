@@ -310,18 +310,18 @@ Object.defineProperty(Array.prototype, 'findObjectsByPartialValue',  {
 //		}
 //	}
 //});
-//
-//Object.defineProperty(Array.prototype, 'recitalClearAll',  {
-//	value : function(ComponentGroupObj) {
-//		if (ComponentGroupObj) {
-//			ComponentGroupObj.clearAllModules();
-//			this.length = 0;
-//		}
-//		else
-//			return false;
-//	}
-//});
-//
+
+Object.defineProperty(Array.prototype, 'recitalClearAll',  {
+	value : function(ComponentGroupObj) {
+		if (ComponentGroupObj) {
+			ComponentGroupObj.clearAllModules();
+			this.length = 0;
+		}
+		else
+			return false;
+	}
+});
+
 //Object.defineProperty(Array.prototype, 'recitalSpliceOnProp',  {
 //	value : function(prop, value, ComponentGroupObj) {
 //		if (ComponentGroupObj && ComponentGroupObj.modules.length) {

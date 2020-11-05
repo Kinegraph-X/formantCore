@@ -25,6 +25,16 @@ Object.defineProperty(ValueObject.prototype, 'getHostDef',{
 Object.defineProperty(ValueObject.prototype, 'getType',{
 	value : function() {return this.type;}
 });
+Object.defineProperty(ValueObject.prototype, 'getSection',{
+	value : function() {
+		return this.getHostDef().section !== null
+				? this.getHostDef().section
+						: (
+								(this.getGroupHostDef() && this.getGroupHostDef().section)
+								|| -1
+							);
+	}
+});
 Object.defineProperty(ValueObject.prototype, 'fromArray',{
 	value : function(arr) {
 		var i = 0;
@@ -304,8 +314,7 @@ var SingleLevelComponentDefModel = function(initObj, isSpecial, givenDef) {
 		this.section = null;						// Number
 		this.props = [];							// Array [Prop]
 		this.states = [];							// Array [State]
-		this.parentNodeIndex = null;				// Number
-		this.targetSlotIndex = null;				// Number
+//		this.targetSlotIndex = null;				// Number
 		this.sWrapper = null;						// Object StylesheetWrapper
 		this.command = null;						// Object Command
 		this.reactOnParent = [];					// Array [ReactivityQuery]
@@ -314,6 +323,7 @@ var SingleLevelComponentDefModel = function(initObj, isSpecial, givenDef) {
 		this.subscribeOnChild = [];					// Array [EventSubscription]
 		this.subscribeOnSelf = [];					// Array [EventSubscription]
 		this.keyboardSettings = [];					// Array [KeyboardHotkeys]
+		this.keyboardEvents = [];					// Array [KeyboardListeners]
 	}
 	
 	// shorthand to create defs with just a "type", maybe an attributesList, but only the first props in the model
