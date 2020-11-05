@@ -222,7 +222,7 @@ var Factory = (function() {
 		
 		candidateModule.__created_as_name = moduleName;
 		candidateModule._parent = this;
-		if (!isNaN(parseInt(atIndex))) {
+		if (typeof atIndex !== 'undefined') {
 			((candidateModule.hostElem && this.modules[atIndex - 1] && this.modules[atIndex - 1].hostElem) ? this.modules[atIndex - 1].hostElem.insertAdjacentElement('afterEnd', candidateModule.hostElem) : this.hostElem.appendChild(candidateModule.hostElem));
 			this.modules.splice(atIndex, 0, candidateModule);
 			if (!noNum)
@@ -231,16 +231,16 @@ var Factory = (function() {
 		else
 			this.modules.push(candidateModule);
 		
-		if (candidateModule instanceof HTMLElement)
+		if (candidateModule.nodeName)
 			return candidateModule;
 		else {
 			
 			// Subscribing to events pertains to the CoreModule
 			this.handleModuleSubscriptions(candidateModule);
 			
-			if (moduleDefinition)
-				// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
-				this.handleSlotDefinitionRelativeToParent(candidateModule, moduleDefinition);
+//			if (moduleDefinition)
+//				// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
+//				this.handleSlotDefinitionRelativeToParent(candidateModule, moduleDefinition);
 			
 			// The ObservableComponent class is responsible for implementing the reactions on parent and on self (binding to streams) 
 			this.onRegisterModule(candidateModule);
@@ -802,16 +802,26 @@ var Factory = (function() {
 	DOMView.prototype = Object.assign(Object.create(DependancyModule.prototype), {
 		objectType : 'DOMView',
 		constructor : DOMView,
+		beforeElaborateView : function(definition) {},			// virtual
 		elaborateView : function(definition) {},				// virtual
-		completeCompositeTreeView : function(definition) {},	// virtual
+		afterElaborateView : function(definition) {},			// virtual
+		multitypeCompositeTreeView : function(definition) {},	// virtual
 		hasNoShadow : function() {},							// virtual
-		completeDOM : function() {},							// virtual
 		basicEarlyDOMExtend : function() {},					// virtual
 		basicLateDOMExtend : function() {},						// virtual
 		asyncAddChild : function() {},							// virtual
 		setDOMTypes : function() {},							// virtual
 		setArias : function() {},								// virtual
 	});
+	
+	/**
+	 * @abstract
+	 */
+	DOMView.prototype.initView = function(definition) {
+		this.beforeElaborateView(definition);
+		this.elaborateView(definition);
+		this.afterElaborateView(definition);
+	}
 	
 	/**
 	 * @abstract
@@ -965,7 +975,6 @@ var Factory = (function() {
 	 * INIT SEQUENCE : called in UIModule to have the ability to defines hooks in the construction process
 	 */
 	DOMView.prototype.extendView = function(definition) {					// *GenericComponent refered as : Hooks in the component's construction cycle
-		this.completeDOM();
 		this.basicEarlyDOMExtend();
 		this.renderDOMQueue(definition);
 		this.basicLateDOMExtend();
@@ -985,7 +994,7 @@ var Factory = (function() {
 			this.asyncAddChildren();
 		// define "slots" for DOM children fast access from child components
 		if (this.rootElem || this.hostElem) {
-			(!this.defaultSlot && (this.defaultSlot = (this.rootElem || this.hostElem).firstChild) || this.hostElem);
+			(!this.defaultSlot && (this.defaultSlot = (this.rootElem || this.hostElem).firstChild || this.hostElem));
 			this.slots = (this.rootElem || this.hostElem).childNodes;
 		}
 	}
@@ -1079,7 +1088,7 @@ var Factory = (function() {
 	 * @param {Object} (DOMElem Instance) parentNode
 	 */
 	var InViewInjectionStrategies = function(definition, parentNodeDOMId, automakeable) {
-		DOMView.apply(this, arguments);
+		DOMView.call(this, definition, parentNodeDOMId, automakeable);
 		this.objectType = 'InViewInjectionStrategies';
 	}
 	InViewInjectionStrategies.prototype = Object.assign(Object.create(DOMView.prototype), {
@@ -1149,7 +1158,7 @@ var Factory = (function() {
 	var UIModule = function(definition, parentNodeDOMId, automakeable) {
 		this.raw = true;
 		
-		InViewInjectionStrategies.apply(this, arguments);
+		InViewInjectionStrategies.call(this, definition, parentNodeDOMId, automakeable);
 		this.objectType = 'UIModule';
 		
 		this.reactOnParent = [];
@@ -1185,9 +1194,6 @@ var Factory = (function() {
 		constructor : UIModule,
 		beforeMake : function() {},						// virtual
 		afterMake : function() {},						// virtual
-		beforeCreateDOM : function() {},				// virtual
-		createDOM : function() {},						// virtual
-		afterCreateDOM : function() {},					// virtual
 		beforeRegisterEvents : function() {},			// virtual
 		createObservables : function() {},				// virtual
 		initGenericEvent : function() {					// virtual		// this is implemented by the genericComponent : and is of no use here
@@ -1235,9 +1241,8 @@ var Factory = (function() {
 	 * @abstract
 	 */
 	UIModule.prototype.init = function(definition) {
-		this.create(definition);
+		this.initView(definition);
 		this.registerEvents();
-
 		this.firstRender();
 		
 		this.execBindingQueue(definition);
@@ -1250,14 +1255,7 @@ var Factory = (function() {
 		this.createEvent('update');
 		this.createEvent('stroke');
 	}
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.create = function(definition) {
-		this.beforeCreateDOM(definition);
-		this.elaborateView(definition);
-		this.afterCreateDOM(definition);
-	}
+	
 
 	UIModule.prototype.registerEvents = function() {
 		this.beforeRegisterEvents();
@@ -1288,7 +1286,7 @@ var Factory = (function() {
 		
 		for(var prop in defaultHostDef) {
 			// TODO : try to precisely avoid to keep references on attributes, props & states (and more difficult : on reactOnParent, reactOnSelf, subscribeOnChild, subscribeOnParent)
-			if (Array.isArray(this[prop]))
+			if (Array.isArray(this[prop]) && (defaultHostDef[prop].length || hostDef[prop].length))
 				Array.prototype.push.apply(this[prop], defaultHostDef[prop].concat(hostDef[prop]));
 //				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
 //				this[prop] = this[prop].concat(defaultHostDef[prop], TypeManager.ValueObject.prototype.renewArray(hostDef[prop], prop));
@@ -1852,6 +1850,7 @@ var Factory = (function() {
 	return {
 		CoreModule : CoreModule,
 		AsynchronousModule : AsynchronousModule,
+		DOMView : DOMView,
 		DependancyModule : DependancyModule,
 		DOMViewGetterSetter : ElementFactory.propGetterSetter,
 		UIModule : UIModule,
