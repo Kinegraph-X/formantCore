@@ -816,6 +816,7 @@ var Factory = (function() {
 	
 	/**
 	 * @abstract
+	 * INIT SEQUENCE : Main call
 	 */
 	DOMView.prototype.initView = function(definition) {
 		this.beforeElaborateView(definition);
@@ -825,7 +826,8 @@ var Factory = (function() {
 	
 	/**
 	 * @abstract
-	 * INIT SEQUENCE : called in UIModule to have the ability to defines hooks in the construction process
+	 * INIT SEQUENCE : prepareView() is called in elaborateView(), implemented for example by GenericComponent
+	 * 					This is the first function in the construction process after the "before" hook
 	 */
 	DOMView.prototype.prepareView = function(definition) {
 		if(this.attributes.length)
@@ -834,7 +836,15 @@ var Factory = (function() {
 	
 	/**
 	 * @abstract
-	 * INIT SEQUENCE : called in UIModule to have the ability to defines hooks in the construction process
+	 * INIT SEQUENCE : SUMMARY
+	 * 	There are 3 main Hooks in the View construction process : 
+	 * 		- UIModule calls initView() defined up here => [beforeElaborateView, elaborateView, afterElaborateView]
+	 *  	- elaborateView() is implemented by the generic ctors:
+	 *  		- GenericComponent calls prepareView(), then this function :
+	 *  			=> createView() is the "pure DOM" part
+	 *  			then simpleTree(), statefullView() and at last some hooks allowing to add children asynchronously
+	 *  		- calls to elaborateView() in ComponentGroup & ComponentList loop on components in the def, which are almost all instances of GenericComponent 
+	 * 					
 	 */
 	DOMView.prototype.createView = function(definition, states) {
 		if (!definition.getHostDef().nodeName)
@@ -857,10 +867,10 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 * HELPER : used for example to decorate the "bare" DOM nodes in the ComponentGroup class
-	 * <code>
-	 * 		module = ElementFactory.createElement(def);
-			this.applyAttributes(def.attributes, module); 
-	 * </code>
+	 * @example <code>
+	 * 				module = ElementFactory.createElement(def);
+					this.setAttributesHelper(def.attributes, module); 
+	 * 			</code>
 	 */
 	DOMView.prototype.setAttributesHelper = function(attributes, node) {
 		attributes.forEach(function(attrObject) {
@@ -871,7 +881,7 @@ var Factory = (function() {
 	 * @abstract
 	 * INIT SEQUENCE : the shadowDOM tech implies that the root node is EITHER "hostElem" OR "rootElem"
 	 *  	- calls hasNoShadow() which is implemented by the StatefullUIModule :
-	 *  		non-custom elements have no lifecycle callback where to set the reflectedObj (here a DOM Node) for the component's states
+	 *  		non-custom elements have no lifecycle callback where to set the reflectedObj (here a DOM Node) for the component's states to be "rendered" in the DOM
 	 */
 	DOMView.prototype.hasShadow = function(definition) {
 		if (this.hostElem.shadowRoot) {
@@ -884,7 +894,7 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 * HELPER : => ALL methods of a component MUST test the presence of the shadowRoot before appending-to or querying the hostElem
-	 * The root node being EITHER "hostElem" OR "rootElem", call this method EVERYWHERE 
+	 * The root node being EITHER "hostElem" OR "rootElem", you must call this method EVERYWHERE 
 	 * @example <code> this.getRootNode().appendChild(node); </code>
 	 */
 	DOMView.prototype.getRootNode = function(definition) {
@@ -917,6 +927,14 @@ var Factory = (function() {
 	DOMView.prototype.acquireViewFromComponent = function(component) {
 		this.hostElem = component.domElem;
 		this.hasShadow();
+	}
+	
+	/**
+	 * @abstract
+	 * VIEW COMPOSITION SEQUENCE : simple DOM append for "bare DOM" subSections and members 
+	 */
+	DOMView.prototype.connectNodeToParent = function(node, parentNode) {
+		parentNode.appendChild(node);
 	}
 	/**
 	 * @abstract
