@@ -152,12 +152,19 @@ Object.defineProperty(RecitalDataset.prototype, 'pushApply',  {
 Object.defineProperty(RecitalDataset.prototype, 'splice',  {
 	value : function(index, length, replacedBy) {
 		var c1, c2, mBackup;
-		
+
 		if (typeof replacedBy === 'number') {
-			c1 = this.trackedModule.modules[index].remove();
-			c2 = this.trackedModule.modules[replacedBy].remove();
-			this.trackedModule.registerModule(c1.__created_as_name, c2, null, index);
-			
+			if (replacedBy > index) {
+				c2 = this.trackedModule.modules[replacedBy].remove();
+				c1 = this.trackedModule.modules[index].remove();
+				this.trackedModule.registerModule(c1.__created_as_name, c2, null, index);
+			}
+			else {
+				c1 = this.trackedModule.modules[index].remove();
+				c2 = this.trackedModule.modules[replacedBy].remove();
+				this.trackedModule.registerModule(c1.__created_as_name, c2, null, index - 1);
+			}
+
 			mBackup = Array.prototype.splice.call(this, index, 1, this[replacedBy])[0];
 			this.updateDatasetState();
 			return [mBackup, c1, c2.__created_as_name];
@@ -169,7 +176,7 @@ Object.defineProperty(RecitalDataset.prototype, 'splice',  {
 			return [mBackup, c1, null];
 		}
 		else if (Array.isArray(replacedBy)) {
-			this.trackedModule.registerModule(replacedBy[2], replacedBy[1], null, index + 1);
+			this.trackedModule.registerModule(replacedBy[2], replacedBy[1], null, index);
 			Array.prototype.splice.call(this, index, 1, replacedBy[0]);
 			this.updateDatasetState();
 			return true;
@@ -215,8 +222,8 @@ Object.defineProperty(RecitalDataset.prototype, 'spliceOnPropInverse',  {
 
 Object.defineProperty(RecitalDataset.prototype, 'resetLength',  {
 	value : function(ComponentGroupObj) {
-		this.trackedModule.clearAllModules();
-		Array.prototype.splice.call(this, 0, this.length);
+		if (this.trackedModule.clearAllModules())
+			Array.prototype.splice.call(this, 0, this.length);
 	}
 });
 

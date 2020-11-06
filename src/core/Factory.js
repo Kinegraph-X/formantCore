@@ -222,34 +222,42 @@ var Factory = (function() {
 		
 		candidateModule.__created_as_name = moduleName;
 		candidateModule._parent = this;
+		
 		if (typeof atIndex !== 'undefined') {
-			((candidateModule.hostElem && this.modules[atIndex - 1] && this.modules[atIndex - 1].hostElem) ? this.modules[atIndex - 1].hostElem.insertAdjacentElement('afterEnd', candidateModule.hostElem) : this.hostElem.appendChild(candidateModule.hostElem));
+			// The module has already been "made"
+			if (candidateModule.parentNodeDOMId === null)
+				this.lateAddChild(candidateModule, moduleDefinition);
 			this.modules.splice(atIndex, 0, candidateModule);
 			if (!noNum)
 				this.generateNumeration(atIndex);
 		}
-		else
-			this.modules.push(candidateModule);
-		
-		if (candidateModule.nodeName)
-			return candidateModule;
 		else {
-			
-			// Subscribing to events pertains to the CoreModule
-			this.handleModuleSubscriptions(candidateModule);
-			
-//			if (moduleDefinition)
-//				// heuristic targetSlot definition (reactivity may rely on "early-defined" slots)
-//				this.handleSlotDefinitionRelativeToParent(candidateModule, moduleDefinition);
-			
-			// The ObservableComponent class is responsible for implementing the reactions on parent and on self (binding to streams) 
-			this.onRegisterModule(candidateModule);
+			candidateModule._key = this.modules.length;
+			this.modules.push(candidateModule);
 		}
+
+		// Subscribing to events pertains to the CoreModule
+		this.handleEventSubscriptions(candidateModule);
+		
+		// The ObservableComponent class is responsible for implementing the reactions on parent and on self (binding to streams) 
+		this.onRegisterModule(candidateModule);
+//		}
 		
 		return candidateModule;
 	}
 	
-	CoreModule.prototype.handleModuleSubscriptions = function(candidateModule) {
+	CoreModule.prototype.lateAddChild = function(candidateModule, moduleDefinition) {
+		this.connectNodeToParentHelper(
+				candidateModule.hostElem,
+				this.getChildEffectiveRootNode(
+						(moduleDefinition
+								? moduleDefinition.getHostDef().getSection()
+										: candidateModule.section)
+					)
+			);
+	}
+	
+	CoreModule.prototype.handleEventSubscriptions = function(candidateModule) {
 //		console.log(candidateModule);
 		if (candidateModule.subscribeOnParent.length)
 			candidateModule.subscribeOnParent.forEach(function(subscription, key) {
@@ -269,7 +277,7 @@ var Factory = (function() {
 	
 	CoreModule.prototype.generateNumeration = function(atIndex) {
 		for (var i = atIndex, l = this.modules.length; i < l; i++) {
-			this.modules[i]._key = atIndex + i;
+			this.modules[i]._key = i;
 		}
 	}
 	
@@ -332,18 +340,16 @@ var Factory = (function() {
 			componentCtor = cListDef.getHostDef().templateCtor;
 		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0);
 
-		// TODO : handle the case where a listItem is appended to a "not last child" subSection  (NOT WORKING)
-		var root = this.hostElem,
-			def = cListDef.getHostDef().template,
+		var def = cListDef.getHostDef().template,
 			baseName = 'componentListItem';
 
 		cListDef.getHostDef().each.forEach(function(item, key) {
 			key = key + idx;
 			name = baseName + key.toString();
 
-			UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(def, root)), def, atIndex++, 'noNum');
+			UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(def)), def, atIndex++, 'noNum');
 			componentGroup._key = key;
-			componentCtor.prototype.handleReflectionOnModel.call(this, cListDef, componentGroup.streams, item);
+			componentCtor.prototype.handleReflectionOnModel.call(this, cListDef.host.reflectOnModel, cListDef.host.augmentModel, componentGroup.streams, item);
 		}, this);
 		this.generateNumeration(idx);
 	}
@@ -360,33 +366,45 @@ var Factory = (function() {
 		if (atIndex > this.modules.length)
 			return false;
 		
-		var name, def, root, componentGroup, componentCtor = cListDef.getHostDef().templateCtor;
+		var name, def, componentGroup, componentCtor = cListDef.getHostDef().templateCtor;
 		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0),
 			name = 'componentListItem' + idx;
 
-		// TODO : handle the case where a listItem is appended to a "not last child" subSection (NOT WORKING)
-//		var root = ((this.modules[1] && ([...this.hostElem.childNodes]).indexOf(this.modules[1].hostElem) !== -1) || !this.modules.length) ? this.hostElem : this.hostElem.lastChild,
-
-		UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(cListDef.host.template, this.hostElem)), cListDef.host.template, atIndex);
+		UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(cListDef.host.template)), cListDef.host.template, atIndex);
 		componentGroup._key = idx;
 		componentCtor.prototype.handleReflectionOnModel.call(this, cListDef, componentGroup.streams, cListDef.getHostDef().item);
 	}
 	
 	/**
-	 * @param {string} moduleName
+	 * 
 	 */
 	CoreModule.prototype.clearAllModules = function() {
-		(this.hostElem && this.hostElem.remove());
-		this.modules.length = 0;
-		return true;
+//		console.log(this.hostElem, this.hostElem.childNodes);
+		if (this.hostElem && this.hostElem.children.length && this.hostElem.children[0].children.length) // poor deduction... TODO: fix that
+			this.hostElem.childNodes.forEach(function(child) {
+				child.childNodes.length = 0;
+			});
+		
+
+		for (let i = this.modules.length - 1; i >= 0; i--) {
+			this.modules[i].remove();
+		}
+		if (this.modules.length === 0)
+			return true;
+		else {
+			console.log(this);
+			return false;
+		}
 	}
 	
 	/**
-	 * @param {string} moduleName
+	 * 
 	 */
 	CoreModule.prototype.remove = function() {
-		if (!this.modules.length)
+
+		if (!this._parent.modules.length)
 			return false;
+
 		if (this._parent.modules.indexOf(this) !== -1) {
 			return this._parent.removeModule(this._key);
 		}
@@ -786,13 +804,13 @@ var Factory = (function() {
 		
 		this.attributes = [];
 		
-		this.parentNodeDOMId = parentNodeDOMId; 
+		this.nodeName = null;
+		this.section = null;
+		this.parentNodeDOMId = parentNodeDOMId || null; 
 		this.parentDOMNode;
 		this.hostElem;
 		this.rootElem;
 		this.hoverElem;
-		this.defaultSlot;
-		this.slots;
 		
 		this.stylesheetCausesChildOffset = 0;
 		
@@ -906,7 +924,7 @@ var Factory = (function() {
 	 * 
 	 */
 	DOMView.prototype.getChildEffectiveRootNode = function(section) {
-		// (section === null) is an allowed case for subSections : they'll be appended to the root Node
+		// (section === null) is allowed for subSections (appended to the root Node) but we tweaked the TypeManager to always get a Number, so -1 = null (perf matters...)
 		return (section !== -1 && this.stylesheetCausesChildOffset !== null)
 					? this.getRootNode().children[section + this.stylesheetCausesChildOffset]
 						: this.getRootNode();
@@ -931,9 +949,29 @@ var Factory = (function() {
 	
 	/**
 	 * @abstract
+	 * VIEW COMPOSITION : Houston, we have a child... 
+	 */
+	DOMView.prototype.addNodeInGroup = function(def) {
+		var node = ElementFactory.createElement(def);
+		this.setAttributesHelper(def.getHostDef().attributes, node);
+		this.connectNodeToParentHelper(node, this.getChildEffectiveRootNode(def.getSection()));
+	}
+	
+	/**
+	 * @abstract
+	 * VIEW COMPOSITION : Houston, we have a child... 
+	 */
+	DOMView.prototype.addNodeToRoot = function(def) {
+		var node = ElementFactory.createElement(def);
+		this.setAttributesHelper(def.getHostDef().attributes, node);
+		this.connectNodeToParentHelper(node, this.getRootNode());
+	}
+	
+	/**
+	 * @abstract
 	 * VIEW COMPOSITION SEQUENCE : simple DOM append for "bare DOM" subSections and members 
 	 */
-	DOMView.prototype.connectNodeToParent = function(node, parentNode) {
+	DOMView.prototype.connectNodeToParentHelper = function(node, parentNode) {
 		parentNode.appendChild(node);
 	}
 	/**
@@ -1011,9 +1049,9 @@ var Factory = (function() {
 		if (this.childrenToAdd.length)
 			this.asyncAddChildren();
 		// define "slots" for DOM children fast access from child components
-		if (this.rootElem || this.hostElem) {
-			(!this.defaultSlot && (this.defaultSlot = (this.rootElem || this.hostElem).firstChild || this.hostElem));
-			this.slots = (this.rootElem || this.hostElem).childNodes;
+		if (this.getRootNode()) {
+			(!this.defaultSlot && (this.defaultSlot = this.getRootNode().firstChild || this.hostElem));
+			this.slots = this.getRootNode().childNodes;
 		}
 	}
 	
@@ -1108,6 +1146,10 @@ var Factory = (function() {
 	var InViewInjectionStrategies = function(definition, parentNodeDOMId, automakeable) {
 		DOMView.call(this, definition, parentNodeDOMId, automakeable);
 		this.objectType = 'InViewInjectionStrategies';
+		
+		this.targetSlotIndex = null;
+		this.defaultSlot;
+		this.slots;
 	}
 	InViewInjectionStrategies.prototype = Object.assign(Object.create(DOMView.prototype), {
 		objectType : 'InViewInjectionStrategies',
@@ -1117,8 +1159,23 @@ var Factory = (function() {
 	/**
 	 * @abstract
 	 */
+	InViewInjectionStrategies.prototype.onRegisterModule = function(candidateModule) {
+		this.handleSlotDefinitionRelativeToParent(candidateModule);
+	}
+	
+	/**
+	 * @abstract
+	 */
+	InViewInjectionStrategies.prototype.handleSlotDefinitionRelativeToParent = function(candidateModule) {
+		if (typeof candidateModule.targetSlot !== 'object')		// so it includes candidateModule.targetSlotIndex !== null 
+			candidateModule.targetSlot = typeof candidateModule.targetSlotIndex === 'number' ? this.slots[candidateModule.targetSlotIndex] : this.defaultSlot;
+	}
+	
+	/**
+	 * @abstract
+	 */
 	InViewInjectionStrategies.prototype.populateSlots = function(values) {
-		console.log(values, this.slots);
+		
 		if (!Array.isArray(values) || !values.length) {
 			if (typeof value === 'string')
 				values = [values];
@@ -1185,21 +1242,18 @@ var Factory = (function() {
 		this.props = [];
 		this.states = [];
 		
-		// These props are inherited the componentDef "SingleLevelComponentDefModel" type
+		// These props are inherited from the "SingleLevelComponentDefModel" type
 		this.type = null,
-		this.nodeName = null;
 		this.templateNodeName = null;
-		this.section = null;
 		this.sWrapper = null;
 
 		this.bindingQueue = [];
-		
-		this.mergeWithComponentDefaultDef(definition, this.createDefaultDef());
-		
+
 		this.command = (definition.getHostDef() && definition.getHostDef().command);
 		this.keyboardSettings;
 		this.keyboardEvents = definition.getHostDef().keyboardEvents || [];
 		
+		this.mergeWithComponentDefaultDef(definition, this.createDefaultDef());
 		(definition && this.immediateInit());
 		(automakeable && this.raw && this.Make(definition));
 	};
@@ -1288,7 +1342,7 @@ var Factory = (function() {
 	 * @virtual with default implementation
 	 */
 	UIModule.prototype.createDefaultDef = function() {				// virtual
-		return TypeManager.createComponentDef({host : {}}, 'defaultDef');
+		return TypeManager.createComponentDef({host : {}}, 'defaultDef', 'isDummy');
 	}
 	
 	/**
@@ -1298,38 +1352,62 @@ var Factory = (function() {
 		
 		if (definition.getGroupHostDef() || definition.getHostDef().getType() === 'ComponentList')
 			return;
+		
+//		defaultDef = TypeManager.createComponentDef(defaultDef);
+//		definition = TypeManager.createComponentDef(definition);
 
 		var defaultHostDef = defaultDef.getHostDef(),
-		hostDef = definition.getHostDef();
+			hostDef = definition.getHostDef();
 		
-		for(var prop in defaultHostDef) {
-			// TODO : try to precisely avoid to keep references on attributes, props & states (and more difficult : on reactOnParent, reactOnSelf, subscribeOnChild, subscribeOnParent)
-			if (Array.isArray(this[prop]) && (defaultHostDef[prop].length || hostDef[prop].length))
-				Array.prototype.push.apply(this[prop], defaultHostDef[prop].concat(hostDef[prop]));
-//				this[prop] = this[prop].concat(defaultHostDef[prop], hostDef[prop]);
-//				this[prop] = this[prop].concat(defaultHostDef[prop], TypeManager.ValueObject.prototype.renewArray(hostDef[prop], prop));
-			else if (prop === 'sWrapper')							// TODO : use the cache for stylesheets : in a shadowRoot, appending many times won't work, so we need here a clone of the styleElem
-				this[prop] = hostDef[prop] || defaultHostDef[prop];
-			else if (hostDef[prop] === null)
-				hostDef[prop] = defaultHostDef[prop];
+		if (defaultHostDef.isDummy) {
+//			console.log('isDummmy');
+			TypeManager.propsAreArray.forEach(function(prop) {
+				if (hostDef[prop].length)
+					Array.prototype.push.apply(this[prop], hostDef[prop]);
+			}, this);
+			TypeManager.propsArePrimitives.forEach(function(prop) {
+					this[prop] = hostDef[prop];
+			}, this);
+			this.sWrapper = hostDef.sWrapper;
+			this.command = hostDef.command;
 		}
+		else {
+			TypeManager.propsAreArray.forEach(function(prop) {
+				if(defaultHostDef[prop].length) {
+					if (hostDef[prop].length)
+						Array.prototype.push.apply(this[prop], defaultHostDef[prop].concat(hostDef[prop]));
+					else
+						Array.prototype.push.apply(this[prop], defaultHostDef[prop]);
+				}
+				else if(hostDef[prop].length) {
+					if (defaultHostDef[prop].length)
+						Array.prototype.push.apply(this[prop], defaultHostDef[prop].concat(hostDef[prop]));
+					else
+						Array.prototype.push.apply(this[prop], hostDef[prop]);
+				}
+			}, this);
+			TypeManager.propsArePrimitives.forEach(function(prop) {
+				this[prop] = hostDef[prop] === null ? defaultHostDef[prop] : hostDef[prop];
+			}, this);
+			this.sWrapper = hostDef.sWrapper || defaultHostDef.sWrapper;
+			this.command = hostDef.command || defaultHostDef.command;
+		}
+
 		
 		if (defaultDef.subSections.length || defaultDef.members.length) {
+//			console.warn('Defining default values for members and sections of a component must be avoided if this component can be used in a template for a ComponentList : it will cause a hazardeous additive merging resulting in unwanted MEGA nodes')
 			if (defaultDef.subSections.length)
 				definition.subSections = defaultDef.subSections.concat(definition.subSections);
 			if (defaultDef.members.length)
 				definition.members = defaultDef.members.concat(definition.members);
 		}
+		
+//		console.log(this);
 	};
 	
 	
 	
-	/**
-	 * @abstract
-	 */
-	UIModule.prototype.handleSlotDefinitionRelativeToParent = function(candidateModule, def) {
-		candidateModule.targetSlot = (typeof def.targetSlot === 'number' ? this.slots[def.targetSlot] : candidateModule.targetSlot) || this.defaultSlot;
-	}
+	
 	
 	/**
 	 * @abstract
@@ -1871,6 +1949,7 @@ var Factory = (function() {
 		DOMView : DOMView,
 		DependancyModule : DependancyModule,
 		DOMViewGetterSetter : ElementFactory.propGetterSetter,
+		InViewInjectionStrategies : InViewInjectionStrategies,
 		UIModule : UIModule,
 		Command : Command,
 		Worker : WorkerInterface,
