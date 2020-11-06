@@ -194,7 +194,8 @@ var Factory = (function() {
 		this.objectType = 'CoreModule';
 		this._key;
 		this._parent;
-		this.hostComponent;
+		this._hostComponent;
+		this._listComponent;
 		this.modules = [];
 		this._eventHandlers = {};
 		this._one_eventHandlers = {};
@@ -216,17 +217,17 @@ var Factory = (function() {
 	/**
 	 * @param {object} candidateModule : an instance of another module
 	 */
-	CoreModule.prototype.registerModule = function(moduleName, candidateModule, moduleDefinition, atIndex, noNum) {
+	CoreModule.prototype.registerModule = function(candidateModule, moduleDefinition, atIndex, noNum) {
 		if (!candidateModule)
 			return;
 		
-		candidateModule.__created_as_name = moduleName;
+//		candidateModule.__created_as_name = moduleName;
 		candidateModule._parent = this;
 		
 		if (typeof atIndex !== 'undefined') {
 			// The module has already been "made"
-			if (candidateModule.parentNodeDOMId === null)
-				this.lateAddChild(candidateModule, moduleDefinition);
+			if (candidateModule.parentNodeDOMId === null || !candidateModule.isAttached)
+				this.lateAddChild(candidateModule, moduleDefinition, atIndex);
 			this.modules.splice(atIndex, 0, candidateModule);
 			if (!noNum)
 				this.generateNumeration(atIndex);
@@ -246,15 +247,17 @@ var Factory = (function() {
 		return candidateModule;
 	}
 	
-	CoreModule.prototype.lateAddChild = function(candidateModule, moduleDefinition) {
+	CoreModule.prototype.lateAddChild = function(candidateModule, moduleDefinition, atIndex) {
 		this.connectNodeToParentHelper(
 				candidateModule.hostElem,
 				this.getChildEffectiveRootNode(
 						(moduleDefinition
 								? moduleDefinition.getHostDef().getSection()
 										: candidateModule.section)
-					)
+					),
+					atIndex !== this.modules.length ? atIndex : null
 			);
+		candidateModule.isAttached = true;
 	}
 	
 	CoreModule.prototype.handleEventSubscriptions = function(candidateModule) {
@@ -292,6 +295,8 @@ var Factory = (function() {
 		if (!this.modules.length)
 			return false;
 		var removed;
+
+		this.modules[moduleKey].isAttached = false;
 		this.modules[moduleKey].hostElem.remove();
 		removed = this.modules.splice(moduleKey, 1)[0];
 		(moduleKey < this.modules.length && this.generateNumeration(moduleKey));
@@ -301,11 +306,11 @@ var Factory = (function() {
 	/**
 	 * @param {string} moduleName
 	 */
-	CoreModule.prototype.getModule = function(moduleName) {
+	CoreModule.prototype.getModule = function(idx) {
 		if (!this.modules.length)
 			return false;
-		var idx;
-		if (!isNaN(parseInt(idx = this.modules.indexOfObjectByValue('__created_as_name', moduleName)))) {
+		
+		if (this.modules[idx]) {
 			return this.modules[idx];
 		}
 		return false;
@@ -315,12 +320,12 @@ var Factory = (function() {
 	 * @param {string} moduleName
 	 */
 	CoreModule.prototype.queryModules = function(moduleName) {
-		if (!this.modules.length)
-			return false;
-		var arr;
-		if (Array.isArray((arr = this.modules.findObjectsByPartialValue('__created_as_name', moduleName)))) {
-			return arr;
-		}
+//		if (!this.modules.length)
+//			return false;
+//		var arr;
+//		if (Array.isArray((arr = this.modules.findObjectsByPartialValue('__created_as_name', moduleName)))) {
+//			return arr;
+//		}
 		return false;
 	}
 	
@@ -336,22 +341,31 @@ var Factory = (function() {
 		if (atIndex > this.modules.length)
 			return false;
 		
-		var baseName, name, key, def, root, componentGroup,
+		var key, def, root, componentGroup,
 			componentCtor = cListDef.getHostDef().templateCtor;
 		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0);
 
-		var def = cListDef.getHostDef().template,
-			baseName = 'componentListItem';
+		var def = cListDef.getHostDef().template;
+//			baseName = 'componentListItem';
 
 		cListDef.getHostDef().each.forEach(function(item, key) {
 			key = key + idx;
-			name = baseName + key.toString();
+//			name = baseName + key.toString();
 
-			UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(def)), def, atIndex++, 'noNum');
+			UIModule.prototype.makeAndRegisterModule.call(this, (componentGroup = new componentCtor(def)), def, atIndex++, 'noNum');
 			componentGroup._key = key;
-			componentCtor.prototype.handleReflectionOnModel.call(this, cListDef.host.reflectOnModel, cListDef.host.augmentModel, componentGroup.streams, item);
+			componentCtor.prototype.handleReflectionOnModel(cListDef.host.reflectOnModel, cListDef.host.augmentModel, componentGroup.streams, item);
 		}, this);
 		this.generateNumeration(idx);
+		
+//		for (let objType in flatDOM) {
+//			flatDOM[objType].forEach(function(objDesc, key) {
+//				componentCtor.prototype.createChild.call(this.modules[key], objDesc.type, objDesc.def, objDesc.parentNode);
+//			}, this);
+//		}
+//		cListDef.getHostDef().each.forEach(function(item, key) {
+//			componentCtor.prototype.handleReflectionOnModel(cListDef.host.reflectOnModel, cListDef.host.augmentModel, this.modules[key].streams, item);
+//		}, this);
 	}
 	
 	/**
@@ -366,11 +380,11 @@ var Factory = (function() {
 		if (atIndex > this.modules.length)
 			return false;
 		
-		var name, def, componentGroup, componentCtor = cListDef.getHostDef().templateCtor;
-		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0),
-			name = 'componentListItem' + idx;
+		var def, componentGroup, componentCtor = cListDef.getHostDef().templateCtor;
+		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0);
+//			name = 'componentListItem' + idx;
 
-		UIModule.prototype.makeAndRegisterModule.call(this, name, (componentGroup = new componentCtor(cListDef.host.template)), cListDef.host.template, atIndex);
+		UIModule.prototype.makeAndRegisterModule.call(this, (componentGroup = new componentCtor(cListDef.host.template)), cListDef.host.template, atIndex);
 		componentGroup._key = idx;
 		componentCtor.prototype.handleReflectionOnModel.call(this, cListDef, componentGroup.streams, cListDef.getHostDef().item);
 	}
@@ -816,6 +830,8 @@ var Factory = (function() {
 		
 		this.DOMRenderQueue = [];
 		this.childrenToAdd = [];
+		
+		this.isAttached = false;
 	}
 	DOMView.prototype = Object.assign(Object.create(DependancyModule.prototype), {
 		objectType : 'DOMView',
@@ -971,8 +987,11 @@ var Factory = (function() {
 	 * @abstract
 	 * VIEW COMPOSITION SEQUENCE : simple DOM append for "bare DOM" subSections and members 
 	 */
-	DOMView.prototype.connectNodeToParentHelper = function(node, parentNode) {
-		parentNode.appendChild(node);
+	DOMView.prototype.connectNodeToParentHelper = function(node, parentNode, atIndex) {
+		if (!atIndex)
+			parentNode.appendChild(node);
+		else
+			parentNode.children[atIndex - 1].insertAdjacentElement('afterend', node);
 	}
 	/**
 	 * @abstract
@@ -1009,11 +1028,11 @@ var Factory = (function() {
 	
 	/**
 	 * @abstract
-	 * HELPER : => when reflecting the hostComponent on the ComponentGroup, does the hostComponent has a stylesheet AND the group has subSections ?
+	 * HELPER : => when reflecting the _hostComponent on the ComponentGroup, does the _hostComponent has a stylesheet AND the group has subSections ?
 	 * 
 	 */
 	DOMView.prototype.getReflectedstylesheetCausesChildOffset = function(definition) {
-		return definition.subSections.length ? this.hostComponent.stylesheetCausesChildOffset : null;
+		return definition.subSections.length ? this._hostComponent.stylesheetCausesChildOffset : null;
 	}
 	
 
@@ -1114,7 +1133,7 @@ var Factory = (function() {
 			if (module.raw || (oneShot && module !== oneShot))
 				return;
 			// register subModule
-			this.makeAndRegisterModule(this.maintainUniqueNames(names, module.objectType), module);
+			this.makeAndRegisterModule(module);
 		}, this);
 	}
 	
@@ -1128,7 +1147,7 @@ var Factory = (function() {
 					? this.parentDOMNode = this.parentNodeDOMId
 						: this.parentDOMNode = document.querySelector('#' + this.parentNodeDOMId)));
 		
-		(this.parentDOMNode && this.hostElem && this.parentDOMNode.appendChild(this.hostElem));
+		(this.parentDOMNode && this.hostElem && this.parentDOMNode.appendChild(this.hostElem) && (this.isAttached = true));
 	}
 	
 	
@@ -1283,10 +1302,10 @@ var Factory = (function() {
 	/**
 	 * @extends CoreModule (not virtual)
 	 */
-	UIModule.prototype.makeAndRegisterModule = function(moduleName, candidateModule, moduleDefinition, atIndex) {
+	UIModule.prototype.makeAndRegisterModule = function(candidateModule, moduleDefinition, atIndex) {
 		if (candidateModule.raw)
 			candidateModule.Make(moduleDefinition);
-		this.registerModule(moduleName, candidateModule, moduleDefinition, atIndex);
+		this.registerModule(candidateModule, moduleDefinition, atIndex);
 		return candidateModule;
 	}
 	
@@ -1663,6 +1682,7 @@ var Factory = (function() {
 			
 			return this.subscribe(reflectedHost.streams[prop].set, null, inverseTransform);
 		}
+		return this._value;
 	}
 
 	/**

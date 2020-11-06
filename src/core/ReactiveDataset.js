@@ -157,26 +157,26 @@ Object.defineProperty(RecitalDataset.prototype, 'splice',  {
 			if (replacedBy > index) {
 				c2 = this.trackedModule.modules[replacedBy].remove();
 				c1 = this.trackedModule.modules[index].remove();
-				this.trackedModule.registerModule(c1.__created_as_name, c2, null, index);
+				this.trackedModule.registerModule(c2, null, index);
 			}
 			else {
 				c1 = this.trackedModule.modules[index].remove();
 				c2 = this.trackedModule.modules[replacedBy].remove();
-				this.trackedModule.registerModule(c1.__created_as_name, c2, null, index - 1);
+				this.trackedModule.registerModule(c2, null, index - 1);
 			}
 
 			mBackup = Array.prototype.splice.call(this, index, 1, this[replacedBy])[0];
 			this.updateDatasetState();
-			return [mBackup, c1, c2.__created_as_name];
+			return [mBackup, c1];
 		}
 		else if (typeof replacedBy === 'undefined' || replacedBy === null) {
 			c1 = this.trackedModule.modules[index].remove();
 			mBackup = Array.prototype.splice.call(this, index, 1)[0];
 			this.updateDatasetState();
-			return [mBackup, c1, null];
+			return [mBackup, c1];
 		}
 		else if (Array.isArray(replacedBy)) {
-			this.trackedModule.registerModule(replacedBy[2], replacedBy[1], null, index);
+			this.trackedModule.registerModule(replacedBy[1], null, index);
 			Array.prototype.splice.call(this, index, 1, replacedBy[0]);
 			this.updateDatasetState();
 			return true;
