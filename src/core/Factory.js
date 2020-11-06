@@ -218,7 +218,7 @@ var Factory = (function() {
 	/**
 	 * @param {object} candidateModule : an instance of another module
 	 */
-	CoreModule.prototype.registerModule = function(candidateModule, moduleDefinition, atIndex, noNum) {
+	CoreModule.prototype.registerModule = function(candidateModule, atIndex, noNum) {
 		if (!candidateModule)
 			return;
 		
@@ -228,7 +228,7 @@ var Factory = (function() {
 		if (typeof atIndex !== 'undefined') {
 			// The module has already been "made"
 			if (candidateModule.parentNodeDOMId === null || !candidateModule.isAttached)
-				this.lateAddChild(candidateModule, moduleDefinition, atIndex);
+				this.lateAddChild(candidateModule, atIndex);
 			this.modules.splice(atIndex, 0, candidateModule);
 			if (!noNum)
 				this.generateNumeration(atIndex);
@@ -248,14 +248,10 @@ var Factory = (function() {
 		return candidateModule;
 	}
 	
-	CoreModule.prototype.lateAddChild = function(candidateModule, moduleDefinition, atIndex) {
+	CoreModule.prototype.lateAddChild = function(candidateModule, atIndex) {
 		this.connectNodeToParentHelper(
 				candidateModule.hostElem,
-				this.getChildEffectiveRootNode(
-						(moduleDefinition
-								? moduleDefinition.getHostDef().getSection()
-										: candidateModule.section)
-					),
+				this.getChildEffectiveRootNode(candidateModule.section || -1),
 					atIndex !== this.modules.length ? atIndex : null
 			);
 		candidateModule.isAttached = true;
@@ -357,7 +353,7 @@ var Factory = (function() {
 	CoreModule.prototype.addModule = function(componentCtor, cListDef, def, atIndex, dataItem) {
 		var componentGroup;
 		UIModule.prototype.makeAndRegisterModule.call(this, (componentGroup = new componentCtor(def)), def, atIndex, 'noNum');
-		componentCtor.prototype.handleReflectionOnModel(cListDef.host.reflectOnModel, cListDef.host.augmentModel, componentGroup.streams, dataItem);
+		componentGroup.handleReflectionOnModel(cListDef.host.reflectOnModel, cListDef.host.augmentModel, dataItem);
 	}
 	
 	/**
@@ -1276,7 +1272,7 @@ var Factory = (function() {
 	UIModule.prototype.makeAndRegisterModule = function(candidateModule, moduleDefinition, atIndex) {
 		if (candidateModule.raw)
 			candidateModule.Make(moduleDefinition);
-		this.registerModule(candidateModule, moduleDefinition, atIndex);
+		this.registerModule(candidateModule, atIndex);
 		return candidateModule;
 	}
 	
