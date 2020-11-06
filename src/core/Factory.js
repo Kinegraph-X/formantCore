@@ -196,6 +196,7 @@ var Factory = (function() {
 		this._parent;
 		this._hostComponent;
 		this._listComponent;
+		this._isSection = false;
 		this.modules = [];
 		this._eventHandlers = {};
 		this._one_eventHandlers = {};
@@ -261,7 +262,6 @@ var Factory = (function() {
 	}
 	
 	CoreModule.prototype.handleEventSubscriptions = function(candidateModule) {
-//		console.log(candidateModule);
 		if (candidateModule.subscribeOnParent.length)
 			candidateModule.subscribeOnParent.forEach(function(subscription, key) {
 				subscription.subscribeToEvent(this, candidateModule);
@@ -330,85 +330,56 @@ var Factory = (function() {
 	}
 	
 	/**
-	 * @param {TypeManager.HierarchicalComponentDefModel{
-	 * 		host : ComponentListDefModel
-	 * 	}
-	 * } cListDef
+	 * @param {TypeManager.HierarchicalComponentDefModel{host : ComponentListDefModel}} cListDef
 	 * @param {Number} atIndex
 	 */
 	CoreModule.prototype.addModules = function(cListDef, atIndex) {
 		
-		if (atIndex > this.modules.length)
-			return false;
-		
-		var key, def, root, componentGroup,
-			componentCtor = cListDef.getHostDef().templateCtor;
-		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0);
-
+		var _key, def;
+		var idx = atIndex = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : atIndex;
+		var componentCtor = cListDef.getHostDef().templateCtor;
 		var def = cListDef.getHostDef().template;
-//			baseName = 'componentListItem';
 
 		cListDef.getHostDef().each.forEach(function(item, key) {
-			key = key + idx;
-//			name = baseName + key.toString();
-
-			UIModule.prototype.makeAndRegisterModule.call(this, (componentGroup = new componentCtor(def)), def, atIndex++, 'noNum');
-			componentGroup._key = key;
-			componentCtor.prototype.handleReflectionOnModel(cListDef.host.reflectOnModel, cListDef.host.augmentModel, componentGroup.streams, item);
+			this.addModule(componentCtor, cListDef, def, atIndex, item);
+			atIndex++;
 		}, this);
 		this.generateNumeration(idx);
-		
-//		for (let objType in flatDOM) {
-//			flatDOM[objType].forEach(function(objDesc, key) {
-//				componentCtor.prototype.createChild.call(this.modules[key], objDesc.type, objDesc.def, objDesc.parentNode);
-//			}, this);
-//		}
-//		cListDef.getHostDef().each.forEach(function(item, key) {
-//			componentCtor.prototype.handleReflectionOnModel(cListDef.host.reflectOnModel, cListDef.host.augmentModel, this.modules[key].streams, item);
-//		}, this);
 	}
 	
 	/**
-	 * @param {TypeManager.HierarchicalComponentDefModel{
-	 * 		host : ComponentListDefModel
-	 * 	}
-	 * } cListDef
+	 * @param {ComponentGroup:ctor} componentCtor
+	 * @param {TypeManager.HierarchicalComponentDefModel{host : ComponentListDefModel}} cListDef
+	 * @param {TypeManager.HierarchicalComponentDefModel} def
 	 * @param {Number} atIndex
+	 * @param {Object} dataItem
 	 */
-	CoreModule.prototype.addModule = function(cListDef, atIndex) {
-		
-		if (atIndex > this.modules.length)
-			return false;
-		
-		var def, componentGroup, componentCtor = cListDef.getHostDef().templateCtor;
-		var idx = (isNaN(parseInt(atIndex)) || atIndex >= this.modules.length) ? this.modules.length : (atIndex || 0);
-//			name = 'componentListItem' + idx;
-
-		UIModule.prototype.makeAndRegisterModule.call(this, (componentGroup = new componentCtor(cListDef.host.template)), cListDef.host.template, atIndex);
-		componentGroup._key = idx;
-		componentCtor.prototype.handleReflectionOnModel.call(this, cListDef, componentGroup.streams, cListDef.getHostDef().item);
+	CoreModule.prototype.addModule = function(componentCtor, cListDef, def, atIndex, dataItem) {
+		var componentGroup;
+		UIModule.prototype.makeAndRegisterModule.call(this, (componentGroup = new componentCtor(def)), def, atIndex, 'noNum');
+		componentCtor.prototype.handleReflectionOnModel(cListDef.host.reflectOnModel, cListDef.host.augmentModel, componentGroup.streams, dataItem);
+	}
+	
+	/**
+	 * 
+	 */
+	CoreModule.prototype.clearAllChildModules = function() {
+		for (let i = this.modules.length - 1; i >= 0; i--) {
+			if (!this.modules[i].isSection)
+				this.modules[i].remove();
+		}
+		return this.modules.length;
 	}
 	
 	/**
 	 * 
 	 */
 	CoreModule.prototype.clearAllModules = function() {
-//		console.log(this.hostElem, this.hostElem.childNodes);
-		if (this.hostElem && this.hostElem.children.length && this.hostElem.children[0].children.length) // poor deduction... TODO: fix that
-			this.hostElem.childNodes.forEach(function(child) {
-				child.childNodes.length = 0;
-			});
-		
-
 		for (let i = this.modules.length - 1; i >= 0; i--) {
 			this.modules[i].remove();
 		}
 		if (this.modules.length === 0)
 			return true;
-		else {
-			console.log(this);
-			return false;
-		}
 	}
 	
 	/**

@@ -7,14 +7,14 @@ var ComponentGroup = require('src/UI/groups/ComponentGroup');
 
 
 
-var RecitalDataset = function(rootComponent, trackedModule, template, factoryPropsArray, arrayFunctions) {
+var RecitalDataset = function(rootComponent, trackedModule, template, factoryPropsArray, arrayFunctions, childrenOffset) {
 	if (!rootComponent || !trackedModule || !template || !factoryPropsArray)
 		return;
-	this.init(rootComponent, trackedModule, template, factoryPropsArray);
+	this.init(rootComponent, trackedModule, template, factoryPropsArray, childrenOffset || 0);
 	if (typeof arrayFunctions !== 'undefined') {
 		if (Array.isArray(arrayFunctions))
 			this.getFunctionList(arrayFunctions);
-		else if (arrayFunctions && arrayFunctions.toString() === '[object Object]')
+		else if (Object.keys(arrayFunctions || {}).length)		// allows passing null instead of an object
 			this.setArrayFunctions(arrayFunctions);
 	}
 }
@@ -42,7 +42,7 @@ Object.defineProperty(RecitalDataset.prototype, 'getDefaultListDef', {
 			}
 });
 Object.defineProperty(RecitalDataset.prototype, 'init', {
-	value : function(rootComponent, trackedModule, template, factoryPropsArray) {
+	value : function(rootComponent, trackedModule, template, factoryPropsArray, childrenOffset) {
 		Object.defineProperty(this, 'rootComponent', {
 			value : rootComponent
 		});
@@ -58,6 +58,9 @@ Object.defineProperty(RecitalDataset.prototype, 'init', {
 		});
 		Object.defineProperty(this, 'Item', {
 			value : this.setFactory(factoryPropsArray)
+		});
+		Object.defineProperty(this, 'childrenOffset', {
+			value : childrenOffset
 		});
 	}
 });
@@ -77,8 +80,12 @@ Object.defineProperty(RecitalDataset.prototype, 'setArrayFunctions', {
 });
 Object.defineProperty(RecitalDataset.prototype, 'setFactory', {
 	value : function(factoryPropsArray) {
+		if (!factoryPropsArray) {
+			console.warn('factoryPropsArray is ' + (typeof factoryPropsArray) + ' : This changes the "newItem()" method\'s signature (arg0 is now Object). Nevertheless, that shouldn\'t have any other repercussion.');
+			return function() {return arguments[0][0];};
+		}
 		var factory = function() {
-			Array.prototype.slice.call(arguments[0]).forEach(function(arg, key) {
+			[...arguments[0]].forEach(function(arg, key) {
 				this[factoryPropsArray[key]] = arg;
 			}, this);
 		}
@@ -131,9 +138,8 @@ Object.defineProperty(RecitalDataset.prototype, 'getDatasetState', {
 
 Object.defineProperty(RecitalDataset.prototype, 'push',  {
 	value : function(item) {
-		this.defaultListDef.host.each = null;
-		this.defaultListDef.host.item = item;
-		this.trackedModule.addModule(this.defaultListDef, this.trackedModule.modules.length);
+		this.defaultListDef.host.each = [item];
+		this.trackedModule.addModules(this.defaultListDef, this.trackedModule.modules.length);
 		Array.prototype.push.call(this, item);
 		this.updateDatasetState();
 	}
@@ -141,7 +147,6 @@ Object.defineProperty(RecitalDataset.prototype, 'push',  {
 
 Object.defineProperty(RecitalDataset.prototype, 'pushApply',  {
 	value : function(itemArray) {
-		this.defaultListDef.host.item = null;
 		this.defaultListDef.host.each = itemArray;
 		this.trackedModule.addModules(this.defaultListDef, this.trackedModule.modules.length);
 		Array.prototype.push.apply(this, itemArray);
@@ -157,12 +162,12 @@ Object.defineProperty(RecitalDataset.prototype, 'splice',  {
 			if (replacedBy > index) {
 				c2 = this.trackedModule.modules[replacedBy].remove();
 				c1 = this.trackedModule.modules[index].remove();
-				this.trackedModule.registerModule(c2, null, index);
+				this.trackedModule.registerModule(c2, null, index + this.childrenOffset);
 			}
 			else {
 				c1 = this.trackedModule.modules[index].remove();
 				c2 = this.trackedModule.modules[replacedBy].remove();
-				this.trackedModule.registerModule(c2, null, index - 1);
+				this.trackedModule.registerModule(c2, null, index - 1 + this.childrenOffset);
 			}
 
 			mBackup = Array.prototype.splice.call(this, index, 1, this[replacedBy])[0];
@@ -176,7 +181,7 @@ Object.defineProperty(RecitalDataset.prototype, 'splice',  {
 			return [mBackup, c1];
 		}
 		else if (Array.isArray(replacedBy)) {
-			this.trackedModule.registerModule(replacedBy[1], null, index);
+			this.trackedModule.registerModule(replacedBy[1], null, index + this.childrenOffset);
 			Array.prototype.splice.call(this, index, 1, replacedBy[0]);
 			this.updateDatasetState();
 			return true;
