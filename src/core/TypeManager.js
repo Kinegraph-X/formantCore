@@ -267,6 +267,7 @@ exportedObjects.ReactivityQueryModel = ReactivityQueryModel;
 Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'ReactivityQuery'});
 Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 	value : function(stream, queriedOrQueryingObj) {
+//		console.log(this.cbOnly, stream, queriedOrQueryingObj, this);
 		if (!this.cbOnly && !queriedOrQueryingObj.streams[this.to] && !this.subscribe) {
 			console.warn('missing stream or subscription callback on child subscribing to ' + stream.name + ' from ' + this.from);
 			return;
@@ -283,7 +284,8 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 			.map(this.map)
 			.reverse(this.inverseTransform);
 		}
-		stream.subscriptions[stream.subscriptions.length - 1].execute(stream._value);
+//		console.warn(this.from, this.to, stream.subscriptions.length, stream._value, stream);
+//		stream.subscriptions[stream.subscriptions.length - 1].execute(stream._value);
 }});
 
 
@@ -350,7 +352,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 		ValueObject.call(this, obj, isSpecial);
 	
 	// Fast-access props
-	this.streams.push(this.props, this.states);
+	Array.prototype.push.apply(this.streams, this.props.concat(this.states));
 	this.isCustomElem = (this.nodeName && this.nodeName.indexOf('-') !== -1);
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
@@ -533,6 +535,10 @@ var propsAreArray = [
 //	'keyboardSettings',			// TODO: FIX that bypass : implement keyboard handling in the context of the v0.2
 //	'keyboardEvents'
 ];
+var reactivityQueries = [
+	'reactOnParent',
+	'reactOnSelf'
+];
 var propsArePrimitives = [
 	'type',
 	'nodeName',
@@ -554,7 +560,7 @@ var propsArePrimitives = [
  * 						=> assign parentView
  * 						=> fill the "views" register ( {ID : [view] } )
  * 					- instanciate streams : if it has streams, it's a host
- * 						=> fill the "hosts" register ( {ref : Component} ) 
+ * 						=> fill the "hosts" register ( {ref : Component} ) // alternatively, the "definitionRegister" already holds all "Components"
  * 				- on composition :
  * 					- handle reactivity and event subscription : each component as a "unique ID from the def" => retrieve queries from the "reactivity" register
  * 			- then instanciate DOM objects through cloning : DOM attributes are always static
@@ -566,24 +572,62 @@ var propsArePrimitives = [
  * 					- assign reflectedObj to streams
  * 			- finally reflect streams on the model
  */
+
+
+
+
+
+
+
+/**
+ * CORE CACHES
+ */
 var caches = {};
 (function initCaches() {
 	propsAreArray.forEach(function(prop) {
-		caches[prop] = new PropertyCache();
+		caches[prop] = new PropertyCache(prop);
 	});
 })();
 
 var definitionsCacheRegister = new PropertyCache('definitionsCacheRegister');
+var hostsRegister = [];
+var typedHostsRegister = new PropertyCache('typedHostsRegister');
+
+/**
+ * @typedCache {CachedNode} {ID : {nodeName : nodeName, cloneMother : DOMNode -but not yet-}}
+ */
+var nodesRegister = new PropertyCache('nodesRegister');
+
+/**
+ * @typedStore {StoredView} {ID : view}
+ */
+var viewsRegister = [];
 
 console.log(definitionsCacheRegister);
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**
  * @aliases
  */
 Object.assign(exportedObjects, {
-	definitionsCacheRegister : definitionsCacheRegister,				// Object PropertyCache
+	definitionsCacheRegister : definitionsCacheRegister,			// Object PropertyCache
+	typedHostsRegister : typedHostsRegister,						// Object PropertyCache {defUID : [Components]}
 	caches : caches,												// Object {prop : PropertyCache}
+	nodesRegister : nodesRegister,
+	viewsRegister : viewsRegister,
 	propsAreArray : propsAreArray,
+	reactivityQueries : reactivityQueries,
 	propsArePrimitives : propsArePrimitives,
 	definitionsCache : new ComponentDefCache(),
 	attributesModel : PropFactory,									// Object AbstractProp

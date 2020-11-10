@@ -198,6 +198,8 @@ var AbstractComponent = function(definition) {
 //	console.log(definition);
 	if (!TypeManager.definitionsCacheRegister.getItem(this._defUID))
 		this.populateStores(definition);
+	
+	TypeManager.typedHostsRegister.getItem(this._defUID).push(this);
 }
 AbstractComponent.prototype = Object.create(ExtensibleObject.prototype);
 AbstractComponent.prototype.objectType = 'AbstractComponent';
@@ -263,12 +265,12 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
  */
 AbstractComponent.prototype.populateStores = function(definition) {
 	var hostDefinition = this.mergeDefaultDefinition(definition).getHostDef();
-	
+//	console.log(hostDefinition);
 	for (let prop in TypeManager.caches) {
 		TypeManager.caches[prop].setItem(this._defUID, hostDefinition[prop]);
 	}
-	
 	TypeManager.definitionsCacheRegister.setItem(this._defUID, this);
+	TypeManager.typedHostsRegister.setItem(this._defUID, []);
 }
 
 
@@ -293,7 +295,18 @@ var ComponentWithObservables = function(definition, parentView) {
 ComponentWithObservables.prototype = Object.create(AbstractComponent.prototype);
 ComponentWithObservables.prototype.objectType = 'ComponentWithObservables';
 
+ComponentWithObservables.prototype.reactOnParentBinding = function(reactOnParent, parentComponent) {
+	reactOnParent.forEach(function(query, key) {
+		query.subscribeToStream(parentComponent.streams[query.from], this);
+	}, this);
+}
 
+ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf) {
+	reactOnSelf.forEach(function(query, key) {
+		query.subscribeToStream(this.streams[query.from || query.to], this);
+	}, this);
+
+}
 
 
 
@@ -311,14 +324,14 @@ ComponentWithObservables.prototype.objectType = 'ComponentWithObservables';
 /**
  * @constructor ComponentWithView
  */
-var ComponentWithView = function(definition, parentView) {
+var ComponentWithView = function(definition, parentView, isChildOfRoot) {
 	ComponentWithObservables.call(this, definition);
 	this.objectType = 'ComponentWithView';
 	
 	this.view;
 	
 	if (definition.getHostDef().nodeName)
-		this.instanciateView(definition, parentView);
+		this.instanciateView(definition, parentView, isChildOfRoot);
 }
 ComponentWithView.prototype = Object.create(ComponentWithObservables.prototype);
 ComponentWithView.prototype.objectType = 'ComponentWithView';
@@ -327,8 +340,9 @@ ComponentWithView.prototype.objectType = 'ComponentWithView';
  * @param {ComponentDefinition} definition
  * @param {ComponentView} parentView
  */
-ComponentWithView.prototype.instanciateView = function(definition, parentView) {	
-	this.view = new CoreTypes.ComponentView(definition, parentView);
+ComponentWithView.prototype.instanciateView = function(definition, parentView, isChildOfRoot) {
+//	console.log(parentView);
+	this.view = new CoreTypes.ComponentView(definition, parentView, isChildOfRoot);
 }
 
 
@@ -344,9 +358,42 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView) {
 
 
 
+/**
+ * @constructor ComponentWithReactiveText
+ */
+var ComponentWithReactiveText = function(definition, parentView, isChildOfRoot) {
+	ComponentWithView.call(this, definition, parentView, isChildOfRoot);
+	this.objectType = 'ComponentWithReactiveText';
 
+}
+ComponentWithReactiveText.prototype = Object.create(ComponentWithView.prototype);
+ComponentWithReactiveText.prototype.objectType = 'ComponentWithReactiveText';
 
+/**
+ * @abstract
+ */
+ComponentWithReactiveText.prototype.populateSlots = function(values) {
+	if (!Array.isArray(values) || !values.length) {
+		if (typeof value === 'string')
+			values = [values];
+		else
+			return '';										// TODO : why return empty string ?
+	}
+	values.forEach(function(val, key) {
+		if (typeof val !== 'string')
+			return;
+		this.slots[key].textContent = val;
+	}, this);
+}
 
+/**
+ * @abstract
+ */
+ComponentWithReactiveText.prototype.populateSelf = function(value) {
+	if (typeof value !== 'string' && isNaN(parseInt(value)))
+		return;
+	this.view.value = value.toString();
+}
 
 
 
@@ -360,5 +407,6 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView) {
 
 
 module.exports = {
-	ComponentWithView : ComponentWithView
+	ComponentWithView : ComponentWithView,
+	ComponentWithReactiveText : ComponentWithReactiveText
 };

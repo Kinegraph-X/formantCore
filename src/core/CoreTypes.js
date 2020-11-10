@@ -1,34 +1,13 @@
+var TypeManager = require('src/core/TypeManager');
 var UIDGenerator = require('src/core/UIDGenerator');
 var PropertyCache = require('src/core/PropertyCache');
 var CachedTypes = require('src/core/CachedTypes');
+var idGenerator = TypeManager.UIDGenerator;
+var nodesRegister = TypeManager.nodesRegister;
+var viewsRegister = TypeManager.viewsRegister;
 
 
 
-/**
- * @factory UIDGenerator
- * 
- */
-
-var Generator = function() {
-	this.nextUID = 0;
-}
-
-Generator.prototype.newUID = function() {
-	return this.nextUID++;
-}
-var idGenerator = new Generator();
-
-
-
-/**
- * @typedCache {CachedNode} {ID : {nodeName : nodeName, cloneMother : DOMNode -but not yet-}}
- */
-var nodesRegister = new PropertyCache('nodesRegister');
-
-/**
- * @typedStore {StoredView} {ID : view}
- */
-var viewsRegister = new PropertyCache('viewsRegister');
 
 
 
@@ -544,7 +523,7 @@ Object.defineProperty(Subscription.prototype, 'execute', {
 				val = value;
 			else
 				return;
-//			console.log('val', this._stream.name, val);
+			console.log('val', this._stream.name, val);
 			
 //			console.log('subscriber', this.subscriber);
 			if (this.subscriber.obj !== null && this.subscriber.prop !== null)
@@ -653,28 +632,34 @@ WorkerInterface.__factory_name = 'WorkerInterface';
 /**
  * @constructor ComponentView
  */
-var ComponentView = function(definition, parentView) {
-//	console.log(definition);
-	if (definition.getHostDef()) {
-		
-		this.nodeName = definition.getHostDef().nodeName;
-		this.section = definition.getHostDef().section;
-		
-		this.childrenShallHaveOffset = this.shallChildrenHaveOffset(definition);
-		
-		this.subViewsHolder;
-		if (definition.getHostDef().type !== 'ComposedComponent' && (definition.subSections.length || definition.members.length))
-			this.subViewsHolder = new ComponentSubViewsHolder(definition, this);
-		
-		if (!nodesRegister.getItem(definition.getHostDef().UID))
-			nodesRegister.setItem(definition.getHostDef().UID, (new CachedTypes.CachedNode(definition.getHostDef().nodeName)));
+var ComponentView = function(definition, parentView, isChildOfRoot) {
 
-		viewsRegister.setItem(idGenerator.newUID(), this);
-	}
+	this._defUID = definition.getHostDef().UID.toString();
+	this.isCustomElem = definition.getHostDef().isCustomElem;
+	this.nodeName = definition.getHostDef().nodeName;
+	this.section = definition.getHostDef().section;
+	
+	this.childrenShallHaveOffset = this.shallChildrenHaveOffset(definition);
+	
+	if (!nodesRegister.getItem(this._defUID))
+		nodesRegister.setItem(this._defUID, (new CachedTypes.CachedNode(definition.getHostDef().nodeName, definition.getHostDef().isCustomElem)));
+//	if (!viewsRegister.getItem(this._defUID))
+		viewsRegister.push(this);
+	
+	this.subViewsHolder;
+	if (definition.getHostDef().type !== 'ComposedComponent' && (definition.subSections.length || definition.members.length))
+		this.subViewsHolder = new ComponentSubViewsHolder(definition, this);
+	else
+		this.subViewsHolder = new ComponentSubViewsHolder(null, this);
+	
+	
 	
 	this.parentView = parentView || null;
-	if (parentView)
-		this.parentView = this.getEffectiveParentNode();
+	if (parentView && !isChildOfRoot)
+		this.parentView = this.getEffectiveParentView();
+	
+	if (!TypeManager.caches.attributes.getItem(this._defUID))
+		TypeManager.caches.attributes.setItem(this._defUID, definition.getHostDef().attributes);
 	
 	this.hostElem;
 	this.rootElem;
@@ -688,12 +673,14 @@ ComponentView.prototype.constructor = ComponentView;
  * HELPER : => when appending a child, should we append to rootNode or to a subSection ?
  * 
  */
-ComponentView.prototype.getEffectiveParentNode = function() {
+ComponentView.prototype.getEffectiveParentView = function() {
 	return this.parentView.childrenShallHaveOffset === true
 			? this.parentView.subViewsHolder.subViews[this.section + 1]
 				: (this.parentView.childrenShallHaveOffset === 1
-						? this.parentView.subViewsHolder.subViews[1]
-							: this.parentView.hostElem);
+						? this.parentView
+							: (this.parentView.childrenShallHaveOffset === 0 
+								?	this.parentView.subViewsHolder.subViews[this.section]
+									: this.parentView));
 }
 /**
  * @abstract
@@ -701,9 +688,10 @@ ComponentView.prototype.getEffectiveParentNode = function() {
  * 
  */
 ComponentView.prototype.shallChildrenHaveOffset = function(definition) {
+//	console.log(definition);
 	if (definition.getHostDef().sWrapper) {
 		if (definition.subSections.length)
-			return 0;
+			return true;
 		else
 			return 1;
 	}
@@ -711,6 +699,19 @@ ComponentView.prototype.shallChildrenHaveOffset = function(definition) {
 		return 0;
 	return false;
 }
+
+/**
+ * @abstract
+ * 
+ */
+Object.defineProperty(ComponentView.prototype, 'value', {
+	set : function(value) {
+		if (this.nodeName.toUpperCase() === 'INPUT')
+			this.hostElem.value = value.toString();
+		else
+			this.hostElem.textContent = value.toString();
+	}
+});
 
 
 
@@ -721,20 +722,25 @@ ComponentView.prototype.shallChildrenHaveOffset = function(definition) {
  * @constructor ComponentView
  */
 var ComponentSubView = function(definition, parentView) {
+	this._defUID = definition.UID.toString();
+	this.isCustomElem = definition.isCustomElem;
 	this.nodeName = definition.nodeName;
 	this.section = definition.section;
 	
 	if (!nodesRegister.getItem(definition.UID))
-		nodesRegister.setItem(definition.UID, (new CachedTypes.CachedNode(definition.nodeName)));
+		nodesRegister.setItem(definition.UID, (new CachedTypes.CachedNode(definition.nodeName, definition.isCustomElem)));
 	
 	this.parentView = parentView || null;
 	if (parentView)
-		this.parentView = this.getEffectiveParentNode();
+		this.parentView = this.getEffectiveParentView();
 	
 	this.hostElem;
 	this.rootElem;
 	
-	viewsRegister.setItem(idGenerator.newUID(), this);
+	if (!TypeManager.caches.attributes.getItem(this._defUID))
+		TypeManager.caches.attributes.setItem(this._defUID, definition.attributes);
+
+	viewsRegister.push(this);
 }
 ComponentSubView.prototype = Object.create(ComponentView.prototype);
 ComponentSubView.prototype.objectType = 'ComponentSubView';
@@ -755,8 +761,8 @@ var ComponentSubViewsHolder = function(definition, parentView) {
 	this.parentView = parentView || null;
 	this.subViews = [];
 	this.memberViews = [];
-	
-	this.instanciateSubViews(definition);
+	if (definition)
+		this.instanciateSubViews(definition);
 }
 ComponentSubViewsHolder.prototype = {};
 ComponentSubViewsHolder.prototype.objectType = 'ComponentSubViewsHolder';
@@ -832,8 +838,6 @@ var commonStates = {
 
 
 module.exports = {
-		idGenerator : idGenerator, 
-		viewsRegister : viewsRegister,
 		EventEmitter : EventEmitter,
 		Command : Command,
 		Worker : WorkerInterface,
