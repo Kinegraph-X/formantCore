@@ -800,7 +800,37 @@ var Factory = (function() {
 		
 		this.isAttached = false;
 	}
-	DOMView.prototype = Object.assign(Object.create(DependancyModule.prototype), {
+	var ComponentView = function(definition, parentView) {
+		
+		this.nodeName = definition.getHostDef().nodeName;
+		this.section = definition.getHostDef().section; 
+		this.parentView = parentView;
+		this.parentView = this.getEffectiveParentNode()
+		this.hostElem;
+		this.rootElem;
+		this.childrenShallHaveOffset = null;
+	}
+	var ComponentGroupView = function(definition, parentView) {
+		
+		this.nodeName = definition.getGroupHostDef().nodeName;
+		this.section = definition.getGroupHostDef().section; 
+		this.parentView = parentView;
+		this.hostElem;
+		this.rootElem;
+		this.childrenShallHaveOffset = this.shallChildrenHaveOffset(definition);
+		this.subViews = [];
+	}
+	var ComponentSubView = function(definition, parentView) {
+		
+		this.nodeName = definition.getHostDef().nodeName;
+		this.section = definition.getHostDef().section; 
+		this.parentView = parentView;
+		this.hostElem;
+		this.rootElem;
+		this.childrenShallHaveOffset = null;
+	}
+	
+	var viewPrototype = {
 		objectType : 'DOMView',
 		constructor : DOMView,
 		beforeElaborateView : function(definition) {},			// virtual
@@ -813,7 +843,10 @@ var Factory = (function() {
 		asyncAddChild : function() {},							// virtual
 		setDOMTypes : function() {},							// virtual
 		setArias : function() {},								// virtual
-	});
+	}
+	
+	ComponentGroupView.prototype = ComponentView.prototype = ComponentSubView.prototype = viewPrototype;
+	DOMView.prototype = Object.assign(Object.create(DependancyModule.prototype), viewPrototype);
 	
 	/**
 	 * @abstract
@@ -912,6 +945,38 @@ var Factory = (function() {
 					? this.getRootNode().children[section + this.stylesheetCausesChildOffset]
 						: this.getRootNode();
 	}
+	
+	
+	/**
+	 * @abstract
+	 * HELPER : => when appending a child, should we append to rootNode or to a subSection ?
+	 * 
+	 */
+	DOMView.prototype.getEffectiveParentNode = function() {
+		return this.parentView.childrenShallHaveOffset === true
+				? this.parentView.subViews[this.section + 1]
+					: (this.parentView.childrenShallHaveOffset === 1
+							? this.parentView.subViews[1]
+								: this.parentView);
+	}
+	/**
+	 * @abstract
+	 * HELPER : => when appending a child, should we append to rootNode or to a subSection ?
+	 * 
+	 */
+	DOMView.prototype.shallChildrenHaveOffset = function(definition) {
+		if (!definition.getGroupHostDef())
+			return false;
+		else if (definition.getGroupHostDef().sWrapper) {
+			if (definition.subSections.length)
+				return true;
+			else
+				return 1;
+		}
+	}
+	
+	
+	
 	/**
 	 * @abstract
 	 * VIEW COMPOSITION SEQUENCE : Allows a component to "hoist" its view on an parent or sibling component (called in ComponentGroup for example)
@@ -974,8 +1039,8 @@ var Factory = (function() {
 	 * @abstract
 	 * HELPER : get a definition object representing a collection
 	 */
-	DOMView.prototype.getFragment = function(defAsArray) {
-		return {fragment : defAsArray};
+	DOMView.prototype.getFragment = function(arrayOfDefs) {
+		return {fragment : arrayOfDefs};
 	}
 	/**
 	 * @abstract
@@ -986,10 +1051,10 @@ var Factory = (function() {
 		var hostOrRoot = this.getRootNode();
 		
 		if (definition.subSections.length) {
-			hostOrRoot.appendChild(ElementFactory.createElement(this.getFragment(definition.subSections)));
+			hostOrRoot.appendChild(ElementFactory.createCollection(this.getFragment(definition.subSections), this.states));
 		}
 		if (definition.members.length) {
-			hostOrRoot.appendChild(ElementFactory.createElement(this.getFragment(definition.members)));
+			hostOrRoot.appendChild(ElementFactory.createCollection(this.getFragment(definition.members), this.states));
 		}
 	}
 	
@@ -1217,6 +1282,7 @@ var Factory = (function() {
 	 * @param {boolean} automakeable
 	 */
 	var UIModule = function(definition, parentNodeDOMId, automakeable) {
+		this._UIDRef = definition.getHostDef().UID;
 		this.raw = true;
 		
 		InViewInjectionStrategies.call(this, definition, parentNodeDOMId, automakeable);
@@ -1346,8 +1412,8 @@ var Factory = (function() {
 			hostDef = definition.getHostDef();
 		
 		if (defaultHostDef.isDummy) {
-//			console.log('isDummmy');
 			TypeManager.propsAreArray.forEach(function(prop) {
+//				console.log(prop);
 				if (hostDef[prop].length)
 					Array.prototype.push.apply(this[prop], hostDef[prop]);
 			}, this);
@@ -1438,7 +1504,7 @@ var Factory = (function() {
 	
 	
 	/**
-	 * A interface based on a pattern similar to the Command pattern
+	 * An abstract class based on a pattern similar to the Command pattern
 	 * 
 	 * new Command(
 			function() {					// action
@@ -1558,7 +1624,6 @@ var Factory = (function() {
 			this.forward = false;
 			this.reflectedObj[this.name] = value;
 			this.forward = true;
-//			console.log(this.reflectedObj, this.name, value, this.reflectedObj[this.name]);
 		}
 		else
 			this.forward = true;
@@ -1572,7 +1637,6 @@ var Factory = (function() {
 	 * 			- don't update when set from downward (reflected stream shall only call "set")
 	 */
 	Stream.prototype.setAndUpdateConditional = function(value) {
-//		console.log('setAndUpdateConditional', this.name, value);
 		this._value = value;
 		if (!this.lazy) {
 			if (this.forward) {
@@ -1583,12 +1647,9 @@ var Factory = (function() {
 					this.update();
 				}
 			}
-//			else
-//				this.forward = true;
 		}
 		else {
 			this.dirty = true;
-//			this.forward = true;
 		}
 	}
 	
@@ -1621,7 +1682,6 @@ var Factory = (function() {
 	 *		lazy "sets" the reflectedHost (no infinite recursion, but no change propagation neither on the host) and triggers the given event when the local stream updates
 	 */ 
 	Stream.prototype.reflect = function(prop, reflectedHost, transform, inverseTransform, event) {
-//		console.log(prop, reflectedHost[prop]);
 		this._value = reflectedHost[prop];
 		
 		if (transform && this.transform)

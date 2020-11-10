@@ -1,7 +1,10 @@
 /**
- * @Singletons : Core Object store
+ * @Singleton : Core Definitions Ctor
  */
 var appConstants = require('src/appLauncher/appLauncher');
+var UIDGenerator = require('src/core/UIDGenerator');
+var PropertyCache = require('src/core/PropertyCache');
+var CachedTypes = require('src/core/CachedTypes');
 var exportedObjects = {};
 
 /**
@@ -137,6 +140,20 @@ Object.defineProperty(KeyboardHotkeysModel.prototype, 'objectType', {value : 'Ke
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /**
  * @factory PropFactory
  * 
@@ -234,16 +251,15 @@ Object.defineProperty(PropModel.prototype, 'objectType', {value : 'Props'});
  * @extends ValueObject
  */
 var ReactivityQueryModel = function(obj, isSpecial) {
-//	Object.assign(this, {
-		this.cbOnly = false;						// Boolean
-		this.from = null;							// String
-		this.to = null;								// String
-		this.obj = null,							// Object [HTMLElement; Stream]
-		this.filter = null;							// function (GlorifiedPureFunction ;)
-		this.map = null;							// function (GlorifiedPureFunction ;)
-		this.subscribe = null;						// function CallBack
-		this.inverseTransform = null;				// function CallBack
-//	});
+	this.cbOnly = false;						// Boolean
+	this.from = null;							// String
+	this.to = null;								// String
+	this.obj = null,							// Object [HTMLElement; Stream]
+	this.filter = null;							// function (GlorifiedPureFunction ;)
+	this.map = null;							// function (GlorifiedPureFunction ;)
+	this.subscribe = null;						// function CallBack
+	this.inverseTransform = null;				// function CallBack
+	
 	ValueObject.call(this, obj, isSpecial);
 }
 ReactivityQueryModel.prototype = Object.create(ValueObject.prototype);
@@ -252,11 +268,11 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'Re
 Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 	value : function(stream, queriedOrQueryingObj) {
 		if (!this.cbOnly && !queriedOrQueryingObj.streams[this.to] && !this.subscribe) {
-			console.trace('missing stream or subscription callback on child subscribing to ' + stream.name + ' from ' + this.from);
+			console.warn('missing stream or subscription callback on child subscribing to ' + stream.name + ' from ' + this.from);
 			return;
 		}
 		else if (typeof stream === 'undefined') {
-			console.log(queriedOrQueryingObj, this.from, this.to);
+			console.warn(queriedOrQueryingObj, this.from, this.to);
 			return;
 		}
 		if (this.cbOnly)
@@ -307,13 +323,16 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 	if (givenDef)
 		Object.assign(this, givenDef);
 	else {
+		this.UID = typeof obj.UID === 'number' ? obj.UID : UIDGenerator.newUID().toString();
 		this.type = null,							// String
 		this.nodeName = null;						// String
+		this.isCustomElem = false					// Boolean
 		this.templateNodeName = null;				// String
 		this.attributes = [];						// Array [AttributeDesc]
 		this.section = null;						// Number
 		this.props = [];							// Array [Prop]
 		this.states = [];							// Array [State]
+		this.streams = [];							// Array [Prop, States]
 		this.targetSlotIndex = null;				// Number
 		this.sWrapper = null;						// Object StylesheetWrapper
 		this.command = null;						// Object Command
@@ -326,10 +345,13 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 		this.keyboardEvents = [];					// Array [KeyboardListeners]
 		this.isDummy = false;
 	}
-	
-	// shorthand to create defs with just a "type", maybe an attributesList, but only the first props in the model
+
 	if (obj !== 'bare')
 		ValueObject.call(this, obj, isSpecial);
+	
+	// Fast-access props
+	this.streams.push(this.props, this.states);
+	this.isCustomElem = (this.nodeName && this.nodeName.indexOf('-') !== -1);
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.SingleLevelComponentDefModel = SingleLevelComponentDefModel;
@@ -343,7 +365,7 @@ Object.defineProperty(SingleLevelComponentDefModel.prototype, 'objectType', {val
  */
 var HierarchicalComponentDefModel = function(obj, isSpecial) {
 
-		this.type = null;
+//		this.type = null;
 		this.host = null;							// Object SingleLevelComponentDef
 		this.subSections = [];						// Array [SingleLevelComponentDef]
 		this.members = [];							// Array [SingleLevelComponentDef]
@@ -462,6 +484,7 @@ exportedObjects.createComponentDef = createComponentDef;
 
 
 
+
 /**
  * @dictionary
  */
@@ -495,35 +518,71 @@ exportedObjects.findProp = function(name, item) {
 }
 
 /**
- * PRECIOUS HELPER : for performance concerns, allows looping only on props that are arrays
+ * PRECIOUS HELPERS : for performance concerns, allows looping only on props that are arrays
  */
 var propsAreArray = [
 	'attributes',
 	'states',
 	'props',
+	'streams',
 	'reactOnParent',
 	'reactOnSelf',
 	'subscribeOnParent',
 	'subscribeOnChild',
-	'subscribeOnSelf'//,			// TODO: FIX that bypass : implement keyboard handling in the context of the v0.2
-//	'keyboardSettings',
+	'subscribeOnSelf'//,
+//	'keyboardSettings',			// TODO: FIX that bypass : implement keyboard handling in the context of the v0.2
 //	'keyboardEvents'
-]
+];
 var propsArePrimitives = [
 	'type',
 	'nodeName',
+	'isCustomElem',
 	'templateNodeName',
 	'targetSlotIndex',
 	'section'
-]
+];
 
+/**
+ * PROPS CACHES : for performance concerns, allows retrieving a prop on the def from anywhere
+ * 		Usefull when instanciating components from a list, as reactivity doesn't change through iterations :
+ * 			- first ensure the def is complete, and store constants : 
+ * 				- the "reactivity" register stores reactivity queries
+ * 				- the "nodes" register stores DOM attributes : relation are uniques, each ID from the def is bound to an attributes-list 
+ * 						=> fill the "nodes" register ( {ID : {nodeName : nodeName, attributes : attributes, cloneMother : DOMNode -but not yet-} )
+ * 			- then compose components, creating streams and views
+ * 				- create static views without instanciating the DOM objects : parentView of the view is either a "View" or a "ChildView"
+ * 						=> assign parentView
+ * 						=> fill the "views" register ( {ID : [view] } )
+ * 					- instanciate streams : if it has streams, it's a host
+ * 						=> fill the "hosts" register ( {ref : Component} ) 
+ * 				- on composition :
+ * 					- handle reactivity and event subscription : each component as a "unique ID from the def" => retrieve queries from the "reactivity" register
+ * 			- then instanciate DOM objects through cloning : DOM attributes are always static
+ * 					=> iterate on the "views" register
+ * 			- then get back to hosts elem : they're in the "hosts" register
+ * 					- accessing to the component's view, decorate DOM Objects with :
+ * 						- streams
+ * 						- reflexive props
+ * 					- assign reflectedObj to streams
+ * 			- finally reflect streams on the model
+ */
+var caches = {};
+(function initCaches() {
+	propsAreArray.forEach(function(prop) {
+		caches[prop] = new PropertyCache();
+	});
+})();
 
+var definitionsCacheRegister = new PropertyCache('definitionsCacheRegister');
 
+console.log(definitionsCacheRegister);
 
 /**
  * @aliases
  */
 Object.assign(exportedObjects, {
+	definitionsCacheRegister : definitionsCacheRegister,				// Object PropertyCache
+	caches : caches,												// Object {prop : PropertyCache}
 	propsAreArray : propsAreArray,
 	propsArePrimitives : propsArePrimitives,
 	definitionsCache : new ComponentDefCache(),
@@ -541,7 +600,8 @@ Object.assign(exportedObjects, {
 	subscribeOnParentModel : EventSubscriptionModel,				// Object EventSubscriptionsList
 	subscribeOnChildModel : EventSubscriptionModel,					// Object EventSubscriptionsList
 	subscribeOnSelfModel : EventSubscriptionModel,					// Object EventSubscriptionsList
-	createSimpleComponentDef : HierarchicalComponentDefModel		// Object HierarchicalComponentDef
+	createSimpleComponentDef : HierarchicalComponentDefModel,		// Object HierarchicalComponentDef
+	UIDGenerator : UIDGenerator
 });
 
 //console.log(exportedObjects.definitionsCache);
