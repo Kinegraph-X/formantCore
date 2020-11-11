@@ -74,8 +74,28 @@ HierarchicalObject.prototype.generateKeys = function(atIndex) {
 	}
 }
 
-
-
+/**
+ * @param {array} subscriptionType : the type among the TypeManager.eventQueries helper-array
+ * @param {array} eventQueries : the queries of the type "subscriptionType" that the component has recevied from the def
+ * @param {Component} parentComponent : the parent of the component (optional : used only when subscribeOnParent)
+ */
+HierarchicalObject.prototype.handleEventSubscriptions = function(subscriptionType, eventQueries, parentComponent) {
+	if (subscriptionType === 'subscribeOnParent')
+		eventQueries.forEach(function(subscription, key) {
+			subscription.subscribeToEvent(this, parentComponent);
+		}, this);
+	else if (subscriptionType === 'subscribeOnChild') {
+		this._children.forEach(function(child) {
+			eventQueries.forEach(function(subscription, key) {
+				subscription.subscribeToEvent(child, this);
+			}, this);
+		})
+	}
+	else if (subscriptionType === 'subscribeOnSelf')
+		eventQueries.forEach(function(subscription, key) {
+			subscription.subscribeToEvent(this, this);
+		}, candidateModule);
+}
 
 
 
@@ -198,6 +218,7 @@ var AbstractComponent = function(definition) {
 //	console.log(definition);
 	if (!TypeManager.definitionsCacheRegister.getItem(this._defUID))
 		this.populateStores(definition);
+	this.createEvent('update');
 	
 	TypeManager.typedHostsRegister.getItem(this._defUID).push(this);
 }
@@ -220,44 +241,24 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	else
 		this._defComposedUID = this._defUID;
 	
-	var hostDef = definition.getHostDef(),
-		returnedDef = TypeManager.createComponentDef({host : {}}),
-		returnedHostDef = returnedDef.getHostDef();
+	var hostDef = definition.getHostDef();
 	
-	if (!defaultDef) {
+	if (defaultDef) {
 		TypeManager.propsAreArray.forEach(function(prop) {
-			if (hostDef[prop].length)
-				Array.prototype.push.apply(returnedHostDef[prop], hostDef[prop]);
+			if(defaultHostDef[prop].length)
+				Array.prototype.push.apply(hostDef[prop], defaultHostDef[prop]);
 		});
 		TypeManager.propsArePrimitives.forEach(function(prop) {
-			returnedHostDef[prop] = hostDef[prop];
+			if (hostDef[prop] === null)
+				hostDef[prop] = defaultHostDef[prop];
 		});
-		returnedHostDef.sWrapper = hostDef.sWrapper;
-		returnedHostDef.command = hostDef.command;
-	}
-	else {
-		TypeManager.propsAreArray.forEach(function(prop) {
-			if(defaultHostDef[prop].length) {
-				if (hostDef[prop].length)
-					Array.prototype.push.apply(returnedHostDef[prop], defaultHostDef[prop].concat(hostDef[prop]));
-				else
-					Array.prototype.push.apply(returnedHostDef[prop], defaultHostDef[prop]);
-			}
-			else if(hostDef[prop].length) {
-				if (defaultHostDef[prop].length)
-					Array.prototype.push.apply(returnedHostDef[prop], defaultHostDef[prop].concat(hostDef[prop]));
-				else
-					Array.prototype.push.apply(returnedHostDef[prop], hostDef[prop]);
-			}
-		});
-		TypeManager.propsArePrimitives.forEach(function(prop) {
-			returnedHostDef[prop] = hostDef[prop] === null ? defaultHostDef[prop] : hostDef[prop];
-		});
-		returnedHostDef.sWrapper = hostDef.sWrapper || defaultHostDef.sWrapper;
-		returnedHostDef.command = hostDef.command || defaultHostDef.command;
+		if (hostDef.sWrapper === null)
+			hostDef.sWrapper = defaultHostDef.sWrapper;
+		if (hostDef.command === null)
+			hostDef.command = defaultHostDef.command;
 	}
 	
-	return returnedDef;
+	return definition;
 }
 
 /**
@@ -269,7 +270,7 @@ AbstractComponent.prototype.populateStores = function(definition) {
 	for (let prop in TypeManager.caches) {
 		TypeManager.caches[prop].setItem(this._defUID, hostDefinition[prop]);
 	}
-	TypeManager.definitionsCacheRegister.setItem(this._defUID, this);
+	TypeManager.definitionsCacheRegister.setItem(this._defUID, definition);
 	TypeManager.typedHostsRegister.setItem(this._defUID, []);
 }
 
@@ -295,13 +296,15 @@ var ComponentWithObservables = function(definition, parentView) {
 ComponentWithObservables.prototype = Object.create(AbstractComponent.prototype);
 ComponentWithObservables.prototype.objectType = 'ComponentWithObservables';
 
-ComponentWithObservables.prototype.reactOnParentBinding = function(reactOnParent, parentComponent) {
+ComponentWithObservables.prototype.reactOnParentBinding = function(reactOnParent, parentComponent, subscriptionType) {
+//	console.log(subscriptionType);
 	reactOnParent.forEach(function(query, key) {
 		query.subscribeToStream(parentComponent.streams[query.from], this);
 	}, this);
 }
 
-ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf) {
+ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf, parentComponent, subscriptionType) {
+//	console.log(subscriptionType);
 	reactOnSelf.forEach(function(query, key) {
 		query.subscribeToStream(this.streams[query.from || query.to], this);
 	}, this);
@@ -324,14 +327,14 @@ ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf) {
 /**
  * @constructor ComponentWithView
  */
-var ComponentWithView = function(definition, parentView, isChildOfRoot) {
+var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) {
 	ComponentWithObservables.call(this, definition);
 	this.objectType = 'ComponentWithView';
 	
 	this.view;
 	
-	if (definition.getHostDef().nodeName)
-		this.instanciateView(definition, parentView, isChildOfRoot);
+	if (TypeManager.definitionsCacheRegister.getItem(this._defUID).getHostDef().nodeName)
+		this.instanciateView(TypeManager.definitionsCacheRegister.getItem(this._defUID), parentView, this, isChildOfRoot);
 }
 ComponentWithView.prototype = Object.create(ComponentWithObservables.prototype);
 ComponentWithView.prototype.objectType = 'ComponentWithView';
@@ -340,9 +343,9 @@ ComponentWithView.prototype.objectType = 'ComponentWithView';
  * @param {ComponentDefinition} definition
  * @param {ComponentView} parentView
  */
-ComponentWithView.prototype.instanciateView = function(definition, parentView, isChildOfRoot) {
+ComponentWithView.prototype.instanciateView = function(definition, parentView, parent, isChildOfRoot) {
 //	console.log(parentView);
-	this.view = new CoreTypes.ComponentView(definition, parentView, isChildOfRoot);
+	this.view = new CoreTypes.ComponentView(definition, parentView, parent, isChildOfRoot);
 }
 
 
@@ -361,8 +364,8 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView, i
 /**
  * @constructor ComponentWithReactiveText
  */
-var ComponentWithReactiveText = function(definition, parentView, isChildOfRoot) {
-	ComponentWithView.call(this, definition, parentView, isChildOfRoot);
+var ComponentWithReactiveText = function(definition, parentView, parent, isChildOfRoot) {
+	ComponentWithView.call(this, definition, parentView, parent, isChildOfRoot);
 	this.objectType = 'ComponentWithReactiveText';
 
 }
@@ -393,7 +396,7 @@ ComponentWithReactiveText.prototype.populateSelf = function(value) {
 	if (typeof value !== 'string' && isNaN(parseInt(value)))
 		return;
 	this.view.value = value.toString();
-}
+};
 
 
 
@@ -407,6 +410,7 @@ ComponentWithReactiveText.prototype.populateSelf = function(value) {
 
 
 module.exports = {
+	HierarchicalObject : HierarchicalObject,
 	ComponentWithView : ComponentWithView,
 	ComponentWithReactiveText : ComponentWithReactiveText
 };

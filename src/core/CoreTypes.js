@@ -6,7 +6,7 @@ var idGenerator = TypeManager.UIDGenerator;
 var nodesRegister = TypeManager.nodesRegister;
 var viewsRegister = TypeManager.viewsRegister;
 
-
+var JSkeyboardMap = require('src/events/JSkeyboardMap');
 
 
 
@@ -14,7 +14,7 @@ var viewsRegister = TypeManager.viewsRegister;
 
 
 console.log(nodesRegister);
-console.log(viewsRegister);
+//console.log(viewsRegister);
 
 
 
@@ -523,7 +523,7 @@ Object.defineProperty(Subscription.prototype, 'execute', {
 				val = value;
 			else
 				return;
-			console.log('val', this._stream.name, val);
+//			console.log('val', this._stream.name, val);
 			
 //			console.log('subscriber', this.subscriber);
 			if (this.subscriber.obj !== null && this.subscriber.prop !== null)
@@ -632,9 +632,10 @@ WorkerInterface.__factory_name = 'WorkerInterface';
 /**
  * @constructor ComponentView
  */
-var ComponentView = function(definition, parentView, isChildOfRoot) {
-
+var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
+	
 	this._defUID = definition.getHostDef().UID.toString();
+	this._parent = parent;
 	this.isCustomElem = definition.getHostDef().isCustomElem;
 	this.nodeName = definition.getHostDef().nodeName;
 	this.section = definition.getHostDef().section;
@@ -643,23 +644,23 @@ var ComponentView = function(definition, parentView, isChildOfRoot) {
 	
 	if (!nodesRegister.getItem(this._defUID))
 		nodesRegister.setItem(this._defUID, (new CachedTypes.CachedNode(definition.getHostDef().nodeName, definition.getHostDef().isCustomElem)));
-//	if (!viewsRegister.getItem(this._defUID))
-		viewsRegister.push(this);
+	if (!TypeManager.caches.attributes.getItem(this._defUID))
+		TypeManager.caches.attributes.setItem(this._defUID, definition.getHostDef().attributes);
+	viewsRegister.push(this);
+
 	
 	this.subViewsHolder;
-	if (definition.getHostDef().type !== 'ComposedComponent' && (definition.subSections.length || definition.members.length))
+	if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length)
 		this.subViewsHolder = new ComponentSubViewsHolder(definition, this);
 	else
 		this.subViewsHolder = new ComponentSubViewsHolder(null, this);
-	
 	
 	
 	this.parentView = parentView || null;
 	if (parentView && !isChildOfRoot)
 		this.parentView = this.getEffectiveParentView();
 	
-	if (!TypeManager.caches.attributes.getItem(this._defUID))
-		TypeManager.caches.attributes.setItem(this._defUID, definition.getHostDef().attributes);
+	
 	
 	this.hostElem;
 	this.rootElem;
@@ -704,7 +705,7 @@ ComponentView.prototype.shallChildrenHaveOffset = function(definition) {
  * @abstract
  * 
  */
-Object.defineProperty(ComponentView.prototype, 'value', {
+Object.defineProperty(ComponentView.prototype, 'value', { 		// WHAT'S THAT ?
 	set : function(value) {
 		if (this.nodeName.toUpperCase() === 'INPUT')
 			this.hostElem.value = value.toString();
@@ -718,8 +719,13 @@ Object.defineProperty(ComponentView.prototype, 'value', {
 
 
 
+
+
+
+
+
 /**
- * @constructor ComponentView
+ * @constructor ComponentSubView
  */
 var ComponentSubView = function(definition, parentView) {
 	this._defUID = definition.UID.toString();

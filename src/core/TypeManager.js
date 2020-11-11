@@ -269,7 +269,7 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 	value : function(stream, queriedOrQueryingObj) {
 //		console.log(this.cbOnly, stream, queriedOrQueryingObj, this);
 		if (!this.cbOnly && !queriedOrQueryingObj.streams[this.to] && !this.subscribe) {
-			console.warn('missing stream or subscription callback on child subscribing to ' + stream.name + ' from ' + this.from);
+			console.warn('missing stream or subscription callback on child subscribing from ' + stream.name + ' to ' + this.to);
 			return;
 		}
 		else if (typeof stream === 'undefined') {
@@ -395,7 +395,6 @@ var ComponentListDefModel = function(obj, isSpecial) {
 		this.item = null;							// Object (an item of the model)
 		this.template = null;						// Object HierarchicalComponentDef
 		this.section = null;						// Number
-		this.templateCtor = null;					// Object (some Component Type)
 
 	ValueObject.call(this, obj, isSpecial);
 }
@@ -539,6 +538,11 @@ var reactivityQueries = [
 	'reactOnParent',
 	'reactOnSelf'
 ];
+var eventQueries = [
+	'subscribeOnParent',
+	'subscribeOnChild',
+	'subscribeOnSelf'
+];
 var propsArePrimitives = [
 	'type',
 	'nodeName',
@@ -603,6 +607,11 @@ var nodesRegister = new PropertyCache('nodesRegister');
  */
 var viewsRegister = [];
 
+/**
+ * @typedStore {StoredAssocWithModel} {ID : keyOnModel}
+ */
+var dataStoreRegister = new PropertyCache('dataStoreRegister');
+
 console.log(definitionsCacheRegister);
 
 
@@ -626,8 +635,10 @@ Object.assign(exportedObjects, {
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegister : nodesRegister,
 	viewsRegister : viewsRegister,
+	dataStoreRegister : dataStoreRegister,
 	propsAreArray : propsAreArray,
 	reactivityQueries : reactivityQueries,
+	eventQueries : eventQueries,
 	propsArePrimitives : propsArePrimitives,
 	definitionsCache : new ComponentDefCache(),
 	attributesModel : PropFactory,									// Object AbstractProp

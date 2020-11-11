@@ -3,7 +3,9 @@
  */
 
 var TypeManager = require('src/core/TypeManager');
-var ComponentGroup = require('src/UI/groups/ComponentGroup');
+var App = require('src/core/AppIgnition');
+var ComposedComponent = require('src/core/ComposedComponent');
+
 
 
 
@@ -36,8 +38,7 @@ Object.defineProperty(RecitalDataset.prototype, 'getDefaultListDef', {
 					type : 'ComponentList',
 					each : [],
 					item : null,
-					template : null,
-					templateCtor : ComponentGroup
+					template : null
 				});
 			}
 });
@@ -139,7 +140,8 @@ Object.defineProperty(RecitalDataset.prototype, 'getDatasetState', {
 Object.defineProperty(RecitalDataset.prototype, 'push',  {
 	value : function(item) {
 		this.defaultListDef.host.each = [item];
-		this.trackedModule.addModules(this.defaultListDef, this.trackedModule.modules.length);
+		new App.List(this.defaultListDef, this.trackedModule);
+//		this.trackedModule.addModules(this.defaultListDef, this.trackedModule.modules.length);
 		Array.prototype.push.call(this, item);
 		this.updateDatasetState();
 	}
@@ -148,7 +150,8 @@ Object.defineProperty(RecitalDataset.prototype, 'push',  {
 Object.defineProperty(RecitalDataset.prototype, 'pushApply',  {
 	value : function(itemArray) {
 		this.defaultListDef.host.each = itemArray;
-		this.trackedModule.addModules(this.defaultListDef, this.trackedModule.modules.length);
+		new App.List(this.defaultListDef, this.trackedModule);
+//		this.trackedModule.addModules(this.defaultListDef, this.trackedModule.modules.length);
 		Array.prototype.push.apply(this, itemArray);
 		this.updateDatasetState();
 	}
