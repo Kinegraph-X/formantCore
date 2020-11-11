@@ -149,6 +149,8 @@ Object.defineProperty(RecitalDataset.prototype, 'push',  {
 
 Object.defineProperty(RecitalDataset.prototype, 'pushApply',  {
 	value : function(itemArray) {
+		if (!itemArray.length)
+			return;
 		this.defaultListDef.host.each = itemArray;
 		new App.List(this.defaultListDef, this.trackedModule);
 //		this.trackedModule.addModules(this.defaultListDef, this.trackedModule.modules.length);

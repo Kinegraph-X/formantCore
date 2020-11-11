@@ -22,6 +22,7 @@ for (let type in componentTypes) {
  */
 var ComposedComponent = function(definition, parentView) {
 //	console.log(definition);
+	var shouldExtend = false;
 	
 	// Hack the def now, for the view to be instanciated with the correct context (knowing how many subSections we have is crucial when connecting children)
 	// This prevents us from instanciating a Component with subViews as the "host" of a composedComponent : No matter, that case wouldn't make much sense, though.
@@ -32,17 +33,24 @@ var ComposedComponent = function(definition, parentView) {
 		definition.getHostDef().subSections.push(null);
 	});
 	
-	// Another Hack to integrate the "host" of the def in that "composedComponent" (which is pretty "unfruity" : it has no methods defining its behavior) :
-	// assuming we don't want to instanciate "externaly" (i.e. "in that present ctor") a whole Component, and have to reflect all of its props on "self",
-	// we call the ComponentWithView ctor on the def of the host (2 lines below)
-	// BUT, we reflect "beforehand", on "self", the "createDefaultDef" method defined on the prototype of the host, then it shall be called by the AbstractComponent ctor
+	// Another Hack to integrate the "host" of the def in that "composedComponent" (which is pretty "unfruity" : it has very few methods defining its behavior) :
+	// assuming we don't want to instanciate "in da space" (i.e. "in that present ctor") a whole Component, and have to reflect all of its props on "self",
+	// we call the "superior" ComponentWithView ctor on the def of sole the host (5 lines below)
+	// BUT beforehand, we reflect on "self" the "createDefaultDef" method defined on the prototype of the host, then it shall be called by the AbstractComponent ctor
 	// (from which we inherit, though : the "composedComponent" is not so "pretty unfruity").
 	// Exception, (shall) obviously (be) : if there is -no- createDefaultDef method on that Component which whant to be "host" on the throne of the "host"...
 	if (definition.getGroupHostDef().getType() && definition.getGroupHostDef().getType() !== 'ComposedComponent' && componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef)
 		this.createDefaultDef = componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
 	
+	if (!TypeManager.definitionsCacheRegister.getItem(definition.getGroupHostDef().UID)) // this shall be always true after having called the superior ctor (although def is "explicit+default" without "special")
+		shouldExtend = true;
+	
 	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, this);  // feed with host def : "this" shall be assigned the _defUID of the "hostDef"
 	this.objectType = 'ComposedComponent';
+	
+	// extend last, so the event bubbling occurs always after the "local" callbacks
+	if (shouldExtend)
+		this.extendDefinition(definition);
 	
 	this.instanciateSubSections(definition);
 	this.instanciateMembers(definition);
@@ -53,6 +61,20 @@ var ComposedComponent = function(definition, parentView) {
 ComposedComponent.prototype = Object.create(Components.ComponentWithView.prototype);
 ComposedComponent.prototype.objectType = 'ComposedComponent';
 
+ComposedComponent.prototype.extendDefinition = function(definition) {
+	// Special case : "update" events may bubble from ComposedComponent to ComposedComponent
+	definition.getGroupHostDef().subscribeOnChild.push(
+		(new TypeManager.EventSubscriptionModel({
+				on : 'update',
+				subscribe : function(e) {
+					if (e.bubble)
+						this.trigger('update', e.data, true);
+				}
+			})
+		)
+	);
+}
+
 ComposedComponent.prototype.instanciateSubSections = function(definition) {
 	var hostDef, component;
 	definition.subSections.forEach(function(subSectionDef) {
@@ -60,6 +82,7 @@ ComposedComponent.prototype.instanciateSubSections = function(definition) {
 		if (hostDef.type in componentTypes) {
 			component = new componentTypes[hostDef.type](subSectionDef, this.view, this, 'isChildOfRoot');
 			component._parent = this;
+			// usefull for appending memberViews on subViews without having to traverse the components hierarchy
 			this.view.subViewsHolder.subViews.push(component.view);
 		}
 		else if (!hostDef.type)

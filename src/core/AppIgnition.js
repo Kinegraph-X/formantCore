@@ -57,23 +57,30 @@ App.prototype.instanciateDOM = function() {
 		attributes;
 
 	views.forEach(function(view) {
+		attributes = attributesCache[view._defUID];
 		if (nodes[view._defUID].cloneMother)
 			view.hostElem = nodes[view._defUID].cloneMother.cloneNode();
 		else {
 			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
-			attributes = attributesCache[view._defUID];
 			attributes.forEach(function(attrObject) {
 				nodes[view._defUID].cloneMother[attrObject.getName()] = attrObject.getValue();
 			});
-			view.hostElem = nodes[view._defUID].cloneMother.cloneNode();	
+			view.hostElem = nodes[view._defUID].cloneMother.cloneNode();
 		}
-		// textContent is not cloned
+		// textContent is not cloned (neither are event listeners, but that makes sense..)
 		view.hostElem.textContent = attributes.findObjectByKey('textContent').textContent;
+		attributes.forEach(function(attrObject) {
+			if (attrObject.getName().indexOf('on') === 0)
+				view.hostElem[attrObject.getName()] = attrObject.getValue();
+		});
 		
 		
 		view.rootElem = view.hostElem.shadowRoot;
-		if (view._parent && view._parent.objectType === 'KeyboardSubmittableInput') 
-			view.registerKeyboardEvents();
+		if (view._parent) {
+			if (view._parent.objectType === 'KeyboardSubmittableInput') 
+				view.registerKeyboardEvents();
+			view.hostElem._component = view._parent;
+		}
 		
 //		(view._parent && console.log(view._parent.objectType));
 		// Connect DOM objects 
@@ -266,6 +273,7 @@ List.prototype.objectType = 'List';
 List.prototype.create = function(definition, parent) {
 	new ComposedComponent.prototype.ComponentList(definition, parent.view, parent);
 	this.decorateComponentsThroughDefinitionsCache(definition.getHostDef());
+	parent.handleEventSubscriptions('subscribeOnChild', TypeManager.caches['subscribeOnChild'].cache[parent._defUID]);
 }
 
 

@@ -34,9 +34,16 @@ var EventEmitter = function() {
 	this._eventHandlers = {};
 	this._one_eventHandlers = {};
 	this._identified_eventHandlers = {};
+	
+	this.createEvents();
 }
 EventEmitter.prototype = {};
 EventEmitter.prototype.objectType = 'EventEmitter';
+
+/**
+ * @virtual
+ */
+EventEmitter.prototype.createEvents = function() {}				// virtual
 
 /**
  * Creates a listenable event : generic event creation (onready, etc.)
@@ -634,7 +641,7 @@ WorkerInterface.__factory_name = 'WorkerInterface';
  */
 var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	
-	this._defUID = definition.getHostDef().UID.toString();
+	this._defUID = definition.getHostDef().UID;
 	this._parent = parent;
 	this.isCustomElem = definition.getHostDef().isCustomElem;
 	this.nodeName = definition.getHostDef().nodeName;
@@ -677,11 +684,9 @@ ComponentView.prototype.constructor = ComponentView;
 ComponentView.prototype.getEffectiveParentView = function() {
 	return this.parentView.childrenShallHaveOffset === true
 			? this.parentView.subViewsHolder.subViews[this.section + 1]
-				: (this.parentView.childrenShallHaveOffset === 1
-						? this.parentView
-							: (this.parentView.childrenShallHaveOffset === 0 
-								?	this.parentView.subViewsHolder.subViews[this.section]
-									: this.parentView));
+				: (this.parentView.childrenShallHaveOffset === 0 
+						? this.parentView.subViewsHolder.subViews[this.section]
+							: this.parentView);
 }
 /**
  * @abstract
@@ -728,7 +733,7 @@ Object.defineProperty(ComponentView.prototype, 'value', { 		// WHAT'S THAT ?
  * @constructor ComponentSubView
  */
 var ComponentSubView = function(definition, parentView) {
-	this._defUID = definition.UID.toString();
+	this._defUID = definition.UID;
 	this.isCustomElem = definition.isCustomElem;
 	this.nodeName = definition.nodeName;
 	this.section = definition.section;

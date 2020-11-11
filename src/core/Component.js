@@ -89,7 +89,7 @@ HierarchicalObject.prototype.handleEventSubscriptions = function(subscriptionTyp
 			eventQueries.forEach(function(subscription, key) {
 				subscription.subscribeToEvent(child, this);
 			}, this);
-		})
+		}, this);
 	}
 	else if (subscriptionType === 'subscribeOnSelf')
 		eventQueries.forEach(function(subscription, key) {
@@ -212,7 +212,7 @@ var AbstractComponent = function(definition) {
 	
 	this._UID = TypeManager.UIDGenerator.newUID().toString();
 	
-	this._defUID = definition.getHostDef().UID.toString();
+	this._defUID = definition.getHostDef().UID;
 	this._defComposedUID;
 	
 //	console.log(definition);
@@ -235,7 +235,7 @@ AbstractComponent.prototype.createDefaultDef = function() {}			// virtual
 AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	var defaultDef, defaultHostDef;
 	if ((defaultDef = this.createDefaultDef())) {
-		this._defComposedUID = this._defUID + '-' + defaultDef.getHostDef().UID.toString();
+		this._defComposedUID = this._defUID + '-' + defaultDef.getHostDef().UID;
 		defaultHostDef = defaultDef.getHostDef();
 	}
 	else
@@ -257,15 +257,14 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		if (hostDef.command === null)
 			hostDef.command = defaultHostDef.command;
 	}
-	
-	return definition;
 }
 
 /**
  * @param {ComponentDefinition}
  */
 AbstractComponent.prototype.populateStores = function(definition) {
-	var hostDefinition = this.mergeDefaultDefinition(definition).getHostDef();
+	this.mergeDefaultDefinition(definition);
+	var hostDefinition = definition.getHostDef();
 //	console.log(hostDefinition);
 	for (let prop in TypeManager.caches) {
 		TypeManager.caches[prop].setItem(this._defUID, hostDefinition[prop]);
@@ -333,8 +332,8 @@ var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) 
 	
 	this.view;
 	
-	if (TypeManager.definitionsCacheRegister.getItem(this._defUID).getHostDef().nodeName)
-		this.instanciateView(TypeManager.definitionsCacheRegister.getItem(this._defUID), parentView, this, isChildOfRoot);
+	if (definition.getHostDef().nodeName)
+		this.instanciateView(definition, parentView, this, isChildOfRoot);
 }
 ComponentWithView.prototype = Object.create(ComponentWithObservables.prototype);
 ComponentWithView.prototype.objectType = 'ComponentWithView';

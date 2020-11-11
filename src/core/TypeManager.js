@@ -306,6 +306,7 @@ exportedObjects.EventSubscriptionModel = EventSubscriptionModel;
 Object.defineProperty(EventSubscriptionModel.prototype, 'objectType', {value : 'EventSubscription'});
 Object.defineProperty(EventSubscriptionModel.prototype, 'subscribeToEvent', {
 	value : function(targetComponent, requestingComponent) {
+//		console.log(targetComponent._key, this.on, targetComponent, requestingComponent);
 		targetComponent.addEventListener(this.on, this.subscribe.bind(requestingComponent));
 }});
 
@@ -325,7 +326,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 	if (givenDef)
 		Object.assign(this, givenDef);
 	else {
-		this.UID = typeof obj.UID === 'number' ? obj.UID : UIDGenerator.newUID().toString();
+		this.UID = typeof obj.UID === 'string' ? obj.UID : UIDGenerator.newUID().toString();
 		this.type = null,							// String
 		this.nodeName = null;						// String
 		this.isCustomElem = false					// Boolean
