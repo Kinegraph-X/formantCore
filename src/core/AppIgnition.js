@@ -6,6 +6,7 @@
 var ElementCreator = require('src/UI/generics/GenericElementConstructor');
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
+var Component = require('src/core/Component');
 var ComposedComponent = require('src/core/ComposedComponent');
 
 console.log(TypeManager.caches);
@@ -17,6 +18,7 @@ console.log(TypeManager.caches);
 var App = function(definition, containerIdOrContainerNode) {
 	var mainComponent = new ComposedComponent(definition, containerIdOrContainerNode); 
 	this.decorateComponentsThroughDefinitionsCache();
+	document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.hostElem);
 	return mainComponent;
 }
 App.prototype = {};
@@ -31,17 +33,16 @@ App.prototype.decorateComponentsThroughDefinitionsCache = function(listDef) {
 	// instanciate streams
 	this.instanciateStreams();
 	
-	// handle reactivity (TODO: and event subscription) : each component as a "unique ID from the def" => retrieve queries from the "reactivity" register
+	// handle reactivity and event subscription : each component holds a "unique ID from the def" => retrieve queries from the "reactivity" register
 	this.handleReactivityAndEvents();
 	
 	// decorate DOM Objects with :
 	// * 						- streams
 	// * 						- reflexive props
 	// assign reflectedObj to streams
-	this.streamsBidirectionalReflection(listDef);
-	
-	TypeManager.viewsRegister.length = 0;
-	TypeManager.typedHostsRegister.reset();
+	this.lateEventBindingAndBidirectionalReflection(listDef);
+
+	this.cleanRegisters();
 }
 
 
@@ -59,30 +60,25 @@ App.prototype.instanciateDOM = function() {
 	views.forEach(function(view) {
 		attributes = attributesCache[view._defUID];
 		if (nodes[view._defUID].cloneMother)
-			view.hostElem = nodes[view._defUID].cloneMother.cloneNode();
+			// nodes[view._defUID].cloneMother.cloneNode(true); => deep clone : also copies the nested nodes (textual contents are nodes...)
+			view.hostElem = nodes[view._defUID].cloneMother.cloneNode(true);
 		else {
 			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
 			attributes.forEach(function(attrObject) {
 				nodes[view._defUID].cloneMother[attrObject.getName()] = attrObject.getValue();
 			});
-			view.hostElem = nodes[view._defUID].cloneMother.cloneNode();
+			view.hostElem = nodes[view._defUID].cloneMother.cloneNode(true);
 		}
-		// textContent is not cloned (neither are event listeners, but that makes sense..)
-		view.hostElem.textContent = attributes.findObjectByKey('textContent').textContent;
+		
 		attributes.forEach(function(attrObject) {
 			if (attrObject.getName().indexOf('on') === 0)
 				view.hostElem[attrObject.getName()] = attrObject.getValue();
 		});
 		
-		
 		view.rootElem = view.hostElem.shadowRoot;
-		if (view._parent) {
-			if (view._parent.objectType === 'KeyboardSubmittableInput') 
-				view.registerKeyboardEvents();
+		if (view._parent)
 			view.hostElem._component = view._parent;
-		}
 		
-//		(view._parent && console.log(view._parent.objectType));
 		// Connect DOM objects 
 		if (view.parentView && view.parentView.hostElem)
 			(view.parentView.rootElem || view.parentView.hostElem).appendChild(view.hostElem);
@@ -172,10 +168,10 @@ App.prototype.handleReactivityAndEvents = function() {
 
 
 /*
- * INITIALIZATION CHAPTER : streamsBidirectionalReflection
+ * INITIALIZATION CHAPTER : lateEventBindingAndBidirectionalReflection
  * 
  */
-App.prototype.streamsBidirectionalReflection = function(listDef) {
+App.prototype.lateEventBindingAndBidirectionalReflection = function(listDef) {
 	if (!listDef)
 		this.streamsBidirectionalReflectionBlank();
 	else
@@ -184,35 +180,66 @@ App.prototype.streamsBidirectionalReflection = function(listDef) {
 }
 App.prototype.streamsBidirectionalReflectionBlank = function() {
 	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
+
 	for (let defUID in typedComponentRegister) {
+
 		typedComponentRegister[defUID].forEach(function(component) {
 			if (!component.view)
 				return;
+			
+			if (component instanceof Component.ComponentWithHooks)
+				component.registerEvents();
+
 			this.defineStreamsBidirectionalReflection(defUID, component);
 		}, this);
 	}
 }
 App.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
+
 	for (let defUID in typedComponentRegister) {
 		typedComponentRegister[defUID].forEach(function(component) {
 			if (!component.view)
 				return;
+			
+			if (component instanceof Component.ComponentWithHooks)
+				component.registerEvents();
+
 			this.defineStreamsBidirectionalReflection(defUID, component);
+		}, this);
+	}
+	
+	for (let defUID in typedComponentRegister) {
+		typedComponentRegister[defUID].forEach(function(component) {
+			if (!component.view)
+				return;
+			
 			if (typeof (dataStoreKey = TypeManager.dataStoreRegister.getItem(component._UID)) !== 'undefined')
 				this.handleReflectionOnModel.call(component, listDef.reflectOnModel, listDef.augmentModel, listDef.each[dataStoreKey]);
 		}, this);
 	}
 }
 App.prototype.defineStreamsBidirectionalReflection = function(defUID, component) {
-	// streams
+	// DOM objects extension : we need 2 custom props to offer a rich "reactive" experience
+	// The view's "hosts" gains access here to the streams of the component.
+	// It's needed if we want to allow access to the reactivity mechanisms from outside of the framework :
+	// 		-> any change to an attribute or a DOM prop shall trigger a full update of the component, following the defined reactivity path (by def obj)
+	// And it may be usefull in some other "barely legal" cases... (for example in "hacky" implementations that attach listeners directly to the DOM)
 	component.view.hostElem.streams = component.streams;
 	
+	// And we reflect the View on each State Stream : 
+	// 		-> it's a nice & implicit way to declare in the def obj that the reactivity-chain targets an "exposed" state
+	// And we define for each State a special prop on the view, that reflects the state of the component
+	// 
+	// -*- Regarding the word "implicit" : these "kind of" tricks are strongly motivated by the philosophy of the DOM custom elements :
+	//			=> the global state of the component is held by an attribute on the node : styling uses then "state dependant" selectors (through CSS or anything you could use)
+	//			=> this reflection mechanism is the second step needed to achieve the goal we've mentioned above,
+	// 			   say that the reactivity-chain is exposed for anyone to have access to the component's magic, even from outside of the framework    
 	TypeManager.caches.states.cache[defUID].forEach(function(stateObj) {
-		this.reflectStream(component, stateObj);
+		this.reflectViewOnAStateStream(component, stateObj);
 	}, this);
 }
-App.prototype.reflectStream = function(component, stateObj) {
+App.prototype.reflectViewOnAStateStream = function(component, stateObj) {
 	// assign reflectedObj to streams
 	component.streams[stateObj.getName()].reflectedObj = component.view.hostElem;
 	
@@ -224,7 +251,7 @@ App.prototype.reflectStream = function(component, stateObj) {
 		component.streams[stateObj.getName()].value = stateObj.getValue();
 }
 App.prototype.handleReflectionOnModel = function(reflectOnModel, augmentModel, item) {
-	// states and props may be automatically reflected on the component and so here on the componentGroup (depending on the fact they're declared on the def), but not on the model : define that here
+	// states and props may be automatically reflected on the component and so here on the host of the (Composed)Component (depending on the fact they're declared on the def), but not on the model : define that here
 	//		update the model (assigning a getter & setter) in order to get the component's props reflected on the model
 	// else
 	// 		update the component's reactive props without reflection on the model
@@ -253,7 +280,10 @@ App.prototype.handleReflectionOnModel = function(reflectOnModel, augmentModel, i
 }
 
 
-
+App.prototype.cleanRegisters = function() {
+	TypeManager.viewsRegister.length = 0;
+	TypeManager.typedHostsRegister.reset();	
+}
 
 
 

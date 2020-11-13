@@ -57,12 +57,41 @@ HierarchicalObject.prototype.addChildAt = function(child, atIndex) {
 }
 
 /**
+ * @param {string} moduleName
+ */
+HierarchicalObject.prototype.removeChild = function(childKey) {
+	var removed;
+
+	this._children[childKey].isAttached = false;
+	this._children[childKey].view.hostElem.remove();
+	removed = this._children.splice(childKey, 1)[0];
+	(childKey < this._children.length && this.generateKeys(childKey));
+	return removed;
+}
+
+/**
  * @param {number} atIndex : the required index to clear at
  */
 HierarchicalObject.prototype.removeChildAt = function(atIndex) {
 	var removedChild = this._children.splice(atIndex, 1);
 	this.generateKeys(atIndex);
 	this.onRemoveChild(removedChild);
+}
+
+/**
+ * 
+ */
+HierarchicalObject.prototype.removeAllChildren = function() {
+	this.onRemoveChild();
+	this._children.length = 0;
+	return true;
+}
+
+/**
+ * 
+ */
+HierarchicalObject.prototype.remove = function() {
+	return this._parent.removeChild(this._key);
 }
 
 /**
@@ -330,6 +359,7 @@ var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) 
 	ComponentWithObservables.call(this, definition);
 	this.objectType = 'ComponentWithView';
 	
+	this.command = definition.getHostDef().command;
 	this.view;
 	
 	if (definition.getHostDef().nodeName)
@@ -346,9 +376,119 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView, p
 //	console.log(parentView);
 	this.view = new CoreTypes.ComponentView(definition, parentView, parent, isChildOfRoot);
 }
+/**
+ * @param {Component} child
+ */
+ComponentWithView.prototype.onRemoveChild = function(child) {
+	if (typeof child === 'undefined') {
+		while (this.view.subViewsHolder.subViews[1].hostElem.firstChild) {
+			this.view.subViewsHolder.subViews[1].hostElem.removeChild(this.view.subViewsHolder.subViews[1].hostElem.lastChild);
+		}
+//		this.view.subViewsHolder.subViews[1].hostElem.length = 0;
+//		this.view.hostElem.remove();
+	}
+	else {
+		// remove a child
+	}
+}
+
+/**
+ * @param {Component} child
+ * @param {number} atIndex
+ */
+ComponentWithView.prototype.onAddChild = function(child, atIndex) {
+	if (typeof atIndex !== 'undefined' && child.view.parentView)
+		child.view.parentView.addChildAt(child.view, atIndex);
+}
 
 
 
+
+
+
+
+
+
+
+
+
+
+/**
+ * @constructor ComponentWithHooks
+ */
+var ComponentWithHooks = function(definition, parentView, parent, isChildOfRoot) {
+	ComponentWithView.call(this, definition, parentView, parent, isChildOfRoot);
+	this.objectType = 'ComponentWithHooks';
+	this.viewExtend(definition);
+}
+/**
+ * HOOKS
+ */
+ComponentWithHooks.prototype = Object.assign(Object.create(ComponentWithView.prototype), {
+	basicEarlyViewExtend : function() {},					// virtual
+	basicLateViewExtend : function() {},						// virtual
+	beforeRegisterEvents : function() {},			// virtual
+	registerClickEvents : function() {},			// virtual
+	registerLearnEvents : function() {},			// virtual
+	registerKeyboardEvents : function() {},			// virtual
+	afterRegisterEvents : function() {},			// virtual
+	registerValidators : function() {},				// virtual
+	execBindingQueue : function() {}				// virtual
+});
+ComponentWithHooks.prototype.objectType = 'ComponentWithHooks';
+
+ComponentWithHooks.prototype.viewExtend = function(definition) {
+	this.basicEarlyViewExtend(definition);
+	this.basicLateViewExtend(definition);
+}
+
+ComponentWithHooks.prototype.registerEvents = function() {
+	this.beforeRegisterEvents();
+	this.registerClickEvents();
+	this.registerKeyboardEvents();
+	this.registerLearnEvents();
+	this.afterRegisterEvents();
+	this.registerValidators();
+	this.execBindingQueue();
+}
+
+/**
+ * @param {ComponentDefinition} componentDefinition
+ * @param {ComponentDefinition} nodeDefinition
+ * @param {string} state
+ */
+ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(componentDefinition, nodeDefinition, state) {
+	
+	// This is an illustrative method, a hint for others on the path to catching the "spirit" of the extension mechanism of the framework
+	// 		=> This is to be implemented as a method on the ComponentWithView.prototype : addReactiveMemberViewFromFreshDef
+	// Delete the UID of the definition and Register a renewed one with fresh UID (unless exists, so register both the original and the fresh one : if the original exists, we already went here)
+	// Define a reactOnSelf on the definition of the HOST with a callback : it shall be bound to the host
+	//		=> maintain a -counter- on the added pictos
+	// 		=> the callback shall call the component -> the main view -> the subViewsHost -> the memberViews[ -counter- ].hostElem.hidden
+	// Instanciate a view with the host's view as parent view (the view references the UID of the definition)
+	// Add that view to the subViewsHost->memberViews of the main view
+	
+	var newDef;
+	if (!(newDef = TypeManager.definitionsCacheRegister.getItem(nodeDefinition.host.UID + state))) {
+		newDef = TypeManager.createComponentDef(nodeDefinition);
+		newDef.host.UID = nodeDefinition.host.UID + state;
+		TypeManager.definitionsCacheRegister.setItem(newDef.host.UID, newDef);
+		
+		componentDefinition.getHostDef().reactOnSelf.push(new TypeManager.ReactivityQueryModel({
+			cbOnly : true,
+			from : state,
+			subscribe : function(value) {
+					this.view.subViewsHolder.memberViews[0].hostElem.hidden = value ? 'hidden' : null;
+				}
+			})
+		);
+	}
+	
+	var view = new CoreTypes.ComponentSubView(newDef.getHostDef(), this.view, this);
+	this.view.subViewsHolder.memberViews.push(view);
+	
+	
+}
 
 
 
@@ -364,11 +504,11 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView, p
  * @constructor ComponentWithReactiveText
  */
 var ComponentWithReactiveText = function(definition, parentView, parent, isChildOfRoot) {
-	ComponentWithView.call(this, definition, parentView, parent, isChildOfRoot);
+	ComponentWithHooks.call(this, definition, parentView, parent, isChildOfRoot);
 	this.objectType = 'ComponentWithReactiveText';
 
 }
-ComponentWithReactiveText.prototype = Object.create(ComponentWithView.prototype);
+ComponentWithReactiveText.prototype = Object.create(ComponentWithHooks.prototype);
 ComponentWithReactiveText.prototype.objectType = 'ComponentWithReactiveText';
 
 /**
@@ -402,6 +542,46 @@ ComponentWithReactiveText.prototype.populateSelf = function(value) {
 
 
 
+/**
+ * @constructor ComponentStrokeAware
+ */
+ComponentStrokeAware = function(definition, parentView, parent, isChildOfRoot) {
+	ComponentWithHooks.call(this, definition, parentView, parent, isChildOfRoot);
+//	this.objectType = 'ComponentStrokeAware';
+
+}
+ComponentStrokeAware.prototype = Object.create(ComponentWithHooks.prototype);
+ComponentStrokeAware.prototype.objectType = 'ComponentStrokeAware';
+
+ComponentStrokeAware.prototype.createEvents = function() {
+	this.createEvent('stroke');
+}
+
+/**
+ * @abstract
+ */
+ComponentStrokeAware.prototype.registerKeyboardEvents = function(e) {
+	var input = (this.view.rootElem || this.view.hostElem).querySelector('input');
+	
+	// Stroke event listener & canAct management 
+	input.addEventListener('keyup', function(e) {
+		e.stopPropagation();
+//		var allowed = [189, 190, 191]; // corresponds to **. , -**
+//		allowed.indexOf(e.keyCode) >= 0 && 
+ 
+	    if (e.keyCode >= 32 && (e.keyCode < 48 || e.keyCode > 57) && e.keyCode <= 191)
+	        self.trigger('stroke', e);
+	});
+}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -409,7 +589,10 @@ ComponentWithReactiveText.prototype.populateSelf = function(value) {
 
 
 module.exports = {
+	AbstractComponent : AbstractComponent,
 	HierarchicalObject : HierarchicalObject,
 	ComponentWithView : ComponentWithView,
-	ComponentWithReactiveText : ComponentWithReactiveText
+	ComponentWithHooks : ComponentWithHooks,
+	ComponentWithReactiveText : ComponentWithReactiveText,
+	ComponentStrokeAware : ComponentStrokeAware
 };

@@ -6,6 +6,7 @@ var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
 var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
+var LazySlottedComponent = require('src/UI/Generics/LazySlottedComponent');
 
 var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, {UIpackage : '%%UIpackage%%'}).packageList;
 Object.assign(componentTypes, require(componentTypes.misc));
@@ -35,11 +36,11 @@ var ComposedComponent = function(definition, parentView) {
 	
 	// Another Hack to integrate the "host" of the def in that "composedComponent" (which is pretty "unfruity" : it has very few methods defining its behavior) :
 	// assuming we don't want to instanciate "in da space" (i.e. "in that present ctor") a whole Component, and have to reflect all of its props on "self",
-	// we call the "superior" ComponentWithView ctor on the def of sole the host (5 lines below)
+	// we call the "superior" ComponentWithView ctor on the def of solely the host (5 lines below)
 	// BUT beforehand, we reflect on "self" the "createDefaultDef" method defined on the prototype of the host, then it shall be called by the AbstractComponent ctor
 	// (from which we inherit, though : the "composedComponent" is not so "pretty unfruity").
 	// Exception, (shall) obviously (be) : if there is -no- createDefaultDef method on that Component which whant to be "host" on the throne of the "host"...
-	if (definition.getGroupHostDef().getType() && definition.getGroupHostDef().getType() !== 'ComposedComponent' && componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef)
+	if (definition.getGroupHostDef().getType() && componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef)
 		this.createDefaultDef = componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
 	
 	if (!TypeManager.definitionsCacheRegister.getItem(definition.getGroupHostDef().UID)) // this shall be always true after having called the superior ctor (although def is "explicit+default" without "special")
@@ -54,6 +55,7 @@ var ComposedComponent = function(definition, parentView) {
 	
 	this.instanciateSubSections(definition);
 	this.instanciateMembers(definition);
+	this.instanciateLists(definition);
 	
 	// But there will be a mess when binding streams from childModules to subViews : hopefully the "stores" would help us...
 	
@@ -76,30 +78,34 @@ ComposedComponent.prototype.extendDefinition = function(definition) {
 }
 
 ComposedComponent.prototype.instanciateSubSections = function(definition) {
-	var hostDef, component;
+	var type, component;
 	definition.subSections.forEach(function(subSectionDef) {
-		hostDef = subSectionDef.getHostDef();
-		if (hostDef.type in componentTypes) {
-			component = new componentTypes[hostDef.type](subSectionDef, this.view, this, 'isChildOfRoot');
+		type = subSectionDef.getHostDef().getType();
+		if (type in componentTypes) {
+			component = new componentTypes[type](subSectionDef, this.view, this, 'isChildOfRoot');
 			component._parent = this;
 			// usefull for appending memberViews on subViews without having to traverse the components hierarchy
 			this.view.subViewsHolder.subViews.push(component.view);
 		}
-		else if (!hostDef.type)
+		else if (subSectionDef.getHostDef().nodeName)
 			this.view.subViewsHolder.subViews.push(new CoreTypes.ComponentView(subSectionDef, this.view, this, 'isChildOfRoot'));
 	}, this);
 }
 
 ComposedComponent.prototype.instanciateMembers = function(definition) {
-	var hostDef, component;
+	var type;
 	definition.members.forEach(function(memberDef) {
-		hostDef = memberDef.getGroupHostDef() ? memberDef.getGroupHostDef() : memberDef.getHostDef();
-		if (hostDef.type in componentTypes) {
-			this.pushChild((component = new componentTypes[hostDef.type](memberDef, this.view, this)));
-//			this.view.subViewsHolder.memberViews.push(component.view);
-		}
-		else if (!hostDef.type)
+		type = memberDef.getHostDef().getType() || (memberDef.getGroupHostDef() && memberDef.getGroupHostDef().getType());
+		if (type in componentTypes)		//  && type !== 'ComponentList'
+			this.pushChild(new componentTypes[type](memberDef, this.view, this));
+		else if (memberDef.getHostDef().nodeName)
 			this.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(memberDef, this.view, this), this.view);
+	}, this);
+};
+
+ComposedComponent.prototype.instanciateLists = function(definition) {
+	definition.lists.forEach(function(listDef) {
+		new ComponentList(listDef, this.view, this);
 	}, this);
 };
 
@@ -129,10 +135,10 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 
 	definition.getHostDef().each.forEach(function(item, key) {
 
-		if (definition.getHostDef().template.getGroupHostDef())
+//		if (definition.getHostDef().template.getGroupHostDef())
 			this._parent.pushChild((composedComponent = new ComposedComponent(def, this._parent.view)), def);
-		else
-			this._parent.pushChild((composedComponent = new ComposedComponent.prototype.types.GenericComponent(def, this._parent.view)), def);
+//		else
+//			this._parent.pushChild((composedComponent = new ComposedComponent.prototype.types.GenericComponent(def, this._parent.view)), def);
 		
 		TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 	}, this);
@@ -154,6 +160,7 @@ componentTypes.ComposedComponent = ComposedComponent;
 componentTypes.ComponentList = ComponentList;
 componentTypes.ComponentWithView = Components.ComponentWithView;
 componentTypes.VisibleStateComponent = VisibleStateComponent;
+componentTypes.LazySlottedComponent = LazySlottedComponent;
 
 
 module.exports = ComposedComponent;

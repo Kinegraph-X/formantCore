@@ -31,7 +31,6 @@ objectCache.prototype.reset = function() {
 	for (let UID in this.cache) {
 		if (Array.isArray(this.cache[UID]))
 			this.cache[UID].length = 0;
-		delete this.cache[UID];
 	}
 }
 

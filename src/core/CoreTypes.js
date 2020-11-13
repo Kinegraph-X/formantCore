@@ -451,36 +451,39 @@ Stream.prototype.unsubscribe = function(handler) {
  */
 var Subscription = function(subscriberObjOrHandler, subscriberProp, parent, inverseTransform) {
 	this.subscriber = {
-			prop : typeof subscriberProp === 'string' ? subscriberProp : null,
+			prop : subscriberProp || null,
 			obj : typeof subscriberObjOrHandler === 'object' ? subscriberObjOrHandler : null,
 			cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function() {return this._stream._value},
 			inverseTransform : inverseTransform || function(value) {return value;},
 			_subscription : this,
 			_stream : parent
 	}
-	
+//	typeof subscriberProp === 'string' ?
 	this._stream = parent;
 	this._firstPass = true;
 }
 
 Subscription.prototype.subscribe = function(subscriberObjOrHandler, subscriberProp, inverseTransform) {
-	if (typeof subscriberObjOrHandler !== 'function' && typeof subscriberObjOrHandler !== 'object' && !this.subscriber.obj && !this.subscriber.cb) {
-		console.warn('Bad observableHandler given : handler type is ' + typeof subscriberObjOrHandler + ' instead of "function or object"', 'StreamName ' + this._parent.name);
-		return;
-	}
+//	if (typeof subscriberObjOrHandler !== 'function' && typeof subscriberObjOrHandler !== 'object' && !this.subscriber.obj && !this.subscriber.cb) {
+//		console.warn('Bad observableHandler given : handler type is ' + typeof subscriberObjOrHandler + ' instead of "function or object"', 'StreamName ' + this._parent.name);
+//		return;
+//	}
 	if (typeof subscriberObjOrHandler === 'object')
 		this.subscriber.obj = subscriberObjOrHandler;
 	else if (typeof subscriberObjOrHandler === 'function')
 		this.subscriber.cb = subscriberObjOrHandler;
 	
-	if (typeof subscriberProp === 'string')
+	if (subscriberProp)
 		this.subscriber.prop = subscriberProp;
 	
 	return this;
 }
 
 Subscription.prototype.filter = function(filterFunc) {
-	if (typeof filterFunc !== 'function')
+//	if (typeof filterFunc !== 'function')
+//		return this;
+	
+	if (!filterFunc)
 		return this;
 
 	// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark shows a slight improvement, as timings are identical although there is an overhaed with defineProperty)
@@ -489,12 +492,12 @@ Subscription.prototype.filter = function(filterFunc) {
 		value : f,
 		enumerable : true
 	});
-	
+//	this.filter = filterFunc;
 	return this;
 }
 
 Subscription.prototype.map = function(mapFunc) {
-	if(typeof mapFunc !== 'function')
+	if (!mapFunc)
 		return this;
 
 	// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark shows a slight improvement, as timings are identical although there is an overhaed with defineProperty)
@@ -503,7 +506,7 @@ Subscription.prototype.map = function(mapFunc) {
 		value : f,
 		enumerable : true
 	});
-	
+//	this.map = mapFunc;
 	return this;
 }
 
@@ -513,7 +516,7 @@ Subscription.prototype.reverse = function(inverseTransform) {
 
 	// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark needed)
 	this.subscriber.inverseTransform = new Function('return (' + inverseTransform.toString() + ').apply(null, arguments);');
-	
+//	this.subscriber.inverseTransform = inverseTransform;
 	return this;
 }
 
@@ -640,12 +643,13 @@ WorkerInterface.__factory_name = 'WorkerInterface';
  * @constructor ComponentView
  */
 var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
-	
+//	console.log(definition);
 	this._defUID = definition.getHostDef().UID;
 	this._parent = parent;
 	this.isCustomElem = definition.getHostDef().isCustomElem;
 	this.nodeName = definition.getHostDef().nodeName;
 	this.section = definition.getHostDef().section;
+	this.sWrapper = definition.getHostDef().sWrapper;
 	
 	this.childrenShallHaveOffset = this.shallChildrenHaveOffset(definition);
 	
@@ -710,14 +714,25 @@ ComponentView.prototype.shallChildrenHaveOffset = function(definition) {
  * @abstract
  * 
  */
-Object.defineProperty(ComponentView.prototype, 'value', { 		// WHAT'S THAT ?
+Object.defineProperty(ComponentView.prototype, 'value', { 		// ComponentWithReactiveText.prototype.populateSelf makes good use of that
 	set : function(value) {
-		if (this.nodeName.toUpperCase() === 'INPUT')
-			this.hostElem.value = value.toString();
+		if (this.nodeName === 'INPUT')
+			this.hostElem.value = value;
 		else
-			this.hostElem.textContent = value.toString();
+			this.hostElem.textContent = value;
 	}
 });
+
+/**
+ * @param {Component} child
+ * @param {number} atIndex
+ */
+ComponentView.prototype.addChildAt = function(childView, atIndex) {
+	if (this.hostElem.children[atIndex - 1])
+		this.hostElem.children[atIndex - 1].insertAdjacentElement('afterend', childView.hostElem);
+	else
+		this.hostElem.appendChild(childView.hostElem);
+}
 
 
 
@@ -740,6 +755,9 @@ var ComponentSubView = function(definition, parentView) {
 	
 	if (!nodesRegister.getItem(definition.UID))
 		nodesRegister.setItem(definition.UID, (new CachedTypes.CachedNode(definition.nodeName, definition.isCustomElem)));
+	if (!TypeManager.caches.attributes.getItem(this._defUID))
+		TypeManager.caches.attributes.setItem(this._defUID, definition.attributes);
+	viewsRegister.push(this);
 	
 	this.parentView = parentView || null;
 	if (parentView)
@@ -747,11 +765,6 @@ var ComponentSubView = function(definition, parentView) {
 	
 	this.hostElem;
 	this.rootElem;
-	
-	if (!TypeManager.caches.attributes.getItem(this._defUID))
-		TypeManager.caches.attributes.setItem(this._defUID, definition.attributes);
-
-	viewsRegister.push(this);
 }
 ComponentSubView.prototype = Object.create(ComponentView.prototype);
 ComponentSubView.prototype.objectType = 'ComponentSubView';
@@ -854,5 +867,6 @@ module.exports = {
 		Worker : WorkerInterface,
 		Stream : Stream,
 		ComponentView, ComponentView,
+		ComponentSubView : ComponentSubView,
 		commonStates : commonStates
 }

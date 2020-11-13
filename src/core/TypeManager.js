@@ -164,6 +164,7 @@ var PropFactory = function(obj) {
 	
 	if (!(key in PropFactory.props)) {
 		PropFactory.props[key] = new Function('obj', 'this["' + key + '"] = obj["' + key + '"];');
+//		PropFactory.props[key].name = 'AbstractProp'; 	// read only
 		PropFactory.props[key].prototype = {};
 		Object.defineProperty(PropFactory.props[key].prototype, 'getName', {
 			value :  new Function('return "' + key + '";')
@@ -173,6 +174,9 @@ var PropFactory = function(obj) {
 		});
 		Object.defineProperty(PropFactory.props[key].prototype, 'key', {
 			value :  key
+		});
+		Object.defineProperty(PropFactory.props[key].prototype, 'name', {
+			value :  'AbstractProp'
 		});
 		
 		return (new PropFactory.props[key](obj));
@@ -276,8 +280,12 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 			console.warn(queriedOrQueryingObj, this.from, this.to);
 			return;
 		}
-		if (this.cbOnly)
-			stream.subscribe(this.subscribe.bind(queriedOrQueryingObj));
+		if (this.cbOnly) {
+			stream.subscribe(this.subscribe.bind(queriedOrQueryingObj))
+			.filter(this.filter)
+			.map(this.map)
+			.reverse(this.inverseTransform);
+		}
 		else {
 			stream.subscribe(queriedOrQueryingObj.streams[this.to], 'value')
 			.filter(this.filter)
@@ -295,10 +303,9 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
  * @extends ValueObject
  */
 var EventSubscriptionModel = function(obj, isSpecial) {
-//	Object.assign(this, {
-		this.on = null;								// String
-		this.subscribe = null;						// function CallBack
-//	});
+
+	this.on = null;								// String
+	this.subscribe = null;						// function CallBack
 	ValueObject.call(this, obj, isSpecial);
 }
 EventSubscriptionModel.prototype = Object.create(ValueObject.prototype);

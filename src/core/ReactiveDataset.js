@@ -9,14 +9,17 @@ var ComposedComponent = require('src/core/ComposedComponent');
 
 
 
-var RecitalDataset = function(rootComponent, trackedModule, template, factoryPropsArray, arrayFunctions, childrenOffset) {
+var RecitalDataset = function(rootComponent, trackedModule, template, factoryPropsArray, arrayFunctions) {
 	if (!rootComponent || !trackedModule || !template || !factoryPropsArray)
 		return;
-	this.init(rootComponent, trackedModule, template, factoryPropsArray, childrenOffset || 0);
+	this.init(rootComponent, trackedModule, template, factoryPropsArray);
 	if (typeof arrayFunctions !== 'undefined') {
 		if (Array.isArray(arrayFunctions))
 			this.getFunctionList(arrayFunctions);
-		else if (Object.keys(arrayFunctions || {}).length)		// allows passing null instead of an object
+		else if (Object.keys(arrayFunctions || {}).length)		// allows
+																// passing null
+																// instead of an
+																// object
 			this.setArrayFunctions(arrayFunctions);
 	}
 }
@@ -43,7 +46,7 @@ Object.defineProperty(RecitalDataset.prototype, 'getDefaultListDef', {
 			}
 });
 Object.defineProperty(RecitalDataset.prototype, 'init', {
-	value : function(rootComponent, trackedModule, template, factoryPropsArray, childrenOffset) {
+	value : function(rootComponent, trackedModule, template, factoryPropsArray) {
 		Object.defineProperty(this, 'rootComponent', {
 			value : rootComponent
 		});
@@ -59,9 +62,6 @@ Object.defineProperty(RecitalDataset.prototype, 'init', {
 		});
 		Object.defineProperty(this, 'Item', {
 			value : this.setFactory(factoryPropsArray)
-		});
-		Object.defineProperty(this, 'childrenOffset', {
-			value : childrenOffset
 		});
 	}
 });
@@ -141,7 +141,8 @@ Object.defineProperty(RecitalDataset.prototype, 'push',  {
 	value : function(item) {
 		this.defaultListDef.host.each = [item];
 		new App.List(this.defaultListDef, this.trackedModule);
-//		this.trackedModule.addModules(this.defaultListDef, this.trackedModule.modules.length);
+// this.trackedModule.addModules(this.defaultListDef,
+// this.trackedModule._children.length);
 		Array.prototype.push.call(this, item);
 		this.updateDatasetState();
 	}
@@ -153,7 +154,8 @@ Object.defineProperty(RecitalDataset.prototype, 'pushApply',  {
 			return;
 		this.defaultListDef.host.each = itemArray;
 		new App.List(this.defaultListDef, this.trackedModule);
-//		this.trackedModule.addModules(this.defaultListDef, this.trackedModule.modules.length);
+// this.trackedModule.addModules(this.defaultListDef,
+// this.trackedModule._children.length);
 		Array.prototype.push.apply(this, itemArray);
 		this.updateDatasetState();
 	}
@@ -165,14 +167,14 @@ Object.defineProperty(RecitalDataset.prototype, 'splice',  {
 
 		if (typeof replacedBy === 'number') {
 			if (replacedBy > index) {
-				c2 = this.trackedModule.modules[replacedBy].remove();
-				c1 = this.trackedModule.modules[index].remove();
-				this.trackedModule.registerModule(c2, null, index + this.childrenOffset);
+				c2 = this.trackedModule._children[replacedBy].remove();
+				c1 = this.trackedModule._children[index].remove();
+				this.trackedModule.addChildAt(c2, index);
 			}
 			else {
-				c1 = this.trackedModule.modules[index].remove();
-				c2 = this.trackedModule.modules[replacedBy].remove();
-				this.trackedModule.registerModule(c2, null, index - 1 + this.childrenOffset);
+				c1 = this.trackedModule._children[index].remove();
+				c2 = this.trackedModule._children[replacedBy].remove();
+				this.trackedModule.addChildAt(c2, index - 1);
 			}
 
 			mBackup = Array.prototype.splice.call(this, index, 1, this[replacedBy])[0];
@@ -180,13 +182,13 @@ Object.defineProperty(RecitalDataset.prototype, 'splice',  {
 			return [mBackup, c1];
 		}
 		else if (typeof replacedBy === 'undefined' || replacedBy === null) {
-			c1 = this.trackedModule.modules[index].remove();
+			c1 = this.trackedModule._children[index].remove();
 			mBackup = Array.prototype.splice.call(this, index, 1)[0];
 			this.updateDatasetState();
 			return [mBackup, c1];
 		}
 		else if (Array.isArray(replacedBy)) {
-			this.trackedModule.registerModule(replacedBy[1], null, index + this.childrenOffset);
+			this.trackedModule.addChildAt(replacedBy[1], index);
 			Array.prototype.splice.call(this, index, 1, replacedBy[0]);
 			this.updateDatasetState();
 			return true;
@@ -196,10 +198,10 @@ Object.defineProperty(RecitalDataset.prototype, 'splice',  {
 
 Object.defineProperty(RecitalDataset.prototype, 'spliceOnProp',  {
 	value : function(prop, value) {
-		if (this.trackedModule.modules.length) {
+		if (this.trackedModule._children.length) {
 			var module;
-			for (let i = this.trackedModule.modules.length - 1; i >= 0; i--) {
-				module = this.trackedModule.modules[i];
+			for (let i = this.trackedModule._children.length - 1; i >= 0; i--) {
+				module = this.trackedModule._children[i];
 				if (module.streams[prop] && module.streams[prop].value === value) {
 					module.remove();
 					Array.prototype.splice.call(this, i, 1);
@@ -214,10 +216,10 @@ Object.defineProperty(RecitalDataset.prototype, 'spliceOnProp',  {
 
 Object.defineProperty(RecitalDataset.prototype, 'spliceOnPropInverse',  {
 	value : function(prop, value) {
-		if (this.trackedModule.modules.length) {
+		if (this.trackedModule._children.length) {
 			var module;
-			for (let i = this.trackedModule.modules.length - 1; i >= 0; i--) {
-				module = this.trackedModule.modules[i];
+			for (let i = this.trackedModule._children.length - 1; i >= 0; i--) {
+				module = this.trackedModule._children[i];
 				if (module.streams[prop] && module.streams[prop].value !== value) {
 					module.remove();
 					Array.prototype.splice.call(this, i, 1);
@@ -232,7 +234,7 @@ Object.defineProperty(RecitalDataset.prototype, 'spliceOnPropInverse',  {
 
 Object.defineProperty(RecitalDataset.prototype, 'resetLength',  {
 	value : function(ComponentGroupObj) {
-		if (this.trackedModule.clearAllModules())
+		if (this.trackedModule.removeAllChildren())
 			Array.prototype.splice.call(this, 0, this.length);
 	}
 });
