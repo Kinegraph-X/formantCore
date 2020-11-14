@@ -419,6 +419,7 @@ ComponentWithView.prototype.onAddChild = function(child, atIndex) {
 var ComponentWithHooks = function(definition, parentView, parent, isChildOfRoot) {
 	ComponentWithView.call(this, definition, parentView, parent, isChildOfRoot);
 	this.objectType = 'ComponentWithHooks';
+
 	this.viewExtend(definition);
 }
 /**

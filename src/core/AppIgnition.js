@@ -7,24 +7,36 @@ var ElementCreator = require('src/UI/generics/GenericElementConstructor');
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Component = require('src/core/Component');
-var ComposedComponent = require('src/core/ComposedComponent');
+//var ComposedComponent = require('src/core/ComposedComponent');
+//var componentTypes = ComposedComponent.componentTypes;
 
 console.log(TypeManager.caches);
 //console.log(TypeManager.dataStoreRegister);
 
 
 
-
-var App = function(definition, containerIdOrContainerNode) {
-	var mainComponent = new ComposedComponent(definition, containerIdOrContainerNode); 
-	this.decorateComponentsThroughDefinitionsCache();
-	document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.hostElem);
-	return mainComponent;
+/*
+ * @constructor IgnitionFromDef : this is the abstract class (TODO: make that real)
+ * TODO: implement subclasses : IgnitionToComposed (alias: Ignition), IgnitionToExtensible
+ */
+var IgnitionFromDef = function(definition, containerIdOrContainerNode) {
+	var ComposedComponent = require('src/core/ComposedComponent');
+	var componentTypes = ComposedComponent.componentTypes;
+	
+	var type = definition.getHostDef().getType() || (definition.getGroupHostDef() && definition.getGroupHostDef().getType());
+	if (type in componentTypes) {
+		var mainComponent = new componentTypes[type](definition, containerIdOrContainerNode);
+		this.decorateComponentsThroughDefinitionsCache();
+		document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.hostElem);
+		return mainComponent;
+	}
+	else
+		console.error('IgnitionFromDef : unknown component type found in the definition : type is ' + type);
 }
-App.prototype = {};
-App.prototype.objectType = 'App'; 
+IgnitionFromDef.prototype = {};
+IgnitionFromDef.prototype.objectType = 'IgnitionFromDef'; 
 
-App.prototype.decorateComponentsThroughDefinitionsCache = function(listDef) {
+IgnitionFromDef.prototype.decorateComponentsThroughDefinitionsCache = function(listDef) {
 	
 	// instanciate DOM objects through cloning : DOM attributes are always static
 	// 					=> iterate on the "views" register
@@ -51,7 +63,7 @@ App.prototype.decorateComponentsThroughDefinitionsCache = function(listDef) {
  * INITIALIZATION CHAPTER : instanciate DOM
  * 
  */
-App.prototype.instanciateDOM = function() {
+IgnitionFromDef.prototype.instanciateDOM = function() {
 	var views = TypeManager.viewsRegister,
 		nodes = TypeManager.nodesRegister.cache,
 		attributesCache = TypeManager.caches.attributes.cache,
@@ -65,7 +77,10 @@ App.prototype.instanciateDOM = function() {
 		else {
 			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
 			attributes.forEach(function(attrObject) {
-				nodes[view._defUID].cloneMother[attrObject.getName()] = attrObject.getValue();
+				if (attrObject.getName().indexOf('aria') === 0)
+					nodes[view._defUID].cloneMother.setAria(attrObject.getName(), attrObject.getValue());
+				else
+					nodes[view._defUID].cloneMother[attrObject.getName()] = attrObject.getValue();
 			});
 			view.hostElem = nodes[view._defUID].cloneMother.cloneNode(true);
 		}
@@ -93,7 +108,7 @@ App.prototype.instanciateDOM = function() {
  * INITIALIZATION CHAPTER : instanciate Streams
  * 
  */
-App.prototype.instanciateStreams = function() {
+IgnitionFromDef.prototype.instanciateStreams = function() {
 	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
 	var streams = TypeManager.caches.streams.cache;
 	for (let defUID in typedComponentRegister) {
@@ -113,7 +128,7 @@ App.prototype.instanciateStreams = function() {
  * INITIALIZATION CHAPTER : handle reactivity & events
  * 
  */
-App.prototype.handleReactivityAndEvents = function() {
+IgnitionFromDef.prototype.handleReactivityAndEvents = function() {
 	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
 	var reactivityQueries, bindingHandler, component;
 	
@@ -171,14 +186,14 @@ App.prototype.handleReactivityAndEvents = function() {
  * INITIALIZATION CHAPTER : lateEventBindingAndBidirectionalReflection
  * 
  */
-App.prototype.lateEventBindingAndBidirectionalReflection = function(listDef) {
+IgnitionFromDef.prototype.lateEventBindingAndBidirectionalReflection = function(listDef) {
 	if (!listDef)
 		this.streamsBidirectionalReflectionBlank();
 	else
 		this.streamsBidirectionalReflectionFilled(listDef);
 	
 }
-App.prototype.streamsBidirectionalReflectionBlank = function() {
+IgnitionFromDef.prototype.streamsBidirectionalReflectionBlank = function() {
 	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
 
 	for (let defUID in typedComponentRegister) {
@@ -186,15 +201,17 @@ App.prototype.streamsBidirectionalReflectionBlank = function() {
 		typedComponentRegister[defUID].forEach(function(component) {
 			if (!component.view)
 				return;
-			
-			if (component instanceof Component.ComponentWithHooks)
+			console.log(component);
+			if (component instanceof Component.ComponentWithHooks) {
+				console.log(component);
 				component.registerEvents();
+			}
 
 			this.defineStreamsBidirectionalReflection(defUID, component);
 		}, this);
 	}
 }
-App.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
+IgnitionFromDef.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
 
 	for (let defUID in typedComponentRegister) {
@@ -219,7 +236,7 @@ App.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 		}, this);
 	}
 }
-App.prototype.defineStreamsBidirectionalReflection = function(defUID, component) {
+IgnitionFromDef.prototype.defineStreamsBidirectionalReflection = function(defUID, component) {
 	// DOM objects extension : we need 2 custom props to offer a rich "reactive" experience
 	// The view's "hosts" gains access here to the streams of the component.
 	// It's needed if we want to allow access to the reactivity mechanisms from outside of the framework :
@@ -239,7 +256,7 @@ App.prototype.defineStreamsBidirectionalReflection = function(defUID, component)
 		this.reflectViewOnAStateStream(component, stateObj);
 	}, this);
 }
-App.prototype.reflectViewOnAStateStream = function(component, stateObj) {
+IgnitionFromDef.prototype.reflectViewOnAStateStream = function(component, stateObj) {
 	// assign reflectedObj to streams
 	component.streams[stateObj.getName()].reflectedObj = component.view.hostElem;
 	
@@ -250,7 +267,7 @@ App.prototype.reflectViewOnAStateStream = function(component, stateObj) {
 	if (!component.view.isCustomElem)
 		component.streams[stateObj.getName()].value = stateObj.getValue();
 }
-App.prototype.handleReflectionOnModel = function(reflectOnModel, augmentModel, item) {
+IgnitionFromDef.prototype.handleReflectionOnModel = function(reflectOnModel, augmentModel, item) {
 	// states and props may be automatically reflected on the component and so here on the host of the (Composed)Component (depending on the fact they're declared on the def), but not on the model : define that here
 	//		update the model (assigning a getter & setter) in order to get the component's props reflected on the model
 	// else
@@ -280,10 +297,64 @@ App.prototype.handleReflectionOnModel = function(reflectOnModel, augmentModel, i
 }
 
 
-App.prototype.cleanRegisters = function() {
+IgnitionFromDef.prototype.cleanRegisters = function() {
 	TypeManager.viewsRegister.length = 0;
 	TypeManager.typedHostsRegister.reset();	
 }
+
+
+
+
+
+
+
+
+/**
+ * @constructor IgnitionToComposed
+ */
+var IgnitionToComposed = function(definition, containerIdOrContainerNode) {
+	
+	var ComposedComponent = require('src/core/ComposedComponent');
+	
+	var mainComponent = new ComposedComponent(definition, containerIdOrContainerNode); 
+	this.decorateComponentsThroughDefinitionsCache();
+	document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.hostElem);
+	return mainComponent;
+}
+IgnitionToComposed.prototype = Object.create(IgnitionFromDef.prototype);
+IgnitionToComposed.prototype.objectType = 'IgnitionToComposed'; 
+
+
+
+/**
+ * @constructor IgnitionToExtensible
+ */
+var IgnitionToExtensible = function(definition, containerIdOrContainerNode) {
+	
+	var ComposedComponent = require('src/core/ComposedComponent');
+	var componentTypes = ComposedComponent.componentTypes;
+	
+	var mainComponent = new componentTypes.SinglePassExtensibleComposedComponent(definition, containerIdOrContainerNode); 
+	this.decorateComponentsThroughDefinitionsCache();
+	document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.hostElem);
+	return mainComponent;
+}
+IgnitionToExtensible.prototype = Object.create(IgnitionFromDef.prototype);
+IgnitionToExtensible.prototype.objectType = 'IgnitionToExtensible'; 
+
+
+/**
+ * @constructor DelayedInit
+ */
+var DelayedInit = function(containerIdOrContainerNode, componentsArray) {
+	this.decorateComponentsThroughDefinitionsCache();
+	componentsArray.forEach(function(component) {
+		document.querySelector('#' + containerIdOrContainerNode).appendChild(component.view.hostElem);
+	});
+}
+DelayedInit.prototype = Object.create(IgnitionFromDef.prototype);
+DelayedInit.prototype.objectType = 'DelayedInit';
+
 
 
 
@@ -297,7 +368,7 @@ App.prototype.cleanRegisters = function() {
 var List = function(definition, parent) {
 	this.create(definition, parent);
 }
-List.prototype = Object.create(App.prototype);
+List.prototype = Object.create(IgnitionFromDef.prototype);
 List.prototype.objectType = 'List'; 
 
 List.prototype.create = function(definition, parent) {
@@ -310,6 +381,10 @@ List.prototype.create = function(definition, parent) {
 
 
 module.exports = {
-		Ignition : App,
-		List : List
+		Ignition : IgnitionToComposed,
+		IgnitionFromDef : IgnitionFromDef,
+		IgnitionToExtensible : IgnitionToExtensible,
+		DelayedInit : DelayedInit,
+		List : List,
+		decorateComponentsThroughDefinitionsCache : IgnitionFromDef.prototype.decorateComponentsThroughDefinitionsCache
 }

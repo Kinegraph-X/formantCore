@@ -25,8 +25,9 @@ var ComposedComponent = function(definition, parentView) {
 //	console.log(definition);
 	var shouldExtend = false;
 	
-	// Hack the def now, for the view to be instanciated with the correct context (knowing how many subSections we have is crucial when connecting children)
-	// This prevents us from instanciating a Component with subViews as the "host" of a composedComponent : No matter, that case wouldn't make much sense, though.
+	// Let's use an elementary and perf efficient hack right here, at the beginning, and abuse the ascendant component with a symbolic def,
+	// for the view to be instanciated with the correct context (knowing how many subSections we have is crucial when connecting children)
+	// This prevents us from instanciating a Component with subViews as the "host" of a composedComponent : No matter at all, cause that case wouldn't make much sense, though.
 	// (It's hard to implement that in the Type factory, as the "composed" definition, with its 2 levels of depth on the "host", is an exception)
 	// (That shouldn't be a too big issue, seen that building the hierarchy comes before the intensive processing : 
 	// 	the def may be mutated here, given the fact that we pay a strong attention on it not being changed later)
@@ -34,22 +35,26 @@ var ComposedComponent = function(definition, parentView) {
 		definition.getHostDef().subSections.push(null);
 	});
 	
-	// Another Hack to integrate the "host" of the def in that "composedComponent" (which is pretty "unfruity" : it has very few methods defining its behavior) :
+	if (!TypeManager.definitionsCacheRegister.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
+		shouldExtend = true;
+	
+	// Another elementary Hack to integrate parts of the "host" of the def in that "composedComponent" (which is pretty "unfruity", not having any "applicative" behavior) :
 	// assuming we don't want to instanciate "in da space" (i.e. "in that present ctor") a whole Component, and have to reflect all of its props on "self",
 	// we call the "superior" ComponentWithView ctor on the def of solely the host (5 lines below)
 	// BUT beforehand, we reflect on "self" the "createDefaultDef" method defined on the prototype of the host, then it shall be called by the AbstractComponent ctor
-	// (from which we inherit, though : the "composedComponent" is not so "pretty unfruity").
+	// (from which we inherit).
 	// Exception, (shall) obviously (be) : if there is -no- createDefaultDef method on that Component which whant to be "host" on the throne of the "host"...
-	if (definition.getGroupHostDef().getType() && componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef)
+	//
+	// -> See the SinglePassExtensibleComposedComponent ctor for a wider extension methodology
+	if (definition.getGroupHostDef().getType() && componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef) {
 		this.createDefaultDef = componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
-	
-	if (!TypeManager.definitionsCacheRegister.getItem(definition.getGroupHostDef().UID)) // this shall be always true after having called the superior ctor (although def is "explicit+default" without "special")
-		shouldExtend = true;
+	}
+
 	
 	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, this);  // feed with host def : "this" shall be assigned the _defUID of the "hostDef"
 	this.objectType = 'ComposedComponent';
 	
-	// extend last, so the event bubbling occurs always after the "local" callbacks
+	// extend last, so the event bubbling occurs always after the "explicitly defined in the host's def" callbacks
 	if (shouldExtend)
 		this.extendDefinition(definition);
 	
@@ -57,14 +62,12 @@ var ComposedComponent = function(definition, parentView) {
 	this.instanciateMembers(definition);
 	this.instanciateLists(definition);
 	
-	// But there will be a mess when binding streams from childModules to subViews : hopefully the "stores" would help us...
-	
 }
 ComposedComponent.prototype = Object.create(Components.ComponentWithView.prototype);
 ComposedComponent.prototype.objectType = 'ComposedComponent';
 
 ComposedComponent.prototype.extendDefinition = function(definition) {
-	// Special case : "update" events may bubble from ComposedComponent to ComposedComponent
+	// Special case : events of type "update" shall have the ability to bubble from ComposedComponent to ComposedComponent
 	definition.getGroupHostDef().subscribeOnChild.push(
 		(new TypeManager.EventSubscriptionModel({
 				on : 'update',
@@ -84,7 +87,7 @@ ComposedComponent.prototype.instanciateSubSections = function(definition) {
 		if (type in componentTypes) {
 			component = new componentTypes[type](subSectionDef, this.view, this, 'isChildOfRoot');
 			component._parent = this;
-			// usefull for appending memberViews on subViews without having to traverse the components hierarchy
+			// mandatory, as we need to append memberViews on subViews without accessing the component's scope
 			this.view.subViewsHolder.subViews.push(component.view);
 		}
 		else if (subSectionDef.getHostDef().nodeName)
@@ -96,7 +99,7 @@ ComposedComponent.prototype.instanciateMembers = function(definition) {
 	var type;
 	definition.members.forEach(function(memberDef) {
 		type = memberDef.getHostDef().getType() || (memberDef.getGroupHostDef() && memberDef.getGroupHostDef().getType());
-		if (type in componentTypes)		//  && type !== 'ComponentList'
+		if (type in componentTypes)
 			this.pushChild(new componentTypes[type](memberDef, this.view, this));
 		else if (memberDef.getHostDef().nodeName)
 			this.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(memberDef, this.view, this), this.view);
@@ -145,7 +148,41 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 	
 //	console.log(this);
 }
-ComposedComponent.prototype.ComponentList = ComponentList;
+ComposedComponent.prototype.ComponentList = ComponentList;		// used in AppIgnition.List (as a "life-saving" safety, we wan't to avoid declaring the ComponentList as a "known" Component)
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * @constructor SinglePassExtensibleComposedComponent
+ */
+var SinglePassExtensibleComposedComponent = function(definition, parentView) {
+	ComposedComponent.call(this, definition, parentView);
+//	console.log(definition, definition.getGroupHostDef().getType(), componentTypes[definition.getGroupHostDef().getType()]);
+	
+	if (definition.getGroupHostDef().getType() && componentTypes[definition.getGroupHostDef().getType()]) {
+		this.mergeOwnProperties(this.__proto__, componentTypes[definition.getGroupHostDef().getType()].prototype);
+		// -NOT SO- UGLY HACK to merge the inherited prototype : TODO: maybe find a more elegant call for that mixin ...
+		// 		=> mergeOwnProperties() is able to do that : explore and try to limit the depth of the merging pass...
+		this.mergeOwnProperties(this.__proto__, componentTypes[definition.getGroupHostDef().getType()].prototype.__proto__);
+		componentTypes[definition.getGroupHostDef().getType()].call(this, definition, parentView);
+	}
+}
+SinglePassExtensibleComposedComponent.prototype = Object.create(ComposedComponent.prototype);
+SinglePassExtensibleComposedComponent.prototype.objectType = 'SinglePassExtensibleComposedComponent';
+
+
+
+
+
+
 
 
 
@@ -157,10 +194,12 @@ ComposedComponent.prototype.ComponentList = ComponentList;
 
 
 componentTypes.ComposedComponent = ComposedComponent;
+componentTypes.SinglePassExtensibleComposedComponent = SinglePassExtensibleComposedComponent;
 componentTypes.ComponentList = ComponentList;
 componentTypes.ComponentWithView = Components.ComponentWithView;
+componentTypes.ComponentWithHooks = ComponentWithHooks;
 componentTypes.VisibleStateComponent = VisibleStateComponent;
-componentTypes.LazySlottedComponent = LazySlottedComponent;
 
 
+ComposedComponent.componentTypes = componentTypes;
 module.exports = ComposedComponent;
