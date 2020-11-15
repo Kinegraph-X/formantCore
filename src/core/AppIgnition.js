@@ -201,11 +201,9 @@ IgnitionFromDef.prototype.streamsBidirectionalReflectionBlank = function() {
 		typedComponentRegister[defUID].forEach(function(component) {
 			if (!component.view)
 				return;
-			console.log(component);
-			if (component instanceof Component.ComponentWithHooks) {
-				console.log(component);
+			
+			if (component instanceof Component.ComponentWithHooks)
 				component.registerEvents();
-			}
 
 			this.defineStreamsBidirectionalReflection(defUID, component);
 		}, this);

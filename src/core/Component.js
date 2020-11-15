@@ -590,6 +590,7 @@ ComponentStrokeAware.prototype.registerKeyboardEvents = function(e) {
 
 
 module.exports = {
+	ExtensibleObject : ExtensibleObject,
 	AbstractComponent : AbstractComponent,
 	HierarchicalObject : HierarchicalObject,
 	ComponentWithView : ComponentWithView,

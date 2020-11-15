@@ -6,7 +6,6 @@ var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
 var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
-var LazySlottedComponent = require('src/UI/Generics/LazySlottedComponent');
 
 var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, {UIpackage : '%%UIpackage%%'}).packageList;
 Object.assign(componentTypes, require(componentTypes.misc));
@@ -164,19 +163,28 @@ ComposedComponent.prototype.ComponentList = ComponentList;		// used in AppIgniti
  * @constructor SinglePassExtensibleComposedComponent
  */
 var SinglePassExtensibleComposedComponent = function(definition, parentView) {
-	ComposedComponent.call(this, definition, parentView);
 //	console.log(definition, definition.getGroupHostDef().getType(), componentTypes[definition.getGroupHostDef().getType()]);
 	
 	if (definition.getGroupHostDef().getType() && componentTypes[definition.getGroupHostDef().getType()]) {
-		this.mergeOwnProperties(this.__proto__, componentTypes[definition.getGroupHostDef().getType()].prototype);
+		
 		// -NOT SO- UGLY HACK to merge the inherited prototype : TODO: maybe find a more elegant call for that mixin ...
 		// 		=> mergeOwnProperties() is able to do that : explore and try to limit the depth of the merging pass...
-		this.mergeOwnProperties(this.__proto__, componentTypes[definition.getGroupHostDef().getType()].prototype.__proto__);
-		componentTypes[definition.getGroupHostDef().getType()].call(this, definition, parentView);
+		this.mergeOwnProperties(this.__proto__, componentTypes[definition.getGroupHostDef().getType()].prototype);
 	}
+	
+//	ComposedComponent.call(this, definition, parentView);
+	
+	// This is for now the only method called by the ComponentWithHooks ctor (the type from which we inherit) :
+	// 		=> bypass the cascade of ctors by calling just this one
+	// (the cascade already happened in the ComposedComponent ctor)
+	this.viewExtend(definition);
+	
+	// And at last, something can happen in the ctor of the type given in the definition
+	componentTypes[definition.getGroupHostDef().getType()].call(this, definition, parentView);
 }
-SinglePassExtensibleComposedComponent.prototype = Object.create(ComposedComponent.prototype);
-SinglePassExtensibleComposedComponent.prototype.objectType = 'SinglePassExtensibleComposedComponent';
+//SinglePassExtensibleComposedComponent.prototype = Object.create(ComposedComponent.prototype);
+//Object.assign(SinglePassExtensibleComposedComponent.prototype, ComposedComponent.prototype);
+//SinglePassExtensibleComposedComponent.prototype.objectType = 'SinglePassExtensibleComposedComponent';
 
 
 
@@ -197,7 +205,7 @@ componentTypes.ComposedComponent = ComposedComponent;
 componentTypes.SinglePassExtensibleComposedComponent = SinglePassExtensibleComposedComponent;
 componentTypes.ComponentList = ComponentList;
 componentTypes.ComponentWithView = Components.ComponentWithView;
-componentTypes.ComponentWithHooks = ComponentWithHooks;
+componentTypes.ComponentWithHooks = Components.ComponentWithHooks;
 componentTypes.VisibleStateComponent = VisibleStateComponent;
 
 
