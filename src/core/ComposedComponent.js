@@ -1,5 +1,8 @@
 /**
  * @constructor ComposedComponent
+ * 
+ * This ctor is the main effector of the AppIgnition super-class
+ * 	=> tight coupling = mandatory static inclusion in core (AppIgnition requires ComposedComponent).
  */
 
 var TypeManager = require('src/core/TypeManager');

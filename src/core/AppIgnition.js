@@ -375,7 +375,8 @@ DelayedDecoration.prototype.objectType = 'DelayedDecoration';
 
 /**
  * @constructor List
- * This ctor is mainly used by the ReactiveDataset
+ * This ctor is the effector of the ReactiveDataset
+ * 	=> tight coupling = mandatory static inclusion in core (Dataset requires App).
  */
 var List = function(definition, parent) {
 	this.create(definition, parent);

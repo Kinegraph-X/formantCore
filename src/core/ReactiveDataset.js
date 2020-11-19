@@ -1,5 +1,8 @@
 /**
  * @constructor RecitalDataset
+ * 
+ * => tight coupling with AppIgnition = mandatory static inclusion in core (Dataset requires App).
+ * 		App.List is coupled with [Dataset.push(), pushApply(), splice(), & more]
  */
 
 var TypeManager = require('src/core/TypeManager');
