@@ -2,17 +2,14 @@
  * @module errorHandler
  */
 
-var Factory = require('src/core/Factory');
-var constants = require('src/appLauncher/appLauncher');
-
 
 	var Logger = function() {
-		Factory.CoreModule.call(this);
+//		Factory.CoreModule.call(this);
 		this.objectType = 'Logger';
 		
 		this._currentlyCallingObjectName;
 	}
-	Logger.prototype = Object.create(Factory.CoreModule.prototype);
+	Logger.prototype = {};//Object.create(Factory.CoreModule.prototype);
 	Logger.prototype.objectType = 'Logger';
 	Logger.prototype.constructor = Logger;
 
@@ -91,10 +88,6 @@ var constants = require('src/appLauncher/appLauncher');
 			OK : 'OK'
 	}
 	
-var classConstructor = function() {
-	return new Logger();
-}
+var logger =  new Logger();
 
-classConstructor.__factory_name = 'logger';
-var factory = Factory.Maker.getSingletonFactory(classConstructor);
-module.exports = factory;
+module.exports = logger;
