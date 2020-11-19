@@ -6,6 +6,7 @@ var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
 var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
+var LazySlottedComponent = require('src/UI/Generics/LazySlottedComponent');
 
 var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, {UIpackage : '%%UIpackage%%'}).packageList;
 Object.assign(componentTypes, require(componentTypes.misc));
@@ -22,6 +23,7 @@ for (let type in componentTypes) {
  */
 var ComposedComponent = function(definition, parentView) {
 //	console.log(definition);
+	this._firstListUIDSeen = null;
 	var shouldExtend = false;
 	
 	// Let's use an elementary and perf efficient hack right here, at the beginning, and abuse the ascendant component with a symbolic def,
@@ -34,7 +36,7 @@ var ComposedComponent = function(definition, parentView) {
 		definition.getHostDef().subSections.push(null);
 	});
 	
-	if (!TypeManager.definitionsCacheRegister.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
+	if (!TypeManager.hostsDefinitionsCacheRegister.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
 		shouldExtend = true;
 	
 	// Another elementary Hack to integrate parts of the "host" of the def in that "composedComponent" (which is pretty "unfruity", not having any "applicative" behavior) :
@@ -77,6 +79,7 @@ ComposedComponent.prototype.extendDefinition = function(definition) {
 			})
 		)
 	);
+//	TypeManager.caches['subscribeOnChild'].setItem(this._defUID, definition.getGroupHostDef().subscribeOnChild);
 }
 
 ComposedComponent.prototype.instanciateSubSections = function(definition) {
@@ -98,10 +101,12 @@ ComposedComponent.prototype.instanciateMembers = function(definition) {
 	var type;
 	definition.members.forEach(function(memberDef) {
 		type = memberDef.getHostDef().getType() || (memberDef.getGroupHostDef() && memberDef.getGroupHostDef().getType());
-		if (type in componentTypes)
+		if (memberDef.getGroupHostDef())
+			this.pushChild(new ComposedComponent(memberDef, this.view, this));
+		else if (type in componentTypes)
 			this.pushChild(new componentTypes[type](memberDef, this.view, this));
 		else if (memberDef.getHostDef().nodeName)
-			this.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(memberDef, this.view, this), this.view);
+			this.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(memberDef, this.view, this));
 	}, this);
 };
 
@@ -110,6 +115,11 @@ ComposedComponent.prototype.instanciateLists = function(definition) {
 		new ComponentList(listDef, this.view, this);
 	}, this);
 };
+
+
+ComposedComponent.prototype.retrieveListDefinition = function() {
+	return TypeManager.listsDefinitionsCacheRegister.getItem(this._firstListUIDSeen);
+}
 
 
 
@@ -126,23 +136,33 @@ var ComponentList = function(definition, parentView, parent) {
 	Components.HierarchicalObject.call(this);
 	this.objectType = 'ComponentList';
 	this._parent = parent;
+	
 	this.iterateOnModel(definition, parentView);
 }
 ComponentList.prototype = Object.create(Components.HierarchicalObject.prototype);
 ComponentList.prototype.objectType = 'ComponentList';
 
 ComponentList.prototype.iterateOnModel = function(definition, parentView) {
+	if (definition.getHostDef().each.length) {
+		TypeManager.listsDefinitionsCacheRegister.setItem(definition.getHostDef().UID, definition.getHostDef());
+		this._parent._firstListUIDSeen = definition.getHostDef().UID;
+	}
+	else
+		return;
 	
-	var def = definition.getHostDef().template, composedComponent;
+	var templateDef = definition.getHostDef().template, composedComponent, type;
 
 	definition.getHostDef().each.forEach(function(item, key) {
-
-//		if (definition.getHostDef().template.getGroupHostDef())
-			this._parent.pushChild((composedComponent = new ComposedComponent(def, this._parent.view)), def);
-//		else
-//			this._parent.pushChild((composedComponent = new ComposedComponent.prototype.types.GenericComponent(def, this._parent.view)), def);
-		
-		TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
+		if (templateDef.getGroupHostDef()) {
+			this._parent.pushChild((composedComponent = new ComposedComponent(templateDef, this._parent.view)));
+			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
+		}
+		else if ((type = templateDef.getHostDef().getType())) {
+			this._parent.pushChild((composedComponent = new componentTypes[type](templateDef, this._parent.view)));
+			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
+		}
+		else
+			this._parent.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(templateDef, this._parent.view));
 	}, this);
 	
 //	console.log(this);
@@ -207,6 +227,22 @@ componentTypes.ComponentList = ComponentList;
 componentTypes.ComponentWithView = Components.ComponentWithView;
 componentTypes.ComponentWithHooks = Components.ComponentWithHooks;
 componentTypes.VisibleStateComponent = VisibleStateComponent;
+componentTypes.LazySlottedComponent = LazySlottedComponent;
+
+// Dependancy Injection
+componentTypes.LazySlottedComponent.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, componentTypes.LazySlottedComponent.prototype, ComposedComponent.prototype);
+componentTypes.LazySlottedComponent.prototype.ComposedComponent = ComposedComponent;
+componentTypes.LazySlottedComponent.prototype.objectType = 'LazySlottedComponent';
+componentTypes.LazySlottedComponent.prototype._implements = ['ComposedComponent'];
+
+componentTypes.TabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes.LazySlottedComponent.prototype), componentTypes.TabPanel.prototype);
+componentTypes.TabPanel.prototype.objectType = 'TabPanel';
+componentTypes.TabPanel.prototype._implements = ['ComposedComponent', 'LazySlottedComponent'];
+
+//componentTypes.LazySlottedComponent.prototype.ComposedComponent = ComposedComponent;
+//console.log(Object.create(componentTypes.LazySlottedComponent.prototype));
+//console.log(componentTypes.TabPanel.prototype);
+
 
 
 ComposedComponent.componentTypes = componentTypes;

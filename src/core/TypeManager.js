@@ -1,7 +1,7 @@
 /**
  * @Singleton : Core Definitions Ctor
  */
-var appConstants = require('src/appLauncher/appLauncher');
+//var appConstants = require('src/appLauncher/appLauncher');
 var UIDGenerator = require('src/core/UIDGenerator');
 var PropertyCache = require('src/core/PropertyCache');
 var CachedTypes = require('src/core/CachedTypes');
@@ -375,12 +375,11 @@ Object.defineProperty(SingleLevelComponentDefModel.prototype, 'objectType', {val
  */
 var HierarchicalComponentDefModel = function(obj, isSpecial) {
 
-//		this.type = null;
-		this.host = null;							// Object SingleLevelComponentDef
-		this.subSections = [];						// Array [SingleLevelComponentDef]
-		this.members = [];							// Array [SingleLevelComponentDef]
-		this.lists = [];							// Array [ComponentListDef]
-		this.options = null;						// Object : plain
+	this.host = null;							// Object SingleLevelComponentDef
+	this.subSections = [];						// Array [SingleLevelComponentDef]
+	this.members = [];							// Array [SingleLevelComponentDef]
+	this.lists = [];							// Array [ComponentListDef]
+	this.options = null;						// Object : plain
 
 	ValueObject.call(this, obj, isSpecial);
 }
@@ -396,13 +395,14 @@ Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {va
  */
 var ComponentListDefModel = function(obj, isSpecial) {
 
-		this.type = 'ComponentList';				// String
-		this.reflectOnModel = true;					// Boolean
-		this.augmentModel = false;					// Boolean
-		this.each = [];							// Array [unknown_type] (model to iterate on)
-		this.item = null;							// Object (an item of the model)
-		this.template = null;						// Object HierarchicalComponentDef
-		this.section = null;						// Number
+	this.UID = typeof obj.UID === 'string' ? obj.UID : UIDGenerator.newUID().toString();
+	this.type = 'ComponentList';				// String
+	this.reflectOnModel = true;					// Boolean
+	this.augmentModel = false;					// Boolean
+	this.each = [];							// Array [unknown_type] (model to iterate on)
+	this.item = null;							// Object (an item of the model)
+	this.template = null;						// Object HierarchicalComponentDef
+	this.section = null;						// Number
 
 	ValueObject.call(this, obj, isSpecial);
 }
@@ -601,7 +601,8 @@ var caches = {};
 	});
 })();
 
-var definitionsCacheRegister = new PropertyCache('definitionsCacheRegister');
+var hostsDefinitionsCacheRegister = new PropertyCache('hostsDefinitionsCacheRegister');
+var listsDefinitionsCacheRegister = new PropertyCache('listsDefinitionsCacheRegister');
 var hostsRegister = [];
 var typedHostsRegister = new PropertyCache('typedHostsRegister');
 
@@ -620,7 +621,8 @@ var viewsRegister = [];
  */
 var dataStoreRegister = new PropertyCache('dataStoreRegister');
 
-console.log(definitionsCacheRegister);
+console.log(hostsDefinitionsCacheRegister);
+console.log(listsDefinitionsCacheRegister);
 
 
 
@@ -638,7 +640,8 @@ console.log(definitionsCacheRegister);
  * @aliases
  */
 Object.assign(exportedObjects, {
-	definitionsCacheRegister : definitionsCacheRegister,			// Object PropertyCache
+	hostsDefinitionsCacheRegister : hostsDefinitionsCacheRegister,	// Object PropertyCache
+	listsDefinitionsCacheRegister : listsDefinitionsCacheRegister,	// Object PropertyCache
 	typedHostsRegister : typedHostsRegister,						// Object PropertyCache {defUID : [Components]}
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegister : nodesRegister,

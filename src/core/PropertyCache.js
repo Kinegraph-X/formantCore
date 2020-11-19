@@ -6,6 +6,7 @@
 var objectCache = function(name) {
 	this.name = name;
 	this.cache = {};
+	this.firstID = null;
 }
 
 objectCache.prototype.getItem = function(mainID, composedWithID) {
@@ -24,6 +25,8 @@ objectCache.prototype.setItem = function(mainID, mainValue, composedWithID, comp
 
 objectCache.prototype.newItem = function(UID, value) {
 	this.cache[UID] = value;
+	if (this.firstID === null)
+		this.firstID = UID;
 	return value;
 }
 

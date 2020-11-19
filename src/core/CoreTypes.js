@@ -204,7 +204,6 @@ EventEmitter.prototype.trigger = function(eventType, payload, eventIdOrBubble, e
  */
 
 var Command = function(action, canAct, undo) {
-	CoreModule.call(this);
 
 	this.objectType = 'Command ' + action.name;
 	this.canActQuery = false;
@@ -712,14 +711,21 @@ ComponentView.prototype.shallChildrenHaveOffset = function(definition) {
 
 /**
  * @abstract
+ */
+ComponentView.prototype.getRoot = function() {
+	return this.rootElem || this.hostElem;
+}
+
+/**
+ * @abstract
  * 
  */
 Object.defineProperty(ComponentView.prototype, 'value', { 		// ComponentWithReactiveText.prototype.populateSelf makes good use of that
 	set : function(value) {
-		if (this.nodeName === 'INPUT')
+		if (this.nodeName.toUpperCase() === 'INPUT')
 			this.hostElem.value = value;
 		else
-			this.hostElem.textContent = value;
+			this.hostElem.innerHTML = value;
 	}
 });
 

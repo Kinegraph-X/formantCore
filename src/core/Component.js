@@ -104,6 +104,18 @@ HierarchicalObject.prototype.generateKeys = function(atIndex) {
 }
 
 /**
+ * @param {number} atIndex : the first _key we need to invalidate
+ */
+HierarchicalObject.prototype.getSelfDepth = function() {
+	var depth = 0, currentLevel = this;
+	while (currentLevel._parent) {
+		currentLevel = currentLevel._parent;
+		depth++;
+	}
+	return depth;
+}
+
+/**
  * @param {array} subscriptionType : the type among the TypeManager.eventQueries helper-array
  * @param {array} eventQueries : the queries of the type "subscriptionType" that the component has recevied from the def
  * @param {Component} parentComponent : the parent of the component (optional : used only when subscribeOnParent)
@@ -126,6 +138,20 @@ HierarchicalObject.prototype.handleEventSubscriptions = function(subscriptionTyp
 		}, candidateModule);
 }
 
+/**
+ * Specialization on the previous one
+ * @param {array} eventQueries : the queries of the type "subscribeOnChild" that the sync-ed Dataset passes from the def of its trackedComponent
+ */
+HierarchicalObject.prototype.handleEventSubsOnChildrenAt = function(eventQueries, atIndex) {
+	this._children.forEach(function(child, key) {
+		if (key >= atIndex) {
+			eventQueries.forEach(function(subscription, key) {
+				subscription.subscribeToEvent(child, this);
+			}, this);
+		}
+	}, this);
+}
+
 
 
 
@@ -136,7 +162,6 @@ HierarchicalObject.prototype.handleEventSubscriptions = function(subscriptionTyp
 var ExtensibleObject = function() {
 	HierarchicalObject.call(this);
 	this.objectType = 'ExtensibleObject';
-	this._implements = [];
 }
 ExtensibleObject.prototype = Object.create(HierarchicalObject.prototype);
 ExtensibleObject.prototype.objectType = 'ExtensibleObject';
@@ -150,19 +175,23 @@ ExtensibleObject.prototype.onExtend = function(extension) {} 				// virtual
  * @param {constructor:ExtensibleObject} extension
  */
 ExtensibleObject.prototype.addInterface = function(base, extension) {
-	var mergedConstructor = function() {
+	var namingObj = {};
+	namingObj[base.prototype.objectType] = function() {
 		base.apply(this, arguments);
 		extension.apply(this, arguments);
 		
 		base.prototype.onExtend.call(this, extension)
 		this.objectType = 'Extended' + base.prototype.objectType;
-		this._implements.push(extension.prototype.objectType);
+		this._implements.push();
 	};
 
-	mergedConstructor.prototype = this.mergeOwnProperties(base.prototype, extension.prototype);
-	mergedConstructor.prototype.constructor = mergedConstructor;
-	mergedConstructor.prototype.objectType = 'Extended' + base.prototype.objectType;
-	return mergedConstructor;
+	Object.setPrototypeOf(namingObj[base.prototype.objectType], this.mergeOwnProperties(base.prototype, extension.prototype));
+	namingObj[base.prototype.objectType].prototype.constructor = namingObj[base.prototype.objectType];
+	namingObj[base.prototype.objectType].prototype.objectType = 'Extended' + base.prototype.objectType;
+	(namingObj[base.prototype.objectType].prototype._implements
+		? namingObj[base.prototype.objectType].prototype._implements.push(extension.prototype.objectType)
+				: namingObj[base.prototype.objectType].prototype._implements = [extension.prototype.objectType]);
+	return namingObj[base.prototype.objectType];
 }
 
 /**
@@ -195,7 +224,7 @@ ExtensibleObject.prototype.mergeOwnProperties = function(keepNonStdProtosOrProto
 					return;
 				}
 				desc = Object.getOwnPropertyDescriptor(obj, name);
-				if (!desc.get) {
+				if (typeof desc === 'undefined' || !desc.get) {
 					if ((isArray = Array.isArray(obj[name])) || (isObj = (Object.prototype.toString.call(obj[name]) === '[object Object]'))) {
 						len = obj[name].length || Object.keys(obj[name]).length;
 						if (len) {
@@ -245,7 +274,7 @@ var AbstractComponent = function(definition) {
 	this._defComposedUID;
 	
 //	console.log(definition);
-	if (!TypeManager.definitionsCacheRegister.getItem(this._defUID))
+	if (!TypeManager.hostsDefinitionsCacheRegister.getItem(this._defUID))
 		this.populateStores(definition);
 	this.createEvent('update');
 	
@@ -298,7 +327,7 @@ AbstractComponent.prototype.populateStores = function(definition) {
 	for (let prop in TypeManager.caches) {
 		TypeManager.caches[prop].setItem(this._defUID, hostDefinition[prop]);
 	}
-	TypeManager.definitionsCacheRegister.setItem(this._defUID, definition);
+	TypeManager.hostsDefinitionsCacheRegister.setItem(this._defUID, definition);
 	TypeManager.typedHostsRegister.setItem(this._defUID, []);
 }
 
@@ -381,6 +410,7 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView, p
  */
 ComponentWithView.prototype.onRemoveChild = function(child) {
 	if (typeof child === 'undefined') {
+//		console.log(this.view.subViewsHolder.subViews[1].hostElem);
 		while (this.view.subViewsHolder.subViews[1].hostElem.firstChild) {
 			this.view.subViewsHolder.subViews[1].hostElem.removeChild(this.view.subViewsHolder.subViews[1].hostElem.lastChild);
 		}
@@ -402,6 +432,14 @@ ComponentWithView.prototype.onAddChild = function(child, atIndex) {
 }
 
 
+ComponentWithView.prototype.childButtonsHighlightLoop = function(targetIdx) {
+	this._children.forEach(function(child) {
+		if (child._key === targetIdx)
+			child.view.hostElem.setAttribute('highlighted', 'highlighted');
+		else
+			child.view.hostElem.removeAttribute('highlighted');
+	});
+}
 
 
 
@@ -470,10 +508,10 @@ ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(compon
 	// Add that view to the subViewsHost->memberViews of the main view
 	
 	var newDef;
-	if (!(newDef = TypeManager.definitionsCacheRegister.getItem(nodeDefinition.host.UID + state))) {
+	if (!(newDef = TypeManager.hostsDefinitionsCacheRegister.getItem(nodeDefinition.host.UID + state))) {
 		newDef = TypeManager.createComponentDef(nodeDefinition);
 		newDef.host.UID = nodeDefinition.host.UID + state;
-		TypeManager.definitionsCacheRegister.setItem(newDef.host.UID, newDef);
+		TypeManager.hostsDefinitionsCacheRegister.setItem(newDef.host.UID, newDef);
 		
 		componentDefinition.getHostDef().reactOnSelf.push(new TypeManager.ReactivityQueryModel({
 			cbOnly : true,
@@ -525,7 +563,7 @@ ComponentWithReactiveText.prototype.populateSlots = function(values) {
 	values.forEach(function(val, key) {
 		if (typeof val !== 'string')
 			return;
-		this.slots[key].textContent = val;
+		this.slots[key].innerHTML = val;
 	}, this);
 }
 
@@ -537,6 +575,7 @@ ComponentWithReactiveText.prototype.populateSelf = function(value) {
 		return;
 	this.view.value = value.toString();
 };
+
 
 
 

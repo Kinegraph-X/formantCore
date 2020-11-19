@@ -11,6 +11,9 @@ var Obj = require('src/extendedNative/object');
 var Regex = require('src/extendedNative/regexp');
 var Validate = require('src/UI/integrated_fork/Validate');
 
+// Ensure that ctor is required at least once : it is responsible for some dependancy injection (moved to index.js...  not a good idea, but it works, and we had such headaches with that require loop...)
+//var rDataset = require('src/core/ReactiveDataset');
+
 var classConstructor = function() {	
 	var context = this.context,
 		options = {},

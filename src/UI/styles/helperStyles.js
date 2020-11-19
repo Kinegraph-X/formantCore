@@ -1,7 +1,7 @@
 /**
  * @programmatic_style generic defs
  */
-var Factory = require('src/core/Factory');
+
 var StylesheetWrapper = require('src/editing/StylesheetWrapper');
 
 var styleDef = function() {
@@ -27,4 +27,4 @@ var styleDef = function() {
 }
 
 styleDef.__factory_name = 'helperStyles';
-module.exports = Factory.Maker.getSingletonFactory(styleDef);
+module.exports = styleDef;
