@@ -152,8 +152,7 @@ Object.defineProperty(ComponentSet.prototype, 'splice',  {
 
 
 //Dependancy Injection
-App.componentTypes.LazySlottedComponent.prototype.cSet = ComponentSet;
-App.componentTypes.TabPanel.prototype.cSet = ComponentSet;
+App.componentTypes.LazySlottedComposedComponent.prototype.cSet = ComponentSet;
 
 
 

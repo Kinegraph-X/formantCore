@@ -183,31 +183,81 @@ ComposedComponent.prototype.ComponentList = ComponentList;		// used in AppIgniti
 
 
 /**
- * @constructor SinglePassExtensibleComposedComponent
- */
-var SinglePassExtensibleComposedComponent = function(definition, parentView) {
-//	console.log(definition, definition.getGroupHostDef().getType(), componentTypes[definition.getGroupHostDef().getType()]);
+ * @constructor LazySlottedComposedComponent
+*/
+var createLazySlottedComponentDef = require('src/coreDefs/lazySlottedComponentDef');
+var createLazySlottedComponenSlotstDef = require('src/coreDefs/lazySlottedComponentSlotsDef');
+
+var LazySlottedComposedComponent = function(definition, parentView, dummyParent, alreadyComposed, slotsCount, slotsDef) {
+	var stdDefinition;
+	this.typedSlots = [];
+	this.slotsCount = this.slotsCount || 2;
+	this.slotsDef = this.slotsDef || slotsDef || createLazySlottedComponenSlotstDef();
 	
-	if (definition.getGroupHostDef().getType() && componentTypes[definition.getGroupHostDef().getType()]) {
-		
-		// -NOT SO- UGLY HACK to merge the inherited prototype : TODO: maybe find a more elegant call for that mixin ...
-		// 		=> mergeOwnProperties() is able to do that : explore and try to limit the depth of the merging pass...
-		this.mergeOwnProperties(this.__proto__, componentTypes[definition.getGroupHostDef().getType()].prototype);
+	// Proceeding that way (i.e. not using the complete mixin mechanism : "addInterface") allows us to choose in which order the ctors are called
+	// When the base ctor is called, it calls the extension's ctor, and then, and only then, the superClasse's ctor
+	// (which would have been called before the extension's one if we had used the "addInterface" mechanism)
+	// Full motivation : as we don't want to define a view twice (the two mixed ctor's both call their superClasse's ctor : ComponentWithView),
+	// we bypassed the call to super() in the LazySlottedComposedComponent ctor
+	//
+	// We could choose not to call the ComposedComponent ctor, but then we wouldn't be able to define subSections or members (ou would have to explicitly call the methods then)
+	// Other issue : the ComposedComponent ctor would be called with the arguments received by the mergedConstructor(), and they do not include a definition object
+	// Keeping that here makes the code base cleaner
+	
+	// Get a definition :
+	// Here, the initial def allows an undefined number of tabs
+	stdDefinition = createLazySlottedComponentDef();
+	stdDefinition.getGroupHostDef().type = 'LazySlottedComposedComponent';
+	this.updateDefinitionBasedOnSlotsCount(stdDefinition);
+	ComposedComponent.call(this, stdDefinition, parentView);
+
+	this.objectType = 'LazySlottedComposedComponent';
+
+	this.affectSlots();
+
+	// This is an abstract Class
+	// For a "straight" TabPanel Class, we would have assumed this.slotsCount is 2
+	// And for an imaginary other implementation of the LazySlottedComposedComponent class, we should have handled the slotsCount case : it may be defined anteriorly, or fixed, or...
+	for (let i = 0, l = this.slotsCount; i < l; i++) {
+		this.typedSlots[i].setSchema(['slotTitle']);
+	}
+}
+LazySlottedComposedComponent.prototype = Object.create(ComposedComponent.prototype);
+LazySlottedComposedComponent.prototype.objectType = 'LazySlottedComposedComponent';
+
+
+LazySlottedComposedComponent.prototype.updateDefinitionBasedOnSlotsCount = function(definition) {
+	definition.lists[0].host.each = [];
+	for (let i = 0, l = this.slotsCount; i < l; i++) {
+		definition.lists[0].host.each.push({'slot-id' : 'slot' + i});
+	}
+}
+
+LazySlottedComposedComponent.prototype.affectSlots = function() {
+	var i = 0;
+	
+	for (let slotDef in this.slotsDef) {
+		this.typedSlots.push(new this.rDataset(
+			this._children[i],
+			this._children[i],
+			this.slotsDef[slotDef],
+			[])
+		);
+		i++;
 	}
 	
-//	ComposedComponent.call(this, definition, parentView);
-	
-	// This is for now the only method called by the ComponentWithHooks ctor (the type from which we inherit) :
-	// 		=> bypass the cascade of ctors by calling just this one
-	// (the cascade already happened in the ComposedComponent ctor)
-	this.viewExtend(definition);
-	
-	// And at last, something can happen in the ctor of the type given in the definition
-	componentTypes[definition.getGroupHostDef().getType()].call(this, definition, parentView);
+	return true;
 }
-//SinglePassExtensibleComposedComponent.prototype = Object.create(ComposedComponent.prototype);
-//Object.assign(SinglePassExtensibleComposedComponent.prototype, ComposedComponent.prototype);
-//SinglePassExtensibleComposedComponent.prototype.objectType = 'SinglePassExtensibleComposedComponent';
+
+LazySlottedComposedComponent.prototype.setSchema = function() {
+	if (arguments.length !== this.slotsCount) {
+		console.warn('globally setting schema failed : not the right number of args')
+	}
+
+	for (let i = 0, l = this.slotsCount; i < l; i++) {
+		this.typedSlots[i].setSchema([arguments[i]]);
+	}
+}
 
 
 
@@ -223,24 +273,22 @@ var SinglePassExtensibleComposedComponent = function(definition, parentView) {
 
 
 
-
-componentTypes.ComposedComponent = ComposedComponent;
-componentTypes.SinglePassExtensibleComposedComponent = SinglePassExtensibleComposedComponent;
+// Abstract types & abstract implementations re-injection
 componentTypes.ComponentList = ComponentList;
+componentTypes.LazySlottedComposedComponent = LazySlottedComposedComponent;
 componentTypes.ComponentWithView = Components.ComponentWithView;
 componentTypes.ComponentWithHooks = Components.ComponentWithHooks;
 componentTypes.VisibleStateComponent = VisibleStateComponent;
-componentTypes.LazySlottedComponent = LazySlottedComponent;
 
-// Dependancy Injection
-componentTypes.LazySlottedComponent.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, componentTypes.LazySlottedComponent.prototype, ComposedComponent.prototype);
-componentTypes.LazySlottedComponent.prototype.ComposedComponent = ComposedComponent;
-componentTypes.LazySlottedComponent.prototype.objectType = 'LazySlottedComponent';
-componentTypes.LazySlottedComponent.prototype._implements = ['ComposedComponent'];
-
-componentTypes.TabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes.LazySlottedComponent.prototype), componentTypes.TabPanel.prototype);
+// Some formal implementations rely on Dependancy Injection
+componentTypes.TabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(LazySlottedComposedComponent.prototype), componentTypes.TabPanel.prototype);
+componentTypes.TabPanel.prototype.Compositor = LazySlottedComposedComponent;
 componentTypes.TabPanel.prototype.objectType = 'TabPanel';
-componentTypes.TabPanel.prototype._implements = ['ComposedComponent', 'LazySlottedComponent'];
+componentTypes.TabPanel.prototype._implements = ['LazySlottedComposedComponent'];
+
+componentTypes.ComponentTabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes.TabPanel.prototype), componentTypes.ComponentTabPanel.prototype);
+componentTypes.ComponentTabPanel.prototype.objectType = 'ComponentTabPanel';
+componentTypes.ComponentTabPanel.prototype._implements = ['TabPanel', 'LazySlottedComposedComponent'];
 
 //componentTypes.LazySlottedComponent.prototype.ComposedComponent = ComposedComponent;
 //console.log(Object.create(componentTypes.LazySlottedComponent.prototype));

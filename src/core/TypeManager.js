@@ -175,7 +175,7 @@ var PropFactory = function(obj) {
 		Object.defineProperty(PropFactory.props[key].prototype, 'key', {
 			value :  key
 		});
-		Object.defineProperty(PropFactory.props[key].prototype, 'name', {
+		Object.defineProperty(PropFactory.props[key].prototype, 'objectType', {
 			value :  'AbstractProp'
 		});
 		
@@ -277,7 +277,7 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 			return;
 		}
 		else if (typeof stream === 'undefined') {
-			console.warn(queriedOrQueryingObj, this.from, this.to);
+			console.trace(queriedOrQueryingObj, this.from, this.to);
 			return;
 		}
 		if (this.cbOnly) {
@@ -293,7 +293,8 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 			.reverse(this.inverseTransform);
 		}
 //		console.warn(this.from, this.to, stream.subscriptions.length, stream._value, stream);
-//		stream.subscriptions[stream.subscriptions.length - 1].execute(stream._value);
+		if (stream._value)
+			stream.subscriptions[stream.subscriptions.length - 1].execute(stream._value);
 }});
 
 
@@ -317,6 +318,25 @@ Object.defineProperty(EventSubscriptionModel.prototype, 'subscribeToEvent', {
 		targetComponent.addEventListener(this.on, this.subscribe.bind(requestingComponent));
 }});
 
+/**
+ * @constructor TaskDefinition
+ * @extends ValueObject
+ */
+var TaskDefinitionModel = function(obj, isSpecial) {
+
+	this.type = null;						// String
+	this.task = null;						// function CallBack
+	this.index = null;						// number
+	ValueObject.call(this, obj, isSpecial);
+}
+TaskDefinitionModel.prototype = Object.create(ValueObject.prototype);
+exportedObjects.TaskDefinitionModel = TaskDefinitionModel;
+Object.defineProperty(TaskDefinitionModel.prototype, 'objectType', {value : 'EventSubscription'});
+Object.defineProperty(TaskDefinitionModel.prototype, 'execute', {
+	value : function(thisArg, definition) {
+		this.task.call(thisArg, definition);
+}});
+
 
 
 
@@ -333,7 +353,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 	if (givenDef)
 		Object.assign(this, givenDef);
 	else {
-		this.UID = typeof obj.UID === 'string' ? obj.UID : UIDGenerator.newUID().toString();
+		this.UID = null								// overridden at function end
 		this.type = null,							// String
 		this.nodeName = null;						// String
 		this.isCustomElem = false					// Boolean
@@ -359,8 +379,10 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 	if (obj !== 'bare')
 		ValueObject.call(this, obj, isSpecial);
 	
+	this.UID = UIDGenerator.newUID().toString();
+	
 	// Fast-access props
-	Array.prototype.push.apply(this.streams, this.props.concat(this.states));
+	this.streams = this.props.concat(this.states);
 	this.isCustomElem = (this.nodeName && this.nodeName.indexOf('-') !== -1);
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
@@ -473,7 +495,7 @@ var createComponentDef = function(defObj, useCache, isSpecial) {
 		}
 		else if (typeof defObj === 'object' && defObj.type === 'ComponentList')
 			def = new HierarchicalComponentDefModel({host : new ComponentListDefModel(defObj, isSpecial)}, 'rootOnly');
-		else if (typeof defObj === 'object' && defObj.nodeName || defObj.type || (defObj.attributes || defObj.states || defObj.props)) {
+		else if (typeof defObj === 'object' && defObj.nodeName || defObj.type || defObj.UID || defObj.sWrapper || (defObj.attributes || defObj.states || defObj.props)) {
 			if (isSpecial !== 'hostOnly')
 				def = new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, isSpecial)}, 'rootOnly');
 			else
@@ -655,6 +677,8 @@ Object.assign(exportedObjects, {
 	attributesModel : PropFactory,									// Object AbstractProp
 	statesModel : PropFactory,										// Object AbstractProp
 	propsModel : PropFactory,										// Object AbstractProp
+	streamsModel : PropFactory,										// Object AbstractProp
+	TaskDefinition : TaskDefinitionModel,							// Object TaskDefinition
 	optionsModel : OptionsListModel,								// Object OptionsList
 	// "host" key catch the special condition and should always be flat ("artificial" deepening of flat defs is handled in the factory function)
 	hostModel : SingleLevelComponentDefModel,						// Object SingleLevelComponentDef

@@ -10,12 +10,18 @@ var Bool = require('src/extendedNative/boolean');
 var Obj = require('src/extendedNative/object');
 var Regex = require('src/extendedNative/regexp');
 var Validate = require('src/UI/integrated_fork/Validate');
+var MasterTimer = require('src/timers/MasterTimer');
+var NodeResizeObserver = require('src/core/ResizeObserver');
+var TextSizeGetter = require('src/core/TextSizeGetter');
 
-// Ensure that ctor is required at least once : it is responsible for some dependancy injection (moved to index.js...  not a good idea, but it works, and we had such headaches with that require loop...)
+// TODO: move the main dependancies to permanent include
+// Ensure that ctor is required at least once : it is responsible for dependancy injection (moved to index.js...  shall be moved to browserify permanent include)
 //var rDataset = require('src/core/ReactiveDataset');
 
 var classConstructor = function() {	
-	var context = this.context,
+	var masterTimer = new MasterTimer(),
+		resizeObserver = new NodeResizeObserver(),
+		textSizeGetter = new TextSizeGetter(),
 		options = {},
 		baseAppDefaultOptions = {
 			UIDPrefix : ''
@@ -45,6 +51,8 @@ var classConstructor = function() {
 		
 		currentHostPath = window.location.href.match(/(.*\/)[^/]*$/)[1];
 		browserName = parseUserAgent();
+		
+		masterTimer.startQueue();
 	}
 	
 	var parseUserAgent = function() {
@@ -115,6 +123,9 @@ var classConstructor = function() {
 	});
 	
 	return {
+		masterTimer : masterTimer,
+		resizeObserver : resizeObserver,
+		textSizeGetter : textSizeGetter,
 		options : options,
 		launch : launch,
 		checkSupport : checkSupport,

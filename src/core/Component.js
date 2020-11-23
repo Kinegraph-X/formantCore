@@ -4,7 +4,7 @@
 
 var CoreTypes = require('src/core/CoreTypes');
 var TypeManager = require('src/core/TypeManager');
-
+var ElementDecorator = require('src/UI/_mixins/elementDecorator_HSD');
 
 
 
@@ -168,30 +168,70 @@ ExtensibleObject.prototype.objectType = 'ExtensibleObject';
 /**
  * @virtual
  */
-ExtensibleObject.prototype.onExtend = function(extension) {} 				// virtual
+ExtensibleObject.prototype.onExtend = function(extension) {} 				// pure virtual implemented below, as a try
+ExtensibleObject.prototype._asyncInitTasks = [];					// pure virtual
+ExtensibleObject.prototype._asyncRegisterTasks = [];				// pure virtual
+/**
+ * @abstract
+ */
+ExtensibleObject.prototype.getCleanDefAfterExtension = function(Constructor) {
+	var objectType = Constructor.prototype.objectType;
+	var defaultDef = Constructor.prototype.createDefaultDef();
+	Constructor.prototype.createDefaultDef = function() {
+		return TypeManager.createComponentDef(defaultDef, objectType);
+	}
+}
 
 /**
  * @param {constructor:ExtensibleObject} base
  * @param {constructor:ExtensibleObject} extension
  */
 ExtensibleObject.prototype.addInterface = function(base, extension) {
-	var namingObj = {};
-	namingObj[base.prototype.objectType] = function() {
+	// namingObj was just an attemp... to "name" the ctor. Doesn't work, though...
+	var namingObj = {}, objectType = base.prototype.objectType || '';
+	
+	namingObj[objectType] = function() {
 		base.apply(this, arguments);
 		extension.apply(this, arguments);
 		
 		base.prototype.onExtend.call(this, extension)
-		this.objectType = 'Extended' + base.prototype.objectType;
+		this.objectType = 'Extended' + objectType;
 		this._implements.push();
 	};
 
-	Object.setPrototypeOf(namingObj[base.prototype.objectType], this.mergeOwnProperties(base.prototype, extension.prototype));
-	namingObj[base.prototype.objectType].prototype.constructor = namingObj[base.prototype.objectType];
-	namingObj[base.prototype.objectType].prototype.objectType = 'Extended' + base.prototype.objectType;
-	(namingObj[base.prototype.objectType].prototype._implements
-		? namingObj[base.prototype.objectType].prototype._implements.push(extension.prototype.objectType)
-				: namingObj[base.prototype.objectType].prototype._implements = [extension.prototype.objectType]);
-	return namingObj[base.prototype.objectType];
+	namingObj[objectType].prototype = this.mergeOwnProperties(base.prototype, extension.prototype);
+	namingObj[objectType].prototype.constructor = namingObj[objectType];
+	namingObj[objectType].prototype.objectType = objectType.indexOf('Extended') === 0 ? objectType : 'Extended' + objectType;
+	(namingObj[objectType].prototype._implements
+		? namingObj[objectType].prototype._implements.push(extension.prototype.objectType)
+				: namingObj[objectType].prototype._implements = [extension.prototype.objectType]);
+	
+	base.prototype.onExtend(namingObj[objectType]);
+	
+	if (extension.prototype.queueAsync) {
+		var taskDef = extension.prototype.queueAsync(objectType);
+		(namingObj[objectType].prototype._asyncInitTasks
+				? namingObj[objectType].prototype._asyncInitTasks.splice(
+						(taskDef.index !== null 
+								? taskDef.index 
+										: namingObj[objectType].prototype._asyncInitTasks.length),
+						0,
+						taskDef)
+							: namingObj[objectType].prototype._asyncInitTasks = [taskDef]);
+	}
+	if (extension.prototype.queueAsyncRegister) {
+		var taskDef = extension.prototype.queueAsyncRegister(objectType);
+		(namingObj[objectType].prototype._asyncRegisterTasks
+				? namingObj[objectType].prototype._asyncRegisterTasks.splice(
+						(taskDef.index !== null 
+								? taskDef.index 
+										: namingObj[objectType].prototype._asyncRegisterTasks.length),
+						0,
+						taskDef)
+							: namingObj[objectType].prototype._asyncRegisterTasks = [taskDef]);
+	}
+	
+	return namingObj[objectType];
 }
 
 /**
@@ -255,6 +295,75 @@ ExtensibleObject.prototype.mergeOwnProperties = function(keepNonStdProtosOrProto
 	return target;
 }
 
+/**
+ * @abstract_implementation {interface_name_masking_lock:must_be_first} {pure_virtual_on_abstract_type}
+ */
+ExtensibleObject.prototype.onExtend = function(namespace) {
+	if (!(namespace.prototype.hasOwnProperty('_asyncInitTasks')))
+		Object.defineProperty(namespace.prototype, '_asyncInitTasks', {
+			value : []
+		});
+	if (!(namespace.prototype.hasOwnProperty('_asyncRegisterTasks')))
+		Object.defineProperty(namespace.prototype, '_asyncRegisterTasks', {
+			value : []
+		}); 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * @constructor AsyncActivableObject
+ */
+var AsyncActivableObject = function() {
+	ExtensibleObject.call(this);
+	this.objectType = 'AsyncActivableObject';
+}
+AsyncActivableObject.prototype = Object.create(ExtensibleObject.prototype);
+AsyncActivableObject.prototype.objectType = 'AsyncActivableObject';
+
+/**
+ * @reminder
+ * Asynchronous tasks are inherited through the prototype during the mixin, but should not be referenced by "any" component
+ */
+AsyncActivableObject.prototype._asyncInitTasks = [];
+AsyncActivableObject.prototype._asyncRegisterTasks = []
+
+/**
+ * @virtual
+ */
+AsyncActivableObject.prototype.asyncInit = function() {
+	this._asyncInitTasks.forEach(function(asyncFunc, key) {
+		asyncFunc.call(this);
+	});
+}
+
+/**
+ * @pure_signature not to be implemented : interfaces must not inherit from a Component type, but may implement a method with this signature
+ */
+AsyncActivableObject.prototype.queueAsync = function() {
+	return new TypeManager.TaskDefinition({
+		type : '',
+		task : function() {}
+	});
+}
+
+
+
 
 
 
@@ -265,13 +374,13 @@ ExtensibleObject.prototype.mergeOwnProperties = function(keepNonStdProtosOrProto
  * @constructor AbstractComponent
  */
 var AbstractComponent = function(definition) {
-	ExtensibleObject.call(this);
+	AsyncActivableObject.call(this);
 	this.objectType = 'AbstractComponent';
 	
 	this._UID = TypeManager.UIDGenerator.newUID().toString();
 	
 	this._defUID = definition.getHostDef().UID;
-	this._defComposedUID;
+	this._defComposedUID = '';
 	
 //	console.log(definition);
 	if (!TypeManager.hostsDefinitionsCacheRegister.getItem(this._defUID))
@@ -280,7 +389,7 @@ var AbstractComponent = function(definition) {
 	
 	TypeManager.typedHostsRegister.getItem(this._defUID).push(this);
 }
-AbstractComponent.prototype = Object.create(ExtensibleObject.prototype);
+AbstractComponent.prototype = Object.create(AsyncActivableObject.prototype);
 AbstractComponent.prototype.objectType = 'AbstractComponent';
 /**
  * @virtual
@@ -293,8 +402,10 @@ AbstractComponent.prototype.createDefaultDef = function() {}			// virtual
 AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	var defaultDef, defaultHostDef;
 	if ((defaultDef = this.createDefaultDef())) {
-		this._defComposedUID = this._defUID + '-' + defaultDef.getHostDef().UID;
+		this._defComposedUID = defaultDef.getHostDef().UID;
 		defaultHostDef = defaultDef.getHostDef();
+//		if (TypeManager.hostsDefinitionsCacheRegister.getItem(this._defUID, this._defComposedUID))
+//			return;
 	}
 	else
 		this._defComposedUID = this._defUID;
@@ -314,6 +425,9 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 			hostDef.sWrapper = defaultHostDef.sWrapper;
 		if (hostDef.command === null)
 			hostDef.command = defaultHostDef.command;
+		
+		if (defaultDef.members.length)
+			Array.prototype.push.apply(definition.members, defaultDef.members);
 	}
 }
 
@@ -324,6 +438,11 @@ AbstractComponent.prototype.populateStores = function(definition) {
 	this.mergeDefaultDefinition(definition);
 	var hostDefinition = definition.getHostDef();
 //	console.log(hostDefinition);
+	
+	var title;
+	if ((title = hostDefinition.attributes.getObjectValueByKey('title')) && title.slice(0, 1) === '-')
+		ElementDecorator['Hyphen-Star-Dash'].decorateAttributes(hostDefinition.nodeName, hostDefinition.attributes);
+	
 	for (let prop in TypeManager.caches) {
 		TypeManager.caches[prop].setItem(this._defUID, hostDefinition[prop]);
 	}
@@ -354,14 +473,14 @@ ComponentWithObservables.prototype = Object.create(AbstractComponent.prototype);
 ComponentWithObservables.prototype.objectType = 'ComponentWithObservables';
 
 ComponentWithObservables.prototype.reactOnParentBinding = function(reactOnParent, parentComponent, subscriptionType) {
-//	console.log(subscriptionType);
+//	console.log(subscriptionType, this, parentComponent);
 	reactOnParent.forEach(function(query, key) {
 		query.subscribeToStream(parentComponent.streams[query.from], this);
 	}, this);
 }
 
 ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf, parentComponent, subscriptionType) {
-//	console.log(subscriptionType);
+//	console.log(subscriptionType, this);
 	reactOnSelf.forEach(function(query, key) {
 		query.subscribeToStream(this.streams[query.from || query.to], this);
 	}, this);
@@ -465,31 +584,75 @@ var ComponentWithHooks = function(definition, parentView, parent, isChildOfRoot)
  */
 ComponentWithHooks.prototype = Object.assign(Object.create(ComponentWithView.prototype), {
 	basicEarlyViewExtend : function() {},					// virtual
-	basicLateViewExtend : function() {},						// virtual
+	asyncViewExtend : function() {},						// virtual
+	basicLateViewExtend : function() {},					// virtual
+	lastAddChildren : function() {},							// virtual
 	beforeRegisterEvents : function() {},			// virtual
 	registerClickEvents : function() {},			// virtual
 	registerLearnEvents : function() {},			// virtual
 	registerKeyboardEvents : function() {},			// virtual
 	afterRegisterEvents : function() {},			// virtual
-	registerValidators : function() {},				// virtual
+//	registerValidators : function() {},				// virtual
 	execBindingQueue : function() {}				// virtual
 });
 ComponentWithHooks.prototype.objectType = 'ComponentWithHooks';
 
 ComponentWithHooks.prototype.viewExtend = function(definition) {
 	this.basicEarlyViewExtend(definition);
+	if (this._asyncInitTasks.length)
+		this.asyncViewExtend(definition);
 	this.basicLateViewExtend(definition);
+	this.lastAddChildren(definition);
 }
 
-ComponentWithHooks.prototype.registerEvents = function() {
+ComponentWithHooks.prototype.registerEvents = function(definition) {
 	this.beforeRegisterEvents();
 	this.registerClickEvents();
 	this.registerKeyboardEvents();
 	this.registerLearnEvents();
+	this.asyncRegister();
 	this.afterRegisterEvents();
-	this.registerValidators();
-	this.execBindingQueue();
 }
+
+/**
+ * @hook
+ */
+ComponentWithHooks.prototype.asyncViewExtend = function(definition) {
+	var asyncTask;
+	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
+		asyncTask = this._asyncInitTasks[i];
+		if(asyncTask.type === 'viewExtend') {
+			asyncTask.execute(this, definition);
+		}
+	}
+}
+
+/**
+ * @hook
+ */
+ComponentWithHooks.prototype.lastAddChildren = function(definition) {
+	var asyncTask;
+	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
+		asyncTask = this._asyncInitTasks[i];
+		if(asyncTask.type === 'lastAddChild') {
+			asyncTask.execute(this, definition);
+		}
+	}
+}
+
+/**
+ * @hook
+ */
+ComponentWithHooks.prototype.asyncRegister = function(definition) {
+	var asyncTask;
+	for (let i = 0, l = this._asyncRegisterTasks.length; i < l; i++) {
+		asyncTask = this._asyncRegisterTasks[i];
+		if(asyncTask.type === 'lateBinding') {
+			asyncTask.execute(this, definition);
+		}
+	}
+}
+
 
 /**
  * @param {ComponentDefinition} componentDefinition
@@ -498,6 +661,25 @@ ComponentWithHooks.prototype.registerEvents = function() {
  */
 ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(componentDefinition, nodeDefinition, state) {
 	
+	var newDef = state ? this.extendDefToStatefull(componentDefinition, nodeDefinition, state) : nodeDefinition;
+	
+	var view;
+	if (newDef.getHostDef().nodeName)
+		this.view.subViewsHolder.addMemberView(newDef.getHostDef());
+	
+	if (newDef.members.length) {
+		newDef.members.forEach(function(memberDef) {
+			this.view.subViewsHolder.addMemberView(memberDef);
+		}, this);
+	}
+}
+
+/**
+ * @param {ComponentDefinition} componentDefinition
+ * @param {ComponentDefinition} nodeDefinition
+ * @param {string} state
+ */
+ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition, nodeDefinition, state) {
 	// This is an illustrative method, a hint for others on the path to catching the "spirit" of the extension mechanism of the framework
 	// 		=> This is to be implemented as a method on the ComponentWithView.prototype : addReactiveMemberViewFromFreshDef
 	// Delete the UID of the definition and Register a renewed one with fresh UID (unless exists, so register both the original and the fresh one : if the original exists, we already went here)
@@ -507,27 +689,64 @@ ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(compon
 	// Instanciate a view with the host's view as parent view (the view references the UID of the definition)
 	// Add that view to the subViewsHost->memberViews of the main view
 	
-	var newDef;
-	if (!(newDef = TypeManager.hostsDefinitionsCacheRegister.getItem(nodeDefinition.host.UID + state))) {
-		newDef = TypeManager.createComponentDef(nodeDefinition);
-		newDef.host.UID = nodeDefinition.host.UID + state;
-		TypeManager.hostsDefinitionsCacheRegister.setItem(newDef.host.UID, newDef);
+	var statefullExtendedDef;
+	if (!(statefullExtendedDef = TypeManager.hostsDefinitionsCacheRegister.getItem(componentDefinition.host.UID + nodeDefinition.host.attributes.getObjectValueByKey('className')))) {
+		// This also is tricky, as we keep all along the call stack that ComponentDef which should be a hostDef.
+		// The only reason being that we discriminate the "grouped" append in the second test-case above as the one having "members" and "no nodeName on host"
+		// TODO: THAT MUST CHANGE.
+		statefullExtendedDef = TypeManager.createComponentDef(nodeDefinition);
+		statefullExtendedDef.host.UID = componentDefinition.host.UID + nodeDefinition.host.attributes.getObjectValueByKey('className');
 		
+		TypeManager.hostsDefinitionsCacheRegister.setItem(statefullExtendedDef.host.UID, statefullExtendedDef);
+		
+		// This approach is realy tricky: everything is crucial and the context is totally blurred:
+		// memberViewIdx anticipate on the next member view (the one we are currently building) to be appended ont the component's view: 
+		// 		could it happen that this idx change suddenly ? no clear sight on that, observed from here
+		// state.replace(/Not/i, '') is of a crucial mean, as just below state.indexOf('Not') === -1 means we're defining the conditions (registration form implementation)
+		// 		for the picto -NOT- notifying an error (then the green check), to be "hidden" (not to show up) when the "valid" state is falsy.
+		// Ouch...
+		var memberViewIdx = this.view.subViewsHolder.memberViews.length;
 		componentDefinition.getHostDef().reactOnSelf.push(new TypeManager.ReactivityQueryModel({
 			cbOnly : true,
-			from : state,
+			from : state.replace(/Not/i, ''),
 			subscribe : function(value) {
-					this.view.subViewsHolder.memberViews[0].hostElem.hidden = value ? 'hidden' : null;
+//					console.log();
+					this.view.subViewsHolder.memberViews[memberViewIdx].hostElem.hidden = (state.indexOf('Not') === -1 ? !value : value) ? 'hidden' : null;
 				}
 			})
 		);
 	}
-	
-	var view = new CoreTypes.ComponentSubView(newDef.getHostDef(), this.view, this);
-	this.view.subViewsHolder.memberViews.push(view);
-	
-	
+	return statefullExtendedDef;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * @constructor CompositorComponent
+ */
+var CompositorComponent = function(definition, parentView, parent) {
+	ComponentWithView.call(this, definition);
+	this.objectType = 'CompositorComponent';
+}
+CompositorComponent.prototype = Object.create(ComponentWithView.prototype);
+CompositorComponent.prototype.objectType = 'CompositorComponent';
+
+CompositorComponent.prototype.Compositor = function() {};				// virtual
+
+
+
+
+
 
 
 
@@ -558,12 +777,13 @@ ComponentWithReactiveText.prototype.populateSlots = function(values) {
 		if (typeof value === 'string')
 			values = [values];
 		else
-			return '';										// TODO : why return empty string ?
+			return;
 	}
+	
 	values.forEach(function(val, key) {
 		if (typeof val !== 'string')
 			return;
-		this.slots[key].innerHTML = val;
+		this.view.subViewsHolder.memberViews[key].hostElem.textContent = val;
 	}, this);
 }
 
@@ -601,10 +821,11 @@ ComponentStrokeAware.prototype.createEvents = function() {
  * @abstract
  */
 ComponentStrokeAware.prototype.registerKeyboardEvents = function(e) {
-	var input = (this.view.rootElem || this.view.hostElem).querySelector('input');
+	var self = this, input = this.view.subViewsHolder.memberViews[1];
+//	console.warn('ComponentStrokeAware :', 'where is "input"');
 	
-	// Stroke event listener & canAct management 
-	input.addEventListener('keyup', function(e) {
+	// Stroke event listener 
+	input.hostElem.addEventListener('keyup', function(e) {
 		e.stopPropagation();
 //		var allowed = [189, 190, 191]; // corresponds to **. , -**
 //		allowed.indexOf(e.keyCode) >= 0 && 
@@ -633,6 +854,7 @@ module.exports = {
 	AbstractComponent : AbstractComponent,
 	HierarchicalObject : HierarchicalObject,
 	ComponentWithView : ComponentWithView,
+	CompositorComponent : CompositorComponent,
 	ComponentWithHooks : ComponentWithHooks,
 	ComponentWithReactiveText : ComponentWithReactiveText,
 	ComponentStrokeAware : ComponentStrokeAware

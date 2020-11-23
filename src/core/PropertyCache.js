@@ -16,11 +16,11 @@ objectCache.prototype.getItem = function(mainID, composedWithID) {
 		return this.cache[mainID.toString() + '-' + composedWithID.toString()];
 }
 
-objectCache.prototype.setItem = function(mainID, mainValue, composedWithID, composedWithValue) {
+objectCache.prototype.setItem = function(mainID, mainValue, composedWithID) {
 	if (!composedWithID)
 		return this.newItem(mainID.toString(), mainValue);
 	else
-		return this.newItem(mainID.toString() + '-' + composedWithID.toString());
+		return this.newItem(mainID.toString() + '-' + composedWithID.toString(), mainValue);
 }
 
 objectCache.prototype.newItem = function(UID, value) {

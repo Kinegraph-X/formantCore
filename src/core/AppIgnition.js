@@ -57,7 +57,9 @@ Ignition.prototype.instanciateDOM = function() {
 		attributes;
 
 	views.forEach(function(view) {
+		
 		attributes = attributesCache[view._defUID];
+//		console.log(view._defUID, attributes);
 		if (nodes[view._defUID].cloneMother)
 			// nodes[view._defUID].cloneMother.cloneNode(true); => deep clone : also copies the nested nodes (textual contents are nodes...)
 			view.hostElem = nodes[view._defUID].cloneMother.cloneNode(true);
@@ -103,7 +105,7 @@ Ignition.prototype.instanciateStreams = function() {
 	for (let defUID in typedComponentRegister) {
 		typedComponentRegister[defUID].forEach(function(component) {
 			streams[defUID].forEach(function(stateObj) {
-				component.streams[stateObj.getName()] = new CoreTypes.Stream(stateObj.getName());
+				component.streams[stateObj.getName()] = new CoreTypes.Stream(stateObj.getName(), stateObj.getValue());
 			})
 		});
 	}
@@ -192,7 +194,7 @@ Ignition.prototype.streamsBidirectionalReflectionBlank = function() {
 				return;
 			
 			if (component instanceof Component.ComponentWithHooks)
-				component.registerEvents();
+				component.registerEvents(TypeManager.hostsDefinitionsCacheRegister.getItem(defUID));
 
 			this.defineStreamsBidirectionalReflection(defUID, component);
 		}, this);
@@ -207,7 +209,7 @@ Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 				return;
 			
 			if (component instanceof Component.ComponentWithHooks)
-				component.registerEvents();
+				component.registerEvents(TypeManager.hostsDefinitionsCacheRegister.getItem(defUID));
 
 			this.defineStreamsBidirectionalReflection(defUID, component);
 		}, this);
@@ -250,7 +252,7 @@ Ignition.prototype.defineStreamsBidirectionalReflection = function(defUID, compo
 }
 Ignition.prototype.reflectViewOnAStateStream = function(component, stateObj) {
 	// assign reflectedObj to streams
-	component.streams[stateObj.getName()].reflectedObj = component.view.hostElem;
+	component.streams[stateObj.getName()].acquireReflectedObj(component.view.hostElem);
 	
 	// set default states
 	if (!component.view.isCustomElem) {
@@ -326,7 +328,6 @@ var IgnitionToComposed = function(definition, containerIdOrContainerNode) {
 	
 	var mainComponent = new ComposedComponent(definition, containerIdOrContainerNode); 
 	this.decorateComponentsThroughDefinitionsCache();
-//	document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.hostElem);
 	return mainComponent;
 }
 IgnitionToComposed.prototype = Object.create(Ignition.prototype);

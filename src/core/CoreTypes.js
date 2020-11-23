@@ -65,6 +65,11 @@ EventEmitter.prototype.deleteEvent = function(eventType) {
 	delete this['on' + eventType];
 }
 
+EventEmitter.prototype.hasStdEvent = function(eventType) {
+	
+	return (typeof this._eventHandlers[eventType] !== 'undefined');
+}
+
 /**
  * @param {string} eventType
  * @param {function} handler : the handler to remove (the associated event stays available) 
@@ -128,6 +133,9 @@ EventEmitter.prototype.clearEventListeners = function(eventType) {
  * @param {any} payload 
  */ 
 EventEmitter.prototype.trigger = function(eventType, payload, eventIdOrBubble, eventID) {
+	if (!this._eventHandlers[eventType] && this._one_eventHandlers[eventType] && this._identified_eventHandlers[eventType])
+		return;
+	
 	var bubble = false;
 	if (typeof eventIdOrBubble === 'boolean')
 		bubble = eventIdOrBubble;
@@ -291,6 +299,11 @@ Object.defineProperty(Stream.prototype, 'value', {
 		this.set(value);
 	}
 });
+
+Stream.prototype.acquireReflectedObj = function(reflectedObj) {
+	reflectedObj[this.name] = this._value;
+	this.reflectedObj = reflectedObj;
+}
 
 Stream.prototype.get = function() {
 	return this._value;
@@ -650,8 +663,6 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	this.section = definition.getHostDef().section;
 	this.sWrapper = definition.getHostDef().sWrapper;
 	
-	this.childrenShallHaveOffset = this.shallChildrenHaveOffset(definition);
-	
 	if (!nodesRegister.getItem(this._defUID))
 		nodesRegister.setItem(this._defUID, (new CachedTypes.CachedNode(definition.getHostDef().nodeName, definition.getHostDef().isCustomElem)));
 	if (!TypeManager.caches.attributes.getItem(this._defUID))
@@ -685,28 +696,9 @@ ComponentView.prototype.constructor = ComponentView;
  * 
  */
 ComponentView.prototype.getEffectiveParentView = function() {
-	return this.parentView.childrenShallHaveOffset === true
-			? this.parentView.subViewsHolder.subViews[this.section + 1]
-				: (this.parentView.childrenShallHaveOffset === 0 
+	return (this.parentView.subViewsHolder && this.parentView.subViewsHolder.subViews.length) 
 						? this.parentView.subViewsHolder.subViews[this.section]
-							: this.parentView);
-}
-/**
- * @abstract
- * HELPER : => when appending a child, should we append to rootNode or to a subSection ?
- * 
- */
-ComponentView.prototype.shallChildrenHaveOffset = function(definition) {
-//	console.log(definition);
-	if (definition.getHostDef().sWrapper) {
-		if (definition.subSections.length)
-			return true;
-		else
-			return 1;
-	}
-	else if (definition.subSections.length)
-		return 0;
-	return false;
+							: this.parentView;
 }
 
 /**
@@ -805,6 +797,19 @@ ComponentSubViewsHolder.prototype.instanciateSubViews = function(definition) {
 	definition.members.forEach(function(def) {
 		this.memberViews.push((new ComponentSubView(def, this.parentView)));
 	}, this);
+}
+
+ComponentSubViewsHolder.prototype.addMemberView = function(definition) {
+	var view = new ComponentSubView(definition, this.parentView);
+	this.memberViews.push(view);
+}
+
+ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definition) {
+	var lastView = TypeManager.viewsRegister.pop();
+	var view = new ComponentSubView(definition, this.parentView);
+	this.memberViews.unshift(view);
+	
+	TypeManager.viewsRegister.push(lastView);
 }
 
 

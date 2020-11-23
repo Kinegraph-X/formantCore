@@ -272,8 +272,7 @@ Object.defineProperty(RecitalDataset.prototype, 'styleToFront', {
 
 
 // Dependancy Injection
-App.componentTypes.LazySlottedComponent.prototype.rDataset = RecitalDataset;
-App.componentTypes.TabPanel.prototype.rDataset = RecitalDataset;
+App.componentTypes.LazySlottedComposedComponent.prototype.rDataset = RecitalDataset;
 
 
 
