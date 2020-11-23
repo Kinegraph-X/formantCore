@@ -15,20 +15,20 @@ var TextSizeGetter = function(def, parentDOMNodeDOMId, automakeable, childrenToA
 	this.fontStyle = '';
 
 	this.objectType = 'TextSizeGetter';
-	this.resizeObserver = new NodeResizeObserver(this.initWidthCompute.bind(this));
+	this.resizeObserver = new NodeResizeObserver();
 }
 TextSizeGetter.prototype = {};
 TextSizeGetter.prototype.objectType = 'TextSizeGetter';
 
 TextSizeGetter.prototype.init = function(sampleNode) {
 	this.sampleNode = sampleNode;
-	this.resizeObserver.observe(this.sampleNode);
+	this.resizeObserver.observe(sampleNode, this.initWidthCompute.bind(this));
 }
 
 TextSizeGetter.prototype.initWidthCompute = function(boundingBox) {
 	var self = this;
 
-	var style = window.getComputedStyle(this.textWidthCanvas);
+	var style = window.getComputedStyle(this.sampleNode);
 	this.fontStyle = style.fontSize + ' ' + style.fontFamily;
 	this.textWidthCanvasCtx.font = this.fontStyle;
 	

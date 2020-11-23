@@ -671,8 +671,10 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 
 	
 	this.subViewsHolder;
-	if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length)
+	if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length) {
 		this.subViewsHolder = new ComponentSubViewsHolder(definition, this);
+		this.targetView = (definition.getHostDef().targetSlotIndex !== null && this.subViewsHolder.memberViews.length > definition.getHostDef().targetSlotIndex) ? this.subViewsHolder.memberViews[definition.getHostDef().targetSlotIndex] : null;
+	}
 	else
 		this.subViewsHolder = new ComponentSubViewsHolder(null, this);
 	
@@ -680,7 +682,6 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	this.parentView = parentView || null;
 	if (parentView && !isChildOfRoot)
 		this.parentView = this.getEffectiveParentView();
-	
 	
 	
 	this.hostElem;
