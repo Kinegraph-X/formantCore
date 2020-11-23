@@ -372,7 +372,7 @@ Stream.prototype.react = function(prop, reflectedHost) {
  *		lazy "sets" the reflectedHost (no infinite recursion, but no change propagation neither on the host) and triggers the given event when the local stream updates
  */ 
 Stream.prototype.reflect = function(prop, reflectedHost, transform, inverseTransform, event) {
-	this._value = reflectedHost[prop];
+	this._value = reflectedHost[prop] ? reflectedHost[prop] : this._value;
 	
 	if (transform && this.transform)
 		console.warn('Bad transform assignment : this.transform already exists');
@@ -394,8 +394,8 @@ Stream.prototype.reflect = function(prop, reflectedHost, transform, inverseTrans
 		
 		reflectedHost.streams[prop].subscribe(this);
 		
-		if (typeof reflectedHost.trigger === 'function')
-			this.subscribe(reflectedHost.trigger.bind(reflectedHost, event));
+//		if (typeof reflectedHost.trigger === 'function')
+//			this.subscribe(reflectedHost.trigger.bind(reflectedHost, event));
 		
 		return this.subscribe(reflectedHost.streams[prop].set, null, inverseTransform);
 	}
