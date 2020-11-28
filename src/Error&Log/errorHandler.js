@@ -2,13 +2,11 @@
  * @module errorHandler
  */
 
-var Factory = require('src/core/Factory');
+var Component = require('src/core/Component');
 var constants = require('src/appLauncher/appLauncher');
 
-var classConstructor = function() {
+var errorHandler = function() {
 	
 }
 
-classConstructor.__factory_name = 'errorHandler';
-var factory = Factory.Maker.getSingletonFactory(classConstructor);
-module.exports = factory;
+module.exports = errorHandler;

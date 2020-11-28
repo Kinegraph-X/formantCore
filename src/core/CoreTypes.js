@@ -661,7 +661,10 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	this.isCustomElem = definition.getHostDef().isCustomElem;
 	this.nodeName = definition.getHostDef().nodeName;
 	this.section = definition.getHostDef().section;
+	this.targetSubView = null;
+	this.templateNodeName = definition.getHostDef().templateNodeName;
 	this.sWrapper = definition.getHostDef().sWrapper;
+	(this.sWrapper && (this.presenceAsAProp = this.sWrapper.getRuleDefinition(':host', 'display'))) || (this.presenceAsAProp = this.isCustomElem ? 'inline' : 'block');
 	
 	if (!nodesRegister.getItem(this._defUID))
 		nodesRegister.setItem(this._defUID, (new CachedTypes.CachedNode(definition.getHostDef().nodeName, definition.getHostDef().isCustomElem)));
@@ -673,7 +676,7 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	this.subViewsHolder;
 	if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length) {
 		this.subViewsHolder = new ComponentSubViewsHolder(definition, this);
-		this.targetView = (definition.getHostDef().targetSlotIndex !== null && this.subViewsHolder.memberViews.length > definition.getHostDef().targetSlotIndex) ? this.subViewsHolder.memberViews[definition.getHostDef().targetSlotIndex] : null;
+		this.targetSubView = (definition.getHostDef().targetSlotIndex !== null && this.subViewsHolder.memberViews.length > definition.getHostDef().targetSlotIndex) ? this.subViewsHolder.memberAt(definition.getHostDef().targetSlotIndex) : null;
 	}
 	else
 		this.subViewsHolder = new ComponentSubViewsHolder(null, this);
@@ -710,6 +713,22 @@ ComponentView.prototype.getRoot = function() {
 }
 
 /**
+ * @param {boolean} or {innerEvent} bool
+ */
+ComponentView.prototype.setPresence = function(bool) {
+	if (typeof bool === 'object' && typeof bool.data !== 'undefined')
+		bool = bool.data;
+	this.hostElem.style.display = bool ? this.presenceAsAProp : 'none';
+}
+
+/**
+ * @param {boolean} bool
+ */
+ComponentView.prototype.addEventListener = function(event, handler) {
+	this.hostElem.addEventListener(event, handler);
+}
+
+/**
  * @abstract
  * 
  */
@@ -731,6 +750,55 @@ ComponentView.prototype.addChildAt = function(childView, atIndex) {
 		this.hostElem.children[atIndex - 1].insertAdjacentElement('afterend', childView.hostElem);
 	else
 		this.hostElem.appendChild(childView.hostElem);
+}
+
+/**
+ * @abstract
+ */
+ComponentView.prototype.empty = function() {
+	this.getRoot().innerHTML = null;
+	return true;
+}
+
+/**
+ * @abstract
+ */
+ComponentView.prototype.emptyTargetSubView = function() {
+	return this.targetSubView.empty();
+}
+
+/**
+ * @param {array[string]} contentAsArray
+ * @param {string} templateNodeName
+ */
+ComponentView.prototype.getMultilineContent = function(contentAsArray) {
+	return this.getDOMFragmentFromContent(contentAsArray, this.templateNodeName);
+}
+
+/**
+ * @param {array[string]} contentAsArray
+ * @param {string} templateNodeName
+ */
+ComponentView.prototype.getDOMFragmentFromContent = function(contentAsArray, templateNodeName) {
+	var fragment = document.createDocumentFragment(), elem;
+	contentAsArray.forEach(function(val) {
+		var elem = document.createElement(templateNodeName);
+		elem.textContent = val;
+		fragment.appendChild(elem);
+	}, this);
+	return fragment;
+}
+
+ComponentView.prototype.setContentFromFragment = function(fragment) {
+	this.empty();
+	this.getRoot().appendChild(fragment);
+}
+
+/**
+ * @param {array[string]} contentAsArray
+ */
+ComponentView.prototype.setContentFromArrayOnTargetSubview = function(contentAsArray) {
+	return this.targetSubView.setContentFromFragment(this.getMultilineContent(contentAsArray));
 }
 
 
@@ -800,7 +868,23 @@ ComponentSubViewsHolder.prototype.instanciateSubViews = function(definition) {
 	}, this);
 }
 
-ComponentSubViewsHolder.prototype.addMemberView = function(definition) {
+ComponentSubViewsHolder.prototype.firstMember = function() {
+	return this.memberViews[0];
+}
+
+ComponentSubViewsHolder.prototype.lastMember = function() {
+	return this.memberViews[this.memberViews.length - 1];
+}
+
+ComponentSubViewsHolder.prototype.memberAt = function(idx) {
+	return this.memberViews[idx];
+}
+
+ComponentSubViewsHolder.prototype.addMemberView = function(view) {
+	this.memberViews.push(view);
+}
+
+ComponentSubViewsHolder.prototype.addMemberViewFromDef = function(definition) {
 	var view = new ComponentSubView(definition, this.parentView);
 	this.memberViews.push(view);
 }
@@ -811,6 +895,18 @@ ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definiti
 	this.memberViews.unshift(view);
 	
 	TypeManager.viewsRegister.push(lastView);
+}
+
+ComponentSubViewsHolder.prototype.setMemberContent = function(idx, textContent) {
+	this.memberViews[idx].hostElem.textContent = textContent;
+}
+
+ComponentSubViewsHolder.prototype.setEachMemberContent = function(contentAsArray) {
+	contentAsArray.forEach(function(val, key) {
+		if (typeof val !== 'string')
+			return;
+		this.setMemberContent(key, val);
+	}, this);
 }
 
 
@@ -858,7 +954,9 @@ var commonStates = {
 		position : 0,		// position as a state : degrees, 'min', 'man', nbr of pixels from start, etc. 
 		size : 0,			// size as a state : length, height, radius
 		tabIndex : 0,
-		'delete' : false		// isn't a -persistent- state (cause it removes the node, hm) but deserves a glyph
+		'delete' : false,		// isn't a -persistent- state (cause it removes the node, hm) but deserves a glyph
+		shallreceivefile : true,
+		handlesvideo : true
 }
 
 

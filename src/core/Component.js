@@ -135,7 +135,7 @@ HierarchicalObject.prototype.handleEventSubscriptions = function(subscriptionTyp
 	else if (subscriptionType === 'subscribeOnSelf')
 		eventQueries.forEach(function(subscription, key) {
 			subscription.subscribeToEvent(this, this);
-		}, candidateModule);
+		}, this);
 }
 
 /**
@@ -602,7 +602,7 @@ ComponentWithHooks.prototype.viewExtend = function(definition) {
 	if (this._asyncInitTasks.length)
 		this.asyncViewExtend(definition);
 	this.basicLateViewExtend(definition);
-	this.lastAddChildren(definition);
+	this.lateAddChildren(definition);
 }
 
 ComponentWithHooks.prototype.registerEvents = function(definition) {
@@ -630,11 +630,11 @@ ComponentWithHooks.prototype.asyncViewExtend = function(definition) {
 /**
  * @hook
  */
-ComponentWithHooks.prototype.lastAddChildren = function(definition) {
+ComponentWithHooks.prototype.lateAddChildren = function(definition) {
 	var asyncTask;
 	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
 		asyncTask = this._asyncInitTasks[i];
-		if(asyncTask.type === 'lastAddChild') {
+		if(asyncTask.type === 'lateAddChild') {
 			asyncTask.execute(this, definition);
 		}
 	}
@@ -665,11 +665,11 @@ ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(compon
 	
 	var view;
 	if (newDef.getHostDef().nodeName)
-		this.view.subViewsHolder.addMemberView(newDef.getHostDef());
+		this.view.subViewsHolder.addMemberViewFromDef(newDef.getHostDef());
 	
 	if (newDef.members.length) {
 		newDef.members.forEach(function(memberDef) {
-			this.view.subViewsHolder.addMemberView(memberDef);
+			this.view.subViewsHolder.addMemberViewFromDef(memberDef);
 		}, this);
 	}
 }
@@ -735,13 +735,15 @@ ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition
  * @constructor CompositorComponent
  */
 var CompositorComponent = function(definition, parentView, parent) {
-	ComponentWithView.call(this, definition);
+	this.Compositor.call(this, definition);
 	this.objectType = 'CompositorComponent';
 }
 CompositorComponent.prototype = Object.create(ComponentWithView.prototype);
 CompositorComponent.prototype.objectType = 'CompositorComponent';
 
 CompositorComponent.prototype.Compositor = function() {};				// virtual
+
+CompositorComponent.prototype.acquireCompositor = function() {};		// virtual
 
 
 
@@ -764,7 +766,8 @@ CompositorComponent.prototype.Compositor = function() {};				// virtual
 var ComponentWithReactiveText = function(definition, parentView, parent, isChildOfRoot) {
 	ComponentWithHooks.call(this, definition, parentView, parent, isChildOfRoot);
 	this.objectType = 'ComponentWithReactiveText';
-
+	this.eachMemberContentCache = [];
+	this.targetSubViewContentCache = [];
 }
 ComponentWithReactiveText.prototype = Object.create(ComponentWithHooks.prototype);
 ComponentWithReactiveText.prototype.objectType = 'ComponentWithReactiveText';
@@ -772,7 +775,7 @@ ComponentWithReactiveText.prototype.objectType = 'ComponentWithReactiveText';
 /**
  * @abstract
  */
-ComponentWithReactiveText.prototype.populateSlots = function(values) {
+ComponentWithReactiveText.prototype.setContentFromArrayOnEachMemberView = function(values) {
 	if (!Array.isArray(values) || !values.length) {
 		if (typeof value === 'string')
 			values = [values];
@@ -780,21 +783,36 @@ ComponentWithReactiveText.prototype.populateSlots = function(values) {
 			return;
 	}
 	
-	values.forEach(function(val, key) {
-		if (typeof val !== 'string')
-			return;
-		this.view.subViewsHolder.memberViews[key].hostElem.textContent = val;
-	}, this);
+	this.view.subViewsHolder.setEachMemberContent(values);
 }
 
 /**
  * @abstract
  */
-ComponentWithReactiveText.prototype.populateSelf = function(value) {
+ComponentWithReactiveText.prototype.setContentFromCacheOnTargetSubview = function() {
+	if (!Array.isArray(this.targetSubViewContentCache) || !this.targetSubViewContentCache.length)
+		return '';
+	return this.view.setContentFromArrayOnTargetSubview(this.targetSubViewContentCache);
+}
+
+/**
+ * @abstract
+ */
+ComponentWithReactiveText.prototype.setContentFromValueOnView = function(value) {
 	if (typeof value !== 'string' && isNaN(parseInt(value)))
 		return;
-	this.view.value = value.toString();
+	this.view.value = value.toString();		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
 };
+
+ComponentWithReactiveText.prototype.emptyTargetSubView = function() {
+	return this.view.emptyTargetSubView();
+}
+
+ComponentWithReactiveText.prototype.resetTargetSubViewContent = function() {
+	this.targetSubViewContentCache.length = 0;
+	this.emptyTargetSubView();
+	return true;
+}
 
 
 
@@ -844,6 +862,41 @@ ComponentStrokeAware.prototype.registerKeyboardEvents = function(e) {
 
 
 
+/**
+ * @constructor ComponentWithViewAbstractingAFeed
+ */
+var ComponentWithViewAbstractingAFeed = function(definition, parentView, parent, isChildOfRoot) {
+	ComponentWithHooks.call(this, definition);
+	this.objectType = 'ComponentWithViewAbstractingAFeed';
+	this.createEvent('exportdata');
+}
+
+ComponentWithViewAbstractingAFeed.prototype = Object.create(ComponentWithHooks.prototype);
+ComponentWithViewAbstractingAFeed.prototype.objectType = 'ComponentWithViewAbstractingAFeed';
+
+ComponentWithViewAbstractingAFeed.prototype.exportData = function(data) {
+	this.trigger('exportdata', data);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -857,5 +910,6 @@ module.exports = {
 	CompositorComponent : CompositorComponent,
 	ComponentWithHooks : ComponentWithHooks,
 	ComponentWithReactiveText : ComponentWithReactiveText,
-	ComponentStrokeAware : ComponentStrokeAware
+	ComponentStrokeAware : ComponentStrokeAware,
+	ComponentWithViewAbstractingAFeed : ComponentWithViewAbstractingAFeed
 };

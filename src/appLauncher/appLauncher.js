@@ -113,15 +113,6 @@ var classConstructor = function() {
 		return (knownIDs[uniqueID] = globalObj);
 	}
 	
-	// jQuery UI implements some lock-mechanisms to prevent interfaces being used at the same time by two widgets
-	// Now we've integrated some widgets as native components, let's try to keep track of those locks at our app level
-	var locks = {
-			mouseHandled : false
-	}
-	document.addEventListener("mouseup", function() {
-		locks.mouseHandled = false;
-	});
-	
 	return {
 		masterTimer : masterTimer,
 		resizeObserver : resizeObserver,
@@ -129,7 +120,7 @@ var classConstructor = function() {
 		options : options,
 		launch : launch,
 		checkSupport : checkSupport,
-		locks : locks,
+//		locks : locks,
 		getUID : getUID,
 		isKnownUID : isKnownUID,
 		setUID : setUID,

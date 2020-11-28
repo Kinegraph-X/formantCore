@@ -9,9 +9,9 @@ var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
 var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
-var LazySlottedComponent = require('src/UI/Generics/LazySlottedComponent');
+//var LazySlottedComponent = require('src/UI/Generics/LazySlottedComponent');
 
-var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, {UIpackage : '%%UIpackage%%'}).packageList;
+var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, { UIpackage: '%%UIpackage%%' }).packageList;
 Object.assign(componentTypes, require(componentTypes.misc));
 for (let type in componentTypes) {
 	if (typeof componentTypes[type] === 'string' && type !== 'misc')
@@ -25,10 +25,10 @@ for (let type in componentTypes) {
  * @constructor ComposedComponent
  */
 var ComposedComponent = function(definition, parentView) {
-//	console.log(definition);
+	//	console.log(definition);
 	this._firstListUIDSeen = null;
 	var shouldExtend = false;
-	
+
 	// Let's use an elementary and perf efficient hack right here, at the beginning, and abuse the ascendant component with a symbolic def,
 	// for the view to be instanciated with the correct context (knowing how many subSections we have is crucial when connecting children)
 	// This prevents us from instanciating a Component with subViews as the "host" of a composedComponent : No matter at all, cause that case wouldn't make much sense, though.
@@ -38,10 +38,10 @@ var ComposedComponent = function(definition, parentView) {
 	definition.subSections.forEach(function(section) {
 		definition.getHostDef().subSections.push(null);
 	});
-	
+
 	if (!TypeManager.hostsDefinitionsCacheRegister.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
 		shouldExtend = true;
-	
+
 	// Another elementary Hack to integrate parts of the "host" of the def in that "composedComponent" (which is pretty "unfruity", not having any "applicative" behavior) :
 	// assuming we don't want to instanciate "in da space" (i.e. "in that present ctor") a whole Component, and have to reflect all of its props on "self",
 	// we call the "superior" ComponentWithView ctor on the def of solely the host (5 lines below)
@@ -54,18 +54,18 @@ var ComposedComponent = function(definition, parentView) {
 		this.createDefaultDef = componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
 	}
 
-	
+
 	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, this);  // feed with host def : "this" shall be assigned the _defUID of the "hostDef"
 	this.objectType = 'ComposedComponent';
-	
+
 	// extend last, so the event bubbling occurs always after the "explicitly defined in the host's def" callbacks
 	if (shouldExtend)
 		this.extendDefinition(definition);
-	
+
 	this.instanciateSubSections(definition);
 	this.instanciateMembers(definition);
 	this.instanciateLists(definition);
-	
+
 }
 ComposedComponent.prototype = Object.create(Components.ComponentWithView.prototype);
 ComposedComponent.prototype.objectType = 'ComposedComponent';
@@ -74,15 +74,15 @@ ComposedComponent.prototype.extendDefinition = function(definition) {
 	// Special case : events of type "update" shall have the ability to bubble from ComposedComponent to ComposedComponent
 	definition.getGroupHostDef().subscribeOnChild.push(
 		(new TypeManager.EventSubscriptionModel({
-				on : 'update',
-				subscribe : function(e) {
-					if (e.bubble)
-						this.trigger('update', e.data, true);
-				}
-			})
+			on: 'update',
+			subscribe: function(e) {
+				if (e.bubble)
+					this.trigger('update', e.data, true);
+			}
+		})
 		)
 	);
-//	TypeManager.caches['subscribeOnChild'].setItem(this._defUID, definition.getGroupHostDef().subscribeOnChild);
+	//	TypeManager.caches['subscribeOnChild'].setItem(this._defUID, definition.getGroupHostDef().subscribeOnChild);
 }
 
 ComposedComponent.prototype.instanciateSubSections = function(definition) {
@@ -139,7 +139,7 @@ var ComponentList = function(definition, parentView, parent) {
 	Components.HierarchicalObject.call(this);
 	this.objectType = 'ComponentList';
 	this._parent = parent;
-	
+
 	this.iterateOnModel(definition, parentView);
 }
 ComponentList.prototype = Object.create(Components.HierarchicalObject.prototype);
@@ -152,7 +152,7 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 	}
 	else
 		return;
-	
+
 	var templateDef = definition.getHostDef().template, composedComponent, type;
 
 	definition.getHostDef().each.forEach(function(item, key) {
@@ -167,8 +167,8 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 		else
 			this._parent.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(templateDef, this._parent.view));
 	}, this);
-	
-//	console.log(this);
+
+	//	console.log(this);
 }
 ComposedComponent.prototype.ComponentList = ComponentList;		// used in AppIgnition.List (as a "life-saving" safety, we wan't to avoid declaring the ComponentList as a "known" Component)
 
@@ -193,7 +193,7 @@ var LazySlottedComposedComponent = function(definition, parentView, dummyParent,
 	this.typedSlots = [];
 	this.slotsCount = this.slotsCount || 2;
 	this.slotsDef = this.slotsDef || slotsDef || createLazySlottedComponenSlotstDef();
-	
+
 	// Proceeding that way (i.e. not using the complete mixin mechanism : "addInterface") allows us to choose in which order the ctors are called
 	// When the base ctor is called, it calls the extension's ctor, and then, and only then, the superClasse's ctor
 	// (which would have been called before the extension's one if we had used the "addInterface" mechanism)
@@ -203,7 +203,7 @@ var LazySlottedComposedComponent = function(definition, parentView, dummyParent,
 	// We could choose not to call the ComposedComponent ctor, but then we wouldn't be able to define subSections or members (ou would have to explicitly call the methods then)
 	// Other issue : the ComposedComponent ctor would be called with the arguments received by the mergedConstructor(), and they do not include a definition object
 	// Keeping that here makes the code base cleaner
-	
+
 	// Get a definition :
 	// Here, the initial def allows an undefined number of tabs
 	stdDefinition = createLazySlottedComponentDef();
@@ -229,13 +229,13 @@ LazySlottedComposedComponent.prototype.objectType = 'LazySlottedComposedComponen
 LazySlottedComposedComponent.prototype.updateDefinitionBasedOnSlotsCount = function(definition) {
 	definition.lists[0].host.each = [];
 	for (let i = 0, l = this.slotsCount; i < l; i++) {
-		definition.lists[0].host.each.push({'slot-id' : 'slot' + i});
+		definition.lists[0].host.each.push({ 'slot-id': 'slot' + i });
 	}
 }
 
 LazySlottedComposedComponent.prototype.affectSlots = function() {
 	var i = 0;
-	
+
 	for (let slotDef in this.slotsDef) {
 		this.typedSlots.push(new this.rDataset(
 			this._children[i],
@@ -245,7 +245,7 @@ LazySlottedComposedComponent.prototype.affectSlots = function() {
 		);
 		i++;
 	}
-	
+
 	return true;
 }
 
@@ -258,6 +258,210 @@ LazySlottedComposedComponent.prototype.setSchema = function() {
 		this.typedSlots[i].setSchema([arguments[i]]);
 	}
 }
+
+LazySlottedComposedComponent.prototype.pushToSlotFromText = function(slotNbr, content) {
+	// Here, newItem() depends on the type given in the ctor... or afterwards with setSchema()
+	this.typedSlots[slotNbr].push(this.typedSlots[slotNbr].newItem(content));
+}
+
+LazySlottedComposedComponent.prototype.pushDefaultToSlot = function(slotNbr) {
+	// Here, newItem() depends on the type given in the ctor... or afterwards with setSchema()
+	this.typedSlots[slotNbr].push(this.typedSlots[slotNbr].newItem(''));
+}
+
+LazySlottedComposedComponent.prototype.pushMultipleDefaultToSlot = function(slotNbrArray) {
+	slotNbrArray.forEach(function(slotNbr) {
+		this.pushDefaultToSlot(slotNbr);
+	}, this);
+}
+
+LazySlottedComposedComponent.prototype.addPairedItems = function(slotTextContent) {
+	for (let i = 0, l = arguments.length; i < l; i++) {
+		this.pushToSlotFromText(0, arguments[i]);
+		this.pushToSlotFromText(1, '');
+	}
+}
+
+
+
+
+
+
+
+var createLAbstractTreeDef = require('src/coreDefs/abstractTreeDef');
+var createBranchTemplateDef = require('src/coreDefs/branchTemplateDef');
+var createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
+
+var AbstractTree = function(definition, parentView, parent, jsonData, targetComponent, nodeFilterFunction) {
+	var stdDefinition = createLAbstractTreeDef();
+	this.branchTemplate = createBranchTemplateDef();
+	this.leafTemplate = createLeafTemplateDef();
+	this.pseudoModel = [];
+	this.listTemplate = TypeManager.createComponentDef({ type: 'ComponentList' });
+	this.listTemplate.getHostDef().model = this.pseudoModel;
+
+	ComposedComponent.call(this, stdDefinition, parentView, parent);
+	this.objectType = 'AbstractTree';
+	
+	this.renderJSON(jsonData, targetComponent, nodeFilterFunction);
+}
+AbstractTree.prototype = Object.create(ComposedComponent.prototype);
+AbstractTree.prototype.objectType = 'AbstractTree';
+
+AbstractTree.prototype.getMember = function(memberSpec, parent) {
+	var type = memberSpec.type, componentDef, component;
+	if (type === 'array' || type === 'object') {
+		if (!(componentDef = TypeManager.definitionsCache.isKnownUID('branchTemplate_' + type))) {
+			componentDef = TypeManager.createComponentDef(this.branchTemplate, 'branchTemplate_' + type);
+			//			componentDef.getGroupHostDef().attributes.push(TypeManager.PropsFactory({textContent : this.getHeaderTitle(type)}));
+		}
+		parent.pushChild((component = new ComposedComponent(this.branchTemplate, parent.view, parent)));
+		TypeManager.dataStoreRegister.setItem(component._UID, this.pseudoModel.length);
+		this.pseudoModel.push({ headerTitle: this.getHeaderTitle(memberSpec) });
+	}
+	else {
+		parent.pushChild((component = new componentTypes[this.leafTemplate.getHostDef().type](this.leafTemplate, parent.view, parent)));
+		TypeManager.dataStoreRegister.setItem(component._UID, this.pseudoModel.length);
+		this.pseudoModel.push(this.getKeyValueDef(memberSpec));
+	}
+};
+
+AbstractTree.prototype.getHeaderTitle = function(memberSpec) {
+	var len = memberSpec.children.length;
+	if (memberSpec.type === 'array')
+		return "[".concat(len, "]");
+	else if (memberSpec.type === 'object')
+		return "{".concat(len, "}");
+}
+
+AbstractTree.prototype.getKeyValueDef = function(memberSpec) {
+	return {
+		keyValuePair: [memberSpec.key + ' : ', memberSpec.value],
+		displayed_as: memberSpec.type
+	};
+}
+
+AbstractTree.prototype._typeof = function(obj) {
+	var _typeof;
+	if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
+		_typeof = function(obj) {
+			return typeof obj;
+		};
+	} else {
+		_typeof = function(obj) {
+			return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+		};
+	}
+
+	return _typeof(val);	
+}
+
+AbstractTree.prototype.getDataType = function(obj) {
+
+	var type = this._typeof(obj);
+
+	if (Array.isArray(obj))
+		type = 'array';
+	if (obj === null)
+		type = 'null';
+
+	return type;
+}
+
+AbstractTree.prototype.createNode = function() {
+	var opt = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+	return {
+		key: opt.key || null,
+		parent: opt.parent || null,
+		value: opt.hasOwnProperty('value') ? opt.value : null,
+		isExpanded: opt.isExpanded || false,
+		type: opt.type || null,
+		children: opt.children || [],
+		el: opt.el || null,
+		depth: opt.depth || 0
+	};
+}
+
+AbstractTree.prototype.createSubnodes = function(data, node) {
+	if (this._typeof(data) === 'object') {
+		for (var key in data) {
+			var child = this.createNode({
+				value: data[key],
+				key: key,
+				depth: node.depth + 1,
+				type: this.getDataType(data[key]),
+				parent: node
+			});
+			node.children.push(child);
+			this.createSubnodes(data[key], child);
+		}
+	}
+}
+
+AbstractTree.prototype.createTree = function(jsonData) {
+	var data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+	var rootNode = createNode({
+		value: data,
+		key: getDataType(data),
+		type: getDataType(data)
+	});
+	this.createSubnodes(data, rootNode);
+	return rootNode;
+}
+
+AbstractTree.prototype.traverseTree = function(memberDesc, parentComponent, callback) {
+	//console.log(node);
+	var component = callback(memberDesc, parentComponent);
+	//console.log(node);
+
+	if (memberDesc.children.length > 0) {
+		memberDesc.children.forEach(function(child) {
+			this.traverseTree(child, component, callback);
+		}, this);
+	}
+}
+
+AbstractTree.prototype.instanciateMembers = function(tree, targetComponent, nodeFilterFunction) {
+	var component;
+	this.traverseTree(tree, this, function(memberDesc, parentComponent) {
+		if (typeof nodeFilterFunction !== 'function') {
+			component = this.createMember(memberDesc, parentComponent);
+		}
+		else {
+			memberDesc = nodeFilterFunction(memberDesc);
+			component = this.createMember(memberDesc, parentComponent);
+			if (!memberDesc.children.length) {
+				component.registerClickEvents = function() {
+					Object.getPrototypeOf(this).registerClickEvents.call(this);
+					this.view.subViewsHolder.memberViews[1].getRoot().addEventListener('click', function() {
+						targetComponent.streams.updateChannel.value = node.projectedData;
+					});
+				}
+			}
+			else {
+				component.addEventListener('clicked_ok', function() {
+					this.streams.expanded.value = !this.streams.expanded.value ? 'expanded' : null;
+				}.bind(component));
+			}
+		}
+		return component;
+	});
+}
+
+AbstractTree.prototype.renderJSON = function(jsonData, targetComponent, nodeFilterFunction) {
+	var parsedData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+	var tree = this.createTree(parsedData);
+	this.instanciateMembers(tree, targetComponent, nodeFilterFunction);
+	this.render(this, this.view, this.listTemplate);
+	return tree;
+}
+
+AbstractTree.prototype.render = function() { } 	// pure virtual (injected as a dependancy by AppIgnition)
+
+
+
+
+
 
 
 
@@ -275,20 +479,35 @@ LazySlottedComposedComponent.prototype.setSchema = function() {
 
 // Abstract types & abstract implementations re-injection
 componentTypes.ComponentList = ComponentList;
+componentTypes.AbstractTree = AbstractTree;
 componentTypes.LazySlottedComposedComponent = LazySlottedComposedComponent;
 componentTypes.ComponentWithView = Components.ComponentWithView;
 componentTypes.ComponentWithHooks = Components.ComponentWithHooks;
 componentTypes.VisibleStateComponent = VisibleStateComponent;
 
 // Some formal implementations rely on Dependancy Injection
-componentTypes.TabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(LazySlottedComposedComponent.prototype), componentTypes.TabPanel.prototype);
-componentTypes.TabPanel.prototype.Compositor = LazySlottedComposedComponent;
-componentTypes.TabPanel.prototype.objectType = 'TabPanel';
-componentTypes.TabPanel.prototype._implements = ['LazySlottedComposedComponent'];
+componentTypes.CompositorComponent.prototype.acquireCompositor = function(inheritingType, inheritedType) {	// special helper
+	if (inheritedType in componentTypes) {
+		var objectType = inheritingType.prototype.objectType;
+		inheritingType.prototype.Compositor = componentTypes[inheritedType];
+		inheritingType.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes[inheritedType].prototype), inheritingType.prototype);
+		inheritingType.prototype.objectType = objectType;
+		if (!inheritingType.prototype._implements.length)
+			inheritingType.prototype._implements = [inheritedType];
+		else
+			inheritingType.prototype._implements.push(inheritedType);
+	}
+}
 
-componentTypes.ComponentTabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes.TabPanel.prototype), componentTypes.ComponentTabPanel.prototype);
-componentTypes.ComponentTabPanel.prototype.objectType = 'ComponentTabPanel';
-componentTypes.ComponentTabPanel.prototype._implements = ['TabPanel', 'LazySlottedComposedComponent'];
+
+//componentTypes.TabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(LazySlottedComposedComponent.prototype), componentTypes.TabPanel.prototype);
+//componentTypes.TabPanel.prototype.Compositor = LazySlottedComposedComponent;
+//componentTypes.TabPanel.prototype.objectType = 'TabPanel';
+//componentTypes.TabPanel.prototype._implements = ['LazySlottedComposedComponent'];
+//
+//componentTypes.ComponentTabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes.TabPanel.prototype), componentTypes.ComponentTabPanel.prototype);
+//componentTypes.ComponentTabPanel.prototype.objectType = 'ComponentTabPanel';
+//componentTypes.ComponentTabPanel.prototype._implements = ['TabPanel', 'LazySlottedComposedComponent'];
 
 //componentTypes.LazySlottedComponent.prototype.ComposedComponent = ComposedComponent;
 //console.log(Object.create(componentTypes.LazySlottedComponent.prototype));
