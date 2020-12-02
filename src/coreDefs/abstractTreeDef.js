@@ -24,7 +24,10 @@ var abstractTreeDef = function(uniqueID, options, model) {
 		host : TypeManager.createComponentDef({
 //			type : 'ComposedCompnent', 				// this is implicit, as we call the ComposedComponent ctor in the TabPanel ctor
 			nodeName : 'folded-tree',
-//			sWrapper : CreateStyle('lazySlottedComponent', null, styles).sWrapper
+			props : [
+				{selected : undefined}
+			]
+//			sWrapper : CreateStyle('abstractTree', null, pseudoSlotsStyles).sWrapper
 		}),
 		members : [
 			TypeManager.createComponentDef({
@@ -32,7 +35,8 @@ var abstractTreeDef = function(uniqueID, options, model) {
 				nodeName : 'header',
 				// this is a big hack of shit (should be an attribute, but not... should be a "DOM" attribute... -> setAttribute(). TODO: fix after re-implementation of _arias&glyphs)
 				states : [
-					{role : "heading"} 
+					{role : "heading"},
+					{expanded : undefined} 
 				],
 				props : [
 					{headerTitle : undefined}

@@ -2,6 +2,10 @@
  * @def treeBranch
  * @isGroup true
  * 
+ * @CSSify hostName : treeBranch
+ * @CSSifyRule rule : host block
+ * @CSSifyRule rule : header pointer
+ * 
  */
 
 
@@ -24,24 +28,50 @@ var treeBranchDef = function(uniqueID, options, model) {
 		host : TypeManager.createComponentDef({
 			type : 'ComposedComponent',
 			nodeName : 'tree-branch',
-//			sWrapper : CreateStyle('lazySlottedComponent', null, styles).sWrapper
+			states : [
+				{expanded : undefined}
+			],
+			props : [
+				{headerTitle : undefined},
+				{displayedas : undefined},
+				{selected : undefined}
+			],
+			reactOnParent : [
+				{
+					from : 'selected',
+					to : 'selected'
+				}
+			],
+			sWrapper : CreateStyle('treeBranch', null, styles).sWrapper
 		}),
 		members : [
 			TypeManager.createComponentDef({
-				type : 'VaritextButtonWithPicto',
+				type : 'VaritextButtonWithPictoFirst',
 				nodeName : 'header',
 				// this is a big hack of shit (should be an attribute, but not... should be a "DOM" attribute... -> setAttribute(). TODO: fix after re-implementation of _arias&glyphs)
 				states : [
 					{role : "heading"},
-					{expanded : undefined} 
+					{expanded : undefined},
+					{displayedas : undefined},
+					{selected : undefined}
 				],
-				props : [
-					{headerTitle : undefined}
-				],
-				reactOnSelf : [
+				reactOnParent : [
 					{
 						from : 'headerTitle',
 						to : 'content'
+					},
+					{
+						from : 'selected',
+						cbOnly : true,
+						subscribe : function(value) {this.streams.selected.value = value === this._UID ? 'selected' : null;}
+					},
+					{
+						from : 'expanded',
+						to : 'expanded'
+					},
+					{
+						from : 'displayedas',
+						to : 'displayedas'
 					}
 				]
 			})

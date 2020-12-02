@@ -15,7 +15,6 @@ var pseudoSlotsStyles = require('src/UI/defs/extraStyles/pseudoSlot');
 
 
 var lazySlottedComponentDef = function(uniqueID, options, model) {
-	var context = this.context;
 		
 	// Some CSS stuff (styles are directly injected in the main def below)
 	var styles = [

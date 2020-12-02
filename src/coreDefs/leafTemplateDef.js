@@ -21,16 +21,23 @@ var treeLeafTemplateDef = function(uniqueID, options, model) {
 /*@CSSifySlot*/
 		];
 	
-	var headerDef = TypeManager.createComponentDef({
+	var secondSlotDef = TypeManager.createComponentDef({
 			type : 'KeyValuePairComponent',
 			nodeName : 'key-value-pair',
 			states : [
-				{displayed_as : undefined}
+				{selected : undefined}
+			],
+			reactOnParent : [
+				{
+					from : 'selected',
+					cbOnly : true,
+					subscribe : function(value) {this.streams.selected.value = value === this._UID ? 'selected' : null;}
+				}
 			]
 		}, 'KeyValuePair');
 	
 	
-	return headerDef;
+	return secondSlotDef;
 }
 
 treeLeafTemplateDef.__factory_name = 'treeLeafTemplateDef';

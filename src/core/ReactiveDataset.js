@@ -245,7 +245,7 @@ Object.defineProperty(RecitalDataset.prototype, 'spliceOnPropInverse',  {
 });
 
 Object.defineProperty(RecitalDataset.prototype, 'resetLength',  {
-	value : function(ComponentGroupObj) {
+	value : function() {
 		if (this.trackedComponent.removeAllChildren())
 			Array.prototype.splice.call(this, 0, this.length);
 	}
@@ -273,6 +273,18 @@ Object.defineProperty(RecitalDataset.prototype, 'styleToFront', {
 
 // Dependancy Injection
 App.componentTypes.LazySlottedComposedComponent.prototype.rDataset = RecitalDataset;
+App.componentTypes.LazySlottedComposedComponent.prototype.render = function() {
+	new App.DelayedDecoration(null, this);
+};
+App.componentTypes.AbstractTree.prototype.render = function() {
+	new App.DelayedDecoration(null, this, this.listTemplate.getHostDef());
+};
+App.componentTypes.KeyValueList.prototype.render = function() {
+	new App.DelayedDecoration(null, this, this.listTemplate.getHostDef());
+};
+
+//App.componentTypes.TabPanel.prototype.rDataset = RecitalDataset;
+//App.componentTypes.ComponentTabPanel.prototype.rDataset = RecitalDataset;
 
 
 

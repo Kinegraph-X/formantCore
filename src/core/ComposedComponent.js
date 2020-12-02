@@ -9,16 +9,19 @@ var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
 var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
+var KeyValuePairComponent = require('src/UI/Generics/KeyValuePairComponent');
+var ExtensibleTable = require('src/UI/Generics/ExtensibleTable');
 //var LazySlottedComponent = require('src/UI/Generics/LazySlottedComponent');
 
 var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, { UIpackage: '%%UIpackage%%' }).packageList;
 Object.assign(componentTypes, require(componentTypes.misc));
+delete componentTypes.misc;
 for (let type in componentTypes) {
 	if (typeof componentTypes[type] === 'string' && type !== 'misc')
 		componentTypes[type] = require(componentTypes[type]);
 }
-
-
+componentTypes.ComponentWithReactiveText = Components.ComponentWithReactiveText;
+var coreComponents = {};
 
 
 /**
@@ -54,7 +57,6 @@ var ComposedComponent = function(definition, parentView) {
 		this.createDefaultDef = componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
 	}
 
-
 	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, this);  // feed with host def : "this" shall be assigned the _defUID of the "hostDef"
 	this.objectType = 'ComposedComponent';
 
@@ -69,6 +71,7 @@ var ComposedComponent = function(definition, parentView) {
 }
 ComposedComponent.prototype = Object.create(Components.ComponentWithView.prototype);
 ComposedComponent.prototype.objectType = 'ComposedComponent';
+coreComponents.ComposedComponent = ComposedComponent;
 
 ComposedComponent.prototype.extendDefinition = function(definition) {
 	// Special case : events of type "update" shall have the ability to bubble from ComposedComponent to ComposedComponent
@@ -121,7 +124,7 @@ ComposedComponent.prototype.instanciateLists = function(definition) {
 
 
 ComposedComponent.prototype.retrieveListDefinition = function() {
-	return TypeManager.listsDefinitionsCacheRegister.getItem(this._firstListUIDSeen);
+	return this._firstListUIDSeen ? TypeManager.listsDefinitionsCacheRegister.getItem(this._firstListUIDSeen) : false;
 }
 
 
@@ -154,13 +157,15 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 		return;
 
 	var templateDef = definition.getHostDef().template, composedComponent, type;
-
+//	console.log(templateDef);
 	definition.getHostDef().each.forEach(function(item, key) {
+		
 		if (templateDef.getGroupHostDef()) {
 			this._parent.pushChild((composedComponent = new ComposedComponent(templateDef, this._parent.view)));
 			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 		}
 		else if ((type = templateDef.getHostDef().getType())) {
+//			console.log(item, key);
 			this._parent.pushChild((composedComponent = new componentTypes[type](templateDef, this._parent.view)));
 			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 		}
@@ -189,7 +194,7 @@ var createLazySlottedComponentDef = require('src/coreDefs/lazySlottedComponentDe
 var createLazySlottedComponenSlotstDef = require('src/coreDefs/lazySlottedComponentSlotsDef');
 
 var LazySlottedComposedComponent = function(definition, parentView, dummyParent, alreadyComposed, slotsCount, slotsDef) {
-	var stdDefinition;
+	var stdDefinition = definition || createLazySlottedComponentDef();
 	this.typedSlots = [];
 	this.slotsCount = this.slotsCount || 2;
 	this.slotsDef = this.slotsDef || slotsDef || createLazySlottedComponenSlotstDef();
@@ -206,8 +211,6 @@ var LazySlottedComposedComponent = function(definition, parentView, dummyParent,
 
 	// Get a definition :
 	// Here, the initial def allows an undefined number of tabs
-	stdDefinition = createLazySlottedComponentDef();
-	stdDefinition.getGroupHostDef().type = 'LazySlottedComposedComponent';
 	this.updateDefinitionBasedOnSlotsCount(stdDefinition);
 	ComposedComponent.call(this, stdDefinition, parentView);
 
@@ -224,6 +227,7 @@ var LazySlottedComposedComponent = function(definition, parentView, dummyParent,
 }
 LazySlottedComposedComponent.prototype = Object.create(ComposedComponent.prototype);
 LazySlottedComposedComponent.prototype.objectType = 'LazySlottedComposedComponent';
+coreComponents.LazySlottedComposedComponent = LazySlottedComposedComponent;
 
 
 LazySlottedComposedComponent.prototype.updateDefinitionBasedOnSlotsCount = function(definition) {
@@ -282,6 +286,19 @@ LazySlottedComposedComponent.prototype.addPairedItems = function(slotTextContent
 	}
 }
 
+LazySlottedComposedComponent.prototype.emptySlots = function() {
+	for (let i = 0, l = this.slotsCount; i < l; i++) {
+		this.typedSlots[i].resetLength();
+	}
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -293,12 +310,15 @@ var createBranchTemplateDef = require('src/coreDefs/branchTemplateDef');
 var createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
 
 var AbstractTree = function(definition, parentView, parent, jsonData, targetComponent, nodeFilterFunction) {
+//	console.log(typeof nodeFilterFunction, nodeFilterFunction);
 	var stdDefinition = createLAbstractTreeDef();
-	this.branchTemplate = createBranchTemplateDef();
-	this.leafTemplate = createLeafTemplateDef();
+	this.branchTemplate = this.branchTemplate || createBranchTemplateDef();
+	this.leafTemplate = this.leafTemplate || createLeafTemplateDef();
 	this.pseudoModel = [];
 	this.listTemplate = TypeManager.createComponentDef({ type: 'ComponentList' });
-	this.listTemplate.getHostDef().model = this.pseudoModel;
+	this.listTemplate.getHostDef().each = this.pseudoModel;
+	
+	this.expanded = 'expanded';
 
 	ComposedComponent.call(this, stdDefinition, parentView, parent);
 	this.objectType = 'AbstractTree';
@@ -307,37 +327,49 @@ var AbstractTree = function(definition, parentView, parent, jsonData, targetComp
 }
 AbstractTree.prototype = Object.create(ComposedComponent.prototype);
 AbstractTree.prototype.objectType = 'AbstractTree';
+coreComponents.AbstractTree = AbstractTree;
 
-AbstractTree.prototype.getMember = function(memberSpec, parent) {
+AbstractTree.prototype.createMember = function(memberSpec, parent) {
 	var type = memberSpec.type, componentDef, component;
-	if (type === 'array' || type === 'object') {
-		if (!(componentDef = TypeManager.definitionsCache.isKnownUID('branchTemplate_' + type))) {
+//	console.log(memberSpec);
+	if (memberSpec.children.length) {
+		if (typeof (componentDef = TypeManager.definitionsCache.isKnownUID('branchTemplate_' + type)) === 'string') {
 			componentDef = TypeManager.createComponentDef(this.branchTemplate, 'branchTemplate_' + type);
 			//			componentDef.getGroupHostDef().attributes.push(TypeManager.PropsFactory({textContent : this.getHeaderTitle(type)}));
 		}
-		parent.pushChild((component = new ComposedComponent(this.branchTemplate, parent.view, parent)));
+		
+		parent.pushChild((component = new ComposedComponent(componentDef, parent.view, parent)));
 		TypeManager.dataStoreRegister.setItem(component._UID, this.pseudoModel.length);
-		this.pseudoModel.push({ headerTitle: this.getHeaderTitle(memberSpec) });
+		this.pseudoModel.push(this.getHeaderTitle(memberSpec));
 	}
 	else {
 		parent.pushChild((component = new componentTypes[this.leafTemplate.getHostDef().type](this.leafTemplate, parent.view, parent)));
 		TypeManager.dataStoreRegister.setItem(component._UID, this.pseudoModel.length);
-		this.pseudoModel.push(this.getKeyValueDef(memberSpec));
+		this.pseudoModel.push(this.getKeyValueObj(memberSpec));
 	}
+	return component;
 };
 
 AbstractTree.prototype.getHeaderTitle = function(memberSpec) {
 	var len = memberSpec.children.length;
 	if (memberSpec.type === 'array')
-		return "[".concat(len, "]");
+		return {
+			headerTitle: "[".concat(len, "]"),
+			displayedas: memberSpec.type,
+			expanded : this.expanded
+			};
 	else if (memberSpec.type === 'object')
-		return "{".concat(len, "}");
+		return {
+			headerTitle: "{".concat(len, "}"),
+			displayedas: memberSpec.type,
+			expanded : this.expanded
+			};
 }
 
-AbstractTree.prototype.getKeyValueDef = function(memberSpec) {
+AbstractTree.prototype.getKeyValueObj = function(memberSpec) {
 	return {
-		keyValuePair: [memberSpec.key + ' : ', memberSpec.value],
-		displayed_as: memberSpec.type
+		keyValuePair: [memberSpec.key + ' :&nbsp;', (memberSpec.type === 'string' ? ' "' + memberSpec.value.toString() + '"' : memberSpec.value.toString())],
+		displayedas: memberSpec.type
 	};
 }
 
@@ -353,7 +385,7 @@ AbstractTree.prototype._typeof = function(obj) {
 		};
 	}
 
-	return _typeof(val);	
+	return _typeof(obj);	
 }
 
 AbstractTree.prototype.getDataType = function(obj) {
@@ -400,10 +432,10 @@ AbstractTree.prototype.createSubnodes = function(data, node) {
 
 AbstractTree.prototype.createTree = function(jsonData) {
 	var data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-	var rootNode = createNode({
+	var rootNode = this.createNode({
 		value: data,
-		key: getDataType(data),
-		type: getDataType(data)
+		key: 'root',
+		type: this.getDataType(data)
 	});
 	this.createSubnodes(data, rootNode);
 	return rootNode;
@@ -421,27 +453,36 @@ AbstractTree.prototype.traverseTree = function(memberDesc, parentComponent, call
 	}
 }
 
-AbstractTree.prototype.instanciateMembers = function(tree, targetComponent, nodeFilterFunction) {
-	var component;
+AbstractTree.prototype.instanciateTreeMembers = function(tree, targetComponent, nodeFilterFunction) {
+	var self = this;
+
 	this.traverseTree(tree, this, function(memberDesc, parentComponent) {
+		var component;
 		if (typeof nodeFilterFunction !== 'function') {
-			component = this.createMember(memberDesc, parentComponent);
+			component = self.createMember(memberDesc, parentComponent);
 		}
 		else {
 			memberDesc = nodeFilterFunction(memberDesc);
-			component = this.createMember(memberDesc, parentComponent);
-			if (!memberDesc.children.length) {
+			component = self.createMember(memberDesc, parentComponent);
+			if (memberDesc.children.length) {
+				component._children[0].addEventListener('clicked_ok', function(e) {
+					if (e.data.target === this.view.getRoot().children[2].children[1]) {
+						targetComponent.streams.updateChannel.value = memberDesc.projectedData;
+						this.streams.selected.value = 'selected';
+					}
+					else
+						component.streams.expanded.value = !component.streams.expanded.value ? 'expanded' : null;
+				}.bind(component._children[0]));
+			}
+			else {
 				component.registerClickEvents = function() {
 					Object.getPrototypeOf(this).registerClickEvents.call(this);
 					this.view.subViewsHolder.memberViews[1].getRoot().addEventListener('click', function() {
-						targetComponent.streams.updateChannel.value = node.projectedData;
+						targetComponent.streams.updateChannel.value = memberDesc.projectedData;
+						component.streams.selected.value = 'selected';
+						component.trigger('update', {self_UID : component._UID}, true);
 					});
 				}
-			}
-			else {
-				component.addEventListener('clicked_ok', function() {
-					this.streams.expanded.value = !this.streams.expanded.value ? 'expanded' : null;
-				}.bind(component));
 			}
 		}
 		return component;
@@ -449,9 +490,11 @@ AbstractTree.prototype.instanciateMembers = function(tree, targetComponent, node
 }
 
 AbstractTree.prototype.renderJSON = function(jsonData, targetComponent, nodeFilterFunction) {
+//	console.log(typeof nodeFilterFunction, nodeFilterFunction);
 	var parsedData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 	var tree = this.createTree(parsedData);
-	this.instanciateMembers(tree, targetComponent, nodeFilterFunction);
+//	console.log(parsedData, tree);
+	this.instanciateTreeMembers(tree, targetComponent, nodeFilterFunction);
 	this.render(this, this.view, this.listTemplate);
 	return tree;
 }
@@ -476,28 +519,129 @@ AbstractTree.prototype.render = function() { } 	// pure virtual (injected as a d
 
 
 
+var createAbstractTableDef = require('src/coreDefs/abstractTableDef');
+var createAbstractTableSlotsDef = require('src/coreDefs/abstractTableSlotsDef');
+
+	
+var AbstractTable = function(dummyDef, parentView, parent) {
+	this.slotsCount = 2;
+	
+	var stdDef = createAbstractTableDef();
+	this.slotsDef = createAbstractTableSlotsDef();
+	this.columnsNumber = 2;
+	
+	LazySlottedComposedComponent.call(this, stdDef, parentView, parent);
+	this.typedSlots[0].setSchema(['headerTitle']);
+	this.typedSlots[1].setSchema(['rowContentAsArray']);
+	this.setColumnsNumber(this.columnsNumber);
+}
+
+/**
+ * @chained_inheritance AbstractTable <= LazySlottedComposedComponent <= ComponentWithReactiveText
+ */
+var proto_proto = Object.create(LazySlottedComposedComponent.prototype);
+Object.assign(proto_proto, Components.ComponentWithReactiveText.prototype);
+AbstractTable.prototype = Object.create(proto_proto);
+AbstractTable.prototype.objectType = 'AbstractTable';
+coreComponents.AbstractTable = AbstractTable;
+componentTypes.AbstractTable = AbstractTable;
+
+AbstractTable.prototype.setColumnsNumber = function(columnsNumber) {
+	this.columnsNumber = columnsNumber;
+	this.typedSlots[0].resetLength();
+	for (let i = 0; i < columnsNumber; i++) {
+		this.pushToSlotFromText(0, (i !== 0  ? 'Column ' + i.toString() : 'Idx'));
+	}
+}
+
+AbstractTable.prototype.getRows = function() {
+	return this._children[1];
+}
+
+AbstractTable.prototype.getRow = function(idx) {
+	return this._children[1]._children[idx];
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Abstract types & abstract implementations re-injection
-componentTypes.ComponentList = ComponentList;
-componentTypes.AbstractTree = AbstractTree;
-componentTypes.LazySlottedComposedComponent = LazySlottedComposedComponent;
+componentTypes.ComposedComponent = ComposedComponent;
 componentTypes.ComponentWithView = Components.ComponentWithView;
 componentTypes.ComponentWithHooks = Components.ComponentWithHooks;
 componentTypes.VisibleStateComponent = VisibleStateComponent;
+componentTypes.KeyValuePairComponent = KeyValuePairComponent;
+componentTypes.ExtensibleTable = ExtensibleTable;
+
+// Extension continues in ReactiveDataset, ComponentSet
+componentTypes.LazySlottedComposedComponent = LazySlottedComposedComponent;
+componentTypes.AbstractTable = AbstractTable;
+componentTypes.AbstractTree = AbstractTree;
+
+
+
 
 // Some formal implementations rely on Dependancy Injection
-componentTypes.CompositorComponent.prototype.acquireCompositor = function(inheritingType, inheritedType) {	// special helper
-	if (inheritedType in componentTypes) {
+Components.CompositorComponent.prototype.acquireCompositor = function(inheritingType, inheritedType) {	// special helper
+	if (inheritedType in componentTypes || inheritedType in coreComponents) {
 		var objectType = inheritingType.prototype.objectType;
-		inheritingType.prototype.Compositor = componentTypes[inheritedType];
-		inheritingType.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes[inheritedType].prototype), inheritingType.prototype);
+		inheritingType.prototype.Compositor = coreComponents[inheritedType];
+//		console.log(Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes[inheritedType].prototype), inheritingType.prototype));
+		inheritingType.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(coreComponents[inheritedType].prototype), inheritingType.prototype);
 		inheritingType.prototype.objectType = objectType;
-		if (!inheritingType.prototype._implements.length)
+		if (!inheritingType.prototype._implements || !inheritingType.prototype._implements.length)
 			inheritingType.prototype._implements = [inheritedType];
 		else
 			inheritingType.prototype._implements.push(inheritedType);
 	}
 }
+
+var extension2ndPass = {};
+for (var componentType in componentTypes) {
+//	console.log(componentTypes[componentType].prototype.hasOwnProperty('extendsCore'), componentType, componentTypes[componentType].prototype.extendsCore);
+	if (componentTypes[componentType].prototype.hasOwnProperty('extendsCore'))
+		Components.CompositorComponent.prototype.acquireCompositor(componentTypes[componentType], componentTypes[componentType].prototype.extendsCore);
+	else if (componentTypes[componentType].prototype.hasOwnProperty('extends'))
+		extension2ndPass[componentType] = componentTypes[componentType];
+}
+for (var componentType in extension2ndPass) {
+	Components.CompositorComponent.prototype.extendFromCompositor(componentTypes[componentType], componentTypes[componentTypes[componentType].prototype.extends]);
+}
+
+
 
 
 //componentTypes.TabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(LazySlottedComposedComponent.prototype), componentTypes.TabPanel.prototype);

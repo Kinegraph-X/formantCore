@@ -70,7 +70,7 @@ Object.defineProperty(ComponentSet.prototype, 'ignite', {
 		this.forEach(function(item, key) {
 			if (key === idx) {
 				if (item._ignited !== true) {
-					keywordHandler = item.itemRouter.init(item._parent.view);
+					keywordHandler = item.itemRouter.init(item._parent.view, item._parent);
 					if (typeof keywordHandler === 'function')
 						keywordHandler(item.itemKeyword, item._parent.view);
 					item._ignited = true;
@@ -149,11 +149,19 @@ Object.defineProperty(ComponentSet.prototype, 'splice',  {
 });
 
 
+Object.defineProperty(ComponentSet.prototype, 'resetLength',  {
+	value : function() {
+		if (this.rootComponent.removeAllChildren())
+			Array.prototype.splice.call(this, 0, this.length);
+	}
+});
+
 
 
 //Dependancy Injection
 App.componentTypes.LazySlottedComposedComponent.prototype.cSet = ComponentSet;
-
+//App.componentTypes.TabPanel.prototype.cSet = ComponentSet;
+//App.componentTypes.ComponentTabPanel.prototype.cSet = ComponentSet;
 
 
 

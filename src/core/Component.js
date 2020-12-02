@@ -37,6 +37,13 @@ HierarchicalObject.prototype.onRemoveChild = function(child) {} 				// virtual
 /**
  * @param {object} child : an instance of another object
  */
+HierarchicalObject.prototype.getLastChild = function() {
+	return this._children[this._children.length - 1];
+}
+
+/**
+ * @param {object} child : an instance of another object
+ */
 HierarchicalObject.prototype.pushChild = function(child) {
 	child._parent = this;
 	child._key = this._children.length;
@@ -401,6 +408,7 @@ AbstractComponent.prototype.createDefaultDef = function() {}			// virtual
  */
 AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	var defaultDef, defaultHostDef;
+	
 	if ((defaultDef = this.createDefaultDef())) {
 		this._defComposedUID = defaultDef.getHostDef().UID;
 		defaultHostDef = defaultDef.getHostDef();
@@ -411,9 +419,10 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		this._defComposedUID = this._defUID;
 	
 	var hostDef = definition.getHostDef();
-	
+//	console.log(defaultHostDef);
 	if (defaultDef) {
 		TypeManager.propsAreArray.forEach(function(prop) {
+//			console.log(prop);
 			if(defaultHostDef[prop].length)
 				Array.prototype.push.apply(hostDef[prop], defaultHostDef[prop]);
 		});
@@ -530,8 +539,20 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView, p
 ComponentWithView.prototype.onRemoveChild = function(child) {
 	if (typeof child === 'undefined') {
 //		console.log(this.view.subViewsHolder.subViews[1].hostElem);
-		while (this.view.subViewsHolder.subViews[1].hostElem.firstChild) {
-			this.view.subViewsHolder.subViews[1].hostElem.removeChild(this.view.subViewsHolder.subViews[1].hostElem.lastChild);
+		if (this.view.subViewsHolder.subViews.length) {
+			this.view.subViewsHolder.subViews.forEach(function(subView, key) {
+				while (subView.hostElem.firstChild) {
+					subView.hostElem.removeChild(subView.hostElem.lastChild);
+				}
+			}, this);
+		}
+		this._children.forEach(function(child, key) {
+			child.view.hostElem.remove();
+		}, this);
+		if (this.view.subViewsHolder.memberViews.length) {
+			this.view.subViewsHolder.memberViews.forEach(function(member, key) {
+				member.hostElem.remove();
+			}, this);
 		}
 //		this.view.subViewsHolder.subViews[1].hostElem.length = 0;
 //		this.view.hostElem.remove();
@@ -679,6 +700,17 @@ ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(compon
  * @param {ComponentDefinition} nodeDefinition
  * @param {string} state
  */
+ComponentWithHooks.prototype.unshiftReactiveMemberViewFromFreshDef = function(componentDefinition, nodeDefinition, state) {
+	
+	var newDef = state ? this.extendDefToStatefull(componentDefinition, nodeDefinition, state) : nodeDefinition;
+	this.view.subViewsHolder.immediateUnshiftMemberView(newDef.getHostDef());
+}
+
+/**
+ * @param {ComponentDefinition} componentDefinition
+ * @param {ComponentDefinition} nodeDefinition
+ * @param {string} state
+ */
 ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition, nodeDefinition, state) {
 	// This is an illustrative method, a hint for others on the path to catching the "spirit" of the extension mechanism of the framework
 	// 		=> This is to be implemented as a method on the ComponentWithView.prototype : addReactiveMemberViewFromFreshDef
@@ -734,16 +766,24 @@ ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition
 /**
  * @constructor CompositorComponent
  */
-var CompositorComponent = function(definition, parentView, parent) {
-	this.Compositor.call(this, definition);
+var CompositorComponent = function(definition, parentView, parent) {//, argx, argy, arg...
+	this.Compositor.apply(this, arguments);
 	this.objectType = 'CompositorComponent';
 }
 CompositorComponent.prototype = Object.create(ComponentWithView.prototype);
 CompositorComponent.prototype.objectType = 'CompositorComponent';
+CompositorComponent.prototype.extendsCore = '';							// virtual
+CompositorComponent.prototype.extends = '';								// virtual
 
 CompositorComponent.prototype.Compositor = function() {};				// virtual
 
 CompositorComponent.prototype.acquireCompositor = function() {};		// virtual
+
+CompositorComponent.prototype.extendFromCompositor = function(inheritingType, inheritedType) {
+	var proto_proto = Object.create(inheritedType.prototype);
+	Object.assign(proto_proto, inheritingType.prototype);
+	inheritingType.prototype = proto_proto;
+}
 
 
 
@@ -776,6 +816,7 @@ ComponentWithReactiveText.prototype.objectType = 'ComponentWithReactiveText';
  * @abstract
  */
 ComponentWithReactiveText.prototype.setContentFromArrayOnEachMemberView = function(values) {
+//	console.log(values);
 	if (!Array.isArray(values) || !values.length) {
 		if (typeof value === 'string')
 			values = [values];
@@ -802,6 +843,15 @@ ComponentWithReactiveText.prototype.setContentFromValueOnView = function(value) 
 	if (typeof value !== 'string' && isNaN(parseInt(value)))
 		return;
 	this.view.value = value.toString();		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
+};
+
+/**
+ * @abstract
+ */
+ComponentWithReactiveText.prototype.appendContentFromValueOnView = function(value) {
+	if (typeof value !== 'string' && isNaN(parseInt(value)))
+		return;
+	this.view.appendText(value.toString());		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
 };
 
 ComponentWithReactiveText.prototype.emptyTargetSubView = function() {

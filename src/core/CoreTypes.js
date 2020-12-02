@@ -664,7 +664,7 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	this.targetSubView = null;
 	this.templateNodeName = definition.getHostDef().templateNodeName;
 	this.sWrapper = definition.getHostDef().sWrapper;
-	(this.sWrapper && (this.presenceAsAProp = this.sWrapper.getRuleDefinition(':host', 'display'))) || (this.presenceAsAProp = this.isCustomElem ? 'inline' : 'block');
+	(this.sWrapper && (this.presenceAsAProp = this.sWrapper.getRuleDefinition(':host', 'display'))) || (this.presenceAsAProp = this.isCustomElem ? 'inline-block' : 'block');
 	
 	if (!nodesRegister.getItem(this._defUID))
 		nodesRegister.setItem(this._defUID, (new CachedTypes.CachedNode(definition.getHostDef().nodeName, definition.getHostDef().isCustomElem)));
@@ -740,6 +740,16 @@ Object.defineProperty(ComponentView.prototype, 'value', { 		// ComponentWithReac
 			this.hostElem.innerHTML = value;
 	}
 });
+
+/**
+ * @abstract
+ * 
+ */
+ComponentView.prototype.appendText = function(text) {
+	var elem = document.createElement('span');
+	elem.innerHTML = text;
+	this.getRoot().appendChild(elem);
+}
 
 /**
  * @param {Component} child
@@ -898,7 +908,7 @@ ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definiti
 }
 
 ComponentSubViewsHolder.prototype.setMemberContent = function(idx, textContent) {
-	this.memberViews[idx].hostElem.textContent = textContent;
+	this.memberViews[idx].hostElem.innerHTML = textContent;
 }
 
 ComponentSubViewsHolder.prototype.setEachMemberContent = function(contentAsArray) {
@@ -950,7 +960,8 @@ var commonStates = {
 		blurred : false,
 		valid : false,
 		recent : false, 	// boolean otherwise handled by specific mecanism (component should be referenced in a list, etc.)
-		roleInTree : '',	// replaces CSS classes : enum ('root', 'branch', 'leaf') 
+		roleInTree : '',	// replaces CSS classes : enum ('root', 'branch', 'leaf')
+		expanded : false,
 		position : 0,		// position as a state : degrees, 'min', 'man', nbr of pixels from start, etc. 
 		size : 0,			// size as a state : length, height, radius
 		tabIndex : 0,
