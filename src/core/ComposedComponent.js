@@ -8,20 +8,21 @@
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
-var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
-var KeyValuePairComponent = require('src/UI/Generics/KeyValuePairComponent');
-var ExtensibleTable = require('src/UI/Generics/ExtensibleTable');
-//var LazySlottedComponent = require('src/UI/Generics/LazySlottedComponent');
+
 
 var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, { UIpackage: '%%UIpackage%%' }).packageList;
-Object.assign(componentTypes, require(componentTypes.misc));
+Object.assign(Components, require(componentTypes.misc));
 delete componentTypes.misc;
 for (let type in componentTypes) {
 	if (typeof componentTypes[type] === 'string' && type !== 'misc')
-		componentTypes[type] = require(componentTypes[type]);
+		Components[type] = require(componentTypes[type]);
 }
-componentTypes.ComponentWithReactiveText = Components.ComponentWithReactiveText;
 var coreComponents = {};
+
+
+var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
+var KeyValuePairComponent = require('src/UI/Generics/KeyValuePairComponent');
+var ExtensibleTable = require('src/UI/Generics/ExtensibleTable');
 
 
 /**
@@ -53,8 +54,8 @@ var ComposedComponent = function(definition, parentView) {
 	// Exception, (shall) obviously (be) : if there is -no- createDefaultDef method on that Component which whant to be "host" on the throne of the "host"...
 	//
 	// -> See the SinglePassExtensibleComposedComponent ctor for a wider extension methodology
-	if (definition.getGroupHostDef().getType() && componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef) {
-		this.createDefaultDef = componentTypes[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
+	if (definition.getGroupHostDef().getType() && Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef) {
+		this.createDefaultDef = Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
 	}
 
 	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, this);  // feed with host def : "this" shall be assigned the _defUID of the "hostDef"
@@ -92,8 +93,8 @@ ComposedComponent.prototype.instanciateSubSections = function(definition) {
 	var type, component;
 	definition.subSections.forEach(function(subSectionDef) {
 		type = subSectionDef.getHostDef().getType();
-		if (type in componentTypes) {
-			component = new componentTypes[type](subSectionDef, this.view, this, 'isChildOfRoot');
+		if (type in Components) {
+			component = new Components[type](subSectionDef, this.view, this, 'isChildOfRoot');
 			component._parent = this;
 			// mandatory, as we need to append memberViews on subViews without accessing the component's scope
 			this.view.subViewsHolder.subViews.push(component.view);
@@ -107,10 +108,11 @@ ComposedComponent.prototype.instanciateMembers = function(definition) {
 	var type;
 	definition.members.forEach(function(memberDef) {
 		type = memberDef.getHostDef().getType() || (memberDef.getGroupHostDef() && memberDef.getGroupHostDef().getType());
+//		console.log(type);
 		if (memberDef.getGroupHostDef())
 			this.pushChild(new ComposedComponent(memberDef, this.view, this));
-		else if (type in componentTypes)
-			this.pushChild(new componentTypes[type](memberDef, this.view, this));
+		else if (type in Components)
+			this.pushChild(new Components[type](memberDef, this.view, this));
 		else if (memberDef.getHostDef().nodeName)
 			this.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(memberDef, this.view, this));
 	}, this);
@@ -147,6 +149,7 @@ var ComponentList = function(definition, parentView, parent) {
 }
 ComponentList.prototype = Object.create(Components.HierarchicalObject.prototype);
 ComponentList.prototype.objectType = 'ComponentList';
+coreComponents.ComponentList = ComponentList;		// used in AppIgnition.List (as a "life-saving" safety, we wan't to avoid declaring the ComponentList as a "known" Component)
 
 ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 	if (definition.getHostDef().each.length) {
@@ -166,7 +169,7 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 		}
 		else if ((type = templateDef.getHostDef().getType())) {
 //			console.log(item, key);
-			this._parent.pushChild((composedComponent = new componentTypes[type](templateDef, this._parent.view)));
+			this._parent.pushChild((composedComponent = new Components[type](templateDef, this._parent.view)));
 			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 		}
 		else
@@ -175,7 +178,7 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 
 	//	console.log(this);
 }
-ComposedComponent.prototype.ComponentList = ComponentList;		// used in AppIgnition.List (as a "life-saving" safety, we wan't to avoid declaring the ComponentList as a "known" Component)
+
 
 
 
@@ -197,6 +200,7 @@ var LazySlottedComposedComponent = function(definition, parentView, dummyParent,
 	var stdDefinition = definition || createLazySlottedComponentDef();
 	this.typedSlots = [];
 	this.slotsCount = this.slotsCount || 2;
+//	console.log(this.slotsDef);
 	this.slotsDef = this.slotsDef || slotsDef || createLazySlottedComponenSlotstDef();
 
 	// Proceeding that way (i.e. not using the complete mixin mechanism : "addInterface") allows us to choose in which order the ctors are called
@@ -268,6 +272,19 @@ LazySlottedComposedComponent.prototype.pushToSlotFromText = function(slotNbr, co
 	this.typedSlots[slotNbr].push(this.typedSlots[slotNbr].newItem(content));
 }
 
+LazySlottedComposedComponent.prototype.pushApplyToSlot = function(slotNbr, contentAsArray) {
+	// Here, newItem() depends on the type given in the ctor... or afterwards with setSchema()
+	var cAsArray = contentAsArray.map(function(value, key) {
+		if (typeof value !== 'object' || !(value instanceof this.typedSlots[slotNbr].Item))
+			return this.typedSlots[slotNbr].newItem(value);
+		else
+			return value;
+	}, this);
+//	console.log(cAsArray.slice(0));
+	this.typedSlots[slotNbr].pushApply(cAsArray);
+//	return contentAsArray;
+}
+
 LazySlottedComposedComponent.prototype.pushDefaultToSlot = function(slotNbr) {
 	// Here, newItem() depends on the type given in the ctor... or afterwards with setSchema()
 	this.typedSlots[slotNbr].push(this.typedSlots[slotNbr].newItem(''));
@@ -309,10 +326,17 @@ var createLAbstractTreeDef = require('src/coreDefs/abstractTreeDef');
 var createBranchTemplateDef = require('src/coreDefs/branchTemplateDef');
 var createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
 
-var AbstractTree = function(definition, parentView, parent, jsonData, targetComponent, nodeFilterFunction) {
+var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilterFunction) {
 //	console.log(typeof nodeFilterFunction, nodeFilterFunction);
 	var stdDefinition = createLAbstractTreeDef();
+	
+	/**
+	 * Standard Implementation :
+	 * (this requirements may be overridden through extension. see affectClickEvents())
+	 */
+	// Banch Component MUST implement the 'clicked_ok' event (and though inherit from ComponentWithHooks)
 	this.branchTemplate = this.branchTemplate || createBranchTemplateDef();
+	// Leaf Component MUST at least inherit from ComponentWithHooks
 	this.leafTemplate = this.leafTemplate || createLeafTemplateDef();
 	this.pseudoModel = [];
 	this.listTemplate = TypeManager.createComponentDef({ type: 'ComponentList' });
@@ -323,7 +347,12 @@ var AbstractTree = function(definition, parentView, parent, jsonData, targetComp
 	ComposedComponent.call(this, stdDefinition, parentView, parent);
 	this.objectType = 'AbstractTree';
 	
-	this.renderJSON(jsonData, targetComponent, nodeFilterFunction);
+	this.addEventListener('update', function(e) {
+		this.streams.selected.value = e.data.self_UID;
+	}.bind(this));
+	this.createEvent('exportdata');
+	
+	this.renderJSON(jsonData, nodeFilterFunction);
 }
 AbstractTree.prototype = Object.create(ComposedComponent.prototype);
 AbstractTree.prototype.objectType = 'AbstractTree';
@@ -343,7 +372,7 @@ AbstractTree.prototype.createMember = function(memberSpec, parent) {
 		this.pseudoModel.push(this.getHeaderTitle(memberSpec));
 	}
 	else {
-		parent.pushChild((component = new componentTypes[this.leafTemplate.getHostDef().type](this.leafTemplate, parent.view, parent)));
+		parent.pushChild((component = new Components[this.leafTemplate.getHostDef().type](this.leafTemplate, parent.view, parent)));
 		TypeManager.dataStoreRegister.setItem(component._UID, this.pseudoModel.length);
 		this.pseudoModel.push(this.getKeyValueObj(memberSpec));
 	}
@@ -368,7 +397,7 @@ AbstractTree.prototype.getHeaderTitle = function(memberSpec) {
 
 AbstractTree.prototype.getKeyValueObj = function(memberSpec) {
 	return {
-		keyValuePair: [memberSpec.key + ' :&nbsp;', (memberSpec.type === 'string' ? ' "' + memberSpec.value.toString() + '"' : memberSpec.value.toString())],
+		keyValuePair: ['', memberSpec.key + ' :&nbsp;', (memberSpec.type === 'string' ? ' "' + memberSpec.value.toString() + '"' : memberSpec.value.toString())],
 		displayedas: memberSpec.type
 	};
 }
@@ -453,9 +482,8 @@ AbstractTree.prototype.traverseTree = function(memberDesc, parentComponent, call
 	}
 }
 
-AbstractTree.prototype.instanciateTreeMembers = function(tree, targetComponent, nodeFilterFunction) {
+AbstractTree.prototype.instanciateTreeMembers = function(tree, nodeFilterFunction) {
 	var self = this;
-
 	this.traverseTree(tree, this, function(memberDesc, parentComponent) {
 		var component;
 		if (typeof nodeFilterFunction !== 'function') {
@@ -464,44 +492,67 @@ AbstractTree.prototype.instanciateTreeMembers = function(tree, targetComponent, 
 		else {
 			memberDesc = nodeFilterFunction(memberDesc);
 			component = self.createMember(memberDesc, parentComponent);
-			if (memberDesc.children.length) {
-				component._children[0].addEventListener('clicked_ok', function(e) {
-					if (e.data.target === this.view.getRoot().children[2].children[1]) {
-						targetComponent.streams.updateChannel.value = memberDesc.projectedData;
-						this.streams.selected.value = 'selected';
-					}
-					else
-						component.streams.expanded.value = !component.streams.expanded.value ? 'expanded' : null;
-				}.bind(component._children[0]));
-			}
-			else {
-				component.registerClickEvents = function() {
-					Object.getPrototypeOf(this).registerClickEvents.call(this);
-					this.view.subViewsHolder.memberViews[1].getRoot().addEventListener('click', function() {
-						targetComponent.streams.updateChannel.value = memberDesc.projectedData;
-						component.streams.selected.value = 'selected';
-						component.trigger('update', {self_UID : component._UID}, true);
-					});
-				}
-			}
 		}
+		self.affectClickEvents(memberDesc, component);
 		return component;
 	});
 }
 
-AbstractTree.prototype.renderJSON = function(jsonData, targetComponent, nodeFilterFunction) {
+AbstractTree.prototype.renderJSON = function(jsonData, nodeFilterFunction) {
 //	console.log(typeof nodeFilterFunction, nodeFilterFunction);
 	var parsedData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 	var tree = this.createTree(parsedData);
 //	console.log(parsedData, tree);
-	this.instanciateTreeMembers(tree, targetComponent, nodeFilterFunction);
-	this.render(this, this.view, this.listTemplate);
+	this.instanciateTreeMembers(tree, nodeFilterFunction);
+	
+	var DOMNodeId;
+	this.render(DOMNodeId);
 	return tree;
 }
 
-AbstractTree.prototype.render = function() { } 	// pure virtual (injected as a dependancy by AppIgnition)
+AbstractTree.prototype.reset = function() {
+	this.removeAllChildren();
+	this.clearEventListeners('exportdata');
+}
 
+AbstractTree.prototype.render = function() {} 									// pure virtual (injected as a dependancy by AppIgnition)
+AbstractTree.prototype.affectClickEvents = function(memberDesc, component) { 	// virtual with default (implemented through override on extension)
+	this.affectClickEvents_Base(memberDesc, component);
+}
 
+AbstractTree.prototype.affectClickEvents_Base = function(memberDesc, component) {
+	var self = this;
+	
+	if (memberDesc.children.length) {
+		// Say we have a header node, containing 2 pictos (arrows), and an appended span, key: value
+		component._children[0].addEventListener('clicked_ok', function(e) {
+			// When artificially clicked from outside of the component, there is no e.data.target
+			if ((!e.data || !e.data.target) || e.data.target === this.view.getRoot().children[2])
+				self.trigger('exportdata', memberDesc.projectedData); // the component shall trigger update and receive the "selected" attribute: not needed here
+			else
+				component.streams.expanded.value = !component.streams.expanded.value ? 'expanded' : null;
+		}.bind(component._children[0]));
+	}
+	else {
+		// Leaf Component MUST inherit from ComponentWithHooks
+		component.registerClickEvents = function() {
+			if (!component._eventHandlers.clicked_ok)
+				component.createEvent('clicked_ok');
+			
+			Object.getPrototypeOf(this).registerClickEvents.call(this);
+			
+			// Say we have 2 divs with key : value
+			this.view.subViewsHolder.memberViews[1].getRoot().addEventListener('click', function(e) {
+				this.trigger('clicked_ok', e);
+			}.bind(component));
+			component.addEventListener('clicked_ok', function(e) {
+				this.streams.selected.value = 'selected';
+				this.trigger('update', {self_UID : component._UID}, true);
+				self.trigger('exportdata', memberDesc.projectedData);
+			}.bind(component));
+		}
+	}
+}
 
 
 
@@ -528,12 +579,15 @@ var AbstractTable = function(dummyDef, parentView, parent) {
 	
 	var stdDef = createAbstractTableDef();
 	this.slotsDef = createAbstractTableSlotsDef();
-	this.columnsNumber = 2;
+	this.columnsCount = this.columnsCount || 2;
+	this.rowsCount = 0;
 	
 	LazySlottedComposedComponent.call(this, stdDef, parentView, parent);
 	this.typedSlots[0].setSchema(['headerTitle']);
 	this.typedSlots[1].setSchema(['rowContentAsArray']);
-	this.setColumnsNumber(this.columnsNumber);
+	
+	// This concern is left to the implementation discretion
+//	this.setcolumnsCount(this.columnsCount);
 }
 
 /**
@@ -544,14 +598,20 @@ Object.assign(proto_proto, Components.ComponentWithReactiveText.prototype);
 AbstractTable.prototype = Object.create(proto_proto);
 AbstractTable.prototype.objectType = 'AbstractTable';
 coreComponents.AbstractTable = AbstractTable;
-componentTypes.AbstractTable = AbstractTable;
 
-AbstractTable.prototype.setColumnsNumber = function(columnsNumber) {
-	this.columnsNumber = columnsNumber;
+AbstractTable.prototype.setcolumnsCount = function(columnsCount, headerTitles) {
+	this.columnsCount = columnsCount;
 	this.typedSlots[0].resetLength();
-	for (let i = 0; i < columnsNumber; i++) {
-		this.pushToSlotFromText(0, (i !== 0  ? 'Column ' + i.toString() : 'Idx'));
+//	console.log(this.typedSlots[0]);
+	if (!Array.isArray(headerTitles)) {
+		headerTitles = ['idx'];
+		for (let i = 1; i < columnsCount; i++) {
+			headerTitles.push('Column ' + i.toString());
+		}
 	}
+	else if (headerTitles[0] !== 'idx')
+		headerTitles.unshift('idx');
+	return this.pushApplyToSlot(0, headerTitles);
 }
 
 AbstractTable.prototype.getRows = function() {
@@ -598,28 +658,31 @@ AbstractTable.prototype.getRow = function(idx) {
 
 
 
-// Abstract types & abstract implementations re-injection
-componentTypes.ComposedComponent = ComposedComponent;
-componentTypes.ComponentWithView = Components.ComponentWithView;
-componentTypes.ComponentWithHooks = Components.ComponentWithHooks;
-componentTypes.VisibleStateComponent = VisibleStateComponent;
-componentTypes.KeyValuePairComponent = KeyValuePairComponent;
-componentTypes.ExtensibleTable = ExtensibleTable;
 
+//componentTypes.ComponentWithView = Components.ComponentWithView;
+//componentTypes.ComponentWithHooks = Components.ComponentWithHooks;
 // Extension continues in ReactiveDataset, ComponentSet
-componentTypes.LazySlottedComposedComponent = LazySlottedComposedComponent;
-componentTypes.AbstractTable = AbstractTable;
-componentTypes.AbstractTree = AbstractTree;
+//componentTypes.LazySlottedComposedComponent = LazySlottedComposedComponent;
+//componentTypes.AbstractTable = AbstractTable;
+//componentTypes.AbstractTree = AbstractTree;
+
+// Abstract types & abstract implementations re-injection
+Components.ComposedComponent = ComposedComponent;	// ComposedComponent may be called as a type
+Components.VisibleStateComponent = VisibleStateComponent;
+Components.KeyValuePairComponent = KeyValuePairComponent;
+Components.ExtensibleTable = ExtensibleTable;
+
+
 
 
 
 
 // Some formal implementations rely on Dependancy Injection
 Components.CompositorComponent.prototype.acquireCompositor = function(inheritingType, inheritedType) {	// special helper
-	if (inheritedType in componentTypes || inheritedType in coreComponents) {
+	if (inheritedType in Components || inheritedType in coreComponents) {
 		var objectType = inheritingType.prototype.objectType;
 		inheritingType.prototype.Compositor = coreComponents[inheritedType];
-//		console.log(Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes[inheritedType].prototype), inheritingType.prototype));
+//		console.log(Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(Components[inheritedType].prototype), inheritingType.prototype));
 		inheritingType.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(coreComponents[inheritedType].prototype), inheritingType.prototype);
 		inheritingType.prototype.objectType = objectType;
 		if (!inheritingType.prototype._implements || !inheritingType.prototype._implements.length)
@@ -629,35 +692,24 @@ Components.CompositorComponent.prototype.acquireCompositor = function(inheriting
 	}
 }
 
-var extension2ndPass = {};
-for (var componentType in componentTypes) {
-//	console.log(componentTypes[componentType].prototype.hasOwnProperty('extendsCore'), componentType, componentTypes[componentType].prototype.extendsCore);
-	if (componentTypes[componentType].prototype.hasOwnProperty('extendsCore'))
-		Components.CompositorComponent.prototype.acquireCompositor(componentTypes[componentType], componentTypes[componentType].prototype.extendsCore);
-	else if (componentTypes[componentType].prototype.hasOwnProperty('extends'))
-		extension2ndPass[componentType] = componentTypes[componentType];
+Components.CompositorComponent.createAppLevelExtendedComponent = function() {
+	var extension2ndPass = {};
+	for (var componentType in Components) {
+	//	console.log(Components[componentType].prototype.hasOwnProperty('extendsCore'), componentType, Components[componentType].prototype.extendsCore);
+		if (Components[componentType].prototype.hasOwnProperty('extendsCore'))
+			Components.CompositorComponent.prototype.acquireCompositor(Components[componentType], Components[componentType].prototype.extendsCore);
+		else if (Components[componentType].prototype.hasOwnProperty('extends'))
+			extension2ndPass[componentType] = Components[componentType];
+	}
+	for (var componentType in extension2ndPass) {
+		Components.CompositorComponent.prototype.extendFromCompositor(Components[componentType], Components[Components[componentType].prototype.extends]);
+	}
 }
-for (var componentType in extension2ndPass) {
-	Components.CompositorComponent.prototype.extendFromCompositor(componentTypes[componentType], componentTypes[componentTypes[componentType].prototype.extends]);
-}
 
 
 
 
-//componentTypes.TabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(LazySlottedComposedComponent.prototype), componentTypes.TabPanel.prototype);
-//componentTypes.TabPanel.prototype.Compositor = LazySlottedComposedComponent;
-//componentTypes.TabPanel.prototype.objectType = 'TabPanel';
-//componentTypes.TabPanel.prototype._implements = ['LazySlottedComposedComponent'];
-//
-//componentTypes.ComponentTabPanel.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(componentTypes.TabPanel.prototype), componentTypes.ComponentTabPanel.prototype);
-//componentTypes.ComponentTabPanel.prototype.objectType = 'ComponentTabPanel';
-//componentTypes.ComponentTabPanel.prototype._implements = ['TabPanel', 'LazySlottedComposedComponent'];
 
-//componentTypes.LazySlottedComponent.prototype.ComposedComponent = ComposedComponent;
-//console.log(Object.create(componentTypes.LazySlottedComponent.prototype));
-//console.log(componentTypes.TabPanel.prototype);
-
-
-
-ComposedComponent.componentTypes = componentTypes;
+ComposedComponent.componentTypes = Components;
+ComposedComponent.coreComponents = coreComponents;
 module.exports = ComposedComponent;

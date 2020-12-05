@@ -46,7 +46,7 @@ var basicTableSlotsDef = function(uniqueID, options, model) {
 	
 	var sectionDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-			type : 'ComponentWithReactiveText',
+			type : 'ComponentWith_FastReactiveText',
 			nodeName : 'tr',
 			props : [
 				{rowContentAsArray : undefined}
@@ -55,7 +55,7 @@ var basicTableSlotsDef = function(uniqueID, options, model) {
 					{
 						from : 'rowContentAsArray',
 						cbOnly : true,
-						subscribe : Component.ComponentWithReactiveText.prototype.setContentFromArrayOnEachMemberView
+						subscribe : Component.ComponentWith_FastReactiveText.prototype.setContentFromArrayOnEachMemberView
 					}
 			]
 		}, null, 'hostOnly')

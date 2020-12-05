@@ -331,7 +331,7 @@ var TaskDefinitionModel = function(obj, isSpecial) {
 }
 TaskDefinitionModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.TaskDefinitionModel = TaskDefinitionModel;
-Object.defineProperty(TaskDefinitionModel.prototype, 'objectType', {value : 'EventSubscription'});
+Object.defineProperty(TaskDefinitionModel.prototype, 'objectType', {value : 'asyncTaskSubscription'});
 Object.defineProperty(TaskDefinitionModel.prototype, 'execute', {
 	value : function(thisArg, definition) {
 		this.task.call(thisArg, definition);
@@ -694,6 +694,7 @@ Object.assign(exportedObjects, {
 	UIDGenerator : UIDGenerator
 });
 
-//console.log(exportedObjects.definitionsCache);
+console.log(exportedObjects.definitionsCache);
 
 module.exports = exportedObjects;
+

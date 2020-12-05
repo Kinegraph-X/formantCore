@@ -2,8 +2,9 @@
  * @def BasicTable
  * @isGroup true
  * 
- * @CSSify hostName : keyValueListSlots
- * @CSSifyRule rule : tdth three_columns
+ * @CSSify hostName : abstractTable
+ * @CSSifyRule rule : host block
+ * @CSSifyRule rule : tdth inlineBlock/three_columns
  * @CSSifyRule rule : tdthspecial special_table
  */
 
@@ -15,7 +16,7 @@ var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
 
 
 var basicTableDef = function(uniqueID, options, model) {
-		
+	
 	// Some CSS stuff (styles are directly injected in the main def below)
 	var styles = [
 /*@CSSifySlot*/
@@ -41,7 +42,7 @@ var basicTableDef = function(uniqueID, options, model) {
 					}
 				}
 			],
-			sWrapper : CreateStyle('abstract_table_pseudo_slot-style', null, styles).sWrapper
+			sWrapper : CreateStyle('shallBeOverriddenForSecondSlot', null, styles).sWrapper
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 

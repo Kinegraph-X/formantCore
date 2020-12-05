@@ -25,7 +25,7 @@ NodeResizeObserver.prototype.observe = function(node, cb) {
 		return;
 	this.createEvent(node.id);
 	this.addEventListener(node.id, cb);
-	this.resizeObserver.observe(node);
+	this.resizeObserver.observe(node, {box : 'border-box'});
 }
 
 NodeResizeObserver.prototype.unobserve = function(node) {

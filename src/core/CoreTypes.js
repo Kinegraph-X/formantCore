@@ -745,6 +745,14 @@ Object.defineProperty(ComponentView.prototype, 'value', { 		// ComponentWithReac
  * @abstract
  * 
  */
+ComponentView.prototype.setTextContent = function(text) {
+	this.hostElem.textContent = text;
+}
+
+/**
+ * @abstract
+ * 
+ */
 ComponentView.prototype.appendText = function(text) {
 	var elem = document.createElement('span');
 	elem.innerHTML = text;
@@ -790,10 +798,18 @@ ComponentView.prototype.getMultilineContent = function(contentAsArray) {
  * @param {string} templateNodeName
  */
 ComponentView.prototype.getDOMFragmentFromContent = function(contentAsArray, templateNodeName) {
+	console.log(contentAsArray);
 	var fragment = document.createDocumentFragment(), elem;
 	contentAsArray.forEach(function(val) {
 		var elem = document.createElement(templateNodeName);
-		elem.textContent = val;
+		
+		if (val instanceof HTMLElement) {
+			elem.appendChild(val);
+			fragment.appendChild(elem);
+			return;
+		}
+		
+		elem.innerHTML = val;
 		fragment.appendChild(elem);
 	}, this);
 	return fragment;
@@ -874,7 +890,7 @@ ComponentSubViewsHolder.prototype.instanciateSubViews = function(definition) {
 		this.subViews.push((new ComponentSubView(def, this.parentView)));
 	}, this);
 	definition.members.forEach(function(def) {
-		this.memberViews.push((new ComponentSubView(def, this.parentView)));
+		this.memberViews.push((new ComponentSubView(def, def.section !== null ? this.subViews[def.section] : this.parentView)));
 	}, this);
 }
 
@@ -888,6 +904,12 @@ ComponentSubViewsHolder.prototype.lastMember = function() {
 
 ComponentSubViewsHolder.prototype.memberAt = function(idx) {
 	return this.memberViews[idx];
+}
+
+ComponentSubViewsHolder.prototype.immediateAddMemberAt = function(idx, memberView) {
+	var backToTheFutureAmount = this.memberViews.length - idx;
+	TypeManager.viewsRegister.splice(TypeManager.viewsRegister.length - backToTheFutureAmount, 0, memberView);
+	this.memberViews.splice(idx, 1, memberView);
 }
 
 ComponentSubViewsHolder.prototype.addMemberView = function(view) {
@@ -907,8 +929,25 @@ ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definiti
 	TypeManager.viewsRegister.push(lastView);
 }
 
+ComponentSubViewsHolder.prototype.resetMemberContent = function(idx, textContent) {
+	this.memberViews[idx].reset();
+}
+
 ComponentSubViewsHolder.prototype.setMemberContent = function(idx, textContent) {
-	this.memberViews[idx].hostElem.innerHTML = textContent;
+	this.memberViews[idx].value = textContent;
+}
+
+ComponentSubViewsHolder.prototype.setMemberContent_Fast = function(idx, textContent) {
+	this.memberViews[idx].setTextContent(textContent);
+}
+
+ComponentSubViewsHolder.prototype.appendContentToMember = function(idx, textContent) {
+	this.memberViews[idx].appendText(textContent);
+}
+
+ComponentSubViewsHolder.prototype.appendAsMemberContent = function(idx, textContent) {
+	this.memberViews[idx].empty();
+	this.memberViews[idx].appendText(textContent);
 }
 
 ComponentSubViewsHolder.prototype.setEachMemberContent = function(contentAsArray) {
@@ -916,6 +955,14 @@ ComponentSubViewsHolder.prototype.setEachMemberContent = function(contentAsArray
 		if (typeof val !== 'string')
 			return;
 		this.setMemberContent(key, val);
+	}, this);
+}
+
+ComponentSubViewsHolder.prototype.setEachMemberContent_Fast = function(contentAsArray) {
+	contentAsArray.forEach(function(val, key) {
+		if (typeof val !== 'string')
+			return;
+		this.setMemberContent_Fast(key, val);
 	}, this);
 }
 
@@ -960,7 +1007,8 @@ var commonStates = {
 		blurred : false,
 		valid : false,
 		recent : false, 	// boolean otherwise handled by specific mecanism (component should be referenced in a list, etc.)
-		roleInTree : '',	// replaces CSS classes : enum ('root', 'branch', 'leaf')
+		branchintree : '',	// replaces CSS classes : enum ('root', 'branch', 'leaf')
+		leafintree : '',
 		expanded : false,
 		position : 0,		// position as a state : degrees, 'min', 'man', nbr of pixels from start, etc. 
 		size : 0,			// size as a state : length, height, radius

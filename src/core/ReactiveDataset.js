@@ -173,6 +173,12 @@ Object.defineProperty(RecitalDataset.prototype, 'pushApply',  {
 	}
 });
 
+Object.defineProperty(RecitalDataset.prototype, 'flush',  {
+	value : function() {
+		new App.DelayedDecoration(null, this.trackedComponent, this.defaultListDef.getHostDef());
+	}
+});
+
 Object.defineProperty(RecitalDataset.prototype, 'splice',  {
 	value : function(index, length, replacedBy) {
 		var c1, c2, mBackup;
@@ -271,20 +277,8 @@ Object.defineProperty(RecitalDataset.prototype, 'styleToFront', {
 
 
 
-// Dependancy Injection
-App.componentTypes.LazySlottedComposedComponent.prototype.rDataset = RecitalDataset;
-App.componentTypes.LazySlottedComposedComponent.prototype.render = function() {
-	new App.DelayedDecoration(null, this);
-};
-App.componentTypes.AbstractTree.prototype.render = function() {
-	new App.DelayedDecoration(null, this, this.listTemplate.getHostDef());
-};
-App.componentTypes.KeyValueList.prototype.render = function() {
-	new App.DelayedDecoration(null, this, this.listTemplate.getHostDef());
-};
 
-//App.componentTypes.TabPanel.prototype.rDataset = RecitalDataset;
-//App.componentTypes.ComponentTabPanel.prototype.rDataset = RecitalDataset;
+
 
 
 

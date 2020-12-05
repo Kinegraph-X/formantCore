@@ -6,9 +6,6 @@ var TypeManager = require('src/core/TypeManager');
 var App = require('src/core/AppIgnition');
 var Component = require('src/core/Component');
 
-// TODO: there is a rootComponent, AND a wrapperComponent 
-// 		=> the tabPanel instanciates two identical pseudo-slots, and each pushed Component is child of a new "list member" (a "section", as we had planned)
-
 
 var ComponentSet = function(rootComponent, slotTemplate) {
 	if (!rootComponent)
@@ -70,7 +67,7 @@ Object.defineProperty(ComponentSet.prototype, 'ignite', {
 		this.forEach(function(item, key) {
 			if (key === idx) {
 				if (item._ignited !== true) {
-					keywordHandler = item.itemRouter.init(item._parent.view, item._parent);
+					keywordHandler = item.itemRouter.init.call(item.itemRouter.init, item._parent.view, item._parent);
 					if (typeof keywordHandler === 'function')
 						keywordHandler(item.itemKeyword, item._parent.view);
 					item._ignited = true;
@@ -87,7 +84,7 @@ Object.defineProperty(ComponentSet.prototype, 'ignition', {
 	value : function() {
 		var keywordHandler;
 		this.forEach(function(componentRouterItem, idx) {
-			keywordHandler = componentRouterItem.itemRouter.init(memberRouter._parent.view);
+			keywordHandler = componentRouterItem.itemRouter.init.call(componentRouterItem.itemRouter.init, componentRouterItem._parent.view);
 			if (typeof keywordHandler === 'function')
 				keywordHandler(componentRouterItem.itemKeyword, componentRouterItem._parent.view);
 			componentRouterItem._ignited = true;
@@ -157,11 +154,6 @@ Object.defineProperty(ComponentSet.prototype, 'resetLength',  {
 });
 
 
-
-//Dependancy Injection
-App.componentTypes.LazySlottedComposedComponent.prototype.cSet = ComponentSet;
-//App.componentTypes.TabPanel.prototype.cSet = ComponentSet;
-//App.componentTypes.ComponentTabPanel.prototype.cSet = ComponentSet;
 
 
 

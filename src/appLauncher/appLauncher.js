@@ -2,7 +2,7 @@
  * @module appLauncher
  */
 
-//var Factory = require('src/core/Factory');
+
 // TODO : Should not polute the namespace of this function : think seriously of removing the affectation to vars, as we only need to "execute" the require 
 var Str = require('src/extendedNative/string');
 var Arr = require('src/extendedNative/array');

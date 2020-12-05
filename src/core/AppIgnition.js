@@ -9,7 +9,9 @@ var CoreTypes = require('src/core/CoreTypes');
 var Component = require('src/core/Component');
 var ComposedComponent = require('src/core/ComposedComponent');
 var componentTypes = ComposedComponent.componentTypes;
-//var CompositeFactory = require('src/core/CompositeFactory');
+var coreComponents = ComposedComponent.coreComponents;
+
+var elementDecorator_Offset = require('src/UI/_mixins/elementDecorator_Offset');
 
 console.log(TypeManager.caches);
 //console.log(TypeManager.dataStoreRegister);
@@ -59,10 +61,13 @@ Ignition.prototype.instanciateDOM = function() {
 	views.forEach(function(view) {
 		
 		attributes = attributesCache[view._defUID];
-//		console.log(view._defUID, attributes);
-		if (nodes[view._defUID].cloneMother)
+//		if (view._defUID === "310")
+//			console.log(view, nodes[view._defUID].cloneMother, nodes[view._defUID]);
+		if (nodes[view._defUID].cloneMother) {
 			// nodes[view._defUID].cloneMother.cloneNode(true); => deep clone : also copies the nested nodes (textual contents are nodes...)
 			view.hostElem = nodes[view._defUID].cloneMother.cloneNode(true);
+			Object.assign(view.hostElem, elementDecorator_Offset);
+		}
 		else {
 			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
 			attributes.forEach(function(attrObject) {
@@ -72,6 +77,7 @@ Ignition.prototype.instanciateDOM = function() {
 					nodes[view._defUID].cloneMother[attrObject.getName()] = attrObject.getValue();
 			});
 			view.hostElem = nodes[view._defUID].cloneMother.cloneNode(true);
+			Object.assign(view.hostElem, elementDecorator_Offset);
 		}
 		
 		attributes.forEach(function(attrObject) {
@@ -194,7 +200,7 @@ Ignition.prototype.streamsBidirectionalReflectionBlank = function() {
 				return;
 			
 			if (component instanceof Component.ComponentWithHooks)
-				component.registerEvents(TypeManager.hostsDefinitionsCacheRegister.getItem(defUID));
+				component.registerEvents();
 
 			this.defineStreamsBidirectionalReflection(defUID, component);
 		}, this);
@@ -209,7 +215,7 @@ Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 				return;
 			
 			if (component instanceof Component.ComponentWithHooks)
-				component.registerEvents(TypeManager.hostsDefinitionsCacheRegister.getItem(defUID));
+				component.registerEvents();
 
 			this.defineStreamsBidirectionalReflection(defUID, component);
 		}, this);
@@ -386,9 +392,9 @@ List.prototype = Object.create(Ignition.prototype);
 List.prototype.objectType = 'List'; 
 
 List.prototype.create = function(definition, parent) {
-	new ComposedComponent.prototype.ComponentList(definition, parent.view, parent);
+	new coreComponents.ComponentList(definition, parent.view, parent);
 	this.decorateComponentsThroughDefinitionsCache(definition.getHostDef());
-	TypeManager.listsDefinitionsCacheRegister.getItem(parent._firstListUIDSeen).each = [];
+	definition.getHostDef().each = [];
 }
 
 
@@ -396,6 +402,7 @@ List.prototype.create = function(definition, parent) {
 
 module.exports = {
 		componentTypes : componentTypes,
+		coreComponents : coreComponents,
 		Ignition : IgnitionToComposed,
 		IgnitionFromDef : IgnitionFromDef,
 		IgnitionToExtensible : IgnitionToExtensible,

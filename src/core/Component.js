@@ -98,7 +98,10 @@ HierarchicalObject.prototype.removeAllChildren = function() {
  * 
  */
 HierarchicalObject.prototype.remove = function() {
-	return this._parent.removeChild(this._key);
+	if (this._parent)
+		return this._parent.removeChild(this._key);
+	else
+		return this.view.hostElem.remove();
 }
 
 /**
@@ -176,8 +179,8 @@ ExtensibleObject.prototype.objectType = 'ExtensibleObject';
  * @virtual
  */
 ExtensibleObject.prototype.onExtend = function(extension) {} 				// pure virtual implemented below, as a try
-ExtensibleObject.prototype._asyncInitTasks = [];					// pure virtual
-ExtensibleObject.prototype._asyncRegisterTasks = [];				// pure virtual
+//ExtensibleObject.prototype._asyncInitTasks = [];					// pure virtual
+//ExtensibleObject.prototype._asyncRegisterTasks = [];				// pure virtual
 /**
  * @abstract
  */
@@ -343,17 +346,18 @@ var AsyncActivableObject = function() {
 AsyncActivableObject.prototype = Object.create(ExtensibleObject.prototype);
 AsyncActivableObject.prototype.objectType = 'AsyncActivableObject';
 
-/**
- * @reminder
- * Asynchronous tasks are inherited through the prototype during the mixin, but should not be referenced by "any" component
- */
-AsyncActivableObject.prototype._asyncInitTasks = [];
-AsyncActivableObject.prototype._asyncRegisterTasks = []
+///**
+// * @reminder
+// * Asynchronous tasks are inherited through the prototype during the mixin, but should not be referenced by "any" component
+// */
+//AsyncActivableObject.prototype._asyncInitTasks = [];
+//AsyncActivableObject.prototype._asyncRegisterTasks = []
 
 /**
  * @virtual
  */
 AsyncActivableObject.prototype.asyncInit = function() {
+	
 	this._asyncInitTasks.forEach(function(asyncFunc, key) {
 		asyncFunc.call(this);
 	});
@@ -434,6 +438,9 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 			hostDef.sWrapper = defaultHostDef.sWrapper;
 		if (hostDef.command === null)
 			hostDef.command = defaultHostDef.command;
+			
+		if (defaultDef.subSections.length)
+			Array.prototype.push.apply(definition.subSections, defaultDef.subSections);
 		
 		if (defaultDef.members.length)
 			Array.prototype.push.apply(definition.members, defaultDef.members);
@@ -620,18 +627,20 @@ ComponentWithHooks.prototype.objectType = 'ComponentWithHooks';
 
 ComponentWithHooks.prototype.viewExtend = function(definition) {
 	this.basicEarlyViewExtend(definition);
-	if (this._asyncInitTasks.length)
+	if (this._asyncInitTasks)
 		this.asyncViewExtend(definition);
 	this.basicLateViewExtend(definition);
-	this.lateAddChildren(definition);
+	if (this._asyncInitTasks)
+		this.lateAddChildren(definition);
 }
 
-ComponentWithHooks.prototype.registerEvents = function(definition) {
+ComponentWithHooks.prototype.registerEvents = function() {
 	this.beforeRegisterEvents();
 	this.registerClickEvents();
 	this.registerKeyboardEvents();
 	this.registerLearnEvents();
-	this.asyncRegister();
+	if (this._asyncRegisterTasks)
+		this.asyncRegister();
 	this.afterRegisterEvents();
 }
 
@@ -639,6 +648,7 @@ ComponentWithHooks.prototype.registerEvents = function(definition) {
  * @hook
  */
 ComponentWithHooks.prototype.asyncViewExtend = function(definition) {
+	if (!this._asyncInitTasks)
 	var asyncTask;
 	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
 		asyncTask = this._asyncInitTasks[i];
@@ -823,7 +833,7 @@ ComponentWithReactiveText.prototype.setContentFromArrayOnEachMemberView = functi
 		else
 			return;
 	}
-	
+//	console.log(this);
 	this.view.subViewsHolder.setEachMemberContent(values);
 }
 
@@ -863,6 +873,43 @@ ComponentWithReactiveText.prototype.resetTargetSubViewContent = function() {
 	this.emptyTargetSubView();
 	return true;
 }
+
+
+
+
+
+
+
+
+
+/**
+ * @constructor ComponentWithReactiveText_Fast
+ */
+var ComponentWith_FastReactiveText = function(definition, parentView, parent, isChildOfRoot) {
+	ComponentWithReactiveText.call(this, definition, parentView, parent, isChildOfRoot);
+	this.objectType = 'ComponentWith_FastReactiveText';
+}
+ComponentWith_FastReactiveText.prototype = Object.create(ComponentWithReactiveText.prototype);
+ComponentWith_FastReactiveText.prototype.objectType = 'ComponentWith_FastReactiveText';
+
+/**
+ * @abstract
+ */
+ComponentWith_FastReactiveText.prototype.setContentFromArrayOnEachMemberView = function(values) {
+	this.view.subViewsHolder.setEachMemberContent_Fast(values);
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -960,6 +1007,7 @@ module.exports = {
 	CompositorComponent : CompositorComponent,
 	ComponentWithHooks : ComponentWithHooks,
 	ComponentWithReactiveText : ComponentWithReactiveText,
+	ComponentWith_FastReactiveText : ComponentWith_FastReactiveText,
 	ComponentStrokeAware : ComponentStrokeAware,
 	ComponentWithViewAbstractingAFeed : ComponentWithViewAbstractingAFeed
 };

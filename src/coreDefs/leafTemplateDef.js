@@ -3,9 +3,8 @@
  * @isGroup true
  * 
  * @CSSify hostName : treeLeaf
- * @CSSifyRule rule : div
- * @CSSifyRule rule : div_2ndChild 
- * 
+ * @CSSifyRule rule : host block
+ * @CSSifyRule rule : div_2ndChild pointer
  */
 
 

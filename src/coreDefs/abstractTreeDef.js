@@ -2,6 +2,8 @@
  * @def AbstractTree
  * @isGroup true
  * 
+ * @CSSify hostName : foldedTree
+ * @CSSifyRule rule : host block/padding/border
  */
 
 
@@ -26,8 +28,8 @@ var abstractTreeDef = function(uniqueID, options, model) {
 			nodeName : 'folded-tree',
 			props : [
 				{selected : undefined}
-			]
-//			sWrapper : CreateStyle('abstractTree', null, pseudoSlotsStyles).sWrapper
+			],
+			sWrapper : CreateStyle('abstractTree', null, styles).sWrapper
 		}),
 		members : [
 			TypeManager.createComponentDef({

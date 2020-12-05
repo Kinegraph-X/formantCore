@@ -34,7 +34,8 @@ var treeBranchDef = function(uniqueID, options, model) {
 			props : [
 				{headerTitle : undefined},
 				{displayedas : undefined},
-				{selected : undefined}
+				{selected : undefined},
+				{branchintree : undefined}
 			],
 			reactOnParent : [
 				{
@@ -53,7 +54,8 @@ var treeBranchDef = function(uniqueID, options, model) {
 					{role : "heading"},
 					{expanded : undefined},
 					{displayedas : undefined},
-					{selected : undefined}
+					{selected : undefined},
+					{branchintree : undefined}
 				],
 				reactOnParent : [
 					{
@@ -72,6 +74,10 @@ var treeBranchDef = function(uniqueID, options, model) {
 					{
 						from : 'displayedas',
 						to : 'displayedas'
+					},
+					{
+						from : 'branchintree',
+						to : 'branchintree'
 					}
 				]
 			})
