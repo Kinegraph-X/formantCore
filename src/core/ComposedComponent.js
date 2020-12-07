@@ -53,7 +53,6 @@ var ComposedComponent = function(definition, parentView) {
 	// (from which we inherit).
 	// Exception, (shall) obviously (be) : if there is -no- createDefaultDef method on that Component which whant to be "host" on the throne of the "host"...
 	//
-	// -> See the SinglePassExtensibleComposedComponent ctor for a wider extension methodology
 	if (definition.getGroupHostDef().getType() && Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef) {
 		this.createDefaultDef = Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
 	}

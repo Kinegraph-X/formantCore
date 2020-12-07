@@ -23,6 +23,11 @@ NodeResizeObserver.prototype.objectType = 'NodeResizeObserver';
 NodeResizeObserver.prototype.observe = function(node, cb) {
 	if (!this.resizeObserver)
 		return;
+
+	if (!node.id || this._eventHandlers[node.id]) {
+		console.warn('resizeObserver: ambiguous observed node : ' + node.id + '. Please give it a unique DOM id to disambiguate the event callback.' + (!node.id ? '  Given node is: ' : ''), (!node.id ? node : ''));
+		return;
+	}
 	this.createEvent(node.id);
 	this.addEventListener(node.id, cb);
 	this.resizeObserver.observe(node, {box : 'border-box'});

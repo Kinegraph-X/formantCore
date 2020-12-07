@@ -798,11 +798,11 @@ ComponentView.prototype.getMultilineContent = function(contentAsArray) {
  * @param {string} templateNodeName
  */
 ComponentView.prototype.getDOMFragmentFromContent = function(contentAsArray, templateNodeName) {
-	console.log(contentAsArray);
+//	console.log(contentAsArray);
 	var fragment = document.createDocumentFragment(), elem;
 	contentAsArray.forEach(function(val) {
 		var elem = document.createElement(templateNodeName);
-		
+		elem.id = 'targetSubViewElem-' + TypeManager.UIDGenerator.newUID();
 		if (val instanceof HTMLElement) {
 			elem.appendChild(val);
 			fragment.appendChild(elem);

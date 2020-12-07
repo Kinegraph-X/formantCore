@@ -3,16 +3,18 @@
  * 
 */
 
-//var TypeManager = require('src/core/TypeManager');
+var TypeManager = require('src/core/TypeManager');
 var NodeResizeObserver = require('src/core/ResizeObserver');
 //var appConstants = require('src/appLauncher/appLauncher');
 
 
 var TextSizeGetter = function(def, parentDOMNodeDOMId, automakeable, childrenToAdd, targetSlot) {
 	// width calculation
+	this.initCb;
 	this.textWidthCanvas = document.createElement("canvas");
 	this.textWidthCanvasCtx = this.textWidthCanvas.getContext('2d');
 	this.fontStyle = '';
+	this.lineHeight = 0;
 
 	this.objectType = 'TextSizeGetter';
 	this.resizeObserver = new NodeResizeObserver();
@@ -20,20 +22,42 @@ var TextSizeGetter = function(def, parentDOMNodeDOMId, automakeable, childrenToA
 TextSizeGetter.prototype = {};
 TextSizeGetter.prototype.objectType = 'TextSizeGetter';
 
-TextSizeGetter.prototype.init = function(sampleNode) {
+TextSizeGetter.prototype.init = function(sampleNode, cb) {
 	this.sampleNode = sampleNode;
+	this.initCb = cb;
 	this.resizeObserver.observe(sampleNode, this.initWidthCompute.bind(this));
 }
 
-TextSizeGetter.prototype.initWidthCompute = function(boundingBox) {
+TextSizeGetter.prototype.oneShot = function(sampleNode, cb) {
+	sampleNode.id = sampleNode.id + '-asStyleSource-' + TypeManager.UIDGenerator.newUID();
+	this.resizeObserver.observe(sampleNode, this.onOneShot.bind(this, sampleNode, cb));
+}
+
+TextSizeGetter.prototype.onOneShot = function(sampleNode, cb) {
+	var style = window.getComputedStyle(sampleNode);
+	sampleNode.id = sampleNode.id.replace(/-asStyleSource-\d+/, '');
+	if (!sampleNode.id)
+		sampleNode.removeAttribute('id');
+	if (cb)
+		cb(style);
+}
+
+TextSizeGetter.prototype.initWidthCompute = function(e) {
 	var self = this;
 
 	var style = window.getComputedStyle(this.sampleNode);
 	this.fontStyle = style.fontSize + ' ' + style.fontFamily;
+	
+	this.lineHeight = Number(style.lineHeight.slice(0, -2));
+	
 	this.textWidthCanvasCtx.font = this.fontStyle;
 	
-	if (boundingBox.h > 0)
-		this.resizeObserver.unobserve(this.sampleNode); 
+	if (e.data.boundingBox.h > 0) {
+		if (this.initCb)
+			this.initCb();
+		this.resizeObserver.unobserve(this.sampleNode);
+		this.initCb = undefined;
+	} 
 }
 
 TextSizeGetter.prototype.getTextWidth = function(string) {

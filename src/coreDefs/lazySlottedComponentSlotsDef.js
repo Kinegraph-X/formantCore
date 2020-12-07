@@ -3,7 +3,7 @@
  * @isGroup false
  * 
  * @CSSify hostName : tabSlots
- * @CSSifyRule rule : header tabHeader/border/padding/pointer
+ * @CSSifyRule rule : header tabHeader/bevel/padding/pointer
  * @CSSifyRule rule : section 
  * 
  */
