@@ -662,6 +662,7 @@ console.log(listsDefinitionsCacheRegister);
  * @aliases
  */
 Object.assign(exportedObjects, {
+	PropertyCache : PropertyCache,
 	hostsDefinitionsCacheRegister : hostsDefinitionsCacheRegister,	// Object PropertyCache
 	listsDefinitionsCacheRegister : listsDefinitionsCacheRegister,	// Object PropertyCache
 	typedHostsRegister : typedHostsRegister,						// Object PropertyCache {defUID : [Components]}

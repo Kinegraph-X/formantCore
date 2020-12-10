@@ -764,10 +764,10 @@ ComponentView.prototype.appendText = function(text) {
  * @param {number} atIndex
  */
 ComponentView.prototype.addChildAt = function(childView, atIndex) {
-	if (this.hostElem.children[atIndex - 1])
-		this.hostElem.children[atIndex - 1].insertAdjacentElement('afterend', childView.hostElem);
+	if (this.getRoot().children[atIndex - 1])
+		this.getRoot().children[atIndex - 1].insertAdjacentElement('afterend', childView.hostElem);
 	else
-		this.hostElem.appendChild(childView.hostElem);
+		this.getRoot().appendChild(childView.hostElem);
 }
 
 /**
@@ -1009,7 +1009,11 @@ var commonStates = {
 		recent : false, 	// boolean otherwise handled by specific mecanism (component should be referenced in a list, etc.)
 		branchintree : '',	// replaces CSS classes : enum ('root', 'branch', 'leaf')
 		leafintree : '',
+		nodeintree : false,
 		expanded : false,
+		sortable : false,
+		sortedasc : false,
+		sorteddesc :false,
 		position : 0,		// position as a state : degrees, 'min', 'man', nbr of pixels from start, etc. 
 		size : 0,			// size as a state : length, height, radius
 		tabIndex : 0,

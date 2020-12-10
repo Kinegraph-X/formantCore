@@ -3,16 +3,14 @@
  * @isGroup true
  * 
  * @CSSify hostName : abstractTable
- * @CSSifyRule rule : host block
- * @CSSifyRule rule : tdth inlineBlock/three_columns
- * @CSSifyRule rule : tdthspecial special_table
+ * @CSSifyRule rule : host flexBoxColumn/flexGrow
  */
 
 // hostname abstractTable
 var TypeManager = require('src/core/TypeManager');
 
 var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
-//var pseudoSlotsStyles = require('src/UI/defs/extraStyles/basicTable');
+var pseudoSlotsStyles = require('src/coreDefs/abstractTablePseudoSlotsStyleDef');
 
 
 var basicTableDef = function(uniqueID, options, model) {
@@ -42,7 +40,7 @@ var basicTableDef = function(uniqueID, options, model) {
 					}
 				}
 			],
-			sWrapper : CreateStyle('shallBeOverriddenForSecondSlot', null, styles).sWrapper
+			sWrapper : CreateStyle('shallBeOverriddenForSecondSlot', null, pseudoSlotsStyles()).sWrapper
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 

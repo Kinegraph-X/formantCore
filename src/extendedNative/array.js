@@ -282,34 +282,7 @@ Object.defineProperty(Array.prototype, 'findObjectsByPartialValue',  {
 	}
 });
 
-//Object.defineProperty(Array.prototype, 'recitalSplice',  {
-//	value : function(index, length, replacedBy, ComponentGroupObj) { 	// length is not used for now. TODO: Fix that
-//		var c1, c2, mBackup;
-//		
-//		if (typeof replacedBy === 'number') {
-//			c1 = ComponentGroupObj.modules[index].remove();
-//			c2 = ComponentGroupObj.modules[replacedBy].remove();
-//			ComponentGroupObj.registerModule(c1.__created_as_name, c2, null, index);
-//			
-//			mBackup = this.splice(index, 1, this[replacedBy])[0];
-//			
-//			return [mBackup, c1, c2.__created_as_name];
-//		}
-//		else if (replacedBy === null) {
-//			c1 = ComponentGroupObj.modules[index].remove();
-//			mBackup = this.splice(index, 1)[0];
-//			
-//			return [mBackup, c1, null];
-//		}
-//		else if (Array.isArray(replacedBy)) {
-//			ComponentGroupObj.registerModule(replacedBy[2], replacedBy[1], null, index + 1);
-//			
-//			this.splice(index, 1, replacedBy[0]);
-//			
-//			return true;
-//		}
-//	}
-//});
+
 
 Object.defineProperty(Array.prototype, 'recitalClearAll',  {
 	value : function(ComponentGroupObj) {
@@ -322,58 +295,76 @@ Object.defineProperty(Array.prototype, 'recitalClearAll',  {
 	}
 });
 
-//Object.defineProperty(Array.prototype, 'recitalSpliceOnProp',  {
-//	value : function(prop, value, ComponentGroupObj) {
-//		if (ComponentGroupObj && ComponentGroupObj.modules.length) {
-//			var module;
-//			for (var i = ComponentGroupObj.modules.length - 1; i >= 0; i--) {
-//				module = ComponentGroupObj.modules[i];
-//				if (module.streams[prop] && module.streams[prop].value === value) {
-//					module.remove();
-//					this.splice(i, 1);
-//				}
-//			}
-//		}
-//		else
-//			return false;
-//	}
-//});
-//
-//Object.defineProperty(Array.prototype, 'recitalAppendItem',  {
-//	value : function(cListDef, ComponentGroupObj) {
-//		ComponentGroupObj.addModule(cListDef, ComponentGroupObj.modules.length);
-//		this.push(cListDef.host.item);
-//	}
-//});
-//
-//Object.defineProperty(Array.prototype, 'recitalAppendItems',  {
-//	value : function(cListDef, ComponentGroupObj) {
-//		ComponentGroupObj.addModules(cListDef, ComponentGroupObj.modules.length);
-//		this.push.apply(this, cListDef.host.each);
-//	}
-//});
 
 
 
-
-
-
-sortObject = function (obj) {
-	var arr = Object.keys(obj).sort(), newObj = {};
-	for (var key in arr) {
-		newObj[arr[key]] = obj[arr[key]];
+Object.defineProperty(Array.prototype, '_sortForPropHostingArrayOnArrayIdx',  {
+	value : function(prop, idx) {
+		var sortedArr = [], register  = new Map(), newArray;
+		for (let i = 0, l = this.length; i < l; i++) {
+			sortedArr.push(this[i][prop][idx])
+			register.set(this[i][prop][idx], i);
+		}
+		sortedArr.sort();
+		var tmpThis = [];
+		for (let i = 0, l = sortedArr.length; i < l; i++) {
+			tmpThis.push(this[register.get(sortedArr[i])][prop].slice(0));
+		}
+		for (let i = 0, l = this.length; i < l; i++) {
+			for (let k = 0, L = this[i][prop].length; k < L; k++) {
+				this[i][prop][k] = tmpThis[i][k];
+			}
+		}
 	}
-	return newObj;
-}
+});
 
-//Object.defineProperty(ArrayBuffer.prototype, 'bufferToString', {
-//	writable : false,
-//	value : function () {
-//		var str;
-//		for(var i = 0, l = this.byteLength; i < l; i++) {
-//			str += String.prototype.fromCharCode.call(null, this[i]);
-//		}
-//		return str;
-//	}
-//});
+
+
+
+
+
+
+
+
+
+
+
+
+
+Object.defineProperty(Array.prototype, 'sortOnObjectProp',  {
+	value : function(prop, a, b) {
+		return parseInt(a[prop], 10) - parseInt(b[prop], 10);
+	}
+});
+
+Object.defineProperty(Array.prototype, 'inverseSortOnObjectProp',  {
+	value : function(prop, a, b) {
+		return parseInt(b[prop], 10) - parseInt(a[prop], 10);
+	}
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Object.defineProperty(ArrayBuffer.prototype, 'bufferToString', {
+	writable : false,
+	value : function () {
+		var str;
+		for(var i = 0, l = this.byteLength; i < l; i++) {
+			str += String.prototype.fromCharCode.call(null, this[i]);
+		}
+		return str;
+	}
+});
 

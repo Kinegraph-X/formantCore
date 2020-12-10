@@ -2,9 +2,6 @@
  * @def LazyHostComponentSlots
  * @isGroup false
  * 
- * @CSSify hostName : tabSlots
- * @CSSifyRule rule : header tabHeader/bevel/padding/pointer
- * @CSSifyRule rule : section 
  * 
  */
 
@@ -28,7 +25,8 @@ var lazySlottedComponentSlotsDef = function(uniqueID, options, model) {
 			nodeName : 'header',
 			// this is a big hack of shit (should be an attribute, but not... should be a "DOM" attribute... -> setAttribute(). TODO: fix after re-implementation of _arias&glyphs)
 			states : [
-				{role : "heading"} 
+				{role : "heading"},
+				{highlighted : undefined}
 			],
 			props : [
 				{headerTitle : undefined}

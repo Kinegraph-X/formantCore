@@ -3,7 +3,7 @@
  * @isGroup true
  * 
  * @CSSify hostName : foldedTree
- * @CSSifyRule rule : host block/padding/border
+ * @CSSifyRule rule : host block
  */
 
 

@@ -3,6 +3,7 @@
  * 
  */
 
+var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var MasterTimer = require('src/timers/MasterTimer');
 
@@ -25,8 +26,9 @@ NodeResizeObserver.prototype.observe = function(node, cb) {
 		return;
 
 	if (!node.id || this._eventHandlers[node.id]) {
-		console.warn('resizeObserver: ambiguous observed node : ' + node.id + '. Please give it a unique DOM id to disambiguate the event callback.' + (!node.id ? '  Given node is: ' : ''), (!node.id ? node : ''));
-		return;
+		node.id = node.id + '-asStyleSource-' + TypeManager.UIDGenerator.newUID();
+//		console.warn('resizeObserver: ambiguous observed node : ' + node.id + '. Please give it a unique DOM id to disambiguate the event callback.' + (!node.id ? '  Given node is: ' : ''), (!node.id ? node : ''));
+//		return;
 	}
 	this.createEvent(node.id);
 	this.addEventListener(node.id, cb);
@@ -36,9 +38,14 @@ NodeResizeObserver.prototype.observe = function(node, cb) {
 NodeResizeObserver.prototype.unobserve = function(node) {
 	if (!this.resizeObserver)
 		return;
+		
 	this.deleteEvent(node.id);
 	this.clearEventListeners(node.id);
 	this.resizeObserver.unobserve(node);
+	
+	node.id = node.id.replace(/-asStyleSource-\d+/, '');
+	if (!node.id)
+		node.removeAttribute('id');
 }
 
 NodeResizeObserver.prototype.getSize = function(observerEntries) {
@@ -61,6 +68,7 @@ NodeResizeObserver.prototype.getSize = function(observerEntries) {
 		}
 		
 		this.trigger(entry.target.id, {boundingBox : boundingBox});
+		
 	}, this);
 }
 	

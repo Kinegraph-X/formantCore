@@ -97,6 +97,7 @@ Object.defineProperty(RecitalDataset.prototype, 'setItemFactory', {
 		factoryPropsArray.forEach(function(propName) {
 			factory.prototype[propName] = null; 
 		});
+		factory.prototype.keys = factoryPropsArray.slice(0);
 		return factory;
 	}
 });
@@ -267,12 +268,50 @@ Object.defineProperty(RecitalDataset.prototype, 'styleToFront', {
 	value : function(idx) {
 		this.forEach(function(item, key) {
 			if (key === idx)
-				this.trackedComponent._children[key].view.hostElem.style.display = 'block';
+				this.trackedComponent._children[key].view.hostElem.style.display = 'flex';
 			else
 				this.trackedComponent._children[key].view.hostElem.style.display = 'none';
 		}, this);
 	}
 });
+
+
+Object.defineProperty(RecitalDataset.prototype, 'sortForPropHostingArrayOnArrayIdx',  {
+	value : function(prop, idx, invert) {
+
+		var tmpThis = [];
+		for (let i = 0, l = this.length; i < l; i++) {
+			tmpThis.push(this[i][prop].slice(0));
+		}
+		if (invert)
+			tmpThis.sort(Array.prototype.inverseSortOnObjectProp.bind(null, idx));
+		else
+			tmpThis.sort(Array.prototype.sortOnObjectProp.bind(null, idx));
+		for (let i = 0, l = this.length; i < l; i++) {
+			this[i][prop] = tmpThis[i];
+		}
+	}
+});
+
+//Object.defineProperty(RecitalDataset.prototype, 'sortStringsAsNumbers',  {
+//	value : function(a, b) {
+//		return (parseInt(a, 10) > parseInt(b, 10)
+//					? 1 
+//					: (parseInt(a, 10) === parseInt(b, 10)
+//						? 0
+//						: -1));
+//	}
+//});
+//
+//Object.defineProperty(RecitalDataset.prototype, 'invertSortStringsAsNumbers',  {
+//	value : function(a, b) {
+//		return (parseInt(a, 10) < parseInt(b, 10)
+//					? 1 
+//					: (parseInt(a, 10) === parseInt(b, 10)
+//						? 0
+//						: -1));
+//	}
+//});
 
 
 

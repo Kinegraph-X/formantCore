@@ -20,7 +20,8 @@ var TextSizeGetter = require('src/core/TextSizeGetter');
 //var rDataset = require('src/core/ReactiveDataset');
 
 var classConstructor = (function() {	
-	var masterTimer = new MasterTimer(),
+	var debugMode = false,
+		masterTimer = new MasterTimer(),
 		resizeObserver = new NodeResizeObserver(),
 		textSizeGetter = new TextSizeGetter(),
 		options = {},
@@ -34,6 +35,11 @@ var classConstructor = (function() {
 	
 
 	var launch = function(customOptions) {
+		
+		debugMode = window.location.href.match(/[\?&]debug=(.+)&?/)
+		if (debugMode && debugMode[0])
+			debugMode = debugMode[0];
+		
 		options = baseAppDefaultOptions;
 		if (typeof customOptions === 'object' && Object.keys(customOptions).length) {
 			for(var prop in customOptions) {
@@ -115,6 +121,7 @@ var classConstructor = (function() {
 	}
 	
 	return {
+		debugMode : debugMode,
 		masterTimer : masterTimer,
 		resizeObserver : resizeObserver,
 		textSizeGetter : textSizeGetter,

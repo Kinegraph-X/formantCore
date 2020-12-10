@@ -580,11 +580,28 @@ ComponentWithView.prototype.onAddChild = function(child, atIndex) {
 
 
 ComponentWithView.prototype.childButtonsHighlightLoop = function(targetIdx) {
+	if (this._children.length === 1)
+		this._children[0].streams.highlighted.value = null;
+	else {
+		this._children.forEach(function(child) {
+			if (child._key === targetIdx)
+				child.streams.highlighted.value = 'highlighted';
+			else
+				child.streams.highlighted.value = null;
+		});
+	}
+}
+
+ComponentWithView.prototype.childButtonsSortedLoop = function(targetIdx, order) {
 	this._children.forEach(function(child) {
-		if (child._key === targetIdx)
-			child.view.hostElem.setAttribute('highlighted', 'highlighted');
-		else
-			child.view.hostElem.removeAttribute('highlighted');
+		if (child._key === targetIdx) {
+			child.streams['sorted' + order].value = 'sorted';
+			child.streams['sorted' + (order === 'asc' ? 'desc' : 'asc')].value = null;
+		}
+		else {
+			child.streams.sortedasc.value = null;
+			child.streams.sorteddesc.value = null;
+		}
 	});
 }
 

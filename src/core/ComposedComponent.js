@@ -14,7 +14,7 @@ var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, { UIpack
 Object.assign(Components, require(componentTypes.misc));
 delete componentTypes.misc;
 for (let type in componentTypes) {
-	if (typeof componentTypes[type] === 'string' && type !== 'misc')
+	if (typeof componentTypes[type] === 'string')
 		Components[type] = require(componentTypes[type]);
 }
 var coreComponents = {};
@@ -227,6 +227,10 @@ var LazySlottedComposedComponent = function(definition, parentView, dummyParent,
 	for (let i = 0, l = this.slotsCount; i < l; i++) {
 		this.typedSlots[i].setSchema(['slotTitle']);
 	}
+	
+	this.createEvent('header_clicked');
+	
+	this.slotsCache = new TypeManager.PropertyCache('LazySlottedComposedComponentSlotsCache' + this._UID);
 }
 LazySlottedComposedComponent.prototype = Object.create(ComposedComponent.prototype);
 LazySlottedComposedComponent.prototype.objectType = 'LazySlottedComposedComponent';
@@ -305,6 +309,34 @@ LazySlottedComposedComponent.prototype.addPairedItems = function(slotTextContent
 LazySlottedComposedComponent.prototype.emptySlots = function() {
 	for (let i = 0, l = this.slotsCount; i < l; i++) {
 		this.typedSlots[i].resetLength();
+	}
+}
+
+LazySlottedComposedComponent.prototype.cacheSlots = function(userlandUID) {
+	for (let i = 0, l = this.slotsCount; i < l; i++) {
+		if (!this.slotsCache.getItem(userlandUID + i.toString())) {
+			var savedSlot = {
+				content : this.typedSlots[i].slice(0),
+				children : this.typedSlots[i].rootComponent._children.slice(0)
+			}
+			this.slotsCache.setItem(userlandUID + i.toString(), savedSlot);
+		}
+//		this.typedSlots[i].resetLength();
+	}
+}
+
+LazySlottedComposedComponent.prototype.retrieveSlots = function(userlandUID) {
+	var slot;
+	for (let i = 0, l = this.slotsCount; i < l; i++) {
+		slot = this.slotsCache.getItem(userlandUID + i.toString());
+		if (slot) {
+			Array.prototype.splice.call(this.typedSlots[i], 0, slot.content.length, ...slot.content);
+			slot.children.forEach(function(child, key) {
+				this.typedSlots[i].rootComponent.pushChild(child);
+				if (child.view) // this.slotsCache.getItem(userlandUID1) is a pseudo component (an object with an init() method)
+					this.typedSlots[i].rootComponent.view.addChildAt(child.view, slot.children.length); //  (- 1  & slot.children.length) cause 0 would cause an append (see view.addChildAt())
+			},  this);
+		}
 	}
 }
 
@@ -573,11 +605,11 @@ var createAbstractTableDef = require('src/coreDefs/abstractTableDef');
 var createAbstractTableSlotsDef = require('src/coreDefs/abstractTableSlotsDef');
 
 	
-var AbstractTable = function(dummyDef, parentView, parent) {
+var AbstractTable = function(def, parentView, parent) {
 	this.slotsCount = 2;
 	
-	var stdDef = createAbstractTableDef();
-	this.slotsDef = createAbstractTableSlotsDef();
+	var stdDef = def || createAbstractTableDef();
+	this.slotsDef = this.slotsDef || createAbstractTableSlotsDef();
 	this.columnsCount = this.columnsCount || 2;
 	this.rowsCount = 0;
 	
@@ -611,6 +643,42 @@ AbstractTable.prototype.setcolumnsCount = function(columnsCount, headerTitles) {
 	else if (headerTitles[0] !== 'idx')
 		headerTitles.unshift('idx');
 	return this.pushApplyToSlot(0, headerTitles);
+}
+
+
+AbstractTable.prototype.pushToSlotFromText = function(slotNbr, content) {
+	// Here, newItem() depends on the type given in the ctor... or afterwards with setSchema()
+	this.typedSlots[slotNbr].push(this.typedSlots[slotNbr].newItem(content));
+	
+	if (slotNbr === 0) {
+		var lastChild = this._children[0].getLastChild();
+		lastChild.view.hostElem.addEventListener('mousedown', function(e) {
+			this.trigger('header_clicked', {self_key : lastChild._key});
+			this._children[0].childButtonsSortedLoop(lastChild._key);
+		}.bind(this));
+	}
+}
+
+AbstractTable.prototype.pushApplyToSlot = function(slotNbr, contentAsArray) {
+	var lastChildIndex = this._children[0]._children.length;
+	// Here, newItem() depends on the type given in the ctor... or afterwards with setSchema()
+	var cAsArray = contentAsArray.map(function(value, key) {
+		if (typeof value !== 'object' || !(value instanceof this.typedSlots[slotNbr].Item))
+			return this.typedSlots[slotNbr].newItem(value);
+		else
+			return value;
+	}, this);
+
+	this.typedSlots[slotNbr].pushApply(cAsArray);
+	
+	if (slotNbr === 0) {
+		for (let i = lastChildIndex; i < this._children[0]._children.length; i++) {
+			this._children[0]._children[i].view.hostElem.addEventListener('mousedown', function(e) {
+				this.trigger('header_clicked', {self_key : this._children[0]._children[i]._key});
+				this._children[0].childButtonsSortedLoop(this._children[0]._children[i]._key);
+			}.bind(this));
+		}
+	}
 }
 
 AbstractTable.prototype.getRows = function() {

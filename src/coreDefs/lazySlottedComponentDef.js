@@ -3,7 +3,7 @@
  * @isGroup true
  * 
  * @CSSify hostName : smartTabs
- * @CSSifyRule rule : smartTabs
+ * @CSSifyRule rule : host flexBoxColumn/flexGrow
  * 
  */
 

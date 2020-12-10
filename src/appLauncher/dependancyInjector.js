@@ -8,7 +8,6 @@ var Components = require('src/core/Component');
 var App = require('src/core/AppIgnition');
 
 
-
 /**
  * Dependancy Injection
  */
@@ -30,5 +29,9 @@ App.componentTypes.KeyValueList.prototype.render = function(DOMNodeId) {
 App.componentTypes.ScrollSlider.prototype.render = function(DOMNodeId) {
 	new App.DelayedDecoration(DOMNodeId, this);
 };
+App.componentTypes.SlidingPanel.prototype.render = function(DOMNodeId) {
+	new App.DelayedDecoration(DOMNodeId, this);
+};
+
 
 module.exports = App;

@@ -1,12 +1,7 @@
 /**
  * @def BasicTableSlots
  * @isGroup false
- * 
- * @CSSify hostName : abstractTableSlots
- * @CSSifyRule rule : thead
- * @CSSifyRule rule : th
- * @CSSifyRule rule : tr
- * @CSSifyRule rule : td 
+
  * 
  */
 
@@ -30,7 +25,9 @@ var basicTableSlotsDef = function(uniqueID, options, model) {
 			nodeName : 'th',
 			// this is a big hack of shit (should be an attribute, but not... should be a "DOM" attribute... -> setAttribute(). TODO: fix after re-implementation of _arias&glyphs)
 			states : [
-				{role : "heading"} 
+				{role : "heading"},
+				{sortedasc : undefined},
+				{sorteddesc : undefined}
 			],
 			props : [
 				{headerTitle : undefined}

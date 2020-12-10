@@ -4,7 +4,7 @@
  * 
  * @CSSify hostName : treeBranch
  * @CSSifyRule rule : host block
- * @CSSifyRule rule : header pointer
+ * @CSSifyRule rule : header hPadding
  * 
  */
 
@@ -35,7 +35,8 @@ var treeBranchDef = function(uniqueID, options, model) {
 				{headerTitle : undefined},
 				{displayedas : undefined},
 				{selected : undefined},
-				{branchintree : undefined}
+				{branchintree : undefined},
+				{nodeintree : undefined}
 			],
 			reactOnParent : [
 				{
@@ -55,7 +56,8 @@ var treeBranchDef = function(uniqueID, options, model) {
 					{expanded : undefined},
 					{displayedas : undefined},
 					{selected : undefined},
-					{branchintree : undefined}
+					{branchintree : undefined},
+					{nodeintree : undefined}
 				],
 				reactOnParent : [
 					{
@@ -78,6 +80,10 @@ var treeBranchDef = function(uniqueID, options, model) {
 					{
 						from : 'branchintree',
 						to : 'branchintree'
+					},
+					{
+						from : 'nodeintree',
+						to : 'nodeintree'
 					}
 				]
 			})
