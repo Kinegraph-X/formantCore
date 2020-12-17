@@ -1,21 +1,21 @@
 /**
- * @constructor _componentNameComponent
+ * @constructor _componentName
 */
 
 var TypeManager = require('src/core/TypeManager');
 var Components = require('src/core/Component');
 
-//var create_componentNameComponentHostDef = require('src/coreComponents/_componentNameComponent/coreComponentDefs/_componentNameComponentHostDef');
-//var create_componentNameComponentSlotsDef = require('src/coreComponents/_componentNameComponent/coreComponentDefs/_componentNameComponentSlotsDef');
+//var create_componentNameHostDef = require('src/coreComponents/_componentName/coreComponentDefs/_componentNameHostDef');
+//var create_componentNameSlotsDef = require('src/coreComponents/_componentName/coreComponentDefs/_componentNameSlotsDef');
 
-var _componentNameComponent = function(definition, parentView, parent) {
+var _componentName = function(definition, parentView, parent) {
 	Components.ComponentWithView.call(this, definition, parentView, parent);
-	this.objectType = '_componentNameComponent';
+	this.objectType = '_componentName';
 }
-_componentNameComponent.prototype = Object.create(Components.ComponentWithView.prototype);
-_componentNameComponent.prototype.objectType = '_componentNameComponent';
+_componentName.prototype = Object.create(Components.ComponentWithView.prototype);
+_componentName.prototype.objectType = '_componentName';
 
-_componentNameComponent.defaultDef = {
+_componentName.defaultDef = {
 	nodeName : 'div',
 	attributes : [],
 	states : [],
@@ -24,11 +24,11 @@ _componentNameComponent.defaultDef = {
 	reactOnSelf : []
 }
 
-//_componentNameComponent.prototype.createDefaultDef = function() {
+//_componentName.prototype.createDefaultDef = function() {
 //	return TypeManager.createComponentDef(
-//			Object.assign(_componentNameComponent.defaultDef, create_componentNameComponentHostDef()),
-//			'_componentNameComponentDefaultDef'
+//			Object.assign(_componentName.defaultDef, create_componentNameHostDef()),
+//			'_componentNameDefaultDef'
 //		);
 //}
 
-module.exports = _componentNameComponent;
+module.exports = _componentName;

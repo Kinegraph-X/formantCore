@@ -1,16 +1,16 @@
 /**
- * @def _componentNameComponentSlots
+ * @def _componentNameSlots
  * @isGroup false
  * 
- * @CSSify styleName : _componentNameComponentHeader/false
- * @CSSify styleName : _componentNameComponentSection/false
+ * @CSSify styleName : _componentNameHeader/false
+ * @CSSify styleName : _componentNameSection/false
  * @CSSifyTheme themeName : basic-light
  */
 var TypeManager = require('src/core/TypeManager');
 var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
 
 
-var _componentNameComponentSlotsDef = function(uniqueID, options, model) {
+var _componentNameSlotsDef = function(uniqueID, options, model) {
 	/**@CSSify DEBUG */ 		// DEBUG must be stuck (RED and bold) to trigger debug infos
 		
 	// Some CSS stuff (styles are directly injected in the main def below)
@@ -33,14 +33,14 @@ var _componentNameComponentSlotsDef = function(uniqueID, options, model) {
 					from : 'headerTitle',
 					to : 'content'
 				}
-			]/**@CSSifyStyle componentStyle : _componentNameComponentHeader */
+			]/**@CSSifyStyle componentStyle : _componentNameHeader */
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 	
 	var sectionDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
 			type : 'ComponentWithView',
-			nodeName : 'pseudoslot-panel'/**@CSSifyStyle componentStyle : _componentNameComponentSection */
+			nodeName : 'pseudoslot-panel'/**@CSSifyStyle componentStyle : _componentNameSection */
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 	
@@ -52,4 +52,4 @@ var _componentNameComponentSlotsDef = function(uniqueID, options, model) {
 	};
 }
 
-module.exports = _componentNameComponentSlotsDef;
+module.exports = _componentNameSlotsDef;

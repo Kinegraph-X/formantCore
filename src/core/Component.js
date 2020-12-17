@@ -71,7 +71,7 @@ HierarchicalObject.prototype.removeChild = function(childKey) {
 
 	this._children[childKey].isAttached = false;
 	this._children[childKey].view.hostElem.remove();
-	removedChild = this._children.splice(childKey, 1)[0];
+	removedChild = this._children.splice(childKey, 1);
 	this.onRemoveChild(removedChild);
 	(childKey < this._children.length && this.generateKeys(childKey));
 	return removedChild;

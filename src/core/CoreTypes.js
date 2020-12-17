@@ -282,7 +282,9 @@ var Stream = function(name, value, reflectedObj, transform, lazy) {
 	this.value = typeof reflectedObj === 'object' ? reflectedObj[name] : value;
 	this.dirty;
 }
+Stream.prototype = {};
 Stream.prototype.objectType = 'Stream';
+Stream.prototype.constructor = Stream;
 Object.defineProperty(Stream.prototype, 'value', {
 	get : function() {
 		if (this.lazy) {
@@ -692,7 +694,6 @@ StreamPool.prototype.pushChild = function(child) {
 	child._parent = this;
 	child._key = this._streamsArray.length;
 	this._streamsArray.push(child);
-//	this.onAddChild(child);
 }
 
 /**
@@ -704,17 +705,22 @@ StreamPool.prototype.addChildAt = function(child, atIndex) {
 	child._key = atIndex;
 	this._streamsArray.splice(atIndex, 0, child);
 	this.generateKeys(atIndex);
-//	this.onAddChild(child, atIndex);
 }
 
 /**
- * @param {string} moduleName
+ * 
  */
 StreamPool.prototype.removeChild = function(childKey) {
-	var removed;
-
-	removed = this._streamsArray.splice(childKey, 1)[0];
+	var removed = this._streamsArray.splice(childKey, 1);
 	(childKey < this._streamsArray.length && this.generateKeys(childKey));
+	return removed;
+}
+
+/**
+ * 
+ */
+StreamPool.prototype.removeLastChild = function() {
+	var removed = this._streamsArray.pop();
 	return removed;
 }
 
@@ -724,14 +730,12 @@ StreamPool.prototype.removeChild = function(childKey) {
 StreamPool.prototype.removeChildAt = function(atIndex) {
 	var removedChild = this._streamsArray.splice(atIndex, 1);
 	this.generateKeys(atIndex);
-//	this.onRemoveChild(removedChild);
 }
 
 /**
  * 
  */
 StreamPool.prototype.removeAllChildren = function() {
-//	this.onRemoveChild();
 	this._streamsArray.length = 0;
 	return true;
 }
@@ -1244,6 +1248,8 @@ module.exports = {
 		Command : Command,
 		Worker : WorkerInterface,
 		Stream : Stream,
+		NumberedStream : NumberedStream,
+		StreamPool : StreamPool,
 		ComponentView, ComponentView,
 		ComponentSubView : ComponentSubView,
 		commonStates : commonStates
