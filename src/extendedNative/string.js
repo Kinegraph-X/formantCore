@@ -1,4 +1,14 @@
 
+Object.defineProperty(String.prototype, 'escapeRegExp', {
+	enumerable : false,
+	configurable : false,
+	writable : false,
+	value : function () {
+		return this.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+	}
+});
+
+
 Object.defineProperty(String.prototype, 'splice', {
 	enumerable : false,
 	configurable : false,

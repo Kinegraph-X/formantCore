@@ -19,7 +19,7 @@ for (let type in componentTypes) {
 }
 var coreComponents = {};
 
-
+var RootViewComponent = require('src/coreComponents/RootViewComponent/RootViewComponent');
 var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
 var KeyValuePairComponent = require('src/UI/Generics/KeyValuePairComponent');
 var ExtensibleTable = require('src/UI/Generics/ExtensibleTable');
@@ -735,6 +735,7 @@ AbstractTable.prototype.getRow = function(idx) {
 
 // Abstract types & abstract implementations re-injection
 Components.ComposedComponent = ComposedComponent;	// ComposedComponent may be called as a type
+Components.RootViewComponent = RootViewComponent;
 Components.VisibleStateComponent = VisibleStateComponent;
 Components.KeyValuePairComponent = KeyValuePairComponent;
 Components.ExtensibleTable = ExtensibleTable;

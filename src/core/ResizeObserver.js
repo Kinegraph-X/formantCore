@@ -5,7 +5,6 @@
 
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
-var MasterTimer = require('src/timers/MasterTimer');
 
 
 	

@@ -281,16 +281,20 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 			return;
 		}
 		if (this.cbOnly) {
-			stream.subscribe(this.subscribe.bind(queriedOrQueryingObj))
-			.filter(this.filter)
-			.map(this.map)
-			.reverse(this.inverseTransform);
+			queriedOrQueryingObj._subscriptions.push(
+				stream.subscribe(this.subscribe.bind(queriedOrQueryingObj))
+					.filter(this.filter)
+					.map(this.map)
+					.reverse(this.inverseTransform)
+			);
 		}
 		else {
-			stream.subscribe(queriedOrQueryingObj.streams[this.to], 'value')
-			.filter(this.filter)
-			.map(this.map)
-			.reverse(this.inverseTransform);
+			queriedOrQueryingObj._subscriptions.push(
+				stream.subscribe(queriedOrQueryingObj.streams[this.to], 'value')
+					.filter(this.filter)
+					.map(this.map)
+					.reverse(this.inverseTransform)
+			);
 		}
 //		console.warn(this.from, this.to, stream.subscriptions.length, stream._value, stream);
 		if (stream._value)

@@ -412,7 +412,7 @@ Stream.prototype.subscribe = function(handlerOrHost, prop, inverseTransform) {
 		return;
 	}
 	else
-		return this.addSubscription(handlerOrHost, prop, inverseTransform).subscribe();
+		return this.addSubscription(handlerOrHost, prop, inverseTransform);//.subscribe();
 }
 
 /**
@@ -436,14 +436,11 @@ Stream.prototype.addSubscription = function(handlerOrHost, prop, inverseTransfor
 	return this.subscriptions[this.subscriptions.length - 1];
 }
 
-Stream.prototype.unsubscribe = function(handler) {
-	if (typeof handler !== 'function') {
-		console.warn('Bad observableHandler given for removal : handler type is ' + typeof handler + ' instead of "function or object"', 'StreamName ' + this.name);
-		return;
-	}
-	for(var i = this.subscriptions.length - 1; i > 0; i--) {
-		if (this.subscriptions[i] === handler || this.subscriptions[i].host === handler) {
-			(function(j) {this.subscriptions.splice(j, 1);})(i);
+Stream.prototype.unsubscribe = function(subscriptionOrStream) {
+
+	for(let i = this.subscriptions.length - 1; i >= 0; i--) {
+		if (this.subscriptions[i] === subscriptionOrStream || this.subscriptions[i].obj === subscriptionOrStream) {
+			this.subscriptions.splice(i, 1);
 		}
 	}
 }
@@ -474,21 +471,25 @@ var Subscription = function(subscriberObjOrHandler, subscriberProp, parent, inve
 	this._stream = parent;
 	this._firstPass = true;
 }
+//
+//Subscription.prototype.subscribe = function(subscriberObjOrHandler, subscriberProp, inverseTransform) {
+////	if (typeof subscriberObjOrHandler !== 'function' && typeof subscriberObjOrHandler !== 'object' && !this.subscriber.obj && !this.subscriber.cb) {
+////		console.warn('Bad observableHandler given : handler type is ' + typeof subscriberObjOrHandler + ' instead of "function or object"', 'StreamName ' + this._parent.name);
+////		return;
+////	}
+//	if (typeof subscriberObjOrHandler === 'object')
+//		this.subscriber.obj = subscriberObjOrHandler;
+//	else if (typeof subscriberObjOrHandler === 'function')
+//		this.subscriber.cb = subscriberObjOrHandler;
+//	
+//	if (subscriberProp)
+//		this.subscriber.prop = subscriberProp;
+//	
+//	return this;
+//}
 
-Subscription.prototype.subscribe = function(subscriberObjOrHandler, subscriberProp, inverseTransform) {
-//	if (typeof subscriberObjOrHandler !== 'function' && typeof subscriberObjOrHandler !== 'object' && !this.subscriber.obj && !this.subscriber.cb) {
-//		console.warn('Bad observableHandler given : handler type is ' + typeof subscriberObjOrHandler + ' instead of "function or object"', 'StreamName ' + this._parent.name);
-//		return;
-//	}
-	if (typeof subscriberObjOrHandler === 'object')
-		this.subscriber.obj = subscriberObjOrHandler;
-	else if (typeof subscriberObjOrHandler === 'function')
-		this.subscriber.cb = subscriberObjOrHandler;
-	
-	if (subscriberProp)
-		this.subscriber.prop = subscriberProp;
-	
-	return this;
+Subscription.prototype.unsubscribe = function() {
+	this._stream.unsubscribe(this);
 }
 
 Subscription.prototype.filter = function(filterFunc) {
@@ -560,6 +561,210 @@ Object.defineProperty(Subscription.prototype, 'execute', {
 	},
 	enumerable : true
 });
+
+
+
+
+
+
+
+
+
+
+/**
+ * A constructor for NUMBERED STREAMS : numbered streams should be part of a StreamPool
+ */
+
+var NumberedStream = function(key, component, name, value) {
+	this._key = key;
+	this._parent = component;
+	Stream.call(this, name, value);
+}
+NumberedStream.prototype = Object.create(Stream.prototype);
+NumberedStream.prototype.objectType = 'NumberedStream';
+NumberedStream.prototype.constructor = NumberedStream;
+
+Object.defineProperty(NumberedStream.prototype, 'value', {
+	get : function() {
+		if (this.lazy) {
+			this.dirty = false;
+		}
+		
+		return this.get();
+	},
+	
+	set : function(value) {
+		this.setAndUpdateConditional(value);
+		this.set(value);
+	}
+});
+
+NumberedStream.prototype.get = function() {
+	return this._value;
+}
+
+NumberedStream.prototype.set = function(value) {
+	if (this.forward && this.reflectedObj) {
+		this.forward = false;
+//		this.reflectedObj[this.name] = value;
+		this.forward = true;
+	}
+	else
+		this.forward = true;
+}
+
+/**
+ * @method setAndUpdateConditional
+ * 		Avoid infinite recursion when setting a prop on a custom element : 
+ * 			- when set from outside : update and set the prop on the custom element
+ *			- after updating a prop on a custom element : update only
+ * 			- don't update when set from downward (reflected stream shall only call "set")
+ */
+NumberedStream.prototype.setAndUpdateConditional = function(value) {
+	this._value = value;
+	if (!this.lazy) {
+		if (this.forward) {
+			this.update();
+		}
+	}
+	else {
+		this.dirty = true;
+	}
+}
+
+/**
+ * 
+ */
+NumberedStream.prototype.remove = function() {
+	if (this._parent)
+		return this._parent.removeChild(this._key);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * A constructor for STREAMS POOL : numbered streams should be part of a StreamPool
+ */
+
+var StreamPool = function(component) {
+	this._parent = component;
+	this._streamsArray  = [];
+}
+StreamPool.prototype = Object.create(EventEmitter.prototype);
+StreamPool.prototype.objectType = 'StreamPool';
+StreamPool.prototype.constructor = StreamPool;
+
+/**
+ * @param {number} idx : the _key of the member Stream
+ */
+StreamPool.prototype.getFirst = function() {
+	return this._streamsArray[0];
+}
+
+/**
+ * @param {number} idx : the _key of the member Stream
+ */
+StreamPool.prototype.getStreamAt = function(idx) {
+	return this._streamsArray[idx];
+}
+
+/**
+ * @param {number} idx : the _key of the member Stream
+ */
+StreamPool.prototype.getLast = function() {
+	return this._streamsArray[this._streamsArray.length - 1];
+}
+
+/**
+ * @param {object} child : an instance of another object
+ */
+StreamPool.prototype.pushChild = function(child) {
+	child._parent = this;
+	child._key = this._streamsArray.length;
+	this._streamsArray.push(child);
+//	this.onAddChild(child);
+}
+
+/**
+ * @param {object} child : an instance of another object
+ * @param {number} atIndex : the required index to splice at
+ */
+StreamPool.prototype.addChildAt = function(child, atIndex) {
+	child._parent = this;
+	child._key = atIndex;
+	this._streamsArray.splice(atIndex, 0, child);
+	this.generateKeys(atIndex);
+//	this.onAddChild(child, atIndex);
+}
+
+/**
+ * @param {string} moduleName
+ */
+StreamPool.prototype.removeChild = function(childKey) {
+	var removed;
+
+	removed = this._streamsArray.splice(childKey, 1)[0];
+	(childKey < this._streamsArray.length && this.generateKeys(childKey));
+	return removed;
+}
+
+/**
+ * @param {number} atIndex : the required index to clear at
+ */
+StreamPool.prototype.removeChildAt = function(atIndex) {
+	var removedChild = this._streamsArray.splice(atIndex, 1);
+	this.generateKeys(atIndex);
+//	this.onRemoveChild(removedChild);
+}
+
+/**
+ * 
+ */
+StreamPool.prototype.removeAllChildren = function() {
+//	this.onRemoveChild();
+	this._streamsArray.length = 0;
+	return true;
+}
+
+/**
+ * @param {number} atIndex : the first _key we need to invalidate
+ */
+StreamPool.prototype.generateKeys = function(atIndex) {
+	for (let i = atIndex || 0, l = this._streamsArray.length; i < l; i++) {
+		this._streamsArray[i]._key = i;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

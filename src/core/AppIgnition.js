@@ -365,13 +365,30 @@ var DelayedDecoration = function(containerId, component, componentListHostDef) {
 	if (typeof containerId !== 'string')
 		return;
 
-	document.querySelector('#' + containerId).appendChild(component.view.hostElem);
+	document.querySelector(containerId !== 'body' ? '#' + containerId : containerId).appendChild(component.view.hostElem);
 //	componentListHostDef.each.length = 0;
 }
 DelayedDecoration.prototype = Object.create(Ignition.prototype);
 DelayedDecoration.prototype.objectType = 'DelayedDecoration';
 
 
+
+
+
+
+
+
+/**
+ * @constructor RootView
+ */
+var createRootViewComponentHostDef = require('src/coreComponents/RootViewComponent/coreComponentDefs/RootViewComponentHostDef');
+
+var RootView = function() {
+	var component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef()));
+	document.querySelector('body').prepend(component.view.hostElem);
+}
+RootView.prototype = Object.create(Ignition.prototype);
+RootView.prototype.objectType = 'RootView';
 
 
 
@@ -403,6 +420,7 @@ List.prototype.create = function(definition, parent) {
 module.exports = {
 		componentTypes : componentTypes,
 		coreComponents : coreComponents,
+		RootView : RootView,
 		Ignition : IgnitionToComposed,
 		IgnitionFromDef : IgnitionFromDef,
 		IgnitionToExtensible : IgnitionToExtensible,

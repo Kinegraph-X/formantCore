@@ -17,6 +17,9 @@ Components.CompositorComponent.createAppLevelExtendedComponent();
 App.coreComponents.LazySlottedComposedComponent.prototype.rDataset = rDataset;
 App.coreComponents.LazySlottedComposedComponent.prototype.cSet = cSet;
 
+App.componentTypes.RootViewComponent.prototype.render = function(DOMNodeId) {
+	new App.DelayedDecoration(null, this);
+};
 App.coreComponents.LazySlottedComposedComponent.prototype.render = function(DOMNodeId) {
 	new App.DelayedDecoration(DOMNodeId, this);
 };

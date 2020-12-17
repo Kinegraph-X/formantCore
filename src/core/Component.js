@@ -67,13 +67,14 @@ HierarchicalObject.prototype.addChildAt = function(child, atIndex) {
  * @param {string} moduleName
  */
 HierarchicalObject.prototype.removeChild = function(childKey) {
-	var removed;
+	var removedChild;
 
 	this._children[childKey].isAttached = false;
 	this._children[childKey].view.hostElem.remove();
-	removed = this._children.splice(childKey, 1)[0];
+	removedChild = this._children.splice(childKey, 1)[0];
+	this.onRemoveChild(removedChild);
 	(childKey < this._children.length && this.generateKeys(childKey));
-	return removed;
+	return removedChild;
 }
 
 /**
@@ -484,6 +485,7 @@ var ComponentWithObservables = function(definition, parentView) {
 	this.objectType = 'ComponentWithObservables';
 	
 	this.streams = {};
+	this._subscriptions = [];
 }
 ComponentWithObservables.prototype = Object.create(AbstractComponent.prototype);
 ComponentWithObservables.prototype.objectType = 'ComponentWithObservables';
@@ -502,6 +504,7 @@ ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf, pa
 	}, this);
 
 }
+
 
 
 
@@ -564,8 +567,12 @@ ComponentWithView.prototype.onRemoveChild = function(child) {
 //		this.view.subViewsHolder.subViews[1].hostElem.length = 0;
 //		this.view.hostElem.remove();
 	}
-	else {
+	else if (child instanceof ComponentWithObservables){
 		// remove a child
+		// TODO: should call super(), as the ComponentWithView should neither handle streams, nor subscriptions 
+		child._subscriptions.forEach(function(subscription) {
+			subscription.unsubscribe();
+		});
 	}
 }
 

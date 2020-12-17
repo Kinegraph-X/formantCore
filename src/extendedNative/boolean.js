@@ -16,3 +16,5 @@ Object.defineProperty(Boolean.prototype, 'tryParse', {
 		}
 	}
 });
+
+Boolean.tryParse = Boolean.prototype.tryParse;

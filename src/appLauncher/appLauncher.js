@@ -11,7 +11,7 @@ var Obj = require('src/extendedNative/object');
 var Regex = require('src/extendedNative/regexp');
 var Validate = require('src/UI/integrated_fork/Validate');
 var Hamster = require('src/integrated_libs_&_forks/Hamster');
-var MasterTimer = require('src/timers/MasterTimer');
+//var MasterTimer = require('src/timers/MasterTimer');
 var NodeResizeObserver = require('src/core/ResizeObserver');
 var TextSizeGetter = require('src/core/TextSizeGetter');
 
@@ -21,7 +21,7 @@ var TextSizeGetter = require('src/core/TextSizeGetter');
 
 var classConstructor = (function() {	
 	var debugMode = false,
-		masterTimer = new MasterTimer(),
+//		masterTimer = new MasterTimer(),
 		resizeObserver = new NodeResizeObserver(),
 		textSizeGetter = new TextSizeGetter(),
 		options = {},
@@ -59,7 +59,7 @@ var classConstructor = (function() {
 		currentHostPath = window.location.href.match(/(.*\/)[^/]*$/)[1];
 		browserName = parseUserAgent();
 		
-		masterTimer.startQueue();
+//		masterTimer.startQueue();
 	}
 	
 	var parseUserAgent = function() {
@@ -122,7 +122,6 @@ var classConstructor = (function() {
 	
 	return {
 		debugMode : debugMode,
-		masterTimer : masterTimer,
 		resizeObserver : resizeObserver,
 		textSizeGetter : textSizeGetter,
 		options : options,
