@@ -474,7 +474,7 @@ ComponentDefCache.prototype.setUID = function(uniqueID, globalObj) {
 
 /**
  * @constructor ComponentDefModel
- * @extends ValueObject
+ * @factory
  */
 var createComponentDef = function(defObj, useCache, isSpecial) {
 	var def, UID;
@@ -516,6 +516,15 @@ var createComponentDef = function(defObj, useCache, isSpecial) {
 };
 exportedObjects.createComponentDef = createComponentDef;
 
+
+/**
+ * @constructor MockedDefModel
+ * @factory
+ */
+var mockDef = function() {
+	return new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel({UID : 'dummy'})}, 'rootOnly');
+}
+exportedObjects.mockDef = mockDef;
 
 
 
@@ -649,6 +658,7 @@ var dataStoreRegister = new PropertyCache('dataStoreRegister');
 
 console.log(hostsDefinitionsCacheRegister);
 console.log(listsDefinitionsCacheRegister);
+console.log(viewsRegister);
 
 
 

@@ -97,7 +97,7 @@ Object.defineProperty(RecitalDataset.prototype, 'setItemFactory', {
 		factoryPropsArray.forEach(function(propName) {
 			factory.prototype[propName] = null; 
 		});
-		factory.prototype.keys = factoryPropsArray.slice(0);
+		Object.defineProperty(factory.prototype, 'keys', {value : factoryPropsArray.slice(0)});
 		return factory;
 	}
 });

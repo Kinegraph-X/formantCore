@@ -880,12 +880,13 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	if (!TypeManager.caches.attributes.getItem(this._defUID))
 		TypeManager.caches.attributes.setItem(this._defUID, definition.getHostDef().attributes);
 	viewsRegister.push(this);
-
+//	console.log(viewsRegister[viewsRegister.length - 1], this);
 	
 	this.subViewsHolder;
 	if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length) {
 		this.subViewsHolder = new ComponentSubViewsHolder(definition, this);
-		this.targetSubView = (definition.getHostDef().targetSlotIndex !== null && this.subViewsHolder.memberViews.length > definition.getHostDef().targetSlotIndex) ? this.subViewsHolder.memberAt(definition.getHostDef().targetSlotIndex) : null;
+		// this shall be retried after calling the hooks, as the interfaces may have added subViews
+		this.getTargetSubView(definition);
 	}
 	else
 		this.subViewsHolder = new ComponentSubViewsHolder(null, this);
@@ -913,6 +914,11 @@ ComponentView.prototype.getEffectiveParentView = function() {
 						? this.parentView.subViewsHolder.subViews[this.section]
 							: this.parentView;
 }
+
+ComponentView.prototype.getTargetSubView = function(definition) {
+	this.targetSubView = (definition.getHostDef().targetSlotIndex !== null && this.subViewsHolder.memberViews.length > definition.getHostDef().targetSlotIndex) ? this.subViewsHolder.memberAt(definition.getHostDef().targetSlotIndex) : null;	
+}
+
 
 /**
  * @abstract

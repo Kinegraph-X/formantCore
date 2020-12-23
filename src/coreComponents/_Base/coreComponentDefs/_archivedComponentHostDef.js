@@ -2,9 +2,9 @@
  * @def RootViewComponent
  * @isGroup true
  * 
- * @CSSify hostName : RootViewComponentHost
- * @CSSify hostName : RootViewComponentHeader
- * @CSSify hostName : RootViewComponentPage
+ * @CSSify styleName : RootViewComponentHost
+ * @CSSify styleName : RootViewComponentHeader
+ * @CSSify styleName : RootViewComponentPage
  * @CSSifyTheme themeName : basic-light
  * 
  */

@@ -3,6 +3,13 @@ mongoose.pluralize(function(name) { return name; });
 //mongoose.set('debug', true);
 const Schema = mongoose.Schema;
 
+
+
+/**
+ * db name : themed_components
+ */
+
+
 var ComponentStyle = new Schema({
 	componentName: {
 		type: String,
@@ -236,8 +243,19 @@ var ComponentStyle = new Schema({
 		type: Schema.ObjectId,
 		ref: 'theme',
 		index: true
+	},
+	designContext: {
+		type: Schema.ObjectId,
+		ref: 'design_context',
+		index: true
 	}
 }, { collection: 'componentStyle' });
+
+
+
+
+
+
 
 var Theme = new Schema({
 	name: {
@@ -246,7 +264,72 @@ var Theme = new Schema({
 	}
 }, { collection: 'theme' });
 
+
+
+var DesignContext = new Schema({
+	env : {
+		type: String,
+		index: true
+	},
+	technology : String
+}, {collection : 'design_context'});
+
+
+
+
+
+/**
+ * db name : design_system
+ */
+
+var FontDef = new Schema({
+	objectType : String,
+	family : {
+		type: String,
+		index: true
+	},
+	style : String,
+	weight : Number
+}, { collection: 'fontDef' });
+
+var ColorDef = new Schema({
+	objectType : String,
+	hex : String
+}, { collection: 'colorDef' });
+
+
+var FontSet = new Schema({
+	objectType : String,
+	members : [
+		{
+			type: Schema.ObjectId,
+			ref: 'fontDef'
+		}
+	]
+}, { collection: 'fontSet' });
+
+var ColorSet = new Schema({
+	objectType : String,
+	members : [
+		{
+			type: Schema.ObjectId,
+			ref: 'colorDef'
+		}
+	]
+}, { collection: 'colorSet' });
+	
+	
+	
+	
+	
+	
+
 module.exports = {
 	ComponentStyle: mongoose.model('componentStyle', ComponentStyle),
-	Theme: mongoose.model('theme', Theme)
+	Theme: mongoose.model('theme', Theme),
+	DesignContext : mongoose.model('design_context', DesignContext),
+	FontDef : mongoose.model('fontDef', FontDef),
+//	ColorDef : mongoose.model('colorDef', ColorDef),
+//	FontSet : mongoose.model('fontSet', FontSet),
+//	ColorSet : mongoose.model('colorSet', ColorSet)
 }

@@ -44,6 +44,7 @@ Ignition.prototype.decorateComponentsThroughDefinitionsCache = function(listDef)
 	this.lateEventBindingAndBidirectionalReflection(listDef);
 
 	this.cleanRegisters();
+//	console.log(TypeManager.viewsRegister);
 }
 
 
@@ -58,11 +59,13 @@ Ignition.prototype.instanciateDOM = function() {
 		attributesCache = TypeManager.caches.attributes.cache,
 		attributes;
 
-	views.forEach(function(view) {
+	views.forEach(function(view, key) {
 		
 		attributes = attributesCache[view._defUID];
 //		if (view._defUID === "310")
 //			console.log(view, nodes[view._defUID].cloneMother, nodes[view._defUID]);
+//		console.log(key, nodes[view._defUID].cloneMother);
+		
 		if (nodes[view._defUID].cloneMother) {
 			// nodes[view._defUID].cloneMother.cloneNode(true); => deep clone : also copies the nested nodes (textual contents are nodes...)
 			view.hostElem = nodes[view._defUID].cloneMother.cloneNode(true);
@@ -70,6 +73,7 @@ Ignition.prototype.instanciateDOM = function() {
 		}
 		else {
 			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
+//			console.log(nodes[view._defUID].cloneMother);
 			attributes.forEach(function(attrObject) {
 				if (attrObject.getName().indexOf('aria') === 0)
 					nodes[view._defUID].cloneMother.setAria(attrObject.getName(), attrObject.getValue());
@@ -92,6 +96,7 @@ Ignition.prototype.instanciateDOM = function() {
 		// Connect DOM objects 
 		if (view.sWrapper)
 			(view.rootElem || view.hostElem).append(view.sWrapper.styleElem.cloneNode(true));
+		
 		if (view.parentView && view.parentView.hostElem)
 			(view.parentView.rootElem || view.parentView.hostElem).append(view.hostElem);
 	});
@@ -110,6 +115,7 @@ Ignition.prototype.instanciateStreams = function() {
 	var streams = TypeManager.caches.streams.cache;
 	for (let defUID in typedComponentRegister) {
 		typedComponentRegister[defUID].forEach(function(component) {
+//			console.log(defUID);
 			streams[defUID].forEach(function(stateObj) {
 				component.streams[stateObj.getName()] = new CoreTypes.Stream(stateObj.getName(), stateObj.getValue());
 			})
@@ -225,10 +231,10 @@ Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 //		console.log(defUID, typedComponentRegister[defUID]);
 		typedComponentRegister[defUID].forEach(function(component) {
 //			console.log(listDef.UID);
-			if (!component.view) {
-//				console.log(listDef.UID);
-				return;
-			}
+//			if (!component.view) {
+//				console.log(defUID, component._UID, listDef.UID);
+//				return;
+//			}
 //			if (listDef.UID === '5')
 //				console.log(component._UID, TypeManager.dataStoreRegister.getItem(component._UID), TypeManager.dataStoreRegister);
 			if (typeof (dataStoreKey = TypeManager.dataStoreRegister.getItem(component._UID)) !== 'undefined')
@@ -237,6 +243,7 @@ Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 	}
 }
 Ignition.prototype.defineStreamsBidirectionalReflection = function(defUID, component) {
+//	console.log(component);
 	// DOM objects extension : we need 2 custom props to offer a rich "reactive" experience
 	// The view's "hosts" gains access here to the streams of the component.
 	// It's needed if we want to allow access to the reactivity mechanisms from outside of the framework :
@@ -383,12 +390,20 @@ DelayedDecoration.prototype.objectType = 'DelayedDecoration';
  */
 var createRootViewComponentHostDef = require('src/coreComponents/RootViewComponent/coreComponentDefs/RootViewComponentHostDef');
 
-var RootView = function() {
+var RootView = function(igniterForChild) {
 	var component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef()));
+	if (igniterForChild && typeof igniterForChild.init === 'function') {
+		igniterForChild.init(component.view, component);
+	}
+
+	component.render();
 	document.querySelector('body').prepend(component.view.hostElem);
+	return component;
 }
 RootView.prototype = Object.create(Ignition.prototype);
 RootView.prototype.objectType = 'RootView';
+
+
 
 
 

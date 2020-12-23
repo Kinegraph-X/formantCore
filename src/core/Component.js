@@ -16,11 +16,12 @@ var ElementDecorator = require('src/UI/_mixins/elementDecorator_HSD');
 /**
  * @constructor HierarchicalObject
  */
-var HierarchicalObject = function() {
+var HierarchicalObject = function(definition, parentView, parent) {
 	CoreTypes.EventEmitter.call(this);
 	this.objectType = 'HierarchicalObject';
 	this._key;
-	this._parent;
+
+	this._parent = (parent && parent instanceof HierarchicalObject && parent.pushChild(this)) ? parent : null;
 	this._children = [];
 }
 HierarchicalObject.prototype = Object.create(CoreTypes.EventEmitter.prototype);
@@ -49,6 +50,7 @@ HierarchicalObject.prototype.pushChild = function(child) {
 	child._key = this._children.length;
 	this._children.push(child);
 	this.onAddChild(child);
+	return true;
 }
 
 /**
@@ -170,8 +172,8 @@ HierarchicalObject.prototype.handleEventSubsOnChildrenAt = function(eventQueries
 /**
  * @constructor ExtensibleObject
  */
-var ExtensibleObject = function() {
-	HierarchicalObject.call(this);
+var ExtensibleObject = function(definition, parentView, parent) {
+	HierarchicalObject.call(this, definition, parentView, parent);
 	this.objectType = 'ExtensibleObject';
 }
 ExtensibleObject.prototype = Object.create(HierarchicalObject.prototype);
@@ -340,8 +342,8 @@ ExtensibleObject.prototype.onExtend = function(namespace) {
 /**
  * @constructor AsyncActivableObject
  */
-var AsyncActivableObject = function() {
-	ExtensibleObject.call(this);
+var AsyncActivableObject = function(definition, parentView, parent) {
+	ExtensibleObject.call(this, definition, parentView, parent);
 	this.objectType = 'AsyncActivableObject';
 }
 AsyncActivableObject.prototype = Object.create(ExtensibleObject.prototype);
@@ -385,12 +387,12 @@ AsyncActivableObject.prototype.queueAsync = function() {
 /**
  * @constructor AbstractComponent
  */
-var AbstractComponent = function(definition) {
-	AsyncActivableObject.call(this);
+var AbstractComponent = function(definition, parentView, parent) {
+	AsyncActivableObject.call(this, definition, parentView, parent);
 	this.objectType = 'AbstractComponent';
 	
 	this._UID = TypeManager.UIDGenerator.newUID().toString();
-	
+
 	this._defUID = definition.getHostDef().UID;
 	this._defComposedUID = '';
 	
@@ -480,8 +482,8 @@ AbstractComponent.prototype.populateStores = function(definition) {
 /**
  * @constructor ComponentWithObservables
  */
-var ComponentWithObservables = function(definition, parentView) {
-	AbstractComponent.call(this, definition);
+var ComponentWithObservables = function(definition, parentView, parent) {
+	AbstractComponent.call(this, definition, parentView, parent);
 	this.objectType = 'ComponentWithObservables';
 	
 	this.streams = {};
@@ -523,7 +525,7 @@ ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf, pa
  * @constructor ComponentWithView
  */
 var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) {
-	ComponentWithObservables.call(this, definition);
+	ComponentWithObservables.call(this, definition, parentView, parent);
 	this.objectType = 'ComponentWithView';
 	
 	this.command = definition.getHostDef().command;
@@ -534,6 +536,18 @@ var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) 
 }
 ComponentWithView.prototype = Object.create(ComponentWithObservables.prototype);
 ComponentWithView.prototype.objectType = 'ComponentWithView';
+
+/**
+ * @param {ComponentDefinition} definition
+ * @param {ComponentView} parentView
+ */
+ComponentWithView.prototype.pushChildWithView = function(child) {
+	this.pushChild(child);
+	child.view.parentView = this.view;
+	this.view.subViewsHolder.addMemberView(child.view);
+	child.onPushChildWithView(child);
+}
+ComponentWithView.prototype.onPushChildWithView = function() {}		// virtual pure
 
 /**
  * @param {ComponentDefinition} definition
@@ -656,6 +670,10 @@ ComponentWithHooks.prototype.viewExtend = function(definition) {
 	this.basicLateViewExtend(definition);
 	if (this._asyncInitTasks)
 		this.lateAddChildren(definition);
+		
+	// Retry after having added more views
+	if (definition.getHostDef().targetSlotIndex !== null && this.view.targetSubView === null)
+		this.view.getTargetSubView(definition);
 }
 
 ComponentWithHooks.prototype.registerEvents = function() {
@@ -735,7 +753,7 @@ ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(compon
  * @param {string} state
  */
 ComponentWithHooks.prototype.unshiftReactiveMemberViewFromFreshDef = function(componentDefinition, nodeDefinition, state) {
-	
+
 	var newDef = state ? this.extendDefToStatefull(componentDefinition, nodeDefinition, state) : nodeDefinition;
 	this.view.subViewsHolder.immediateUnshiftMemberView(newDef.getHostDef());
 }
@@ -801,7 +819,7 @@ ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition
  * @constructor CompositorComponent
  */
 var CompositorComponent = function(definition, parentView, parent) {//, argx, argy, arg...
-	this.Compositor.apply(this, arguments);
+	this.Compositor.call(this, definition, parentView, parent);
 	this.objectType = 'CompositorComponent';
 }
 CompositorComponent.prototype = Object.create(ComponentWithView.prototype);
@@ -814,6 +832,7 @@ CompositorComponent.prototype.Compositor = function() {};				// virtual
 CompositorComponent.prototype.acquireCompositor = function() {};		// virtual
 
 CompositorComponent.prototype.extendFromCompositor = function(inheritingType, inheritedType) {
+//	console.log(inheritedType);
 	var proto_proto = Object.create(inheritedType.prototype);
 	Object.assign(proto_proto, inheritingType.prototype);
 	inheritingType.prototype = proto_proto;

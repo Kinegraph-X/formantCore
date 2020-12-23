@@ -19,7 +19,7 @@ var RootViewComponentDef = function(uniqueID, options, model) {
 	/**@CSSifySlots placeholder */
 	
 
-	
+	 
 
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({

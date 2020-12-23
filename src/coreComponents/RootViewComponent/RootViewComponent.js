@@ -11,7 +11,7 @@ var Components = require('src/core/Component');
 var RootViewComponent = function(definition, parentView, parent) {
 	Components.CompositorComponent.call(this, definition, parentView, parent);
 	this.objectType = 'RootViewComponent';
-	this.render();
+	
 }
 RootViewComponent.prototype = Object.create(Components.CompositorComponent.prototype);
 RootViewComponent.prototype.objectType = 'RootViewComponent';
@@ -29,10 +29,27 @@ RootViewComponent.defaultDef = {
 
 RootViewComponent.prototype.createDefaultDef = function() {
 	return TypeManager.createComponentDef(
+		// RootView is a special case: as it is instanciated under the hood by the AppIgniter, effective Component's Style isn't used
 //			Object.assign(RootViewComponent.defaultDef, createRootViewComponentHostDef()),
 			RootViewComponent.defaultDef,
 			'RootViewComponentDefaultDef'
 		);
+}
+
+RootViewComponent.prototype.getPanel = function(Idx) {
+	return this._children[Idx];
+}
+
+RootViewComponent.prototype.getHeaderPanel = function() {
+	return this._children[0];
+}
+
+RootViewComponent.prototype.getPagePanel = function() {
+	return this._children[1];
+}
+
+RootViewComponent.prototype.getAfterPagePanel = function() {
+	return this._children[2];
 }
 
 module.exports = RootViewComponent;

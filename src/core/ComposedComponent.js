@@ -5,30 +5,44 @@
  * 	=> tight coupling = mandatory static inclusion in core (AppIgnition requires ComposedComponent).
  */
 
+
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
 
-
 var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, { UIpackage: '%%UIpackage%%' }).packageList;
+
 Object.assign(Components, require(componentTypes.misc));
 delete componentTypes.misc;
 for (let type in componentTypes) {
+	
 	if (typeof componentTypes[type] === 'string')
 		Components[type] = require(componentTypes[type]);
 }
 var coreComponents = {};
 
 var RootViewComponent = require('src/coreComponents/RootViewComponent/RootViewComponent');
+var AppOverlayComponent = require('src/coreComponents/AppOverlayComponent/AppOverlayComponent');
+var FlexColumnComponent = require('src/coreComponents/FlexColumnComponent/FlexColumnComponent');
+var FlexRowComponent = require('src/coreComponents/FlexRowComponent/FlexRowComponent');
+var FlexGridComponent = require('src/coreComponents/FlexGridComponent/FlexGridComponent');
+//var ChildBoxComponent = require('src/coreComponents/ChildBoxComponent/ChildBoxComponent');
+
 var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
+var TypedListComponent = require('src/UI/Generics/TypedListComponent');
 var KeyValuePairComponent = require('src/UI/Generics/KeyValuePairComponent');
 var ExtensibleTable = require('src/UI/Generics/ExtensibleTable');
+
+var VisualSetComponent = require('src/UI/Generics/VisualSetComponent/VisualSetComponent');
+var VariablyStatefullComponent = require('src/UI/Generics/VariablyStatefullComponent/VariablyStatefullComponent');
+var VaritextButtonComponent = require('src/UI/Generics/VaritextButtonComponent/VaritextButtonComponent');
+var VisualSetHostComponent = require('src/UI/Generics/VisualSetHostComponent/VisualSetHostComponent');
 
 
 /**
  * @constructor ComposedComponent
  */
-var ComposedComponent = function(definition, parentView) {
+var ComposedComponent = function(definition, parentView, parent) {
 	//	console.log(definition);
 	this._firstListUIDSeen = null;
 	var shouldExtend = false;
@@ -56,8 +70,8 @@ var ComposedComponent = function(definition, parentView) {
 	if (definition.getGroupHostDef().getType() && Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef) {
 		this.createDefaultDef = Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
 	}
-
-	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, this);  // feed with host def : "this" shall be assigned the _defUID of the "hostDef"
+//	console.log(parent);
+	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, parent);  // feed with host def
 	this.objectType = 'ComposedComponent';
 
 	// extend last, so the event bubbling occurs always after the "explicitly defined in the host's def" callbacks
@@ -94,7 +108,7 @@ ComposedComponent.prototype.instanciateSubSections = function(definition) {
 		type = subSectionDef.getHostDef().getType();
 		if (type in Components) {
 			component = new Components[type](subSectionDef, this.view, this, 'isChildOfRoot');
-			component._parent = this;
+//			component._parent = this;
 			// mandatory, as we need to append memberViews on subViews without accessing the component's scope
 			this.view.subViewsHolder.subViews.push(component.view);
 		}
@@ -108,10 +122,11 @@ ComposedComponent.prototype.instanciateMembers = function(definition) {
 	definition.members.forEach(function(memberDef) {
 		type = memberDef.getHostDef().getType() || (memberDef.getGroupHostDef() && memberDef.getGroupHostDef().getType());
 //		console.log(type);
+		
+		if (type in Components)
+			new Components[type](memberDef, this.view, this);
 		if (memberDef.getGroupHostDef())
-			this.pushChild(new ComposedComponent(memberDef, this.view, this));
-		else if (type in Components)
-			this.pushChild(new Components[type](memberDef, this.view, this));
+			new ComposedComponent(memberDef, this.view, this);
 		else if (memberDef.getHostDef().nodeName)
 			this.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(memberDef, this.view, this));
 	}, this);
@@ -162,13 +177,13 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 //	console.log(templateDef);
 	definition.getHostDef().each.forEach(function(item, key) {
 		
-		if (templateDef.getGroupHostDef()) {
-			this._parent.pushChild((composedComponent = new ComposedComponent(templateDef, this._parent.view)));
-			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
-		}
-		else if ((type = templateDef.getHostDef().getType())) {
+		if ((type = templateDef.getHostDef().getType())) {
 //			console.log(item, key);
 			this._parent.pushChild((composedComponent = new Components[type](templateDef, this._parent.view)));
+			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
+		}
+		else if (templateDef.getGroupHostDef()) {
+			this._parent.pushChild((composedComponent = new ComposedComponent(templateDef, this._parent.view)));
 			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 		}
 		else
@@ -195,7 +210,7 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 var createLazySlottedComponentDef = require('src/coreDefs/lazySlottedComponentDef');
 var createLazySlottedComponenSlotstDef = require('src/coreDefs/lazySlottedComponentSlotsDef');
 
-var LazySlottedComposedComponent = function(definition, parentView, dummyParent, alreadyComposed, slotsCount, slotsDef) {
+var LazySlottedComposedComponent = function(definition, parentView, parent, alreadyComposed, slotsCount, slotsDef) {
 	var stdDefinition = definition || createLazySlottedComponentDef();
 	this.typedSlots = [];
 	this.slotsCount = this.slotsCount || 2;
@@ -215,7 +230,7 @@ var LazySlottedComposedComponent = function(definition, parentView, dummyParent,
 	// Get a definition :
 	// Here, the initial def allows an undefined number of tabs
 	this.updateDefinitionBasedOnSlotsCount(stdDefinition);
-	ComposedComponent.call(this, stdDefinition, parentView);
+	ComposedComponent.call(this, stdDefinition, parentView, parent);
 
 	this.objectType = 'LazySlottedComposedComponent';
 
@@ -268,6 +283,18 @@ LazySlottedComposedComponent.prototype.setSchema = function() {
 	for (let i = 0, l = this.slotsCount; i < l; i++) {
 		this.typedSlots[i].setSchema([arguments[i]]);
 	}
+}
+
+LazySlottedComposedComponent.prototype.getSlot = function(Idx) {
+	return this._children[Idx];
+}
+
+LazySlottedComposedComponent.prototype.getFirstSlot = function() {
+	return this._children[0];
+}
+
+LazySlottedComposedComponent.prototype.getFirstSlotChildren = function() {
+	return this._children[0]._children;
 }
 
 LazySlottedComposedComponent.prototype.pushToSlotFromText = function(slotNbr, content) {
@@ -736,9 +763,22 @@ AbstractTable.prototype.getRow = function(idx) {
 // Abstract types & abstract implementations re-injection
 Components.ComposedComponent = ComposedComponent;	// ComposedComponent may be called as a type
 Components.RootViewComponent = RootViewComponent;
+Components.AppOverlayComponent = AppOverlayComponent;
+Components.FlexColumnComponent = FlexColumnComponent;
+Components.FlexRowComponent = FlexRowComponent;
+Components.FlexGridComponent = FlexGridComponent;
+//Components.ChildBoxComponent = ChildBoxComponent;
+
 Components.VisibleStateComponent = VisibleStateComponent;
+Components.TypedListComponent = TypedListComponent;
 Components.KeyValuePairComponent = KeyValuePairComponent;
 Components.ExtensibleTable = ExtensibleTable;
+
+Components.VisualSetComponent = VisualSetComponent;
+Components.VariablyStatefullComponent = VariablyStatefullComponent;
+Components.VaritextButtonComponent = VaritextButtonComponent;
+Components.VisualSetHostComponent = VisualSetHostComponent;
+
 
 
 
@@ -750,7 +790,8 @@ Components.CompositorComponent.prototype.acquireCompositor = function(inheriting
 	if (inheritedType in Components || inheritedType in coreComponents) {
 		var objectType = inheritingType.prototype.objectType;
 		inheritingType.prototype.Compositor = coreComponents[inheritedType];
-//		console.log(Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(Components[inheritedType].prototype), inheritingType.prototype));
+//		console.log(Object.create(coreComponents[inheritedType].prototype));
+//		console.log(Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(coreComponents[inheritedType].prototype), inheritingType.prototype));
 		inheritingType.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(coreComponents[inheritedType].prototype), inheritingType.prototype);
 		inheritingType.prototype.objectType = objectType;
 		if (!inheritingType.prototype._implements || !inheritingType.prototype._implements.length)
@@ -775,7 +816,7 @@ Components.CompositorComponent.createAppLevelExtendedComponent = function() {
 }
 
 
-
+console.log(Components.FlexRowComponent);
 
 
 ComposedComponent.componentTypes = Components;

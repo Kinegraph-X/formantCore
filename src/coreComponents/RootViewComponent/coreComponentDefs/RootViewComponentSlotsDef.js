@@ -2,8 +2,8 @@
  * @def RootViewComponentSlots
  * @isGroup false
  * 
- * @CSSify hostName : RootViewComponentHeader
- * @CSSify hostName : RootViewComponentSection
+ * @CSSify styleName : RootViewComponentHeader
+ * @CSSify styleName : RootViewComponentSection
  */
 var TypeManager = require('src/core/TypeManager');
 var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
