@@ -125,7 +125,7 @@ ComposedComponent.prototype.instanciateMembers = function(definition) {
 		
 		if (type in Components)
 			new Components[type](memberDef, this.view, this);
-		if (memberDef.getGroupHostDef())
+		else if (memberDef.getGroupHostDef())
 			new ComposedComponent(memberDef, this.view, this);
 		else if (memberDef.getHostDef().nodeName)
 			this.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(memberDef, this.view, this));
@@ -155,11 +155,11 @@ ComposedComponent.prototype.retrieveListDefinition = function() {
  * @constructor ComponentList
  */
 var ComponentList = function(definition, parentView, parent) {
-	Components.HierarchicalObject.call(this);
+	Components.HierarchicalObject.call(this);	// don't register the list as a child ... ', definition, parentView, parent);
 	this.objectType = 'ComponentList';
 	this._parent = parent;
 
-	this.iterateOnModel(definition, parentView);
+	this.iterateOnModel(definition, parentView, parent);
 }
 ComponentList.prototype = Object.create(Components.HierarchicalObject.prototype);
 ComponentList.prototype.objectType = 'ComponentList';
@@ -179,15 +179,15 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 		
 		if ((type = templateDef.getHostDef().getType())) {
 //			console.log(item, key);
-			this._parent.pushChild((composedComponent = new Components[type](templateDef, this._parent.view)));
+			(composedComponent = new Components[type](templateDef, this._parent.view, this._parent));
 			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 		}
 		else if (templateDef.getGroupHostDef()) {
-			this._parent.pushChild((composedComponent = new ComposedComponent(templateDef, this._parent.view)));
+			(composedComponent = new ComposedComponent(templateDef, this._parent.view, this._parent));
 			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 		}
 		else
-			this._parent.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(templateDef, this._parent.view));
+			this._parent.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(templateDef, this._parent.view, this._parent));
 	}, this);
 
 	//	console.log(this);

@@ -2,11 +2,11 @@
  * HTTP Request API
  */
 
-var Request = function(type, url, data, range, result) {
-	return this.xhr(type, url, data, range, result);
+var Request = function(type, url, data, range, accept, result) {
+	return this.xhr(type, url, data, range, accept, result);
 };
 
-Request.prototype.xhr = function(type, url, data, range, result) {
+Request.prototype.xhr = function(type, url, data, range, accept, result) {
 	var self = this;
 	if (type === 'HEAD_GET')
 		type = 'GET';
@@ -30,6 +30,8 @@ Request.prototype.xhr = function(type, url, data, range, result) {
 			xhr.responseType = result;
 		if (range)
 			xhr.setRequestHeader('Range', 'bytes=' + range.join('-'));
+		if (accept)
+			xhr.setRequestHeader('Accept', accept);
 		xhr.onload = function() {
 			if (this.status === 200 || this.status === 206) {
 				if ((Object.prototype.toString.call(this.response) === '[object ArrayBuffer]' && this.response.byteLength < 100) // is not a valid ArrayBuffer
@@ -42,6 +44,8 @@ Request.prototype.xhr = function(type, url, data, range, result) {
 				else {
 					if (type === 'HEAD')
 						resolve(this);
+//					else if (result === 'json')
+//						resolve(JSON.parse(this.response));
 					else
 						resolve(this.response);
 				}

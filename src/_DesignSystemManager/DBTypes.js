@@ -329,7 +329,7 @@ module.exports = {
 	Theme: mongoose.model('theme', Theme),
 	DesignContext : mongoose.model('design_context', DesignContext),
 	FontDef : mongoose.model('fontDef', FontDef),
-//	ColorDef : mongoose.model('colorDef', ColorDef),
-//	FontSet : mongoose.model('fontSet', FontSet),
-//	ColorSet : mongoose.model('colorSet', ColorSet)
+	ColorDef : mongoose.model('colorDef', ColorDef),
+	FontSet : mongoose.model('fontSet', FontSet),
+	ColorSet : mongoose.model('colorSet', ColorSet)
 }

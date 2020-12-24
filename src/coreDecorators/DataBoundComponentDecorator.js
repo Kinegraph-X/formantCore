@@ -27,12 +27,12 @@ var DataBoundComponentDecorator = function(componentType, dataPresenterFunc) {
 		
 		decoratedType.prototype.onPushChildWithView = function() {
 			
-//			if (this.dataset.rootComponent.objectType === 'AbstractComponent') {
+			if (this.dataset.rootComponent.objectType === 'AbstractComponent') {
 //				console.log(this._parent.objectType);
-//				this.dataset.rootComponent = this._parent;
-//				this.dataset.trackedComponent = this._parent;
+				this.dataset.rootComponent = this;
+				this.dataset.trackedComponent = this;
 //				console.log(this.dataset.rootComponent);
-//			}
+			}
 //			console.log(this.dataset.rootComponent);
 		}
 		

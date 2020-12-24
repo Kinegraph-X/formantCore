@@ -880,7 +880,7 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	if (!TypeManager.caches.attributes.getItem(this._defUID))
 		TypeManager.caches.attributes.setItem(this._defUID, definition.getHostDef().attributes);
 	viewsRegister.push(this);
-//	console.log(viewsRegister[viewsRegister.length - 1], this);
+//	console.trace(this._defUID);
 	
 	this.subViewsHolder;
 	if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length) {

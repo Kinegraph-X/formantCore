@@ -37,6 +37,10 @@ FlexRowComponent.prototype.getFirstChild = function() {
 	return this._children[0];
 }
 
+FlexRowComponent.prototype.getChild = function(Idx) {
+	return this._children[Idx];
+}
+
 FlexRowComponent.prototype.getColumn = function(colIdx) {
 	return this._children[colIdx];
 }
