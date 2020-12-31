@@ -1042,6 +1042,22 @@ ComponentWithViewAbstractingAFeed.prototype.exportData = function(data) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 module.exports = {
 	ExtensibleObject : ExtensibleObject,
 	AbstractComponent : AbstractComponent,

@@ -25,6 +25,14 @@ var SlidingPanelComponentDecorator = function(componentClass) {
 	
 	// SlidingPanel already uses an _async view-instanciation logic	
 	// decoratedType.prototype._asyncInitTasks = [];
+	
+	// HERE componentClass is added on the prototype of the slidingPanel
+	// BUT shall be different on each call to the decorator
+	// We should then INHERIT from the SlidingPanel, not decorate the type
+	
+	Object.defineProperty(decoratedType.prototype, '_asyncInitTasks', {
+		value : componentTypeAsADecorator.prototype._asyncInitTasks.slice(0)
+	});
 	decoratedType.prototype._asyncInitTasks.push(new TypeManager.TaskDefinition({
 		type : 'lateAddChild',
 		task : function(definition) {
@@ -37,7 +45,7 @@ var SlidingPanelComponentDecorator = function(componentClass) {
 	}));
 	
 	decoratedType.prototype.beforeRegisterEvents = function() {
-		this.streams.updateChannel.value = 'initialized through SlidingPanelDecorator';
+		this.streams.updateTrigger.value = 'initialized through SlidingPanelDecorator';
 	}
 	return decoratedType;
 	

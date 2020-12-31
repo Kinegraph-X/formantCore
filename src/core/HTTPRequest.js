@@ -44,8 +44,6 @@ Request.prototype.xhr = function(type, url, data, range, accept, result) {
 				else {
 					if (type === 'HEAD')
 						resolve(this);
-//					else if (result === 'json')
-//						resolve(JSON.parse(this.response));
 					else
 						resolve(this.response);
 				}

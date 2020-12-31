@@ -55,30 +55,34 @@ ComponentDataProvider.prototype.acquireData = async function() {
 //	console.log(this.colName);
 	var data;
 	var response = await new Req('GET', 'http://servers.localhost:8080/' + this.colName + this.querySpecs, null, null, 'application/json', 'json').
-		catch(function(e) {
-			console.log('HTTP async error caught')
+		catch(function(e) {	// e may be an array containing the max amount of data that the request handler has gathered
+			console.log('HTTP async error caught');
+			// prettyArrayLogger(e);
 		});
 	if (!response || Object.prototype.toString.call(response) !== '[object Object]') {
+		// response may also be an array
+		// prettyArrayLogger(e);
 		console.log('ObjectSetViewer didn\'t received any data: ', response);
 		console.log('Or wrong data-type: ', Object.prototype.toString.call(response));
 		return;
 	}
 	try {
-		data = this.dataPresenterFunc(response)
+		// try/catch as the dataPresenter function is likely to always be outside of our scope
+		data = this.dataPresenterFunc(response);
 	}
 	catch (e) {
-		console.log('Exception thrown while ObjectSetViewer was consuming the response: ', e, data);
+		console.log('Exception thrown while ObjectSetPresenter was consuming the response: ', e, data);
 		return;
 	};
 	if (!data) {
-		console.log('ObjectSetViewer failed at consuming the response: no data extracted.', data);
+		console.log('ObjectSetPresenter failed at consuming the response: no data extracted.', data);
 		return;
 	}
 //	console.log(data);
 	this.dataset.pushApply(data);
 	
-	if (this.streams.updateChannel)
-		this.streams.updateChannel.value = 'initialized through ComponentDataProvider';
+	if (this.streams.updateTrigger)
+		this.streams.updateTrigger.value = 'initialized through ComponentDataProvider';
 }
 
 ComponentDataProvider.prototype.dataPresenterFunc = function() {} 		// pure virtual

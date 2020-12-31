@@ -521,8 +521,11 @@ exportedObjects.createComponentDef = createComponentDef;
  * @constructor MockedDefModel
  * @factory
  */
-var mockDef = function() {
-	return new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel({UID : 'dummy'})}, 'rootOnly');
+var mockDef = function(obj) {
+	var dummyObj = {UID : 'dummy'};
+	return new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(
+		(obj && Object.prototype.toString(obj) === '[object Object]') ? Object.assign(dummyObj, obj) : dummyObj
+	)}, 'rootOnly');
 }
 exportedObjects.mockDef = mockDef;
 

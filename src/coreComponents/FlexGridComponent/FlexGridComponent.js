@@ -37,4 +37,18 @@ FlexGridComponent.prototype.getRowOfColummn = function(rowIdx, colIdx) {
 	return this._children[colIdx]._children[rowIdx];
 }
 
+
+FlexGridComponent.prototype.getFirstChild = function() {
+	return this._children[0];
+}
+
+FlexGridComponent.prototype.getChild = function(Idx) {
+	return this._children[Idx];
+}
+
+FlexGridComponent.prototype.getColumn = function(colIdx) {
+	return this._children[colIdx];
+}
+
+
 module.exports = FlexGridComponent;
