@@ -167,6 +167,45 @@ HierarchicalObject.prototype.handleEventSubsOnChildrenAt = function(eventQueries
 
 
 
+HierarchicalObject.prototype.getDescendantsAsNameTree = function (maxStrLen) {
+	function getNode(component) {
+		return {
+			name : Object.getPrototypeOf(component).objectType.slice(0, maxStrLen),
+			children : []
+		};
+	}
+	var ret = getNode(this);
+	this.traverseDescendants(this, ret, getNode);
+	return ret;
+}
+
+HierarchicalObject.prototype.traverseDescendants = function (component, componentTree, getNode) {
+	var node;
+	
+	component._children.forEach(function(child) {
+		node = getNode(child);
+		if (Array.isArray(child._children) && child._children.length) {
+//			depth++;
+			componentTree.children.push(this.traverseDescendants(child, node, getNode));
+//			depth--;
+		}
+		else {
+			componentTree.children.push(node);
+		}
+	}, this);
+//	componentTree.name = Object.getPrototypeOf(component).objectType;
+
+//	var indent = '';
+//	for (let i = 0; i < depth; i++) {
+//		indent += '    ';
+//	}
+//	console.log(indent, Object.getPrototypeOf(component).objectType, component._children.length);
+
+	return componentTree;
+}
+
+
+
 
 
 /**
@@ -1063,6 +1102,7 @@ module.exports = {
 	AbstractComponent : AbstractComponent,
 	HierarchicalObject : HierarchicalObject,
 	ComponentWithView : ComponentWithView,
+	ComponentWithObservables : ComponentWithObservables,
 	CompositorComponent : CompositorComponent,
 	ComponentWithHooks : ComponentWithHooks,
 	ComponentWithReactiveText : ComponentWithReactiveText,

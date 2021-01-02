@@ -7,7 +7,8 @@ var TypeManager = require('src/core/TypeManager');
 var rDataset = require('src/core/ReactiveDataset');
 var Components = require('src/core/Component');
 
-var Req = require('src/core/HTTPRequest');
+//var Req = require('src/core/HTTPRequest');
+var ObservedHTTPRequest = require('src/core/ObservedHTTPRequest');
 
 
 // TODO: define a "MultiSlottedComponentDataProvider" type
@@ -24,7 +25,7 @@ ComponentDataProvider.prototype = Object.create(Object.prototype);
 ComponentDataProvider.prototype.setAPIEntryPoint = function(querySpecs, colName) {
 	
 	this.querySpecs = typeof querySpecs === 'string' ? querySpecs : '';
-	this.colName = this.getcolName(colName);
+	this.colName = typeof colName === 'string' ? colName : '';
 }
 
 ComponentDataProvider.prototype.getcolName = function(colName) {
@@ -51,38 +52,41 @@ ComponentDataProvider.prototype.getDataset = function(definition) {
 		);
 }
 
-ComponentDataProvider.prototype.acquireData = async function() {
+/**
+ * @async
+ */
+ComponentDataProvider.prototype.acquireData = async function(apiURL) {
 //	console.log(this.colName);
-	var data;
-	var response = await new Req('GET', 'http://servers.localhost:8080/' + this.colName + this.querySpecs, null, null, 'application/json', 'json').
-		catch(function(e) {	// e may be an array containing the max amount of data that the request handler has gathered
-			console.log('HTTP async error caught');
-			// prettyArrayLogger(e);
-		});
-	if (!response || Object.prototype.toString.call(response) !== '[object Object]') {
-		// response may also be an array
-		// prettyArrayLogger(e);
-		console.log('ObjectSetViewer didn\'t received any data: ', response);
-		console.log('Or wrong data-type: ', Object.prototype.toString.call(response));
-		return;
-	}
-	try {
-		// try/catch as the dataPresenter function is likely to always be outside of our scope
-		data = this.dataPresenterFunc(response);
-	}
-	catch (e) {
-		console.log('Exception thrown while ObjectSetPresenter was consuming the response: ', e, data);
-		return;
-	};
-	if (!data) {
-		console.log('ObjectSetPresenter failed at consuming the response: no data extracted.', data);
-		return;
-	}
-//	console.log(data);
-	this.dataset.pushApply(data);
+	var self = this;
+	var req = TypeManager.permanentProvidersRegister.setItem(
+		this.objectType + '-' + this.colName,
+		new ObservedHTTPRequest(
+			this.objectType + '-' + this.colName, 	// request name
+			null,
+			apiURL,
+			this.colName + this.querySpecs,
+			this.dataPresenterFunc.bind(this)
+		)
+	);
 	
-	if (this.streams.updateTrigger)
-		this.streams.updateTrigger.value = 'initialized through ComponentDataProvider';
+	var data;
+	await req.sendRequest().then(function()  {
+		data = req.getResult();
+	
+//		console.log(data);
+		
+		if (!data) {
+			console.log('ObjectSetPresenter failed at consuming the response: no data extracted.', data);
+			return;
+		}
+	
+		self.dataset.pushApply(data);
+		
+		if (self.streams.updateTrigger)
+			self.streams.updateTrigger.value = 'initialized through ComponentDataProvider';
+	});
+	
+//	return req;
 }
 
 ComponentDataProvider.prototype.dataPresenterFunc = function() {} 		// pure virtual

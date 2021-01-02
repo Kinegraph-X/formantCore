@@ -641,6 +641,7 @@ var caches = {};
 
 var hostsDefinitionsCacheRegister = new PropertyCache('hostsDefinitionsCacheRegister');
 var listsDefinitionsCacheRegister = new PropertyCache('listsDefinitionsCacheRegister');
+var permanentProvidersRegister = new PropertyCache('permanentProvidersRegister');
 var hostsRegister = [];
 var typedHostsRegister = new PropertyCache('typedHostsRegister');
 
@@ -661,7 +662,7 @@ var dataStoreRegister = new PropertyCache('dataStoreRegister');
 
 console.log(hostsDefinitionsCacheRegister);
 console.log(listsDefinitionsCacheRegister);
-console.log(viewsRegister);
+console.log(permanentProvidersRegister);
 
 
 
@@ -682,6 +683,7 @@ Object.assign(exportedObjects, {
 	PropertyCache : PropertyCache,
 	hostsDefinitionsCacheRegister : hostsDefinitionsCacheRegister,	// Object PropertyCache
 	listsDefinitionsCacheRegister : listsDefinitionsCacheRegister,	// Object PropertyCache
+	permanentProvidersRegister : permanentProvidersRegister,		// Object PropertyCache
 	typedHostsRegister : typedHostsRegister,						// Object PropertyCache {defUID : [Components]}
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegister : nodesRegister,

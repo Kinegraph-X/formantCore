@@ -279,7 +279,7 @@ var Stream = function(name, value, reflectedObj, transform, lazy) {
 	this.subscriptions = [];
 	
 	this._value;
-	this.value = typeof reflectedObj === 'object' ? reflectedObj[name] : value;
+	this.value = (reflectedObj && typeof reflectedObj === 'object') ? reflectedObj[name] : value;
 	this.dirty;
 }
 Stream.prototype = {};
@@ -287,10 +287,9 @@ Stream.prototype.objectType = 'Stream';
 Stream.prototype.constructor = Stream;
 Object.defineProperty(Stream.prototype, 'value', {
 	get : function() {
-		if (this.lazy) {
-			if (typeof this.transform === 'function')
-				this._value = this.transform(this.get());
-			this.dirty = false;
+//		console.log(this.lazy, this.dirty, this.transform);
+		if (this.lazy && this.dirty) {
+			this.lazyUpdate();
 		}
 		
 		return this.get();
@@ -335,7 +334,14 @@ Stream.prototype.setAndUpdateConditional = function(value) {
 			if (!this.transform)
 				this.update();
 			else if (typeof this.transform === 'function') {
-				this._value = this.transform(value);
+				try {
+					// try/catch as the transform function is likely to always be outside of our scope
+					this._value = this.transform(this._value);
+				}
+				catch(e) {
+					console.log('Exception thrown while the transform function was executing on self data: ', e, this._value);
+					return;
+				}
 				this.update();
 			}
 		}
@@ -352,8 +358,16 @@ Stream.prototype.update = function() {
 }
 
 Stream.prototype.lazyUpdate = function() {
-	if (typeof this.transform === 'function')
-		this._value = this.transform(this._value);
+	if (typeof this.transform === 'function') {
+		try {
+			// try/catch as the transform function is likely to always be outside of our scope
+			this._value = this.transform(this._value);
+		}
+		catch(e) {
+			console.log('Exception thrown while the transform function was executing on self data: ', e, this._value);
+			return;
+		}
+	}
 	this.update();
 	this.dirty = false;
 }
@@ -408,13 +422,16 @@ Stream.prototype.reflect = function(prop, reflectedHost, transform, inverseTrans
  * subscribe method  :
  *	instanciates and registers a new subscription, and returns it for the caller to define the refinement functions (filter & map)
  */ 
-Stream.prototype.subscribe = function(handlerOrHost, prop, inverseTransform) {
+Stream.prototype.subscribe = function(handlerOrHost, prop, transform, inverseTransform) {
 	if (!handlerOrHost || (typeof handlerOrHost !== 'function' && typeof handlerOrHost !== 'object')) {
 		console.warn('Bad observable handlerOrHost assigned : handler type is ' + typeof handler + ' instead of "function or getter/setter"', 'StreamName ' + this.name);
 		return;
 	}
-	else
+	else {
+		if (typeof transform === 'function')
+			this.transform = transform;
 		return this.addSubscription(handlerOrHost, prop, inverseTransform);//.subscribe();
+	}
 }
 
 /**
@@ -537,7 +554,7 @@ Subscription.prototype.reverse = function(inverseTransform) {
 
 Object.defineProperty(Subscription.prototype, 'execute', {
 	value : function(value) {
-//		console.log('value', value);
+//		console.log('%c %s %c %s', 'color:coral', 'Subscription "execute"', 'color:firebrick', 'Stream : ' + this._stream.name, 'value', value);
 		var flag = true, val, desc;
 		if (value !== undefined) {
 			if (this.hasOwnProperty('filter'))
