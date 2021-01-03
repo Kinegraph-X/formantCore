@@ -2,7 +2,7 @@
  * @def treeBranch
  * @isGroup true
  * 
- * @CSSify hostName : treeBranch
+ * @CSSify styleName : AbstractTreeBranch/true
  * @CSSifyRule rule : host block
  * @CSSifyRule rule : header hPadding
  * 
@@ -16,13 +16,10 @@ var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
 
 
 var treeBranchDef = function(uniqueID, options, model) {
+	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos
 		
 	// Some CSS stuff (styles are directly injected in the main def below)
-	var styles = [
-/*@CSSifySlot*/
-		];
-	
-	
+	/**@CSSifySlots placeholder */
 	
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
@@ -43,8 +40,7 @@ var treeBranchDef = function(uniqueID, options, model) {
 					from : 'selected',
 					to : 'selected'
 				}
-			],
-			sWrapper : CreateStyle('treeBranch', null, styles).sWrapper
+			]/**@CSSifyStyle componentStyle : AbstractTreeBranch */
 		}),
 		members : [
 			TypeManager.createComponentDef({

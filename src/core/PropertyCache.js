@@ -3,38 +3,104 @@
  * 
  */
 
-var objectCache = function(name) {
+var ObjectCache = function(name) {
 	this.name = name;
 	this.cache = {};
 	this.firstID = null;
 }
 
-objectCache.prototype.getItem = function(mainID, composedWithID) {
+ObjectCache.prototype.getItem = function(mainID, composedWithID) {
 	if (!composedWithID)
 		return this.cache[mainID.toString()];
 	else
 		return this.cache[mainID.toString() + '-' + composedWithID.toString()];
 }
 
-objectCache.prototype.setItem = function(mainID, mainValue, composedWithID) {
+ObjectCache.prototype.setItem = function(mainID, mainValue, composedWithID) {
 	if (!composedWithID)
 		return this.newItem(mainID.toString(), mainValue);
 	else
 		return this.newItem(mainID.toString() + '-' + composedWithID.toString(), mainValue);
 }
 
-objectCache.prototype.newItem = function(UID, value) {
+ObjectCache.prototype.newItem = function(UID, value) {
 	this.cache[UID] = value;
 	if (this.firstID === null)
 		this.firstID = UID;
 	return value;
 }
 
-objectCache.prototype.reset = function() {
+ObjectCache.prototype.reset = function() {
 	for (let UID in this.cache) {
 		if (Array.isArray(this.cache[UID]))
 			this.cache[UID].length = 0;
 	}
 }
 
-module.exports = objectCache;
+
+
+
+
+
+
+
+
+
+
+
+var RequestCache = function(name) {
+	
+	ObjectCache.call(this, name);
+	this.currentlyBlockingPromises = [];
+}
+RequestCache.prototype = Object.create(ObjectCache.prototype);
+
+RequestCache.prototype.setItem = function(UID, value, blocking) {
+	var req =  this.newItem(UID.toString(), value);
+	
+	if (blocking && typeof this.getItem(UID) === 'undefined') {
+		req.idxInCache = this.currentlyBlockingPromises.length;
+		this.currentlyBlockingPromises.push(
+			this.getPromiseFromRequest(req)
+		);
+		return Promise.all(this.currentlyBlockingPromises);
+	}
+	else if (blocking && typeof this.getItem(UID) !== 'undefined') {
+		this.currentlyBlockingPromises.splice(req.idxInChache, 1, this.getPromiseFromRequest(req));
+		return Promise.all(this.currentlyBlockingPromises);
+	}	
+	return req;
+}
+
+RequestCache.prototype.getPromiseFromRequest = function(req) {
+	var self = this;
+	return new Promise(function(resolve, reject) {
+		var subscription = req.subscribe(function() {
+//		console.log('subscription executed');
+			resolve();
+			subscription.unsubscribe();
+		});
+	});
+}
+
+RequestCache.prototype.getBlockingRequests = function() {
+	return Promise.all(this.currentlyBlockingPromises);	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+module.exports = {
+	ObjectCache : ObjectCache,
+	RequestCache : RequestCache
+};

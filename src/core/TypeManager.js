@@ -3,7 +3,8 @@
  */
 //var appConstants = require('src/appLauncher/appLauncher');
 var UIDGenerator = require('src/core/UIDGenerator');
-var PropertyCache = require('src/core/PropertyCache');
+var PropertyCache = require('src/core/PropertyCache').ObjectCache;
+var RequestCache = require('src/core/PropertyCache').RequestCache;
 var CachedTypes = require('src/core/CachedTypes');
 var exportedObjects = {};
 
@@ -641,7 +642,7 @@ var caches = {};
 
 var hostsDefinitionsCacheRegister = new PropertyCache('hostsDefinitionsCacheRegister');
 var listsDefinitionsCacheRegister = new PropertyCache('listsDefinitionsCacheRegister');
-var permanentProvidersRegister = new PropertyCache('permanentProvidersRegister');
+var permanentProvidersRegister = new RequestCache('permanentProvidersRegister');
 var hostsRegister = [];
 var typedHostsRegister = new PropertyCache('typedHostsRegister');
 

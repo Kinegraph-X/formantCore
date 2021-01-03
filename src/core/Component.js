@@ -179,30 +179,85 @@ HierarchicalObject.prototype.getDescendantsAsNameTree = function (maxStrLen) {
 	return ret;
 }
 
+HierarchicalObject.prototype.getDescendantsAsKeyValueTree = function () {
+	function getNode(component) {
+		var node = {};
+		node[Object.getPrototypeOf(component).objectType] = []
+		return node;
+	}
+	var ret = getNode(this);
+	this.traverseDescendantsRaw(this, ret, getNode);
+	return ret;
+}
+
 HierarchicalObject.prototype.traverseDescendants = function (component, componentTree, getNode) {
 	var node;
-	
 	component._children.forEach(function(child) {
 		node = getNode(child);
 		if (Array.isArray(child._children) && child._children.length) {
-//			depth++;
 			componentTree.children.push(this.traverseDescendants(child, node, getNode));
-//			depth--;
 		}
 		else {
 			componentTree.children.push(node);
 		}
 	}, this);
-//	componentTree.name = Object.getPrototypeOf(component).objectType;
-
-//	var indent = '';
-//	for (let i = 0; i < depth; i++) {
-//		indent += '    ';
-//	}
-//	console.log(indent, Object.getPrototypeOf(component).objectType, component._children.length);
 
 	return componentTree;
 }
+
+HierarchicalObject.prototype.traverseDescendantsRaw = function (component, componentTree, getNode) {
+	var node;
+	
+	component._children.forEach(function(child) {
+		node = getNode(child);
+		if (Array.isArray(child._children) && child._children.length) {
+			componentTree[Object.getPrototypeOf(component).objectType].push(this.traverseDescendantsRaw(child, node, getNode));
+		}
+		else {
+			componentTree[Object.getPrototypeOf(component).objectType].push(node);
+		}
+	}, this);
+
+	return componentTree;
+}
+
+
+
+
+HierarchicalObject.prototype.overrideParent = function (Idx) {
+	if (!this._parent || !this._parent._parent) {
+		console.warn('Attempt to override the upmost level in the component\'s hierarchy. Returning.');
+		return;
+	}
+	Idx = Idx || 0;
+	
+	if (this._parent.view) {
+		this._parent.view.hostElem.remove();
+	}
+	this._parent = this._parent._parent;
+	this._parent._parent._children[Idx] = this;
+	if (this._parent.view) {
+		this.view.parentView = this._parent.view;
+		this._parent.view.getRoot().appendChild(this.view.hostElem);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -858,7 +913,7 @@ ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition
  * @constructor CompositorComponent
  */
 var CompositorComponent = function(definition, parentView, parent) {//, argx, argy, arg...
-	this.Compositor.call(this, definition, parentView, parent);
+	this.Compositor.apply(this, arguments);
 	this.objectType = 'CompositorComponent';
 }
 CompositorComponent.prototype = Object.create(ComponentWithView.prototype);

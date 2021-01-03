@@ -9,21 +9,29 @@ var Components = require('src/core/Component');
 //var createISocketComponentHostDef = require('src/coreComponents/ISocketComponent/coreComponentDefs/ISocketComponentHostDef');
 //var createISocketComponentSlotsDef = require('src/coreComponents/ISocketComponent/coreComponentDefs/ISocketComponentSlotsDef');
 
-var ISocketComponent = function(localLocation, originLocation) {
-	this._localLocation = localLocation;
+var ISocketComponent = function(originLocation) {
+	this._localLocation = window.location.href;
 	this._originLocation = originLocation;
 	this._sourceWindow;
 	CoreTypes.EventEmitter.call(this);
 	this.objectType = 'ISocketComponent';
+	
+	window.addEventListener("message", this.handleMessage.bind(this));
 }
 ISocketComponent.prototype = Object.create(CoreTypes.EventEmitter.prototype);
 ISocketComponent.prototype.objectType = 'ISocketComponent';
 
+ISocketComponent.prototype.createEvents = function() {
+	this.createEvent('ready');
+}
+
 ISocketComponent.prototype.handleMessage = function(e) {
+
 	if (e.data === 'ping') {
 		this._originLocation = this._originLocation || e.origin;
 		this._sourceWindow = e.source;
 		e.source.postMessage('pong', this._localLocation);
+		this.trigger('ready');
 		return;
 	}
 	
@@ -33,11 +41,30 @@ ISocketComponent.prototype.handleMessage = function(e) {
 	// and maybe a bit of type checking... That may help...
 	if (e.data && Object.prototype.toString.call(e.data) !== '[object Object]')
 		return;
-	else if (typeof e.data.name === 'undefined')
-		return;
 		
 	if (e.data.method && typeof this[e.data.method] ==='function')
-		this[e.data.method](e.data.args);
+		this[e.data.method](e.data.payload);
 }
+
+ISocketComponent.prototype.callRemoteProcedure = function(procedureName, payload) {
+	if (!this._sourceWindow)
+		return;
+		
+	this._sourceWindow.postMessage(
+		{
+			method : procedureName,
+			payload : payload
+		},
+		this._originLocation
+	);
+}
+
+//ISocketComponent.prototype.drawTree = function(payload) {
+////	var payload = e.args;
+//	console.log(payload);
+//	var hierarchy= d3.hierarchy(payload);
+//	var DOMGraph = d3graph(hierarchy);
+//	document.body.appendChild(DOMGraph);
+//}
 
 module.exports = ISocketComponent;

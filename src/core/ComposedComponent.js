@@ -385,7 +385,7 @@ var createBranchTemplateDef = require('src/coreDefs/branchTemplateDef');
 var createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
 
 var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilterFunction) {
-//	console.log(typeof nodeFilterFunction, nodeFilterFunction);
+//	console.log(definition, parentView, parent, jsonData);
 	var stdDefinition = createLAbstractTreeDef();
 	
 	/**
@@ -455,7 +455,7 @@ AbstractTree.prototype.getHeaderTitle = function(memberSpec) {
 
 AbstractTree.prototype.getKeyValueObj = function(memberSpec) {
 	return {
-		keyValuePair: ['', memberSpec.key + ' :&nbsp;', (memberSpec.type === 'string' ? ' "' + memberSpec.value.toString() + '"' : memberSpec.value.toString())],
+		keyValuePair: ['', memberSpec.key + (memberSpec.children.length ? '&nbsp;:&nbsp;' : ''), (memberSpec.type === 'string' ? ' "' + memberSpec.value.toString() + '"' : memberSpec.value.toString())],
 		displayedas: memberSpec.type
 	};
 }
@@ -557,7 +557,7 @@ AbstractTree.prototype.instanciateTreeMembers = function(tree, nodeFilterFunctio
 }
 
 AbstractTree.prototype.renderJSON = function(jsonData, nodeFilterFunction) {
-//	console.log(typeof nodeFilterFunction, nodeFilterFunction);
+//	console.log(jsonData);
 	var parsedData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 	var tree = this.createTree(parsedData);
 //	console.log(parsedData, tree);
@@ -815,8 +815,6 @@ Components.CompositorComponent.createAppLevelExtendedComponent = function() {
 	}
 }
 
-
-console.log(Components.FlexRowComponent);
 
 
 ComposedComponent.componentTypes = Components;

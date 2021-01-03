@@ -38,9 +38,19 @@ var RootViewComponentDef = function(uniqueID, options, model) {
 		]
 	}, null, 'rootOnly');
 	
+	var minimalModuleDef = TypeManager.createComponentDef({
+		host : TypeManager.createComponentDef({
+//			type : 'ComposedCompnent', 				// this is implicit, as we call the ComposedComponent ctor in the TabPanel ctor
+			nodeName : 'app-root'/**@CSSifyStyle componentStyle : RootViewComponentHost */
+		})
+	}, null, 'rootOnly');
+	
 //	console.log(moduleDef);
 	
-	return moduleDef;
+	return {
+		moduleDef : moduleDef,
+		minimalModuleDef : minimalModuleDef
+	};
 }
 
 module.exports = RootViewComponentDef;

@@ -33,6 +33,7 @@ var classConstructor = (function() {
 		},
 		baseApp = {},
 		currentHostPath,
+		apiURL = 'http://servers.localhost:8080/',
 		browserName,
 		knownIDs = {};
 	
@@ -135,6 +136,7 @@ var classConstructor = (function() {
 		isKnownUID : isKnownUID,
 		setUID : setUID,
 		currentHostPath : currentHostPath,
+		apiURL : apiURL,
 		browserName : browserName
 	}
 })();

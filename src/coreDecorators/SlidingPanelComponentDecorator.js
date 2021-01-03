@@ -7,7 +7,7 @@ var TypeManager = require('src/core/TypeManager');
 var AppIgnition = require('src/core/AppIgnition');
 
 
-var SlidingPanelComponentDecorator = function(componentClass) {
+var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 
 	var componentTypeAsADecorator = AppIgnition.componentTypes.SlidingPanel;
 
@@ -39,7 +39,8 @@ var SlidingPanelComponentDecorator = function(componentClass) {
 					new componentClass(
 						TypeManager.hostsDefinitionsCacheRegister.getItem(this._hostedDefUID),
 						this.view.subViewsHolder.memberViews[2],
-						this
+						this,
+						...args
 					);
 		}
 	}));

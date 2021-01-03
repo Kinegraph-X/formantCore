@@ -2,7 +2,7 @@
  * @def treeLeafTemplate
  * @isGroup true
  * 
- * @CSSify hostName : treeLeaf
+ * @CSSify styleName : AbstractTreeLeaf/true
  * @CSSifyRule rule : host block
  * @CSSifyRule rule : div_2ndChild pointer
  */
@@ -14,11 +14,10 @@ var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
 
 
 var treeLeafTemplateDef = function(uniqueID, options, model) {
+	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos
 		
-	// Some CSS stuff
-	var styles = [
-/*@CSSifySlot*/
-		];
+	// Some CSS stuff (styles are directly injected in the main def below)
+	/**@CSSifySlots placeholder */
 	
 	var secondSlotDef = TypeManager.createComponentDef({
 			type : 'KeyValuePairComponent',
@@ -32,7 +31,7 @@ var treeLeafTemplateDef = function(uniqueID, options, model) {
 					cbOnly : true,
 					subscribe : function(value) {this.streams.selected.value = value === this._UID ? 'selected' : null;}
 				}
-			]
+			]/**@CSSifyStyle componentStyle : AbstractTreeLeaf */
 		}, 'KeyValuePair');
 	
 	

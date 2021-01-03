@@ -2,8 +2,8 @@
  * @def AbstractTree
  * @isGroup true
  * 
- * @CSSify hostName : foldedTree
- * @CSSifyRule rule : host block
+ * @CSSify styleName : AbstractTreeHost/true
+ * @CSSify styleName : AbstractTreeHeader/true
  */
 
 
@@ -14,12 +14,10 @@ var pseudoSlotsStyles = require('src/UI/defs/extraStyles/pseudoSlot');
 
 
 var abstractTreeDef = function(uniqueID, options, model) {
+	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos
 		
 	// Some CSS stuff (styles are directly injected in the main def below)
-	var styles = [
-/*@CSSifySlot*/
-		];
-	
+	/**@CSSifySlots placeholder */
 	
 	
 	var moduleDef = TypeManager.createComponentDef({
@@ -28,8 +26,7 @@ var abstractTreeDef = function(uniqueID, options, model) {
 			nodeName : 'folded-tree',
 			props : [
 				{selected : undefined}
-			],
-			sWrapper : CreateStyle('abstractTree', null, styles).sWrapper
+			]/**@CSSify Style componentStyle : AbstractTreeHost */
 		}),
 		members : [
 			TypeManager.createComponentDef({
@@ -48,7 +45,7 @@ var abstractTreeDef = function(uniqueID, options, model) {
 						from : 'headerTitle',
 						to : 'content'
 					}
-				]
+				]/**@CSSify Style componentStyle : AbstractTreHeader */
 			})
 		]
 	}, null, 'rootOnly');

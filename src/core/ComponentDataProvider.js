@@ -55,26 +55,21 @@ ComponentDataProvider.prototype.getDataset = function(definition) {
 /**
  * @async
  */
-ComponentDataProvider.prototype.acquireData = async function(apiURL) {
+ComponentDataProvider.prototype.acquireData = async function(apiURL, permanent, blocking) {
 //	console.log(this.colName);
 	var self = this;
-	var req = TypeManager.permanentProvidersRegister.setItem(
-		this.objectType + '-' + this.colName,
-		new ObservedHTTPRequest(
+	var req = new ObservedHTTPRequest(
 			this.objectType + '-' + this.colName, 	// request name
 			null,
 			apiURL,
 			this.colName + this.querySpecs,
 			this.dataPresenterFunc.bind(this)
-		)
-	);
-	
-	var data;
+		);
+
+	(permanent && this.registerAsBlocking(req, blocking));
+
 	await req.sendRequest().then(function()  {
-		data = req.getResult();
-	
-//		console.log(data);
-		
+		var data = req.getResult();
 		if (!data) {
 			console.log('ObjectSetPresenter failed at consuming the response: no data extracted.', data);
 			return;
@@ -86,7 +81,15 @@ ComponentDataProvider.prototype.acquireData = async function(apiURL) {
 			self.streams.updateTrigger.value = 'initialized through ComponentDataProvider';
 	});
 	
-//	return req;
+	return req;
+}
+
+ComponentDataProvider.prototype.registerAsBlocking = function(req, blocking) {
+	TypeManager.permanentProvidersRegister.setItem(
+		this.objectType + '-' + this.colName,
+		req,
+		blocking
+	);
 }
 
 ComponentDataProvider.prototype.dataPresenterFunc = function() {} 		// pure virtual

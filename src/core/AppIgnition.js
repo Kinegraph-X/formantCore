@@ -390,8 +390,13 @@ DelayedDecoration.prototype.objectType = 'DelayedDecoration';
  */
 var createRootViewComponentHostDef = require('src/coreComponents/RootViewComponent/coreComponentDefs/RootViewComponentHostDef');
 
-var RootView = function(igniterForChild) {
-	var component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef()));
+var RootView = function(igniterForChild, prepagePage) {
+	var component;
+	if (prepagePage)
+		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().moduleDef));
+	else
+		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().minimalModuleDef));
+		
 	if (igniterForChild && typeof igniterForChild.init === 'function') {
 		igniterForChild.init(component.view, component);
 	}
