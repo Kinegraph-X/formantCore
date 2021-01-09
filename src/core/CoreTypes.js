@@ -1535,5 +1535,6 @@ module.exports = {
 		StreamPool : StreamPool,
 		ComponentView, ComponentView,
 		ComponentSubView : ComponentSubView,
+		CanvasView : CanvasView,
 		commonStates : commonStates
 }

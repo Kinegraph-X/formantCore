@@ -530,7 +530,8 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 //	console.log(defaultHostDef);
 	if (defaultDef) {
 		TypeManager.propsAreArray.forEach(function(prop) {
-//			console.log(prop);
+//			if(!defaultHostDef[prop])
+//				console.log(prop, defaultHostDef);
 			if(defaultHostDef[prop].length)
 				Array.prototype.push.apply(hostDef[prop], defaultHostDef[prop]);
 		});

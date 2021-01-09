@@ -264,13 +264,24 @@ Object.defineProperty(RecitalDataset.prototype, 'serialize', {
 	}
 });
 
-Object.defineProperty(RecitalDataset.prototype, 'styleToFront', {
+Object.defineProperty(RecitalDataset.prototype, 'childToFront', {
 	value : function(idx) {
 		this.forEach(function(item, key) {
 			if (key === idx)
-				this.trackedComponent._children[key].view.getMasterNode().style.display = 'flex';
+				this.trackedComponent._children[key].view.setPresence(true);
 			else
-				this.trackedComponent._children[key].view.getMasterNode().style.display = 'none';
+				this.trackedComponent._children[key].view.setPresence(false);
+		}, this);
+	}
+});
+
+Object.defineProperty(RecitalDataset.prototype, 'parentToFront', {
+	value : function(idx) {
+		this.forEach(function(item, key) {
+			if (key === idx)
+				this.trackedComponent.view.setPresence(true);
+			else
+				this.trackedComponent.view.setPresence(false);
 		}, this);
 	}
 });

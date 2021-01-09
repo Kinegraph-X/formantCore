@@ -56,9 +56,10 @@ var RequestCache = function(name) {
 RequestCache.prototype = Object.create(ObjectCache.prototype);
 
 RequestCache.prototype.setItem = function(UID, value, blocking) {
-	var req =  this.newItem(UID.toString(), value);
+	var req;
 	
-	if (blocking && typeof this.getItem(UID) === 'undefined') {
+	if (blocking && (typeof this.getItem(UID) === 'undefined' || req.idxInChache === null)) {
+		req =  this.newItem(UID.toString(), value);
 		req.idxInCache = this.currentlyBlockingPromises.length;
 		this.currentlyBlockingPromises.push(
 			this.getPromiseFromRequest(req)
@@ -66,9 +67,11 @@ RequestCache.prototype.setItem = function(UID, value, blocking) {
 		return Promise.all(this.currentlyBlockingPromises);
 	}
 	else if (blocking && typeof this.getItem(UID) !== 'undefined') {
+		req =  this.newItem(UID.toString(), value);
 		this.currentlyBlockingPromises.splice(req.idxInChache, 1, this.getPromiseFromRequest(req));
 		return Promise.all(this.currentlyBlockingPromises);
-	}	
+	}
+	req =  this.newItem(UID.toString(), value);
 	return req;
 }
 

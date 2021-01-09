@@ -2,7 +2,7 @@
  * Tupple Streams
  */
 
-var CoreTypes = reqquire('src/core/CoreTypes');
+var CoreTypes = require('src/core/CoreTypes');
 
 var chroma = require('src/functionals/chroma');
 

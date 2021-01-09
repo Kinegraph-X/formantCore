@@ -84,7 +84,7 @@ ComponentDataProvider.prototype.acquireData = function(apiURL, permanent, blocki
 
 ComponentDataProvider.prototype.registerAsBlocking = function(req, blocking) {
 	TypeManager.permanentProvidersRegister.setItem(
-		this.objectType + '-' + this.colName,
+		this._UID + '-' + this.colName,
 		req,
 		blocking
 	);

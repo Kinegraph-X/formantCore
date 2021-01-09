@@ -531,6 +531,17 @@ var mockDef = function(obj) {
 }
 exportedObjects.mockDef = mockDef;
 
+var mockGroupDef = function() {
+//	var dummyObj = {UID : 'dummy'};
+	return new HierarchicalComponentDefModel({host : new HierarchicalComponentDefModel({
+		host : new SingleLevelComponentDefModel()
+	}, 'rootOnly'
+//		(obj && Object.prototype.toString(obj) === '[object Object]') ? Object.assign(dummyObj, obj) : dummyObj
+	)}, 'rootOnly');
+}
+exportedObjects.mockGroupDef = mockGroupDef;
+//console.log(mockGroupDef());
+
 
 
 

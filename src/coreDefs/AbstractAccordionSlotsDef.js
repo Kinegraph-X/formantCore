@@ -19,34 +19,9 @@ var AbstractAccordionSlotDef = function(uniqueID, options, model) {
 
 	
 	return TypeManager.createComponentDef({
-		host : TypeManager.createComponentDef({
-			type : 'ComponentWithView',
-			nodeName : 'accordion-panel'/**@CSSify Style componentStyle : AbstractAccordionTemplate */
-		}, null, 'hostOnly'),
-		members : [
-			TypeManager.createComponentDef({
-				nodeName : 'header'
-			}, null, 'hostOnly'),
-			TypeManager.createComponentDef({
-				nodeName : 'div',
-				attributes : [
-					{className : 'accordion_panel_shadow'}
-				]
-			}, null, 'hostOnly'),
-			TypeManager.createComponentDef({
-				nodeName : 'ul'
-			}, null, 'hostOnly'),
-			TypeManager.createComponentDef({
-				nodeName : 'div',
-				attributes : [
-					{className : 'accordion_panel_inverse_shadow'}
-				]
-			}, null, 'hostOnly'),
-			TypeManager.createComponentDef({
-				nodeName : 'footer',
-			}, null, 'hostOnly')
-		]
-	}, null, 'rootOnly');
+				type : 'GenericTitledPanelComponent',
+				nodeName : 'accordion-panel'/**@CSSify Style componentStyle : AbstractAccordionTemplate */
+			});
 }
 
 

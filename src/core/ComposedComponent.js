@@ -35,6 +35,7 @@ var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
 var TypedListComponent = require('src/UI/Generics/TypedListComponent');
 var KeyValuePairComponent = require('src/UI/Generics/KeyValuePairComponent');
 var ExtensibleTable = require('src/UI/Generics/ExtensibleTable');
+var GenericTitledPanelComponent = require('src/UI/Generics/GenericTitledPanelComponent/GenericTitledPanelComponent');
 
 var VisualSetComponent = require('src/UI/Generics/VisualSetComponent/VisualSetComponent');
 var VariablyStatefullComponent = require('src/UI/Generics/VariablyStatefullComponent/VariablyStatefullComponent');
@@ -759,29 +760,7 @@ AbstractAccordion.prototype.affectSlots = function() {
 
 }
 
-AbstractAccordion.prototype.acquireDatasets = function(datasetList) {
-	var set;
-	datasetList.forEach(function(dataset, key) {
-		set = new Components.ComponentWithView(
-			TypeManager.createComponentDef({
-				nodeName : 'accordion-set'
-			}),
-			this.view,
-			this
-		);
-		this.typedSlots.push(
-			new this.rDataset(
-				set,
-				set,
-				this.slotsDef,
-				[]
-			)
-		);
 
-//		console.log(this.typedSlots[key]);
-		this.typedSlots[key].pushApply(dataset);
-	}, this);
-}
 
 
 
@@ -826,6 +805,7 @@ Components.VisibleStateComponent = VisibleStateComponent;
 Components.TypedListComponent = TypedListComponent;
 Components.KeyValuePairComponent = KeyValuePairComponent;
 Components.ExtensibleTable = ExtensibleTable;
+Components.GenericTitledPanelComponent = GenericTitledPanelComponent;
 
 Components.VisualSetComponent = VisualSetComponent;
 Components.VariablyStatefullComponent = VariablyStatefullComponent;

@@ -13,6 +13,7 @@ var ObservedHTTPRequest = function(name, subscriber, providerURL, pathToData, da
 		return false;
 	}
 	
+	this.idxInCache = null;
 	this.providerURL = providerURL.slice(-1) === '/' ? providerURL : providerURL + '/';
 	this.pathToData = pathToData || '';
 	
@@ -79,7 +80,7 @@ ObservedHTTPRequest.prototype.getResult = function() {
 }
 
 ObservedHTTPRequest.prototype.refreshData = function() {
-	this.sendRequest(null, this.pathToData);
+	return this.sendRequest(null, this.pathToData);
 }
 
 module.exports = ObservedHTTPRequest;
