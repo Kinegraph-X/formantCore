@@ -16,14 +16,14 @@ FlexRowComponent.prototype = Object.create(Component.CompositorComponent.prototy
 FlexRowComponent.prototype.objectType = 'FlexRowComponent';
 FlexRowComponent.prototype.extendsCore = 'ComposedComponent';
 
-FlexRowComponent.defaultDef = {
-	nodeName : 'box-row',
-	attributes : [],
-	states : [],
-	props : [],
-	reactOnParent : [],
-	reactOnSelf : []
-}
+//FlexRowComponent.defaultDef = {
+//	nodeName : 'box-row',
+//	attributes : [],
+//	states : [],
+//	props : [],
+//	reactOnParent : [],
+//	reactOnSelf : []
+//}
 
 FlexRowComponent.prototype.createDefaultDef = function() {
 	return TypeManager.createComponentDef(

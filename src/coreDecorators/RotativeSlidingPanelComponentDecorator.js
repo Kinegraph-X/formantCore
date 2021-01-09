@@ -1,5 +1,5 @@
 /**
- * @decorator SlidingPanelComponentDecorator
+ * @decorator RotativeSlidingPanelComponentDecorator
  */
 
 
@@ -9,7 +9,7 @@ var AppIgnition = require('src/core/AppIgnition');
 
 var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 
-	var componentTypeAsADecorator = AppIgnition.componentTypes.SlidingPanel;
+	var componentTypeAsADecorator = AppIgnition.componentTypes.RotativeSlidingPanel;
 
 	var decoratedType = function(definition, parentView, parent, hostedComponentDefinition) {
 		this._hostedDefUID = hostedComponentDefinition.getHostDef().UID;
@@ -21,10 +21,10 @@ var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 		
 		componentTypeAsADecorator.call(this, definition, parentView, parent);
 		
-		this.objectType = 'SlidingPanelHosting' + componentClass.prototype.objectType;
+		this.objectType = 'RotativeSlidingPanelHosting' + componentClass.prototype.objectType;
 	}
 	decoratedType.prototype = Object.create(componentTypeAsADecorator.prototype);
-	decoratedType.prototype.objectType = 'SlidingPanelHosting' + componentClass.prototype.objectType;
+	decoratedType.prototype.objectType = 'RotativeSlidingPanelHosting' + componentClass.prototype.objectType;
 	
 	// SlidingPanel already uses an _async view-instanciation logic	
 	// decoratedType.prototype._asyncInitTasks = [];
@@ -39,9 +39,15 @@ var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 	decoratedType.prototype._asyncInitTasks.push(new TypeManager.TaskDefinition({
 		type : 'lateAddChild',
 		task : function(definition) {
+//					var def = TypeManager.createComponentDef({
+//						nodeName : 'li'
+//					});
+//					var view = new AppIgnition.componentTypes.ComponentWithView(def).view;
+//					view._parent = this;
+//					view.parentView = this.view.subViewsHolder.memberAt(2);
 					new componentClass(
 						TypeManager.hostsDefinitionsCacheRegister.getItem(this._hostedDefUID),
-						this.view.subViewsHolder.memberViews[2],
+						this.view.subViewsHolder.memberAt(2),
 						this,
 						...args
 					);

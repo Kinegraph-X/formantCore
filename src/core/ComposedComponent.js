@@ -23,10 +23,13 @@ var coreComponents = {};
 
 var RootViewComponent = require('src/coreComponents/RootViewComponent/RootViewComponent');
 var AppOverlayComponent = require('src/coreComponents/AppOverlayComponent/AppOverlayComponent');
+var HToolbarComponent = require('src/coreComponents/HToolbarComponent/HToolbarComponent');
 var FlexColumnComponent = require('src/coreComponents/FlexColumnComponent/FlexColumnComponent');
 var FlexRowComponent = require('src/coreComponents/FlexRowComponent/FlexRowComponent');
 var FlexGridComponent = require('src/coreComponents/FlexGridComponent/FlexGridComponent');
 //var ChildBoxComponent = require('src/coreComponents/ChildBoxComponent/ChildBoxComponent');
+
+var SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator')
 
 var VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
 var TypedListComponent = require('src/UI/Generics/TypedListComponent');
@@ -71,6 +74,7 @@ var ComposedComponent = function(definition, parentView, parent) {
 		this.createDefaultDef = Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
 	}
 //	console.log(parent);
+//	console.log(definition);
 	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, parent);  // feed with host def
 	this.objectType = 'ComposedComponent';
 
@@ -178,12 +182,12 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 	definition.getHostDef().each.forEach(function(item, key) {
 		
 		if ((type = templateDef.getHostDef().getType())) {
-//			console.log(item, key);
-			(composedComponent = new Components[type](templateDef, this._parent.view, this._parent));
+//			console.log(type, key, Components[type]);
+			composedComponent = new Components[type](templateDef, this._parent.view, this._parent);
 			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 		}
 		else if (templateDef.getGroupHostDef()) {
-			(composedComponent = new ComposedComponent(templateDef, this._parent.view, this._parent));
+			composedComponent = new ComposedComponent(templateDef, this._parent.view, this._parent);
 			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 		}
 		else
@@ -208,14 +212,14 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
  * @constructor LazySlottedComposedComponent
 */
 var createLazySlottedComponentDef = require('src/coreDefs/lazySlottedComponentDef');
-var createLazySlottedComponenSlotstDef = require('src/coreDefs/lazySlottedComponentSlotsDef');
+var createLazySlottedComponentSlotstDef = require('src/coreDefs/lazySlottedComponentSlotsDef');
 
 var LazySlottedComposedComponent = function(definition, parentView, parent, alreadyComposed, slotsCount, slotsDef) {
 	var stdDefinition = definition || createLazySlottedComponentDef();
 	this.typedSlots = [];
 	this.slotsCount = this.slotsCount || 2;
 //	console.log(this.slotsDef);
-	this.slotsDef = this.slotsDef || slotsDef || createLazySlottedComponenSlotstDef();
+	this.slotsDef = this.slotsDef || slotsDef || createLazySlottedComponentSlotstDef();
 
 	// Proceeding that way (i.e. not using the complete mixin mechanism : "addInterface") allows us to choose in which order the ctors are called
 	// When the base ctor is called, it calls the extension's ctor, and then, and only then, the superClasse's ctor
@@ -380,13 +384,13 @@ LazySlottedComposedComponent.prototype.retrieveSlots = function(userlandUID) {
 
 
 
-var createLAbstractTreeDef = require('src/coreDefs/abstractTreeDef');
+var createAbstractTreeDef = require('src/coreDefs/abstractTreeDef');
 var createBranchTemplateDef = require('src/coreDefs/branchTemplateDef');
 var createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
 
 var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilterFunction) {
 //	console.log(definition, parentView, parent, jsonData);
-	var stdDefinition = createLAbstractTreeDef();
+	var stdDefinition = createAbstractTreeDef();
 	
 	/**
 	 * Standard Implementation :
@@ -425,12 +429,12 @@ AbstractTree.prototype.createMember = function(memberSpec, parent) {
 			//			componentDef.getGroupHostDef().attributes.push(TypeManager.PropsFactory({textContent : this.getHeaderTitle(type)}));
 		}
 		
-		parent.pushChild((component = new ComposedComponent(componentDef, parent.view, parent)));
+		component = new ComposedComponent(componentDef, parent.view, parent);
 		TypeManager.dataStoreRegister.setItem(component._UID, this.pseudoModel.length);
 		this.pseudoModel.push(this.getHeaderTitle(memberSpec));
 	}
 	else {
-		parent.pushChild((component = new Components[this.leafTemplate.getHostDef().type](this.leafTemplate, parent.view, parent)));
+		component = new Components[this.leafTemplate.getHostDef().type](this.leafTemplate, parent.view, parent);
 		TypeManager.dataStoreRegister.setItem(component._UID, this.pseudoModel.length);
 		this.pseudoModel.push(this.getKeyValueObj(memberSpec));
 	}
@@ -679,7 +683,7 @@ AbstractTable.prototype.pushToSlotFromText = function(slotNbr, content) {
 	
 	if (slotNbr === 0) {
 		var lastChild = this._children[0].getLastChild();
-		lastChild.view.hostElem.addEventListener('mousedown', function(e) {
+		lastChild.view.getMasterNode().addEventListener('mousedown', function(e) {
 			this.trigger('header_clicked', {self_key : lastChild._key});
 			this._children[0].childButtonsSortedLoop(lastChild._key);
 		}.bind(this));
@@ -700,7 +704,7 @@ AbstractTable.prototype.pushApplyToSlot = function(slotNbr, contentAsArray) {
 	
 	if (slotNbr === 0) {
 		for (let i = lastChildIndex; i < this._children[0]._children.length; i++) {
-			this._children[0]._children[i].view.hostElem.addEventListener('mousedown', function(e) {
+			this._children[0]._children[i].view.getMasterNode().addEventListener('mousedown', function(e) {
 				this.trigger('header_clicked', {self_key : this._children[0]._children[i]._key});
 				this._children[0].childButtonsSortedLoop(this._children[0]._children[i]._key);
 			}.bind(this));
@@ -728,10 +732,56 @@ AbstractTable.prototype.getRow = function(idx) {
 
 
 
+/**
+ * @constructor AbstractAccordion
+*/
+var createAbstractAccordionDef = require('src/coreDefs/AbstractAccordionDef');
+var createAbstractAccordionSlotstDef = require('src/coreDefs/AbstractAccordionSlotsDef');
 
+var AbstractAccordion = function(def, parentView, parent) {
+	this.slotsCount = 1;
+	this.slotsDef = this.slotsDef || createAbstractAccordionSlotstDef();
 
+	ComposedComponent.call(this, def || createAbstractAccordionDef(), parentView, parent);
+	
+	this.objectType = 'AbstractAccordion';
+	this.typedSlots = [];
+} 
+AbstractAccordion.prototype = Object.create(ComposedComponent.prototype);
+AbstractAccordion.prototype.objectType = 'AbstractAccordion';
+coreComponents.AbstractAccordion = AbstractAccordion;
 
+AbstractAccordion.prototype.updateDefinitionBasedOnSlotsCount = function(definition) {
+	
+}
 
+AbstractAccordion.prototype.affectSlots = function() {
+
+}
+
+AbstractAccordion.prototype.acquireDatasets = function(datasetList) {
+	var set;
+	datasetList.forEach(function(dataset, key) {
+		set = new Components.ComponentWithView(
+			TypeManager.createComponentDef({
+				nodeName : 'accordion-set'
+			}),
+			this.view,
+			this
+		);
+		this.typedSlots.push(
+			new this.rDataset(
+				set,
+				set,
+				this.slotsDef,
+				[]
+			)
+		);
+
+//		console.log(this.typedSlots[key]);
+		this.typedSlots[key].pushApply(dataset);
+	}, this);
+}
 
 
 
@@ -764,10 +814,13 @@ AbstractTable.prototype.getRow = function(idx) {
 Components.ComposedComponent = ComposedComponent;	// ComposedComponent may be called as a type
 Components.RootViewComponent = RootViewComponent;
 Components.AppOverlayComponent = AppOverlayComponent;
+Components.HToolbarComponent = HToolbarComponent;
 Components.FlexColumnComponent = FlexColumnComponent;
 Components.FlexRowComponent = FlexRowComponent;
 Components.FlexGridComponent = FlexGridComponent;
 //Components.ChildBoxComponent = ChildBoxComponent;
+
+Components.SWrapperInViewManipulator = SWrapperInViewManipulator;
 
 Components.VisibleStateComponent = VisibleStateComponent;
 Components.TypedListComponent = TypedListComponent;

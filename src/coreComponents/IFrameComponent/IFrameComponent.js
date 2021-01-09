@@ -23,10 +23,14 @@ var IFrameComponent = function(definition, parentView, parent) {
 		
 	Components.ComponentWithView.call(this, definition, parentView, parent);
 	
+	// TODO: condition this top the presence of the node...
 	var connect = setInterval(function() {
 		if (!self._connectionEstablished) {
-			console.log('ping sent');
-			self.view.hostElem.contentWindow.postMessage('ping', self.targetOrigin);
+			if (self.view.getMasterNode().contentWindow) {
+//				console.log(self.view.getMasterNode().contentWindow);
+				console.log('ping sent');
+				self.view.getMasterNode().contentWindow.postMessage('ping', self.targetOrigin);
+			}
 		}
 		else {
 			clearInterval(connect);
@@ -84,7 +88,7 @@ IFrameComponent.prototype.handleMessage = function(e) {
 
 
 IFrameComponent.prototype.callRemoteProcedure = function(procedureName, payload) {
-	this.view.hostElem.contentWindow.postMessage(
+	this.view.getMasterNode().contentWindow.postMessage(
 		{
 			method : procedureName,
 			payload : payload

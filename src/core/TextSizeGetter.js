@@ -8,7 +8,7 @@ var NodeResizeObserver = require('src/core/ResizeObserver');
 //var appConstants = require('src/appLauncher/appLauncher');
 
 
-var TextSizeGetter = function(def, parentDOMNodeDOMId, automakeable, childrenToAdd, targetSlot) {
+var TextSizeGetter = function() {
 	// width calculation
 	this.initCb;
 	this.textWidthCanvas = document.createElement("canvas");
@@ -54,7 +54,7 @@ TextSizeGetter.prototype.initWidthCompute = function(e) {
 	
 	if (e.data.boundingBox.h > 0) {
 		if (this.initCb)
-			this.initCb();
+			this.initCb(this.fontStyle);
 		this.resizeObserver.unobserve(this.sampleNode);
 		this.initCb = undefined;
 	} 

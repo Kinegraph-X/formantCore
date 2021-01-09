@@ -15,6 +15,7 @@ var App = require('src/core/AppIgnition');
 Components.CompositorComponent.createAppLevelExtendedComponent();
 
 App.coreComponents.LazySlottedComposedComponent.prototype.rDataset = rDataset;
+App.coreComponents.AbstractAccordion.prototype.rDataset = rDataset;
 App.coreComponents.LazySlottedComposedComponent.prototype.cSet = cSet;
 
 App.componentTypes.RootViewComponent.prototype.render = function(DOMNodeId) {

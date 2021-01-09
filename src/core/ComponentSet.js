@@ -72,10 +72,10 @@ Object.defineProperty(ComponentSet.prototype, 'ignite', {
 						keywordHandler(item.itemKeyword, item._parent.view);
 					item._ignited = true;
 				}
-				this.rootComponent._children[key].view.hostElem.style.display = 'flex';
+				this.rootComponent._children[key].view.getMasterNode().style.display = 'flex';
 			}
 			else
-				this.rootComponent._children[key].view.hostElem.style.display = 'none';
+				this.rootComponent._children[key].view.getMasterNode().style.display = 'none';
 		}, this);
 	}
 });

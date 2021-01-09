@@ -1,5 +1,5 @@
 /**
- * @decorator SlidingPanelComponentDecorator
+ * @decorator SlidingBoxComponentDecorator
  */
 
 
@@ -7,26 +7,26 @@ var TypeManager = require('src/core/TypeManager');
 var AppIgnition = require('src/core/AppIgnition');
 
 
-var SlidingPanelComponentDecorator = function(componentClass, ...args) {
+var SlidingBoxComponentDecorator = function(componentClass, ...args) {
 
-	var componentTypeAsADecorator = AppIgnition.componentTypes.SlidingPanel;
+	var componentTypeAsADecorator = AppIgnition.componentTypes.SlidingBox;
 
 	var decoratedType = function(definition, parentView, parent, hostedComponentDefinition) {
 		this._hostedDefUID = hostedComponentDefinition.getHostDef().UID;
 		AppIgnition.componentTypes.AbstractComponent.prototype.mergeDefaultDefinition.call(componentClass.prototype, hostedComponentDefinition);
 		
 		// hostedComponentDefinition is now a unique concrete def decorated through the component's default def
-		SlidingPanelComponentDecorator.populateHostsDefinitionsCacheRegister(hostedComponentDefinition);
+		SlidingBoxComponentDecorator.populateHostsDefinitionsCacheRegister(hostedComponentDefinition);
 		TypeManager.typedHostsRegister.setItem(this._hostedDefUID, []);
 		
 		componentTypeAsADecorator.call(this, definition, parentView, parent);
 		
-		this.objectType = 'SlidingPanelHosting' + componentClass.prototype.objectType;
+		this.objectType = 'SlidingBoxHosting' + componentClass.prototype.objectType;
 	}
 	decoratedType.prototype = Object.create(componentTypeAsADecorator.prototype);
-	decoratedType.prototype.objectType = 'SlidingPanelHosting' + componentClass.prototype.objectType;
+	decoratedType.prototype.objectType = 'SlidingBoxHosting' + componentClass.prototype.objectType;
 	
-	// SlidingPanel already uses an _async view-instanciation logic	
+	// SlidingBox already uses an _async view-instanciation logic	
 	// decoratedType.prototype._asyncInitTasks = [];
 	
 	// HERE componentClass is added on the prototype of the slidingPanel
@@ -49,13 +49,13 @@ var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 	}));
 	
 	decoratedType.prototype.beforeRegisterEvents = function() {
-		this.streams.updateTrigger.value = 'initialized through SlidingPanelDecorator';
+		this.streams.updateTrigger.value = 'initialized through SlidingBoxDecorator';
 	}
 	return decoratedType;
 	
 }
 
-SlidingPanelComponentDecorator.populateHostsDefinitionsCacheRegister = function(definition) {
+SlidingBoxComponentDecorator.populateHostsDefinitionsCacheRegister = function(definition) {
 	var hostDefinition = definition.getHostDef();
 	
 	for (let prop in TypeManager.caches) {
@@ -72,4 +72,4 @@ SlidingPanelComponentDecorator.populateHostsDefinitionsCacheRegister = function(
 
 
 
-module.exports = SlidingPanelComponentDecorator;
+module.exports = SlidingBoxComponentDecorator;

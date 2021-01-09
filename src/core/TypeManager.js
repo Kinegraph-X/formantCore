@@ -370,6 +370,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 		this.streams = [];							// Array [Prop, States]
 		this.targetSlotIndex = null;				// Number
 		this.sWrapper = null;						// Object StylesheetWrapper
+		this.sOverrideWrapper = null;				// Object StylesheetWrapper
 		this.command = null;						// Object Command
 		this.reactOnParent = [];					// Array [ReactivityQuery]
 		this.reactOnSelf = [];						// Array [ReactivityQuery]
@@ -643,6 +644,9 @@ var caches = {};
 var hostsDefinitionsCacheRegister = new PropertyCache('hostsDefinitionsCacheRegister');
 var listsDefinitionsCacheRegister = new PropertyCache('listsDefinitionsCacheRegister');
 var permanentProvidersRegister = new RequestCache('permanentProvidersRegister');
+var boundingBoxesCache = new PropertyCache('boundingBoxesCache');
+var sWrappersCache = new PropertyCache('sWrappersCache');
+
 var hostsRegister = [];
 var typedHostsRegister = new PropertyCache('typedHostsRegister');
 
@@ -684,7 +688,9 @@ Object.assign(exportedObjects, {
 	PropertyCache : PropertyCache,
 	hostsDefinitionsCacheRegister : hostsDefinitionsCacheRegister,	// Object PropertyCache
 	listsDefinitionsCacheRegister : listsDefinitionsCacheRegister,	// Object PropertyCache
-	permanentProvidersRegister : permanentProvidersRegister,		// Object PropertyCache
+	permanentProvidersRegister : permanentProvidersRegister,		// Object RequestCache
+	boundingBoxesCache : boundingBoxesCache,						// Object PropertyCache
+	sWrappersCache : sWrappersCache,								// Object PropertyCache
 	typedHostsRegister : typedHostsRegister,						// Object PropertyCache {defUID : [Components]}
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegister : nodesRegister,

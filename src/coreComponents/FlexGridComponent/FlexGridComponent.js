@@ -33,7 +33,13 @@ FlexGridComponent.prototype.createDefaultDef = function() {
 		);
 }
 
-FlexGridComponent.prototype.getRowOfColummn = function(rowIdx, colIdx) {
+// RowOfColumn and ColumnOfRow are identical, cause FlexGrid may host a Row or a Column
+// 		=> let's use the method that is the most semantically convenient in our app 
+FlexGridComponent.prototype.getRowOfColumn = function(rowIdx, colIdx) {
+	return this._children[colIdx]._children[rowIdx];
+}
+
+FlexGridComponent.prototype.getColumnOfRow = function(rowIdx, colIdx) {
 	return this._children[colIdx]._children[rowIdx];
 }
 

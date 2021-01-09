@@ -77,7 +77,7 @@ RequestCache.prototype.getPromiseFromRequest = function(req) {
 	return new Promise(function(resolve, reject) {
 		var subscription = req.subscribe(function() {
 //		console.log('subscription executed');
-			resolve();
+			resolve();	// req.getResult()
 			subscription.unsubscribe();
 		});
 	});

@@ -128,6 +128,7 @@ var classConstructor = (function() {
 		debugMode : debugMode,
 		resizeObserver : resizeObserver,
 		textSizeGetter : textSizeGetter,
+		TextSizeGetterCtor : TextSizeGetter,
 		options : options,
 		launch : launch,
 		checkSupport : checkSupport,

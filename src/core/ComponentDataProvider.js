@@ -22,18 +22,17 @@ var ComponentDataProvider = function(definition) {
 }
 ComponentDataProvider.prototype = Object.create(Object.prototype);
 
+// CreateEvents shall be called only after that interface having been composed with a "real" component
+ComponentDataProvider.prototype.createEvents = function() {
+	this.createEvent('resize');
+}
+
 ComponentDataProvider.prototype.setAPIEntryPoint = function(querySpecs, colName) {
 	
 	this.querySpecs = typeof querySpecs === 'string' ? querySpecs : '';
 	this.colName = typeof colName === 'string' ? colName : '';
 }
 
-ComponentDataProvider.prototype.getcolName = function(colName) {
-//	if (Array.isArray(colName))
-		return colName;
-//	else
-//		return null;
-}
 
 ComponentDataProvider.prototype.getDataset = function(definition) {
 //	console.log(definition, this.dataset, this.dummyComponent);
@@ -55,7 +54,7 @@ ComponentDataProvider.prototype.getDataset = function(definition) {
 /**
  * @async
  */
-ComponentDataProvider.prototype.acquireData = async function(apiURL, permanent, blocking) {
+ComponentDataProvider.prototype.acquireData = function(apiURL, permanent, blocking) {
 //	console.log(this.colName);
 	var self = this;
 	var req = new ObservedHTTPRequest(
@@ -68,7 +67,7 @@ ComponentDataProvider.prototype.acquireData = async function(apiURL, permanent, 
 
 	(permanent && this.registerAsBlocking(req, blocking));
 
-	await req.sendRequest().then(function()  {
+	req.sendRequest().then(function()  {
 		var data = req.getResult();
 		if (!data) {
 			console.log('ObjectSetPresenter failed at consuming the response: no data extracted.', data);
@@ -76,12 +75,11 @@ ComponentDataProvider.prototype.acquireData = async function(apiURL, permanent, 
 		}
 	
 		self.dataset.pushApply(data);
-		
-		if (self.streams.updateTrigger)
-			self.streams.updateTrigger.value = 'initialized through ComponentDataProvider';
+
+		self.trigger('resize', {self_UID : self.UID});
 	});
 	
-	return req;
+	return this.dataset;
 }
 
 ComponentDataProvider.prototype.registerAsBlocking = function(req, blocking) {

@@ -6,7 +6,7 @@ var CoreTypes = require('src/core/CoreTypes');
 var TypeManager = require('src/core/TypeManager');
 var ElementDecorator = require('src/UI/_mixins/elementDecorator_HSD');
 
-
+var Geometry = require('src/tools/Geometry');
 
 
 
@@ -72,7 +72,7 @@ HierarchicalObject.prototype.removeChild = function(childKey) {
 	var removedChild;
 
 	this._children[childKey].isAttached = false;
-	this._children[childKey].view.hostElem.remove();
+	this._children[childKey].view.getMasterNode().remove();
 	removedChild = this._children.splice(childKey, 1);
 	this.onRemoveChild(removedChild);
 	(childKey < this._children.length && this.generateKeys(childKey));
@@ -104,7 +104,7 @@ HierarchicalObject.prototype.remove = function() {
 	if (this._parent)
 		return this._parent.removeChild(this._key);
 	else
-		return this.view.hostElem.remove();
+		return this.view.getMasterNode().remove();
 }
 
 /**
@@ -232,14 +232,21 @@ HierarchicalObject.prototype.overrideParent = function (Idx) {
 	Idx = Idx || 0;
 	
 	if (this._parent.view) {
-		this._parent.view.hostElem.remove();
+		this._parent.view.getMasterNode().remove();
+	}
+	if (this._parent._subscriptions && this._parent._subscriptions.length) {
+		this._parent._subscriptions.forEach(function(sub) {
+			sub.unsubscribe();
+		});
 	}
 	this._parent = this._parent._parent;
 	this._parent._parent._children[Idx] = this;
 	if (this._parent.view) {
 		this.view.parentView = this._parent.view;
-		this._parent.view.getRoot().appendChild(this.view.hostElem);
+		this._parent.view.getRoot().appendChild(this.view.getMasterNode());
 	}
+	
+	this.generateKeys();
 }
 
 
@@ -627,6 +634,8 @@ var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) 
 	
 	if (definition.getHostDef().nodeName)
 		this.instanciateView(definition, parentView, this, isChildOfRoot);
+		
+	this.styleHook = this.view.styleHook;
 }
 ComponentWithView.prototype = Object.create(ComponentWithObservables.prototype);
 ComponentWithView.prototype.objectType = 'ComponentWithView';
@@ -656,24 +665,24 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView, p
  */
 ComponentWithView.prototype.onRemoveChild = function(child) {
 	if (typeof child === 'undefined') {
-//		console.log(this.view.subViewsHolder.subViews[1].hostElem);
+//		console.log(this.view.subViewsHolder.subViews[1].getMasterNode());
 		if (this.view.subViewsHolder.subViews.length) {
 			this.view.subViewsHolder.subViews.forEach(function(subView, key) {
-				while (subView.hostElem.firstChild) {
-					subView.hostElem.removeChild(subView.hostElem.lastChild);
+				while (subView.getMasterNode().firstChild) {
+					subView.getMasterNode().removeChild(subView.getMasterNode().lastChild);
 				}
 			}, this);
 		}
 		this._children.forEach(function(child, key) {
-			child.view.hostElem.remove();
+			child.view.getMasterNode().remove();
 		}, this);
 		if (this.view.subViewsHolder.memberViews.length) {
 			this.view.subViewsHolder.memberViews.forEach(function(member, key) {
-				member.hostElem.remove();
+				member.getMasterNode().remove();
 			}, this);
 		}
-//		this.view.subViewsHolder.subViews[1].hostElem.length = 0;
-//		this.view.hostElem.remove();
+//		this.view.subViewsHolder.subViews[1].getMasterNode().length = 0;
+//		this.view.getMasterNode().remove();
 	}
 	else if (child instanceof ComponentWithObservables){
 		// remove a child
@@ -691,6 +700,19 @@ ComponentWithView.prototype.onRemoveChild = function(child) {
 ComponentWithView.prototype.onAddChild = function(child, atIndex) {
 	if (typeof atIndex !== 'undefined' && child.view.parentView)
 		child.view.parentView.addChildAt(child.view, atIndex);
+}
+
+/**
+ * @param {number} y
+ */
+ComponentWithView.prototype.getViewOfChildBasedOnYpos = function(y) {
+	var self = this;
+	this.styleHook.getBoundingBox().then(function(boundingBox) {
+		self._children.forEach(function(child) {
+			// boundingBox.offsetX, y, boundingBox.offsetX, boundingBox.offsetY + boundingBox.h
+//			Geometry.ComponentHitTest(child._key > 1 ? this._children[child._key - 1] : null, child, this._children[child._key + 1]);
+		}, self);
+	});
 }
 
 
@@ -766,8 +788,9 @@ ComponentWithHooks.prototype.viewExtend = function(definition) {
 		this.lateAddChildren(definition);
 		
 	// Retry after having added more views
-	if (definition.getHostDef().targetSlotIndex !== null && this.view.targetSubView === null)
-		this.view.getTargetSubView(definition);
+	if (definition.getHostDef().targetSlotIndex !== null && this.view.targetSubView === null) {
+		this.view.getTargetSubView(definition.getHostDef());
+	}
 }
 
 ComponentWithHooks.prototype.registerEvents = function() {
@@ -863,7 +886,7 @@ ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition
 	// Delete the UID of the definition and Register a renewed one with fresh UID (unless exists, so register both the original and the fresh one : if the original exists, we already went here)
 	// Define a reactOnSelf on the definition of the HOST with a callback : it shall be bound to the host
 	//		=> maintain a -counter- on the added pictos
-	// 		=> the callback shall call the component -> the main view -> the subViewsHost -> the memberViews[ -counter- ].hostElem.hidden
+	// 		=> the callback shall call the component -> the main view -> the subViewsHost -> the memberViews[ -counter- ].getMasterNode().hidden
 	// Instanciate a view with the host's view as parent view (the view references the UID of the definition)
 	// Add that view to the subViewsHost->memberViews of the main view
 	
@@ -889,7 +912,7 @@ ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition
 			from : state.replace(/Not/i, ''),
 			subscribe : function(value) {
 //					console.log();
-					this.view.subViewsHolder.memberViews[memberViewIdx].hostElem.hidden = (state.indexOf('Not') === -1 ? !value : value) ? 'hidden' : null;
+					this.view.subViewsHolder.memberViews[memberViewIdx].getMasterNode().hidden = (state.indexOf('Not') === -1 ? !value : value) ? 'hidden' : null;
 				}
 			})
 		);
@@ -1077,7 +1100,7 @@ ComponentStrokeAware.prototype.registerKeyboardEvents = function(e) {
 //	console.warn('ComponentStrokeAware :', 'where is "input"');
 	
 	// Stroke event listener 
-	input.hostElem.addEventListener('keyup', function(e) {
+	input.getMasterNode().addEventListener('keyup', function(e) {
 		e.stopPropagation();
 //		var allowed = [189, 190, 191]; // corresponds to **. , -**
 //		allowed.indexOf(e.keyCode) >= 0 && 
@@ -1128,6 +1151,38 @@ ComponentWithViewAbstractingAFeed.prototype.exportData = function(data) {
 
 
 
+/**
+ * @constructor ComponentWithCanvas
+ */
+var ComponentWithCanvas = function(definition, parentView, parent, isChildOfRoot) {
+	ComponentWithHooks.call(this, definition, parentView, parent, isChildOfRoot);
+	this.objectType = 'ComponentWithCanvas';
+}
+
+ComponentWithCanvas.prototype = Object.create(ComponentWithHooks.prototype);
+ComponentWithCanvas.prototype.objectType = 'ComponentWithCanvas';
+
+/**
+ * @param {ComponentDefinition} definition
+ * @param {ComponentView} parentView
+ */
+ComponentWithCanvas.prototype.instanciateView = function(definition, parentView, parent, isChildOfRoot) {
+	this.view = new CoreTypes.CanvasView(definition, parentView, parent, isChildOfRoot);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1163,5 +1218,6 @@ module.exports = {
 	ComponentWithReactiveText : ComponentWithReactiveText,
 	ComponentWith_FastReactiveText : ComponentWith_FastReactiveText,
 	ComponentStrokeAware : ComponentStrokeAware,
-	ComponentWithViewAbstractingAFeed : ComponentWithViewAbstractingAFeed
+	ComponentWithViewAbstractingAFeed : ComponentWithViewAbstractingAFeed,
+	ComponentWithCanvas : ComponentWithCanvas
 };

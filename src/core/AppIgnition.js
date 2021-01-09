@@ -57,19 +57,19 @@ Ignition.prototype.instanciateDOM = function() {
 	var views = TypeManager.viewsRegister,
 		nodes = TypeManager.nodesRegister.cache,
 		attributesCache = TypeManager.caches.attributes.cache,
-		attributes;
+		attributes,
+		effectiveViewAPI,
+		masterNode;
 
 	views.forEach(function(view, key) {
 		
 		attributes = attributesCache[view._defUID];
-//		if (view._defUID === "310")
-//			console.log(view, nodes[view._defUID].cloneMother, nodes[view._defUID]);
-//		console.log(key, nodes[view._defUID].cloneMother);
+		effectiveViewAPI = view.currentViewAPI;
 		
 		if (nodes[view._defUID].cloneMother) {
 			// nodes[view._defUID].cloneMother.cloneNode(true); => deep clone : also copies the nested nodes (textual contents are nodes...)
-			view.hostElem = nodes[view._defUID].cloneMother.cloneNode(true);
-			Object.assign(view.hostElem, elementDecorator_Offset);
+			view.callCurrentViewAPI('setMasterNode', nodes[view._defUID].cloneMother.cloneNode(true));
+			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_Offset);
 		}
 		else {
 			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
@@ -80,25 +80,25 @@ Ignition.prototype.instanciateDOM = function() {
 				else
 					nodes[view._defUID].cloneMother[attrObject.getName()] = attrObject.getValue();
 			});
-			view.hostElem = nodes[view._defUID].cloneMother.cloneNode(true);
-			Object.assign(view.hostElem, elementDecorator_Offset);
+			view.callCurrentViewAPI('setMasterNode', nodes[view._defUID].cloneMother.cloneNode(true));
+			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_Offset);
 		}
 		
+		masterNode = view.callCurrentViewAPI('getMasterNode');
 		attributes.forEach(function(attrObject) {
 			if (attrObject.getName().indexOf('on') === 0)
-				view.hostElem[attrObject.getName()] = attrObject.getValue();
+				masterNode[attrObject.getName()] = attrObject.getValue();
 		});
 		
-		view.rootElem = view.hostElem.shadowRoot;
 		if (view._parent)
-			view.hostElem._component = view._parent;
+			view.callCurrentViewAPI('getMasterNode')._component = view._parent;
 		
 		// Connect DOM objects 
 		if (view.sWrapper)
-			(view.rootElem || view.hostElem).append(view.sWrapper.styleElem.cloneNode(true));
+			view.callCurrentViewAPI('getWrappingNode').append(view.sWrapper.styleElem.cloneNode(true));
 		
-		if (view.parentView && view.parentView.hostElem)
-			(view.parentView.rootElem || view.parentView.hostElem).append(view.hostElem);
+		if (view.parentView && view.parentView.callCurrentViewAPI('getWrappingNode'))
+			view.parentView.callCurrentViewAPI('getWrappingNode').append(view.callCurrentViewAPI('getMasterNode'));
 	});
 }
 
@@ -249,7 +249,7 @@ Ignition.prototype.defineStreamsBidirectionalReflection = function(defUID, compo
 	// It's needed if we want to allow access to the reactivity mechanisms from outside of the framework :
 	// 		-> any change to an attribute or a DOM prop shall trigger a full update of the component, following the defined reactivity path (by def obj)
 	// And it may be usefull in some other "barely legal" cases... (for example in "hacky" implementations that attach listeners directly to the DOM)
-	component.view.hostElem.streams = component.streams;
+	component.view.getMasterNode().streams = component.streams;
 	
 	// And we reflect the View on each State Stream : 
 	// 		-> it's a nice & implicit way to declare in the def obj that the reactivity-chain targets an "exposed" state
@@ -265,12 +265,12 @@ Ignition.prototype.defineStreamsBidirectionalReflection = function(defUID, compo
 }
 Ignition.prototype.reflectViewOnAStateStream = function(component, stateObj) {
 	// assign reflectedObj to streams
-	component.streams[stateObj.getName()].acquireReflectedObj(component.view.hostElem);
+	component.streams[stateObj.getName()].acquireHostedInterface(component.view.currentViewAPI.hostedInterface);
 	
 	// set default states
 	if (!component.view.isCustomElem) {
 		// define reflexive props on view
-		ElementCreator.propGetterSetter.call(component.view.hostElem, stateObj.getName());
+		ElementCreator.propGetterSetter.call(component.view.getMasterNode(), stateObj.getName());
 		component.streams[stateObj.getName()].value = stateObj.getValue();
 	}
 }
@@ -323,7 +323,7 @@ var IgnitionFromDef = function(definition, containerIdOrContainerNode) {
 	if (type in componentTypes) {
 		var mainComponent = new componentTypes[type](definition, containerIdOrContainerNode);
 		this.decorateComponentsThroughDefinitionsCache();
-//		document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.hostElem);
+//		document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.getMasterNode());
 		return mainComponent;
 	}
 	else
@@ -355,7 +355,7 @@ var IgnitionToExtensible = function(definition, containerIdOrContainerNode) {
 	
 	var mainComponent = new componentTypes.SinglePassExtensibleComposedComponent(definition, containerIdOrContainerNode); 
 	this.decorateComponentsThroughDefinitionsCache();
-//	document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.hostElem);
+//	document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.getMasterNode());
 	return mainComponent;
 }
 IgnitionToExtensible.prototype = Object.create(Ignition.prototype);
@@ -372,7 +372,7 @@ var DelayedDecoration = function(containerId, component, componentListHostDef) {
 	if (typeof containerId !== 'string')
 		return;
 
-	document.querySelector(containerId !== 'body' ? '#' + containerId : containerId).appendChild(component.view.hostElem);
+	document.querySelector(containerId !== 'body' ? '#' + containerId : containerId).appendChild(component.view.getMasterNode());
 //	componentListHostDef.each.length = 0;
 }
 DelayedDecoration.prototype = Object.create(Ignition.prototype);
@@ -402,7 +402,7 @@ var RootView = function(igniterForChild, prepagePage) {
 	}
 
 	component.render();
-	document.querySelector('body').prepend(component.view.hostElem);
+	document.querySelector('body').prepend(component.view.getMasterNode());
 	return component;
 }
 RootView.prototype = Object.create(Ignition.prototype);
@@ -430,6 +430,7 @@ List.prototype.objectType = 'List';
 
 List.prototype.create = function(definition, parent) {
 	new coreComponents.ComponentList(definition, parent.view, parent);
+//	console.log(definition);
 	this.decorateComponentsThroughDefinitionsCache(definition.getHostDef());
 	definition.getHostDef().each = [];
 }

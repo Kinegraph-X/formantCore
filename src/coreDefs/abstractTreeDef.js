@@ -26,7 +26,7 @@ var abstractTreeDef = function(uniqueID, options, model) {
 			nodeName : 'folded-tree',
 			props : [
 				{selected : undefined}
-			]/**@CSSify Style componentStyle : AbstractTreeHost */
+			]/**@CSSifyStyle componentStyle : AbstractTreeHost */
 		}),
 		members : [
 			TypeManager.createComponentDef({

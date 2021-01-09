@@ -38,6 +38,10 @@ FlexColumnComponent.prototype.getFirstChild = function() {
 	return this._children[0];
 }
 
+FlexColumnComponent.prototype.getChild = function(Idx) {
+	return this._children[Idx];
+}
+
 FlexColumnComponent.prototype.getRow = function(rowIdx) {
 	return this._children[rowIdx];
 }

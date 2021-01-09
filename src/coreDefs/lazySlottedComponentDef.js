@@ -1,5 +1,5 @@
 /**
- * @def LazyHostComponent
+ * @def LazySlottedComponent
  * @isGroup true
  * 
  * @CSSify hostName : smartTabs

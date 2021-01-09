@@ -1,4 +1,14 @@
+/**
+ * 
+ */
+
+
+
+
 var TypeManager = require('src/core/TypeManager');
+var SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator');
+
+
 var UIDGenerator = require('src/core/UIDGenerator');
 var PropertyCache = require('src/core/PropertyCache');
 var CachedTypes = require('src/core/CachedTypes');
@@ -13,7 +23,7 @@ var JSkeyboardMap = require('src/events/JSkeyboardMap');
 
 
 
-console.log(nodesRegister);
+//console.log(nodesRegister);
 //console.log(viewsRegister);
 
 
@@ -268,18 +278,18 @@ Command.__factory_name = 'Command';
  * 					or as standalones when a view needs a simple "internal" reference to a stream (may also be totally elsewhere)
  */
 
-var Stream = function(name, value, reflectedObj, transform, lazy) {
+var Stream = function(name, value, hostedInterface, transform, lazy) {
 
 	this.forward = true;
 	this.name = name;
 	this.lazy = typeof lazy !== 'undefined' ? lazy : false;
-	this.reflectedObj = reflectedObj;
+	this.hostedInterface = hostedInterface;
 	this.transform = transform || undefined;
 	this.inverseTransform;
 	this.subscriptions = [];
 	
 	this._value;
-	this.value = (reflectedObj && typeof reflectedObj === 'object') ? reflectedObj[name] : value;
+	this.value = (hostedInterface && typeof hostedInterface.getProp === 'function') ? hostedInterface.getProp(name) : value;
 	this.dirty;
 }
 Stream.prototype = {};
@@ -301,9 +311,9 @@ Object.defineProperty(Stream.prototype, 'value', {
 	}
 });
 
-Stream.prototype.acquireReflectedObj = function(reflectedObj) {
-	reflectedObj[this.name] = this._value;
-	this.reflectedObj = reflectedObj;
+Stream.prototype.acquireHostedInterface = function(hostedInterface) {
+	hostedInterface.setProp(this.name, this._value);
+	this.hostedInterface = hostedInterface;
 }
 
 Stream.prototype.get = function() {
@@ -311,9 +321,9 @@ Stream.prototype.get = function() {
 }
 
 Stream.prototype.set = function(value) {
-	if (this.forward && this.reflectedObj) {
+	if (this.forward && this.hostedInterface) {
 		this.forward = false;
-		this.reflectedObj[this.name] = value;
+		this.hostedInterface.setProp(this.name, value);
 		this.forward = true;
 	}
 	else
@@ -623,9 +633,9 @@ NumberedStream.prototype.get = function() {
 }
 
 NumberedStream.prototype.set = function(value) {
-	if (this.forward && this.reflectedObj) {
+	if (this.forward && this.hostedInterface) {
 		this.forward = false;
-//		this.reflectedObj[this.name] = value;
+//		this.hostedInterface.setProp(this.name, value);
 		this.forward = true;
 	}
 	else
@@ -880,159 +890,154 @@ WorkerInterface.__factory_name = 'WorkerInterface';
 
 
 /**
- * @constructor ComponentView
+ * @constructor DOMView
  */
-var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
-//	console.log(definition);
-	this._defUID = definition.getHostDef().UID;
-	this._parent = parent;
-	this.isCustomElem = definition.getHostDef().isCustomElem;
-	this.nodeName = definition.getHostDef().nodeName;
-	this.section = definition.getHostDef().section;
-	this.targetSubView = null;
-	this.templateNodeName = definition.getHostDef().templateNodeName;
-	this.sWrapper = definition.getHostDef().sWrapper;
-	(this.sWrapper && (this.presenceAsAProp = this.sWrapper.getRuleDefinition(':host', 'display'))) || (this.presenceAsAProp = this.isCustomElem ? 'inline-block' : 'block');
+var DOMViewAPI = function(def) {
 	
-	if (!nodesRegister.getItem(this._defUID))
-		nodesRegister.setItem(this._defUID, (new CachedTypes.CachedNode(definition.getHostDef().nodeName, definition.getHostDef().isCustomElem)));
-	if (!TypeManager.caches.attributes.getItem(this._defUID))
-		TypeManager.caches.attributes.setItem(this._defUID, definition.getHostDef().attributes);
-	viewsRegister.push(this);
-//	console.trace(this._defUID);
-	
-	this.subViewsHolder;
-	if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length) {
-		this.subViewsHolder = new ComponentSubViewsHolder(definition, this);
-		// this shall be retried after calling the hooks, as the interfaces may have added subViews
-		this.getTargetSubView(definition);
-	}
-	else
-		this.subViewsHolder = new ComponentSubViewsHolder(null, this);
-	
-	
-	this.parentView = parentView || null;
-	if (parentView && !isChildOfRoot)
-		this.parentView = this.getEffectiveParentView();
-	
+	this.nodeName = def.nodeName;
+	this.templateNodeName = def.templateNodeName;
 	
 	this.hostElem;
 	this.rootElem;
+	this.hostedInterface = {
+		setProp : DOMViewAPI.hostedInterface.setProp.bind(this),
+		getProp : DOMViewAPI.hostedInterface.getProp.bind(this)
+	};
+	this.presenceAsAProp;
+	
+	this.objectType = 'DOMViewAPI';
 }
-ComponentView.prototype = {};
-ComponentView.prototype.objectType = 'ComponentView';
-ComponentView.prototype.constructor = ComponentView;
+DOMViewAPI.prototype = Object.create(EventEmitter.prototype);
+DOMViewAPI.prototype.objectType = 'DOMViewAPI';
+DOMViewAPI.prototype.constructor = DOMViewAPI;
+
+DOMViewAPI.hostedInterface = {
+	setProp : function(propName, value) {
+		this.hostElem[propName] = value;
+	},
+	getProp : function(propName, value) {
+		return this.hostElem[propName];
+	}
+};
+
+DOMViewAPI.prototype.setProp = 
+
+DOMViewAPI.prototype.setPresence = function(bool) {
+	this.hostElem.style.display = bool ? this.presenceAsAProp : 'none';
+}
+
+DOMViewAPI.prototype.addEventListener = function(eventName, handler) {
+	this.hostElem.addEventListener(eventName, handler);
+}
 
 /**
- * @abstract
- * HELPER : => when appending a child, should we append to rootNode or to a subSection ?
  * 
  */
-ComponentView.prototype.getEffectiveParentView = function() {
-	return (this.parentView.subViewsHolder && this.parentView.subViewsHolder.subViews.length) 
-						? this.parentView.subViewsHolder.subViews[this.section]
-							: this.parentView;
+DOMViewAPI.prototype.setMasterNode = function(node) {
+	this.hostElem = node;
+	this.rootElem = node.shadowRoot;
 }
-
-ComponentView.prototype.getTargetSubView = function(definition) {
-	this.targetSubView = (definition.getHostDef().targetSlotIndex !== null && this.subViewsHolder.memberViews.length > definition.getHostDef().targetSlotIndex) ? this.subViewsHolder.memberAt(definition.getHostDef().targetSlotIndex) : null;	
-}
-
 
 /**
- * @abstract
+ * 
  */
-ComponentView.prototype.getRoot = function() {
+DOMViewAPI.prototype.getMasterNode = function() {
+	return this.hostElem;
+}
+
+/**
+ * 
+ */
+DOMViewAPI.prototype.getWrappingNode = function() {
 	return this.rootElem || this.hostElem;
 }
 
 /**
- * @param {boolean} or {innerEvent} bool
- */
-ComponentView.prototype.setPresence = function(bool) {
-	if (typeof bool === 'object' && typeof bool.data !== 'undefined')
-		bool = bool.data;
-	this.hostElem.style.display = bool ? this.presenceAsAProp : 'none';
-}
-
-/**
- * @param {boolean} bool
- */
-ComponentView.prototype.addEventListener = function(event, handler) {
-	this.hostElem.addEventListener(event, handler);
-}
-
-/**
- * @abstract
  * 
  */
-Object.defineProperty(ComponentView.prototype, 'value', { 		// ComponentWithReactiveText.prototype.populateSelf makes good use of that
-	set : function(value) {
-		if (this.nodeName.toUpperCase() === 'INPUT')
-			this.hostElem.value = value;
-		else
-			this.hostElem.innerHTML = value;
+DOMViewAPI.prototype.isTextInput = function() {
+	return this.nodeName.toUpperCase() === 'INPUT';
+}
+
+/**
+ * 
+ */
+DOMViewAPI.prototype.getLowerIndexChildNode = function() {
+	try {
+		return this.getWrappingNode().children[atIndex - 1];
 	}
-});
-
-/**
- * @abstract
- * 
- */
-ComponentView.prototype.setTextContent = function(text) {
-	this.hostElem.textContent = text;
+	catch(e) {
+		return false;
+	}
 }
 
 /**
- * @abstract
  * 
  */
-ComponentView.prototype.appendText = function(text) {
+DOMViewAPI.prototype.setContentNoFail = function(value) {
+	if (this.isTextInput())
+		this.hostElem.value = value;
+	else
+		this.setNodeContent(value);
+}
+
+/**
+ * 
+ */
+DOMViewAPI.prototype.setTextContent = function(text) {
+	this.getWrappingNode().textContent = text;
+}
+
+/**
+ * 
+ */
+DOMViewAPI.prototype.setNodeContent = function(contentAsString) {
+	this.getWrappingNode().innerHTML = contentAsString;
+}
+
+/**
+ * 
+ */
+DOMViewAPI.prototype.appendTextNode = function(text) {
 	var elem = document.createElement('span');
 	elem.innerHTML = text;
-	this.getRoot().appendChild(elem);
+	this.getWrappingNode().appendChild(elem);
 }
 
 /**
- * @param {Component} child
+ * @param {Component} childNode
  * @param {number} atIndex
  */
-ComponentView.prototype.addChildAt = function(childView, atIndex) {
-	if (this.getRoot().children[atIndex - 1])
-		this.getRoot().children[atIndex - 1].insertAdjacentElement('afterend', childView.hostElem);
+DOMViewAPI.prototype.addChildNodeAt = function(childNode, atIndex) {
+	var lowerIndexChild;
+	if (lowerIndexChild = this.getLowerIndexChildNode(atIndex))
+		lowerIndexChild.insertAdjacentElement('afterend', childNode);
 	else
-		this.getRoot().appendChild(childView.hostElem);
+		this.getWrappingNode().appendChild(childNode);
 }
 
 /**
  * @abstract
  */
-ComponentView.prototype.empty = function() {
-	this.getRoot().innerHTML = null;
+DOMViewAPI.prototype.empty = function() {
+	this.getWrappingNode().innerHTML = null;
 	return true;
 }
 
 /**
- * @abstract
+ * @param {array[string]} contentAsArray
+ * @param {string} templateNodeName
  */
-ComponentView.prototype.emptyTargetSubView = function() {
-	return this.targetSubView.empty();
+DOMViewAPI.prototype.getMultilineContent = function(contentAsArray) {
+	return this.getFragmentFromContent(contentAsArray, this.templateNodeName);
 }
 
 /**
  * @param {array[string]} contentAsArray
  * @param {string} templateNodeName
  */
-ComponentView.prototype.getMultilineContent = function(contentAsArray) {
-	return this.getDOMFragmentFromContent(contentAsArray, this.templateNodeName);
-}
+DOMViewAPI.prototype.getFragmentFromContent = function(contentAsArray, templateNodeName) {
 
-/**
- * @param {array[string]} contentAsArray
- * @param {string} templateNodeName
- */
-ComponentView.prototype.getDOMFragmentFromContent = function(contentAsArray, templateNodeName) {
-//	console.log(contentAsArray);
 	var fragment = document.createDocumentFragment(), elem;
 	contentAsArray.forEach(function(val) {
 		var elem = document.createElement(templateNodeName);
@@ -1049,16 +1054,231 @@ ComponentView.prototype.getDOMFragmentFromContent = function(contentAsArray, tem
 	return fragment;
 }
 
-ComponentView.prototype.setContentFromFragment = function(fragment) {
+DOMViewAPI.prototype.setContentFromArray = function(contentAsArray) {
 	this.empty();
-	this.getRoot().appendChild(fragment);
+	this.getWrappingNode().appendChild(this.getMultilineContent(contentAsArray));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * @constructor ComponentView
+ */
+var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
+	var def = definition.getHostDef() || definition;
+//	console.log(definition);
+	this._defUID = def.UID;
+	this.isCustomElem = def.isCustomElem;
+	
+	this.objectType = 'ComponentView';
+	this.currentViewAPI = new DOMViewAPI(def);
+	this.section = def.section;
+	
+	if (!nodesRegister.getItem(this._defUID))
+		nodesRegister.setItem(this._defUID, (new CachedTypes.CachedNode(def.nodeName, def.isCustomElem)));
+	
+	if (!TypeManager.caches.attributes.getItem(this._defUID))
+		TypeManager.caches.attributes.setItem(this._defUID, def.attributes);
+		
+	viewsRegister.push(this);
+
+	if (def !== definition) {
+		this._parent = parent;
+		this.targetSubView = null;
+		this.sWrapper = def.sOverrideWrapper ? def.sOverrideWrapper.handleStylesheetOverride(def.sWrapper) : def.sWrapper;
+		this.styleHook = new SWrapperInViewManipulator(this);
+	
+		this.subViewsHolder;
+		if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length) {
+			this.subViewsHolder = new ComponentSubViewsHolder(definition, this);
+			// this shall be retried after calling the hooks, as the interfaces may have added subViews
+			this.getTargetSubView(def);
+		}
+		else
+			this.subViewsHolder = new ComponentSubViewsHolder(null, this);
+	}
+	
+	this.parentView = parentView || null;
+	if (parentView && !isChildOfRoot)
+		this.parentView = this.getEffectiveParentView();
+}
+ComponentView.prototype = {};
+ComponentView.prototype.objectType = 'ComponentView';
+ComponentView.prototype.constructor = ComponentView;
+
+/**
+ * Main helper to access the effective implementation of the View
+ */
+ComponentView.prototype.callCurrentViewAPI = function(methodName, ...args) {
+	return this.currentViewAPI[methodName](...args);
+}
+
+/**
+ * @abstract
+ * HELPER : => when appending a child, should we append to rootNode or to a subSection ?
+ * 
+ */
+ComponentView.prototype.getEffectiveParentView = function() {
+	return (this.parentView.subViewsHolder && this.parentView.subViewsHolder.subViews.length) 
+						? this.parentView.subViewsHolder.subViews[this.section]
+							: this.parentView;
+}
+
+ComponentView.prototype.getTargetSubView = function(def) {
+	this.targetSubView = (def.targetSlotIndex !== null && this.subViewsHolder.memberViews.length > def.targetSlotIndex) ? this.subViewsHolder.memberAt(def.targetSlotIndex) : null;	
+}
+
+/**
+ * 
+ * @needsGlobalRefactoring (becomes "getWrappingNode")
+ */
+ComponentView.prototype.getRoot = function() {
+	return this.getWrappingNode();
+}
+
+/**
+ * 
+ */
+ComponentView.prototype.getMasterNode = function() {
+	return this.callCurrentViewAPI('getMasterNode');
+}
+
+/**
+ * 
+ */
+ComponentView.prototype.getWrappingNode = function() {
+	return this.callCurrentViewAPI('getWrappingNode');
+}
+
+
+/**
+ * @param {boolean} or {innerEvent} bool
+ * might get direclty passed an event obj (inner framework event type)
+ */
+ComponentView.prototype.setPresence = function(bool) {
+	if (typeof bool === 'object' && typeof bool.data !== 'undefined')
+		bool = bool.data;
+	this.callCurrentViewAPI('setPresence', bool);
+}
+
+/**
+ * @param {boolean} bool
+ */
+ComponentView.prototype.addEventListener = function(eventName, handler) {
+	this.callCurrentViewAPI('addEventListener', eventName, handler);
+}
+
+/**
+ * @abstract
+ * 
+ * @needsGlobalRefactoring
+ */
+Object.defineProperty(ComponentView.prototype, 'value', { 		// ComponentWithReactiveText.prototype.populateSelf makes good use of that
+	set : function(value) {
+		this.callCurrentViewAPI('setContentNoFail', value);
+	}
+});
+
+/**
+ * 
+ */
+ComponentView.prototype.setTextContent = function(text) {
+	this.callCurrentViewAPI('setTextContent', text);
+}
+
+/**
+ * 
+ */
+ComponentView.prototype.setContentNoFail = function(text) {
+	this.callCurrentViewAPI('setContentNoFail', text);
+}
+
+/**
+ * 
+ */
+ComponentView.prototype.setNodeContent = function(contentAsString) {
+	this.callCurrentViewAPI('setNodeContent', contentAsString);
+}
+
+/**
+ * 
+ * 
+ * @needsGlobalRefactoring (becomes appendAsTextNode)
+ */
+ComponentView.prototype.appendText = function(textContent) {
+	this.appendAsTextNode(textContent);
+}
+
+/**
+ * 
+ */
+ComponentView.prototype.appendAsTextNode = function(textContent) {
+	this.callCurrentViewAPI('appendTextNode', textContent);
+}
+
+/**
+ * @param {Component} childView
+ * @param {number} atIndex
+ * 
+ * @needsGlobalRefactoring
+ */
+ComponentView.prototype.addChildAt = function(childView, atIndex) {
+	this.addChildNodeFromViewAt(childView, atIndex);
+}
+
+/**
+ * @param {Component} childView
+ * @param {number} atIndex
+ */
+ComponentView.prototype.addChildNodeFromViewAt = function(childView, atIndex) {
+	this.callCurrentViewAPI('addChildNodeAt', childView.getMasterNode(), atIndex);
+}
+
+/**
+ * @abstract
+ */
+ComponentView.prototype.empty = function() {
+	return this.callCurrentViewAPI('empty');
+}
+
+/**
+ * @abstract
+ */
+ComponentView.prototype.emptyTargetSubView = function() {
+	return this.targetSubView.empty();
+}
+
+ComponentView.prototype.setContentFromArray = function(contentAsArray) {
+	this.callCurrentViewAPI('empty');
+	this.callCurrentViewAPI('setContentFromArray', contentAsArray);
 }
 
 /**
  * @param {array[string]} contentAsArray
  */
 ComponentView.prototype.setContentFromArrayOnTargetSubview = function(contentAsArray) {
-	return this.targetSubView.setContentFromFragment(this.getMultilineContent(contentAsArray));
+//	console.log(this._parent.objectType);
+	return this.targetSubView.setContentFromArray(contentAsArray);
 }
 
 
@@ -1075,23 +1295,10 @@ ComponentView.prototype.setContentFromArrayOnTargetSubview = function(contentAsA
  * @constructor ComponentSubView
  */
 var ComponentSubView = function(definition, parentView) {
-	this._defUID = definition.UID;
-	this.isCustomElem = definition.isCustomElem;
-	this.nodeName = definition.nodeName;
-	this.section = definition.section;
+	ComponentView.call(this, definition, parentView);
 	
-	if (!nodesRegister.getItem(definition.UID))
-		nodesRegister.setItem(definition.UID, (new CachedTypes.CachedNode(definition.nodeName, definition.isCustomElem)));
-	if (!TypeManager.caches.attributes.getItem(this._defUID))
-		TypeManager.caches.attributes.setItem(this._defUID, definition.attributes);
-	viewsRegister.push(this);
+	this.objectType = 'ComponentSubView';
 	
-	this.parentView = parentView || null;
-	if (parentView)
-		this.parentView = this.getEffectiveParentView();
-	
-	this.hostElem;
-	this.rootElem;
 }
 ComponentSubView.prototype = Object.create(ComponentView.prototype);
 ComponentSubView.prototype.objectType = 'ComponentSubView';
@@ -1112,6 +1319,8 @@ var ComponentSubViewsHolder = function(definition, parentView) {
 	this.parentView = parentView || null;
 	this.subViews = [];
 	this.memberViews = [];
+	
+	// subViewsHolder exists even if there is no subViews (and we pass a definition as null if there is neither memberViews nor subViews)
 	if (definition)
 		this.instanciateSubViews(definition);
 }
@@ -1168,7 +1377,7 @@ ComponentSubViewsHolder.prototype.resetMemberContent = function(idx, textContent
 }
 
 ComponentSubViewsHolder.prototype.setMemberContent = function(idx, textContent) {
-	this.memberViews[idx].value = textContent;
+	this.memberViews[idx].setContentNoFail(textContent);
 }
 
 ComponentSubViewsHolder.prototype.setMemberContent_Fast = function(idx, textContent) {
@@ -1176,12 +1385,12 @@ ComponentSubViewsHolder.prototype.setMemberContent_Fast = function(idx, textCont
 }
 
 ComponentSubViewsHolder.prototype.appendContentToMember = function(idx, textContent) {
-	this.memberViews[idx].appendText(textContent);
+	this.memberViews[idx].appendAsTextNode(textContent);
 }
 
 ComponentSubViewsHolder.prototype.appendAsMemberContent = function(idx, textContent) {
 	this.memberViews[idx].empty();
-	this.memberViews[idx].appendText(textContent);
+	this.memberViews[idx].appendAsTextNode(textContent);
 }
 
 ComponentSubViewsHolder.prototype.setEachMemberContent = function(contentAsArray) {
@@ -1210,6 +1419,55 @@ ComponentSubViewsHolder.prototype.setEachMemberContent_Fast = function(contentAs
 
 
 
+
+
+
+
+
+
+
+
+
+var CanvasView = function(definition, parentView) {
+	ComponentView.call(this, definition, parentView);
+	
+	this.objectType = 'CanvasView';
+	
+	this.w = 0;
+	this.h = 0;
+}
+
+CanvasView.prototype = Object.create(ComponentView.prototype);
+CanvasView.prototype.objectType = 'CanvasView';
+
+CanvasView.prototype.getDimensions = function() {
+	var self = this;
+	this.styleHook.getBoundingBox().then(function(boundingBox) {
+		self.w = boundingBox.w;
+		self.h = boundingBox.y;
+	})
+}
+
+CanvasView.prototype.gradientFill = function(colorScale) {
+	var length = colorScale.max();
+	this.callCurrentViewAPI('gradientFill', colorScale[0], colorScale[length], 0, 0, this.w, this.h);
+}
+
+CanvasView.prototype.partialGradientFill = function(boundaries, colorScale) {
+	var length = colorScale.max();
+	this.callCurrentViewAPI('gradientFill', colorScale[0], colorScale[length], boundaries.x, boundaries.y, boundaries.w, boundaries.h);
+}
+
+CanvasView.prototype.manualGradientFill = function(boundaries, colorScale) {
+	var color;
+	var length = colorScale.max();
+	for (let x = boundaries.x, l = boundaries.w + boundaries.x; i < l; i++) {
+		for (let y = boundaries.y, L = boundaries.h + boundaries.y; y < L; y++) {
+			this.callCurrentViewAPI('setColor', colorScale[Math.round((x - boundaries.x) / length)]);
+			this.callCurrentViewAPI('drawPoint', x, y);
+		}
+	}
+}
 
 
 

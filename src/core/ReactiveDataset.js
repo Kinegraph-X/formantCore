@@ -268,9 +268,9 @@ Object.defineProperty(RecitalDataset.prototype, 'styleToFront', {
 	value : function(idx) {
 		this.forEach(function(item, key) {
 			if (key === idx)
-				this.trackedComponent._children[key].view.hostElem.style.display = 'flex';
+				this.trackedComponent._children[key].view.getMasterNode().style.display = 'flex';
 			else
-				this.trackedComponent._children[key].view.hostElem.style.display = 'none';
+				this.trackedComponent._children[key].view.getMasterNode().style.display = 'none';
 		}, this);
 	}
 });
@@ -290,6 +290,30 @@ Object.defineProperty(RecitalDataset.prototype, 'sortForPropHostingArrayOnArrayI
 		for (let i = 0, l = this.length; i < l; i++) {
 			this[i][prop] = tmpThis[i];
 		}
+	}
+});
+
+Object.defineProperty(RecitalDataset.prototype, 'clone', {
+	value : function() {
+		var clone = new RecitalDataset(
+			this.rootComponent,
+			this.trackedComponent,
+			this.defaultListDef.host.template,
+			[]
+		);
+		Array.prototype.push.apply(clone, this);
+//		console.log(clone);
+		return clone;
+	}
+});
+
+Object.defineProperty(RecitalDataset.prototype, 'reNewComponents',  {
+	value : function() {
+		var lastIndex = this.trackedComponent._children.length;
+		this.defaultListDef.host.each = this;
+		new App.List(this.defaultListDef, this.trackedComponent);
+		this.trackedComponent.handleEventSubsOnChildrenAt(TypeManager.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
+		this.updateDatasetState();
 	}
 });
 

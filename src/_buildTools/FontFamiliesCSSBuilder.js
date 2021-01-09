@@ -11,7 +11,7 @@ var mongoose = require('mongoose');
 var db = mongoose.connection;
 var DBTypes = require('../_DesignSystemManager/DBTypes');
 
-function defer([first, ...rest]) {
+function deferedStringTemplate([first, ...rest]) {
   return (...values) => rest.reduce((acc, str, i) => acc + values[i] + str, first);
 }
 
@@ -49,7 +49,7 @@ module.exports = function(grunt, done) {
 	
 		var CSSString = '';
 	
-		var template = defer`
+		var template = deferedStringTemplate`
 				/* ${null} */
 				@font-face {
 					font-family: '${null}';
