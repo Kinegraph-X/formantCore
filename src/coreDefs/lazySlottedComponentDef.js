@@ -1,9 +1,10 @@
 /**
- * @def LazySlottedComponent
+ * @def LazySlottedComposedComponent
  * @isGroup true
  * 
- * @CSSify hostName : smartTabs
- * @CSSifyRule rule : host flexBoxColumn/flexGrow
+ * @CSSify styleName : LazySlottedComposedComponentHost/true
+ * @CSSify styleName : LazySlottedComposedComponentPseudoslot/true
+ * @CSSifyTheme themeName : basic-light
  * 
  */
 
@@ -15,11 +16,10 @@ var pseudoSlotsStyles = require('src/UI/defs/extraStyles/pseudoSlot');
 
 
 var lazySlottedComponentDef = function(uniqueID, options, model) {
+	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos
 		
 	// Some CSS stuff (styles are directly injected in the main def below)
-	var styles = [
-/*@CSSifySlot*/
-		];
+	/**@CSSifySlots placeholder */
 	
 	
 	var slotDef = TypeManager.createComponentDef({
@@ -40,8 +40,7 @@ var lazySlottedComponentDef = function(uniqueID, options, model) {
 							this.trigger('update', e.data, true);
 					}
 				}
-			],
-			sWrapper : CreateStyle('pseudo-slot-style', null, pseudoSlotsStyles).sWrapper
+			]/**@CSSifyStyle componentStyle : LazySlottedComposedComponentPseudoslot */
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 	
@@ -62,8 +61,7 @@ var lazySlottedComponentDef = function(uniqueID, options, model) {
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
 //			type : 'ComposedCompnent', 				// this is implicit, as we call the ComposedComponent ctor in the TabPanel ctor
-			nodeName : 'smart-tabs',
-			sWrapper : CreateStyle('lazySlottedComponent', null, styles).sWrapper
+			nodeName : 'smart-tabs'/**@CSSifyStyle componentStyle : LazySlottedComposedComponentHost */
 		}),
 		lists : [
 			TypeManager.createComponentDef({

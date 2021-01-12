@@ -94,9 +94,15 @@ Ignition.prototype.instanciateDOM = function() {
 			view.callCurrentViewAPI('getMasterNode')._component = view._parent;
 		
 		// Connect DOM objects 
-		if (view.sWrapper)
+		if (view.sWrapper) {
 			view.callCurrentViewAPI('getWrappingNode').append(view.sWrapper.styleElem.cloneNode(true));
-		
+		}
+//		if (view.parentView && view._parent) {
+//			console.log(Object.getPrototypeOf(view._parent).objectType);
+////			console.log(view.parentView.callCurrentViewAPI('getWrappingNode'));
+////			if (view.parentView._parent && view._parent)
+////				console.log(view._parent.objectType, view.callCurrentViewAPI('getMasterNode'))
+//		}
 		if (view.parentView && view.parentView.callCurrentViewAPI('getWrappingNode'))
 			view.parentView.callCurrentViewAPI('getWrappingNode').append(view.callCurrentViewAPI('getMasterNode'));
 	});
@@ -220,7 +226,9 @@ Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 			if (!component.view)
 				return;
 			
-			if (component instanceof Component.ComponentWithHooks)
+			// TMP Hack: call artificial "hook" on LazySlottedComposedComponent althopugh it's not a "ComponentWithHooks"
+			// (see LazySlottedComposedComponent & ColorSamplerSetComponent)
+			if (component instanceof Component.ComponentWithHooks || component instanceof coreComponents.LazySlottedComposedComponent)
 				component.registerEvents();
 
 			this.defineStreamsBidirectionalReflection(defUID, component);
@@ -369,11 +377,13 @@ var DelayedDecoration = function(containerId, component, componentListHostDef) {
 	
 	this.decorateComponentsThroughDefinitionsCache(componentListHostDef);
 	
+	if (componentListHostDef)
+		componentListHostDef.each.length = 0;
+	
 	if (typeof containerId !== 'string')
 		return;
 
 	document.querySelector(containerId !== 'body' ? '#' + containerId : containerId).appendChild(component.view.getMasterNode());
-//	componentListHostDef.each.length = 0;
 }
 DelayedDecoration.prototype = Object.create(Ignition.prototype);
 DelayedDecoration.prototype.objectType = 'DelayedDecoration';

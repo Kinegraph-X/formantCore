@@ -4,7 +4,7 @@
 
 
 
-
+var appConstants = require('src/appLauncher/appLauncher');
 var TypeManager = require('src/core/TypeManager');
 var SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator');
 
@@ -903,7 +903,7 @@ var DOMViewAPI = function(def) {
 		setProp : DOMViewAPI.hostedInterface.setProp.bind(this),
 		getProp : DOMViewAPI.hostedInterface.getProp.bind(this)
 	};
-	this.presenceAsAProp;
+	this.presenceAsAProp = 'flex';
 	
 	this.objectType = 'DOMViewAPI';
 }
@@ -920,7 +920,6 @@ DOMViewAPI.hostedInterface = {
 	}
 };
 
-DOMViewAPI.prototype.setProp = 
 
 DOMViewAPI.prototype.setPresence = function(bool) {
 	this.hostElem.style.display = bool ? this.presenceAsAProp : 'none';
@@ -1091,6 +1090,11 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	this.isCustomElem = def.isCustomElem;
 	
 	this.objectType = 'ComponentView';
+	if (!def.nodeName) {
+		console.log('no nodeName', def);
+		return;
+	}
+		
 	this.currentViewAPI = new DOMViewAPI(def);
 	this.section = def.section;
 	
@@ -1118,9 +1122,12 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 			this.subViewsHolder = new ComponentSubViewsHolder(null, this);
 	}
 	
-	this.parentView = parentView || null;
+	var hadParentView = this.parentView = parentView || null;
 	if (parentView && !isChildOfRoot)
 		this.parentView = this.getEffectiveParentView();
+		
+	if (hadParentView && !this.parentView)
+		console.warn('lost parentView: probable section number missing in definition obj');
 }
 ComponentView.prototype = {};
 ComponentView.prototype.objectType = 'ComponentView';
@@ -1362,6 +1369,7 @@ ComponentSubViewsHolder.prototype.addMemberView = function(view) {
 ComponentSubViewsHolder.prototype.addMemberViewFromDef = function(definition) {
 	var view = new ComponentSubView(definition, this.parentView);
 	this.memberViews.push(view);
+	return view;
 }
 
 ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definition) {
@@ -1370,6 +1378,13 @@ ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definiti
 	this.memberViews.unshift(view);
 	
 	TypeManager.viewsRegister.push(lastView);
+	return view;
+}
+
+ComponentSubViewsHolder.prototype.immediateAscendViewAFewStepsHelper = function(stepsCount, effectiveViewIdx) {
+	var ourLatelyAppendedView = TypeManager.viewsRegister.splice(effectiveViewIdx, 1)[0];
+	console.log(TypeManager.viewsRegister.length, stepsCount, TypeManager.viewsRegister[TypeManager.viewsRegister.length - 1 - stepsCount]);
+	TypeManager.viewsRegister.splice(TypeManager.viewsRegister.length - 1 - stepsCount, 0, ourLatelyAppendedView);
 }
 
 ComponentSubViewsHolder.prototype.resetMemberContent = function(idx, textContent) {
@@ -1424,6 +1439,73 @@ ComponentSubViewsHolder.prototype.setEachMemberContent_Fast = function(contentAs
 
 
 
+var DOMCanvasAccessor = function(definition, view) {
+	DOMViewAPI.call(this, definition);
+	this.objectType = 'DOMCanvasAccessor';
+//	console.log(definition.members);
+	this.view = view;
+	this.ctx;
+	
+//	var found = false;
+//	definition.members.forEach(function(member, idx) {
+//		if (!found && ((member.getHostDef() && member.getHostDef().nodeName === 'canvas') || member.nodeName === 'canvas')) {
+//			this.canvasLocation = view.subViewsHolder.memberAt(idx);
+//			found = true;
+//		}
+//	}, this);
+}
+DOMCanvasAccessor.prototype = Object.create(DOMViewAPI.prototype);
+DOMCanvasAccessor.prototype.objectType = 'DOMCanvasAccessor';
+
+DOMCanvasAccessor.prototype.setMasterNode = function(node) {
+	var self = this, canvas;
+	DOMViewAPI.prototype.setMasterNode.call(this, node);
+	
+	this.view.nodeAsAPromise.then(function(boundingBox) {
+//		console.log(boundingBox);
+		canvas = self.view.subViewsHolder.memberAt(0).getMasterNode();
+		canvas.width = boundingBox.w;
+		canvas.height = boundingBox.h;
+		self.ctx = canvas.getContext('2d');	
+		return boundingBox;
+	});
+}
+
+DOMCanvasAccessor.prototype.setFillColor = function(color) {
+	var self = this;
+//	this.view.nodeAsAPromise.then(function() {
+		self.ctx.fillStyle = color;
+//	});
+}
+
+DOMCanvasAccessor.prototype.drawPoint = function(x, y) {
+	var self = this;
+//	this.view.nodeAsAPromise.then(function() {
+		self.ctx.fillRect(x, y, 1, 1);
+//	});
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1432,9 +1514,11 @@ var CanvasView = function(definition, parentView) {
 	ComponentView.call(this, definition, parentView);
 	
 	this.objectType = 'CanvasView';
+	this.currentViewAPI = new DOMCanvasAccessor(definition, this);
 	
 	this.w = 0;
 	this.h = 0;
+	this.nodeAsAPromise;
 }
 
 CanvasView.prototype = Object.create(ComponentView.prototype);
@@ -1442,10 +1526,23 @@ CanvasView.prototype.objectType = 'CanvasView';
 
 CanvasView.prototype.getDimensions = function() {
 	var self = this;
-	this.styleHook.getBoundingBox().then(function(boundingBox) {
-		self.w = boundingBox.w;
-		self.h = boundingBox.y;
-	})
+	this.nodeAsAPromise = new Promise(function(resolve, reject) {
+		var inter = setInterval(function() {
+			if (self.subViewsHolder.memberAt(0).getMasterNode()) {
+				clearInterval(inter);				
+				appConstants.resizeObserver.observe(self.subViewsHolder.memberAt(0).getMasterNode(), self.storeDimensions.bind(self, resolve));
+			}
+		}, 512);
+	});
+	return this.nodeAsAPromise;
+}
+
+CanvasView.prototype.storeDimensions = function(resolve, e) {
+
+	this.w = e.data.boundingBox.w;
+	this.h = e.data.boundingBox.h;
+	resolve(e.data.boundingBox);
+	appConstants.resizeObserver.unobserve(this.subViewsHolder.memberAt(0).getMasterNode());
 }
 
 CanvasView.prototype.gradientFill = function(colorScale) {
@@ -1458,15 +1555,30 @@ CanvasView.prototype.partialGradientFill = function(boundaries, colorScale) {
 	this.callCurrentViewAPI('gradientFill', colorScale[0], colorScale[length], boundaries.x, boundaries.y, boundaries.w, boundaries.h);
 }
 
-CanvasView.prototype.manualGradientFill = function(boundaries, colorScale) {
-	var color;
-	var length = colorScale.max();
-	for (let x = boundaries.x, l = boundaries.w + boundaries.x; i < l; i++) {
-		for (let y = boundaries.y, L = boundaries.h + boundaries.y; y < L; y++) {
-			this.callCurrentViewAPI('setColor', colorScale[Math.round((x - boundaries.x) / length)]);
-			this.callCurrentViewAPI('drawPoint', x, y);
+CanvasView.prototype.manualGradientFill = function(colorScale, boundaries) {
+	var self = this;
+	var length = 1; //colorScale.max();
+	
+	
+	this.nodeAsAPromise.then(function(boundingBox) {
+//		console.log(boundingBox);
+		if (typeof boundaries === 'undefined') {
+			boundaries = {
+				w : boundingBox ? boundingBox.w : self.w,
+				h  : boundingBox ? boundingBox.h : self.h,
+				x : 0,
+				y : 0
+			};
 		}
-	}
+//		console.log(boundingBox);
+//		console.log('canvas promise');
+		for (let x = boundaries.x, l = boundaries.w + boundaries.x; x < l; x++) {
+			for (let y = boundaries.y, L = boundaries.h + boundaries.y; y < L; y++) {
+				self.callCurrentViewAPI('setFillColor', colorScale((x - boundaries.x) * length / boundaries.w).hex());
+				self.callCurrentViewAPI('drawPoint', x, y);	
+			}
+		}
+	});
 }
 
 
@@ -1535,6 +1647,7 @@ module.exports = {
 		StreamPool : StreamPool,
 		ComponentView, ComponentView,
 		ComponentSubView : ComponentSubView,
+		ComponentSubViewsHolder : ComponentSubViewsHolder,
 		CanvasView : CanvasView,
 		commonStates : commonStates
 }

@@ -36,6 +36,7 @@ var TypedListComponent = require('src/UI/Generics/TypedListComponent');
 var KeyValuePairComponent = require('src/UI/Generics/KeyValuePairComponent');
 var ExtensibleTable = require('src/UI/Generics/ExtensibleTable');
 var GenericTitledPanelComponent = require('src/UI/Generics/GenericTitledPanelComponent/GenericTitledPanelComponent');
+//var ColorSamplerSetComponent = require('src/UI/packages/setsForPanels/ColorSamplerSetComponent/ColorSamplerSetComponent');
 
 var VisualSetComponent = require('src/UI/Generics/VisualSetComponent/VisualSetComponent');
 var VariablyStatefullComponent = require('src/UI/Generics/VariablyStatefullComponent/VariablyStatefullComponent');
@@ -46,7 +47,7 @@ var VisualSetHostComponent = require('src/UI/Generics/VisualSetHostComponent/Vis
 /**
  * @constructor ComposedComponent
  */
-var ComposedComponent = function(definition, parentView, parent) {
+var ComposedComponent = function(definition, parentView, parent, isChildOfRoot) {
 	//	console.log(definition);
 	this._firstListUIDSeen = null;
 	var shouldExtend = false;
@@ -76,7 +77,8 @@ var ComposedComponent = function(definition, parentView, parent) {
 	}
 //	console.log(parent);
 //	console.log(definition);
-	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, parent);  // feed with host def
+	
+	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, parent, isChildOfRoot);  // feed with host def
 	this.objectType = 'ComposedComponent';
 
 	// extend last, so the event bubbling occurs always after the "explicitly defined in the host's def" callbacks
@@ -110,11 +112,15 @@ ComposedComponent.prototype.extendDefinition = function(definition) {
 ComposedComponent.prototype.instanciateSubSections = function(definition) {
 	var type, component;
 	definition.subSections.forEach(function(subSectionDef) {
-		type = subSectionDef.getHostDef().getType();
-		if (type in Components) {
-			component = new Components[type](subSectionDef, this.view, this, 'isChildOfRoot');
-//			component._parent = this;
+		type = subSectionDef.getHostDef().getType() || (subSectionDef.getGroupHostDef() && subSectionDef.getGroupHostDef().getType());
+//		console.log(type, type in Components);
+		if (type in Components && type !== 'ComposedComponent' && type !== 'FlexColumnComponent' && type !== 'FlexRowComponent' && type !== 'FlexGridComponent' && type !== 'HToolbarComponent') {
+			component = new Components[type](subSectionDef, this.view, null, 'isChildOfRoot');
 			// mandatory, as we need to append memberViews on subViews without accessing the component's scope
+			this.view.subViewsHolder.subViews.push(component.view);
+		}
+		else if (subSectionDef.getGroupHostDef()) {
+			component = new ComposedComponent(subSectionDef, this.view, null, 'isChildOfRoot');
 			this.view.subViewsHolder.subViews.push(component.view);
 		}
 		else if (subSectionDef.getHostDef().nodeName)
@@ -126,9 +132,9 @@ ComposedComponent.prototype.instanciateMembers = function(definition) {
 	var type;
 	definition.members.forEach(function(memberDef) {
 		type = memberDef.getHostDef().getType() || (memberDef.getGroupHostDef() && memberDef.getGroupHostDef().getType());
-//		console.log(type);
+//		console.log(type, type in Components, this.view);
 		
-		if (type in Components)
+		if (type in Components && type !== 'ComposedComponent')
 			new Components[type](memberDef, this.view, this);
 		else if (memberDef.getGroupHostDef())
 			new ComposedComponent(memberDef, this.view, this);
@@ -178,12 +184,12 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 	else
 		return;
 
-	var templateDef = definition.getHostDef().template, composedComponent, type;
+	var templateDef = definition.getHostDef().template, composedComponent, type, reNewsWrapper = templateDef.getHostDef().sWrapper ? false : true, hadChildren = templateDef.members.length;
 //	console.log(templateDef);
 	definition.getHostDef().each.forEach(function(item, key) {
 		
 		if ((type = templateDef.getHostDef().getType())) {
-//			console.log(type, key, Components[type]);
+//			console.log(type, key, templateDef.getHostDef());
 			composedComponent = new Components[type](templateDef, this._parent.view, this._parent);
 			TypeManager.dataStoreRegister.setItem(composedComponent._UID, key);
 		}
@@ -193,6 +199,14 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 		}
 		else
 			this._parent.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(templateDef, this._parent.view, this._parent));
+		
+		if (reNewsWrapper) {
+			templateDef.getHostDef().sWrapper = null;
+			templateDef.getHostDef().UID = TypeManager.UIDGenerator.newUID().toString();
+			var diff = 0;
+			if (diff = (templateDef.members.length - hadChildren))
+				templateDef.members.splice(hadChildren, diff);
+		}
 	}, this);
 
 	//	console.log(this);
@@ -214,7 +228,7 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 */
 var createLazySlottedComponentDef = require('src/coreDefs/lazySlottedComponentDef');
 var createLazySlottedComponentSlotstDef = require('src/coreDefs/lazySlottedComponentSlotsDef');
-
+// TODO: alreadyComposed is of no use
 var LazySlottedComposedComponent = function(definition, parentView, parent, alreadyComposed, slotsCount, slotsDef) {
 	var stdDefinition = definition || createLazySlottedComponentDef();
 	this.typedSlots = [];
@@ -231,11 +245,15 @@ var LazySlottedComposedComponent = function(definition, parentView, parent, alre
 	// We could choose not to call the ComposedComponent ctor, but then we wouldn't be able to define subSections or members (ou would have to explicitly call the methods then)
 	// Other issue : the ComposedComponent ctor would be called with the arguments received by the mergedConstructor(), and they do not include a definition object
 	// Keeping that here makes the code base cleaner
-
+	
 	// Get a definition :
 	// Here, the initial def allows an undefined number of tabs
 	this.updateDefinitionBasedOnSlotsCount(stdDefinition);
+
 	ComposedComponent.call(this, stdDefinition, parentView, parent);
+		
+//	console.log('LazySlottedComposedComponent - Ctor Rendering \n\n\n');
+//	this.render(null, stdDefinition.lists[0].host);
 
 	this.objectType = 'LazySlottedComposedComponent';
 
@@ -256,9 +274,16 @@ LazySlottedComposedComponent.prototype = Object.create(ComposedComponent.prototy
 LazySlottedComposedComponent.prototype.objectType = 'LazySlottedComposedComponent';
 coreComponents.LazySlottedComposedComponent = LazySlottedComposedComponent;
 
+// TMP Hack: assign DOM attributes on pseudo-slots (though we should do that through reactivity, see "ColorSamplerSetComponent")
+LazySlottedComposedComponent.prototype.registerEvents = function() {
+	this._children.forEach(function(child, key) {
+		child.view.getMasterNode().streams = child.streams;
+		child.view.getMasterNode().setAttribute('slot-id', key);
+	}, this);
+}
 
 LazySlottedComposedComponent.prototype.updateDefinitionBasedOnSlotsCount = function(definition) {
-	definition.lists[0].host.each = [];
+//	definition.lists[0].host.each = [];
 	for (let i = 0, l = this.slotsCount; i < l; i++) {
 		definition.lists[0].host.each.push({ 'slot-id': 'slot' + i });
 	}
@@ -806,6 +831,7 @@ Components.TypedListComponent = TypedListComponent;
 Components.KeyValuePairComponent = KeyValuePairComponent;
 Components.ExtensibleTable = ExtensibleTable;
 Components.GenericTitledPanelComponent = GenericTitledPanelComponent;
+//Components.ColorSamplerSetComponent = ColorSamplerSetComponent;
 
 Components.VisualSetComponent = VisualSetComponent;
 Components.VariablyStatefullComponent = VariablyStatefullComponent;

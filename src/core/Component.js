@@ -527,7 +527,7 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		this._defComposedUID = this._defUID;
 	
 	var hostDef = definition.getHostDef();
-//	console.log(defaultHostDef);
+//	console.log(hostDef.sWrapper === null, Object.getPrototypeOf(this).objectType, defaultHostDef);
 	if (defaultDef) {
 		TypeManager.propsAreArray.forEach(function(prop) {
 //			if(!defaultHostDef[prop])
@@ -649,9 +649,7 @@ ComponentWithView.prototype.pushChildWithView = function(child) {
 	this.pushChild(child);
 	child.view.parentView = this.view;
 	this.view.subViewsHolder.addMemberView(child.view);
-	child.onPushChildWithView(child);
 }
-ComponentWithView.prototype.onPushChildWithView = function() {}		// virtual pure
 
 /**
  * @param {ComponentDefinition} definition
@@ -825,7 +823,7 @@ ComponentWithHooks.prototype.lateAddChildren = function(definition) {
 	var asyncTask;
 	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
 		asyncTask = this._asyncInitTasks[i];
-		if(asyncTask.type === 'lateAddChild') {
+		if(asyncTask.type === 'lateAddChild' || asyncTask.type === 'lateInit') {
 			asyncTask.execute(this, definition);
 		}
 	}
@@ -1158,6 +1156,12 @@ ComponentWithViewAbstractingAFeed.prototype.exportData = function(data) {
 var ComponentWithCanvas = function(definition, parentView, parent, isChildOfRoot) {
 	ComponentWithHooks.call(this, definition, parentView, parent, isChildOfRoot);
 	this.objectType = 'ComponentWithCanvas';
+	
+	this.view.getDimensions();
+	
+//	this.view.h = parseInt(definition.getHostDef().sWrapper.rules.canvas.rule.attributes.height);
+//	this.view.w = parseInt(definition.getHostDef().sWrapper.rules.canvas.rule.attributes.minWidth);
+//	console.log(this.view.w, this.view.h);
 }
 
 ComponentWithCanvas.prototype = Object.create(ComponentWithHooks.prototype);

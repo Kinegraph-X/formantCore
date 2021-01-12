@@ -46,8 +46,7 @@ ComponentDataProvider.prototype.getDataset = function(definition) {
 						this.dummyComponent,
 						this.dummyComponent,
 						definition.lists[0].getHostDef().template || TypeManager.mockDef(),
-						this.colName,
-						[]
+						['slotTitle']
 		);
 }
 

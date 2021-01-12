@@ -26,7 +26,7 @@ var AbstractAccordionDef = function(uniqueID, options, model) {
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
 //			type : 'ComposedCompnent', 				// this is implicit, as we call the ComposedComponent ctor in the TabPanel ctor
-			nodeName : 'reactive-accordion'/**@CSSify Style componentStyle : AbstractAccordionHost */
+			nodeName : 'reactive-accordion'/**@CSSifyStyle componentStyle : AbstractAccordionHost */
 		})
 	}, null, 'rootOnly');
 	

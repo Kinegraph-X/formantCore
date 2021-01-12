@@ -19,7 +19,7 @@ var SWrapperInViewManipulator = function(hostView) {
 	this.s = hostView.sWrapper;
 	
 	this.rulesCache = new TypeManager.PropertyCache('rulesCache');
-	this.textSizeGetter = textSizeGetter;
+//	this.textSizeGetter = textSizeGetter;
 	
 	this.viewPresenceKeyWord;
 	this.fontSize;
@@ -36,10 +36,12 @@ SWrapperInViewManipulator.prototype = Object.create(Object.prototype);
 
 SWrapperInViewManipulator.prototype.getBoundingBox = function() {
 	var self = this;
+	
 	return new Promise(function(resolve, reject) {
 		var inter = setInterval(function() {
 			if (self.hostView.getMasterNode()) {
 				clearInterval(inter);
+				
 				appConstants.resizeObserver.observe(self.hostView.getMasterNode(), self.storeBoundingBox.bind(self));
 			}
 		}, 512);
@@ -108,7 +110,12 @@ SWrapperInViewManipulator.prototype.getWidth = function(selector) {
 }
 SWrapperInViewManipulator.prototype.setWidth = function(selector, w) {
 	var rule = this.s.getRuleAsObject(selector).rule;
-	rule.attributes.width = w.toString() + 'px';
+	rule.attributes.width = w.toString();
+	this.s.replaceStyle(rule, rule.attributes);
+}
+SWrapperInViewManipulator.prototype.setMaxWidth = function(selector, w) {
+	var rule = this.s.getRuleAsObject(selector).rule;
+	rule.attributes.maxWidth = w.toString();
 	this.s.replaceStyle(rule, rule.attributes);
 }
 SWrapperInViewManipulator.prototype.getHeight = function(selector) {
@@ -118,7 +125,18 @@ SWrapperInViewManipulator.prototype.getHeight = function(selector) {
 }
 SWrapperInViewManipulator.prototype.setHeight = function(selector, h) {
 	var rule = this.s.getRuleAsObject(selector).rule;
-	rule.attributes.width = h.toString() + 'px';
+	rule.attributes.height = h.toString();
+	this.s.replaceStyle(rule, rule.attributes);
+}
+SWrapperInViewManipulator.prototype.setMaxHeight = function(selector, h) {
+	var rule = this.s.getRuleAsObject(selector).rule;
+	rule.attributes.maxHeight = h.toString();
+	this.s.replaceStyle(rule, rule.attributes);
+}
+
+SWrapperInViewManipulator.prototype.setFlex = function(selector, f) {
+	var rule = this.s.getRuleAsObject(selector).rule;
+	rule.attributes.flex = f.toString();
 	this.s.replaceStyle(rule, rule.attributes);
 }
 

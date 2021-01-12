@@ -278,7 +278,7 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 			return;
 		}
 		else if (typeof stream === 'undefined') {
-			console.trace(queriedOrQueryingObj, this.from, this.to);
+			console.warn('no stream object passed for subscription', queriedOrQueryingObj, this.from, this.to);
 			return;
 		}
 		if (this.cbOnly) {
@@ -680,6 +680,7 @@ console.log(hostsDefinitionsCacheRegister);
 console.log(listsDefinitionsCacheRegister);
 console.log(permanentProvidersRegister);
 
+//console.log(viewsRegister);
 
 
 

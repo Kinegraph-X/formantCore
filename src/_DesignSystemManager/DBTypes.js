@@ -297,6 +297,11 @@ var ColorDef = new Schema({
 	hex : String
 }, { collection: 'colorDef' });
 
+var BorderDef = new Schema({
+	objectType : String,
+	style : String
+}, { collection: 'borderDef' });
+
 
 var FontSet = new Schema({
 	objectType : String,
@@ -317,6 +322,16 @@ var ColorSet = new Schema({
 		}
 	]
 }, { collection: 'colorSet' });
+
+var BorderSet = new Schema({
+	objectType : String,
+	members : [
+		{
+			type: Schema.ObjectId,
+			ref: 'borderDef'
+		}
+	]
+}, { collection: 'borderSet' });
 	
 	
 	
@@ -328,8 +343,10 @@ module.exports = {
 	ComponentStyle: mongoose.model('componentStyle', ComponentStyle),
 	Theme: mongoose.model('theme', Theme),
 	DesignContext : mongoose.model('design_context', DesignContext),
-	FontDef : mongoose.model('fontDef', FontDef),
 	ColorDef : mongoose.model('colorDef', ColorDef),
+	FontDef : mongoose.model('fontDef', FontDef),
+	BorderDef : mongoose.model('borderDef', BorderDef),
+	ColorSet : mongoose.model('colorSet', ColorSet),
 	FontSet : mongoose.model('fontSet', FontSet),
-	ColorSet : mongoose.model('colorSet', ColorSet)
+	BorderSet : mongoose.model('borderSet', BorderSet)
 }

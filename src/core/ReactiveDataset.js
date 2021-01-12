@@ -11,8 +11,10 @@ var App = require('src/core/AppIgnition');
 
 
 var RecitalDataset = function(rootComponent, trackedComponent, template, factoryPropsArray, arrayFunctions) {
-	if (!rootComponent || !trackedComponent || !template || !factoryPropsArray)
+	if (!rootComponent || !trackedComponent || !template || !factoryPropsArray) {
+		console.warn('ReactiveDataset initialization failed: Missing parameters. Returning...')
 		return;
+	}
 	this.init(rootComponent, trackedComponent, template, factoryPropsArray);
 	if (typeof arrayFunctions !== 'undefined') {
 		if (Array.isArray(arrayFunctions))
@@ -276,12 +278,32 @@ Object.defineProperty(RecitalDataset.prototype, 'childToFront', {
 });
 
 Object.defineProperty(RecitalDataset.prototype, 'parentToFront', {
+	value : function(bool) {
+		this.trackedComponent.view.setPresence(bool);
+	}
+});
+
+Object.defineProperty(RecitalDataset.prototype, 'targetContainerDeploy', {
 	value : function(idx) {
 		this.forEach(function(item, key) {
-			if (key === idx)
-				this.trackedComponent.view.setPresence(true);
-			else
-				this.trackedComponent.view.setPresence(false);
+//			console.log(key === idx);
+			if (key === idx) {
+				this.trackedComponent._children[key].view.styleHook.setFlex(':host', '1 1 0');
+//				this.trackedComponent._children[key].streams.unfolded.value = 'unfolded';
+//				this.trackedComponent._children[key].view.styleHook.setMaxHeight('ul', 'max-content');
+			}
+			else {
+				this.trackedComponent._children[key].view.styleHook.setFlex(':host', 'none');
+//				this.trackedComponent._children[key].streams.unfolded.value = null;
+//				this.trackedComponent._children[key].view.styleHook.setMaxHeight('ul', '0px');
+			}
+				
+			if (this.trackedComponent._children[key].view.getWrappingNode().firstChild !== this.trackedComponent._children[key].view.sWrapper.styleElem) {
+//				if (key === 0)
+					this.trackedComponent._children[key].view.getWrappingNode().firstChild.replaceWith(this.trackedComponent._children[key].view.sWrapper.styleElem);
+//				else
+//					this.trackedComponent._children[key].view.getWrappingNode().firstChild.replaceWith(this.trackedComponent._children[key].view.sWrapper.styleElem.cloneNode(true));
+			}
 		}, this);
 	}
 });

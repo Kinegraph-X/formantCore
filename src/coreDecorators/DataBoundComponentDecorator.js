@@ -24,17 +24,7 @@ var DataBoundComponentDecorator = function(componentType, dataPresenterFunc) {
 		var proto_proto = Object.create(inheritingType.prototype);
 		Object.assign(proto_proto, inheritedType.prototype);
 		decoratedType.prototype = Object.create(proto_proto);
-		
-		decoratedType.prototype.onPushChildWithView = function() {
-			
-			if (this.dataset.rootComponent.objectType === 'AbstractComponent') {
-//				console.log(this._parent.objectType);
-				this.dataset.rootComponent = this;
-				this.dataset.trackedComponent = this;
-//				console.log(this.dataset.rootComponent);
-			}
-//			console.log(this.dataset.rootComponent);
-		}
+
 		
 		if (typeof dataPresenterFunc === 'function')
 			decoratedType.prototype.dataPresenterFunc = dataPresenterFunc;

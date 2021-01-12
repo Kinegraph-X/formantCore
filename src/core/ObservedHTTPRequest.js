@@ -24,8 +24,8 @@ var ObservedHTTPRequest = function(name, subscriber, providerURL, pathToData, da
 	this.streams[name] = new CoreTypes.Stream(name, null, null, dataProcessingFunction, true);
 	this.requestAsAStream = this.streams[name];
 	
-	if (Object.prototype.toString.call(subscriber) === '[object Object]') {
-		this.requestAsAStream.subscribe(subscriber.streams, 'updateChannel', dataProcessingFunction);
+	if (Object.prototype.toString.call(subscriber) === '[object Object]' &&  subscriber.streams && subscriber.streams.updateChannel) {
+		this.requestAsAStream.subscribe(subscriber.streams.updateChannel, 'value', dataProcessingFunction);
 	}
 }
 
@@ -34,7 +34,7 @@ Object.assign(proto_proto, Request.prototype);
 ObservedHTTPRequest.prototype = Object.create(proto_proto);
 ObservedHTTPRequest.prototype.objectType = 'ObservedHTTPRequest';
 
-ObservedHTTPRequest.prototype.subscribe = function(subscriber, providerURL, pathToData, dataProcessingFunction) {
+ObservedHTTPRequest.prototype.subscribe = function(subscriber, prop, providerURL, pathToData, dataProcessingFunction) {
 	if (!subscriber || (Object.prototype.toString.call(subscriber) !== '[object Object]' && typeof subscriber !== 'function')) {
 		console.warn(this.objectType, 'subscriber is neither a function nor an object. Returning.');
 		return;
@@ -43,8 +43,8 @@ ObservedHTTPRequest.prototype.subscribe = function(subscriber, providerURL, path
 	this.providerURL = (typeof providerURL === 'string' && (providerURL.slice(-1) === '/' ? providerURL : providerURL + '/')) || this.providerURL;
 	this.pathToData = typeof pathToData === 'string' ? pathToData : this.pathToData;
 	
-	prop = typeof subscriber === 'function' ? null : (prop || 'updateChannel');
-	subscriber = typeof subscriber.streams === 'object' ? subscriber.streams : subscriber;
+	prop = typeof subscriber === 'function' ? null : (prop || 'value');
+	subscriber = typeof subscriber.streams === 'object' ? subscriber.streams.updateChannel : subscriber;
 	dataProcessingFunction = typeof dataProcessingFunction === 'function' ? dataProcessingFunction : null;
 	
 	return this.requestAsAStream.subscribe(subscriber, prop, dataProcessingFunction);

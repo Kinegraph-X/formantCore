@@ -56,7 +56,7 @@ RichComponentInternalsPicker.prototype.getBoundingBox = function(component) {
 
 RichComponentInternalsPicker.prototype.storeBoundingBox = function(component, resolve, e) {
 	TypeManager.boundingBoxesCache.setItem(component._UID, e.data.boundingBox);
-	resolve();
+	resolve(e.data.boundingBox);
 }
 
 RichComponentInternalsPicker.prototype.getSWrapper = function(component) {
