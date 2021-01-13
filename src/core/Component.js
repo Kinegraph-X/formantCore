@@ -239,8 +239,20 @@ HierarchicalObject.prototype.overrideParent = function (Idx) {
 			sub.unsubscribe();
 		});
 	}
+	this._parent.clearEventListeners();
+	// TODO: selectively remove the right 'onUpdate' listener
+//	this.clearEventListeners();
+	
 	this._parent = this._parent._parent;
-	this._parent._parent._children[Idx] = this;
+	this._parent._children[Idx] = this;
+	
+	this.addEventListener('update', function(e) {
+		if (e.bubble)
+			this.trigger('update', e.data, true);
+	}.bind(this._parent));
+	if (this._parent.streams.selected && this.streams.selected)
+		this._parent.streams.selected.subscribe(this.streams.selected, 'value');
+	
 	if (this._parent.view) {
 		this.view.parentView = this._parent.view;
 		this._parent.view.getRoot().appendChild(this.view.getMasterNode());

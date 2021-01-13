@@ -1,30 +1,28 @@
 /**
- * @def LazyHostComponentSlots
+ * @def AppBoundaryComponentSlots
  * @isGroup false
  * 
- * @CSSify styleName : LazySlottedComposedComponentTabpanel/false
+ * @CSSify styleName : AppBoundaryComponentHeader/false
+ * @CSSify styleName : AppBoundaryComponentSection/false
  * @CSSifyTheme themeName : basic-light
  */
-
-
 var TypeManager = require('src/core/TypeManager');
-
 var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
 
 
-var lazySlottedComponentSlotsDef = function(uniqueID, options, model) {
-	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos
+var AppBoundaryComponentSlotsDef = function(uniqueID, options, model) {
+	/**@CSSify DEBUG */ 		// DEBUG must be stuck (RED and bold) to trigger debug infos
 		
 	// Some CSS stuff (styles are directly injected in the main def below)
 	/**@CSSifySlots placeholder */
+	
+	
 	
 	var headerDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
 			type : 'VaritextButton',
 			nodeName : 'header',
-			// this is a big hack of shit (should be an attribute, but not... should be a "DOM" attribute... -> setAttribute(). TODO: fix after re-implementation of _arias&glyphs)
 			states : [
-				{role : "heading"},
 				{highlighted : undefined}
 			],
 			props : [
@@ -35,14 +33,14 @@ var lazySlottedComponentSlotsDef = function(uniqueID, options, model) {
 					from : 'headerTitle',
 					to : 'content'
 				}
-			]
+			]/**@CSSifyStyle componentStyle : AppBoundaryComponentHeader */
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 	
 	var sectionDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
 			type : 'ComponentWithView',
-			nodeName : 'tab-panel'/**@CSSifyStyle componentStyle : LazySlottedComposedComponentTabpanel */
+			nodeName : 'pseudoslot-panel'/**@CSSifyStyle componentStyle : AppBoundaryComponentSection */
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 	
@@ -54,5 +52,4 @@ var lazySlottedComponentSlotsDef = function(uniqueID, options, model) {
 	};
 }
 
-lazySlottedComponentSlotsDef.__factory_name = 'lazySlottedComponentDef';
-module.exports = lazySlottedComponentSlotsDef;
+module.exports = AppBoundaryComponentSlotsDef;

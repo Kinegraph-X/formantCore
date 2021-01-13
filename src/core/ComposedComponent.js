@@ -23,6 +23,7 @@ var coreComponents = {};
 
 var RootViewComponent = require('src/coreComponents/RootViewComponent/RootViewComponent');
 var AppOverlayComponent = require('src/coreComponents/AppOverlayComponent/AppOverlayComponent');
+var AppBoundaryComponent = require('src/coreComponents/AppBoundaryComponent/AppBoundaryComponent');
 var HToolbarComponent = require('src/coreComponents/HToolbarComponent/HToolbarComponent');
 var FlexColumnComponent = require('src/coreComponents/FlexColumnComponent/FlexColumnComponent');
 var FlexRowComponent = require('src/coreComponents/FlexRowComponent/FlexRowComponent');
@@ -278,7 +279,7 @@ coreComponents.LazySlottedComposedComponent = LazySlottedComposedComponent;
 LazySlottedComposedComponent.prototype.registerEvents = function() {
 	this._children.forEach(function(child, key) {
 		child.view.getMasterNode().streams = child.streams;
-		child.view.getMasterNode().setAttribute('slot-id', key);
+		child.view.getMasterNode().setAttribute('slot-id', 'slot' + key.toString());
 	}, this);
 }
 
@@ -436,6 +437,7 @@ var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilter
 	this.objectType = 'AbstractTree';
 	
 	this.addEventListener('update', function(e) {
+		console.log('abstractTree receives update and sets "selected"', e.data);
 		this.streams.selected.value = e.data.self_UID;
 	}.bind(this));
 	this.createEvent('exportdata');
@@ -615,7 +617,7 @@ AbstractTree.prototype.affectClickEvents_Base = function(memberDesc, component) 
 		// Say we have a header node, containing 2 pictos (arrows), and an appended span, key: value
 		component._children[0].addEventListener('clicked_ok', function(e) {
 			// When artificially clicked from outside of the component, there is no e.data.target
-			if ((!e.data || !e.data.target) || e.data.target === this.view.getRoot().children[2])
+			if ((!e.data || !e.data.target) || e.data.target === this.view.getWrappingNode().children[2])
 				self.trigger('exportdata', memberDesc.projectedData); // the component shall trigger update and receive the "selected" attribute: not needed here
 			else
 				component.streams.expanded.value = !component.streams.expanded.value ? 'expanded' : null;
@@ -630,7 +632,7 @@ AbstractTree.prototype.affectClickEvents_Base = function(memberDesc, component) 
 			Object.getPrototypeOf(this).registerClickEvents.call(this);
 			
 			// Say we have 2 divs with key : value
-			this.view.subViewsHolder.memberViews[1].getRoot().addEventListener('click', function(e) {
+			this.view.subViewsHolder.memberViews[1].getWrappingNode().addEventListener('click', function(e) {
 				this.trigger('clicked_ok', e);
 			}.bind(component));
 			component.addEventListener('clicked_ok', function(e) {
@@ -818,6 +820,7 @@ AbstractAccordion.prototype.affectSlots = function() {
 Components.ComposedComponent = ComposedComponent;	// ComposedComponent may be called as a type
 Components.RootViewComponent = RootViewComponent;
 Components.AppOverlayComponent = AppOverlayComponent;
+Components.AppBoundaryComponent = AppBoundaryComponent;
 Components.HToolbarComponent = HToolbarComponent;
 Components.FlexColumnComponent = FlexColumnComponent;
 Components.FlexRowComponent = FlexRowComponent;

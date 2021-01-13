@@ -3,7 +3,7 @@
  * @isGroup true
  * 
  * @CSSify styleName : LazySlottedComposedComponentHost/true
- * @CSSify styleName : LazySlottedComposedComponentPseudoslot/true
+ * @CSSify styleName : LazySlottedComposedComponentPseudoslot/false
  * @CSSifyTheme themeName : basic-light
  * 
  */
