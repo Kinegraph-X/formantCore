@@ -54,8 +54,9 @@ ScaleSolver.prototype.shouldReturn = function() {
 /**
  * 
  */
-var TuppleStream = function(name, value) {
-	CoreTypes.Stream.call(this, name, value);
+var TuppleStream = function(name, value, computeScale, lazy) {
+	CoreTypes.Stream.call(this, name, value, null, computeScale, lazy);
+	this.defaultScale = chroma.scale(['#000001', '#FFF']);
 }
 TuppleStream.prototype = Object.create(CoreTypes.Stream.prototype);
 TuppleStream.prototype.objectType = 'TuppleStream';
@@ -64,8 +65,41 @@ TuppleStream.prototype.subscribe = function(handlerOrHost, prop, transform, inve
 	this.update();
 	return subscription;
 }
+TuppleStream.prototype.hasValue = function() {
+	if (!Array.isArray(this._value) && Object.prototype.toString.call(this._value) !== '[object Object]')
+		return false;
+	return true;
+}
 TuppleStream.prototype.computeScale = function(values) {
 	return chroma.scale();
+}
+TuppleStream.prototype.getValues = function(count) {
+	if (!this.hasValue)
+		return [];
+	count = count || 100;
+	return this.get().colors(count).map(function(val) {
+		return chroma(val).luminance();
+	});
+}
+TuppleStream.prototype.getValuesReverse = function(count) {
+	if (!this.hasValue)
+		return [];
+	count = count || 100;
+	return this.get().colors(count).map(function(val) {
+		return chroma(val).luminance();
+	}).reverse();
+}
+TuppleStream.prototype.getColors = function(count) {
+	if (!Array.isArray(this._value) && Object.prototype.toString.call(this._value) !== '[object Object]')
+		return [];
+		
+	return this.get().colors(count);
+}
+TuppleStream.prototype.getColorsReverse = function(count) {
+	if (!this.hasValue)
+		return [];
+	count = count || 100;
+	return this.get().colors(count).reverse();
 }
 
 
@@ -79,9 +113,9 @@ TuppleStream.prototype.computeScale = function(values) {
 /**
  * 
  */
-var SemiScaleUpStream = function(name, value) {
+var SemiScaleUpStream = function(name, value, lazy) {
 	
-	TuppleStream.call(this, name, value);
+	TuppleStream.call(this, name, value, this.computeScale, lazy);
 	this.transform = this.computeScale;
 }
 SemiScaleUpStream.prototype = Object.create(TuppleStream.prototype);
@@ -103,9 +137,9 @@ SemiScaleUpStream.prototype.computeScale = function(values) {
 /**
  * 
  */
-var SemiScaleDownStream = function(name, value) {
+var SemiScaleDownStream = function(name, value, lazy) {
 	
-	TuppleStream.call(this, name, value);
+	TuppleStream.call(this, name, value, this.computeScale, lazy);
 	this.transform = this.computeScale;
 }
 SemiScaleDownStream.prototype = Object.create(TuppleStream.prototype);
@@ -122,9 +156,9 @@ SemiScaleDownStream.prototype.computeScale = function(values) {
 /**
  * 
  */
-var LinearScaleStream = function(name, value) {
+var LinearScaleStream = function(name, value, lazy) {
 	
-	TuppleStream.call(this, name, value);
+	TuppleStream.call(this, name, value, this.computeScale, lazy);
 	this.transform = this.computeScale;
 }
 LinearScaleStream.prototype = Object.create(TuppleStream.prototype);
@@ -137,9 +171,9 @@ LinearScaleStream.prototype.computeScale = function(values) {
 /**
  * 
  */
-var PowerScaleStream = function(name, value) {
+var PowerScaleStream = function(name, value, lazy) {
 	
-	TuppleStream.call(this, name, value);
+	TuppleStream.call(this, name, value, this.computeScale, lazy);
 	this.transform = this.computeScale;
 }
 PowerScaleStream.prototype = Object.create(TuppleStream.prototype);
@@ -152,24 +186,43 @@ PowerScaleStream.prototype.computeScale = function(values) {
 /**
  * 
  */
-var LogScaleStream = function(name, value) {
+var LogScaleStream = function(name, value, lazy) {
 	
-	TuppleStream.call(this, name, value);
+	TuppleStream.call(this, name, value, this.computeScale, lazy);
 	this.transform = this.computeScale;
 }
 LogScaleStream.prototype = Object.create(TuppleStream.prototype);
 LogScaleStream.prototype.objectType = 'LogScaleStream';
 
 LogScaleStream.prototype.computeScale = function(values) {
-	return chroma.scale([values[0], chroma.scale(values)(0.77), values[1]]).mode('lch').correctLightness();
+	return chroma.scale([values[0], chroma.scale(values)(0.3), chroma.scale(values)(0.6), values[1]]).mode('lch').domain([0, .12, .34, 1]);
 }
 
 /**
  * 
  */
-var BezierSmoothedScaleStream = function(name, value) {
+var RealLogScaleStream = function(name, value, lazy) {
 	
-	TuppleStream.call(this, name, value);
+	TuppleStream.call(this, name, value, this.computeScale, lazy);
+	this.transform = this.computeScale;
+}
+RealLogScaleStream.prototype = Object.create(TuppleStream.prototype);
+RealLogScaleStream.prototype.objectType = 'RealLogScaleStream';
+
+RealLogScaleStream.prototype.computeScale = function(values) {
+	var _scale = chroma.scale(this.defaultScale).domain([0.001, 1]).colors(100).map(function(val) {
+		return val > 0 ? chroma(val).luminance() : chroma(val).luminance() + 0.001;
+	});
+	
+	return chroma.scale(values).domain(chroma.limits(_scale, 'l',  10));
+}
+
+/**
+ * 
+ */
+var BezierSmoothedScaleStream = function(name, value, lazy) {
+	
+	TuppleStream.call(this, name, value, this.computeScale, lazy);
 	this.transform = this.computeScale;
 }
 BezierSmoothedScaleStream.prototype = Object.create(TuppleStream.prototype);
@@ -182,9 +235,9 @@ BezierSmoothedScaleStream.prototype.computeScale = function(values) {
 /**
  * 
  */
-var ConstantLuminanceScaleStream = function(name, value) {
+var ConstantLuminanceScaleStream = function(name, value, lazy) {
 	
-	TuppleStream.call(this, name, value);
+	TuppleStream.call(this, name, value, this.computeScale, lazy);
 	this.transform = this.computeScale;
 }
 ConstantLuminanceScaleStream.prototype = Object.create(TuppleStream.prototype);
@@ -198,9 +251,9 @@ ConstantLuminanceScaleStream.prototype.computeScale = function(values) {
 /**
  * 
  */
-var ThreePointsScaleStream = function(name, value) {
+var ThreePointsScaleStream = function(name, value, lazy) {
 	
-	TuppleStream.call(this, name, value);
+	TuppleStream.call(this, name, value, this.computeScale, lazy);
 	this.transform = this.computeScale;
 }
 ThreePointsScaleStream.prototype = Object.create(TuppleStream.prototype);
@@ -241,6 +294,7 @@ module.exports = {
 	LinearScaleStream : LinearScaleStream,
 	PowerScaleStream : PowerScaleStream,
 	LogScaleStream : LogScaleStream,
+	RealLogScaleStream : RealLogScaleStream,
 	BezierSmoothedScaleStream : BezierSmoothedScaleStream,
 	ConstantLuminanceScaleStream : ConstantLuminanceScaleStream,
 	ThreePointsScaleStream : ThreePointsScaleStream

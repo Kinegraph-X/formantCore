@@ -542,16 +542,24 @@ var mockGroupDef = function() {
 exportedObjects.mockGroupDef = mockGroupDef;
 //console.log(mockGroupDef());
 
-var setAcceptsProp = function(definition, accepts, title) {
+var setAcceptsProp = function(definition, accepts, title, onMember) {
 	var acceptsObj = {accepts : accepts};
 	var titleObj = {title : title};
 	if (definition.getGroupHostDef()) {
-		if (title)
-			definition.getGroupHostDef().attributes.push(
-				new PropFactory(
-					titleObj
+		if (title) {
+			if (typeof onMember === 'number')
+				definition.members[onMember].getHostDef().attributes.push(
+					new PropFactory(
+						titleObj
+					)
 				)
-			)
+			else
+				definition.getGroupHostDef().props.push(
+					new PropFactory(
+						titleObj
+					)
+				)
+		}
 		definition.getGroupHostDef().props.push(
 			new PropFactory(
 				acceptsObj
@@ -559,12 +567,21 @@ var setAcceptsProp = function(definition, accepts, title) {
 		)
 	}
 	else if (definition.getHostDef()) {
-		if (title)
-			definition.getHostDef().attributes.push(
+		if (title) {
+			if (typeof onMember === 'number')
+				definition.members[onMember].getHostDef().attributes.push(
+					new PropFactory(
+						titleObj
+					)
+				)
+			else
+				definition.getHostDef().props.push(
 				new PropFactory(
 					titleObj
 				)
 			)
+		}
+		
 		definition.getHostDef().props.push(
 			new PropFactory(
 				acceptsObj
@@ -762,6 +779,7 @@ Object.assign(exportedObjects, {
 	// "numericaly indexed" keys (in an array) catch the HierarchicalComponentDefModel
 	subSectionsModel : HierarchicalComponentDefModel,				// Array [HierarchicalComponentDefModel]
 	membersModel : HierarchicalComponentDefModel,					// Array [HierarchicalComponentDefModel]
+	list : ComponentListDefModel,
 	reactOnParentModel : ReactivityQueryModel,						// Object ReactivityQueryList
 	reactOnSelfModel : ReactivityQueryModel,						// Object ReactivityQueryList
 	subscribeOnParentModel : EventSubscriptionModel,				// Object EventSubscriptionsList

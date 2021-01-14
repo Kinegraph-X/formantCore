@@ -671,6 +671,52 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView, p
 //	console.log(parentView);
 	this.view = new CoreTypes.ComponentView(definition, parentView, parent, isChildOfRoot);
 }
+
+/**
+ * @abstract
+ */
+ComponentWithView.prototype.setContentFromValueOnView = function(value) {
+//	console.log(value)
+	if (typeof value !== 'string' && isNaN(parseInt(value)))
+		return;
+	this.view.value = value.toString();		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
+};
+
+/**
+ * @abstract
+ */
+ComponentWithView.prototype.setContentFromValueOnMemberView = function(value, memberViewIdx) {
+	this.view.subViewsHolder.memberAt(memberViewIdx).setContentNoFail(value.toString());		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
+};
+
+/**
+ * @abstract
+ */
+ComponentWithView.prototype.appendContentFromValueOnView = function(value) {
+	if (typeof value !== 'string' && isNaN(parseInt(value)))
+		return;
+	this.view.appendText(value.toString());		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
+};
+
+ComponentWithView.prototype.emptyTargetSubView = function() {
+	return this.view.emptyTargetSubView();
+}
+
+ComponentWithView.prototype.resetTargetSubViewContent = function() {
+	this.targetSubViewContentCache.length = 0;
+	this.emptyTargetSubView();
+	return true;
+}
+
+
+
+
+
+
+
+
+
+
 /**
  * @param {Component} child
  */
@@ -1017,33 +1063,12 @@ ComponentWithReactiveText.prototype.setContentFromCacheOnTargetSubview = functio
 	return this.view.setContentFromArrayOnTargetSubview(this.targetSubViewContentCache);
 }
 
-/**
- * @abstract
- */
-ComponentWithReactiveText.prototype.setContentFromValueOnView = function(value) {
-	if (typeof value !== 'string' && isNaN(parseInt(value)))
-		return;
-	this.view.value = value.toString();		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
-};
 
-/**
- * @abstract
- */
-ComponentWithReactiveText.prototype.appendContentFromValueOnView = function(value) {
-	if (typeof value !== 'string' && isNaN(parseInt(value)))
-		return;
-	this.view.appendText(value.toString());		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
-};
 
-ComponentWithReactiveText.prototype.emptyTargetSubView = function() {
-	return this.view.emptyTargetSubView();
-}
 
-ComponentWithReactiveText.prototype.resetTargetSubViewContent = function() {
-	this.targetSubViewContentCache.length = 0;
-	this.emptyTargetSubView();
-	return true;
-}
+
+
+
 
 
 

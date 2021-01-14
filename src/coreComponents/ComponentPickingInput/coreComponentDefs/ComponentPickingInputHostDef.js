@@ -20,9 +20,11 @@ var ComponentPickingInputDef = function(uniqueID, options, model) {
 	
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-//			type : 'ComponentWithView',
+//			type : 'ComponentPickingInput',
 			nodeName : 'picking-input',
 			props : [
+				{accepts : undefined},
+				{title : undefined},
 				{inChannel : undefined},
 				{outChannel : undefined}
 			],
@@ -39,10 +41,13 @@ var ComponentPickingInputDef = function(uniqueID, options, model) {
 		}),
 		members : [
 			TypeManager.createComponentDef({
-				type : 'VisibleStateComponent',
+				type : 'SimpleText',
 				nodeName : 'label',
-				props : [
-					
+				reactOnParent : [
+					{
+						from : 'title',
+						to : 'content'
+					}
 				]
 			}),
 			TypeManager.createComponentDef({
@@ -53,29 +58,58 @@ var ComponentPickingInputDef = function(uniqueID, options, model) {
 				]/**@CSSifyStyle componentStyle : ComponentPickingInputButton */
 			}),
 			TypeManager.createComponentDef({
-				type : 'TypedListBuilderComponent',
-				nodeName : 'section',
-				props : [
-					{accepts : undefined}
-				],
+				type : 'FontSwatchComponent',
+				nodeName : 'swatch-section',
+//				props : [
+//					{accepts : undefined}
+//				],
 				reactOnParent : [
-					{
-						from : 'accepts',
-						to : 'accepts'
-					},
+//					{
+//						from : 'accepts',
+//						to : 'accepts'
+//					},
 					{
 						from :  'inChannel',
-						cbOnly : true,
-						subscribe : function(value) {
-							var type = this.streams.accepts.value;
-							this.defineHostedComponentDef(type, 1);
-							this.typedHosts[0].push(
-								this.typedHosts[0].newItem(value)
-							) 
-						}
+						to : 'updateChannel'
 					}
 				]
 			}),
+//			TypeManager.createComponentDef({
+//				host : TypeManager.createComponentDef({
+//					type : 'TypedListBuilderComponent',
+//					nodeName : 'section',
+//					props : [
+//						{accepts : undefined}
+//					],
+//					reactOnParent : [
+//						{
+//							from : 'accepts',
+//							to : 'accepts'
+//						},
+//						{
+//							from :  'inChannel',
+//							cbOnly : true,
+//							subscribe : function(value) {
+//								var self = this;
+//								this.streams.accepts.subscribe(function(val) {
+//									console.log(val, self.typedSlots[0].newItem(value), value, self);
+//									self.defineHostedComponentDef(val, 1);
+//									self.typedSlots[0].push(
+//										self.typedSlots[0].newItem(value)
+//									);
+//								})
+////								var type = this.streams.accepts.value;
+////								console.log(this.streams, type, value);
+////								
+////								this.defineHostedComponentDef(type, 1);
+//////								this.typedSlots[0].push(
+//////									this.typedSlots[0].newItem(value)
+//////								);
+//							}
+//						}
+//					]
+//				})
+//			}, null, 'rootOnly'),
 			TypeManager.createComponentDef({
 				type : 'VisibleStateComponent',
 				nodeName : 'pad-out',

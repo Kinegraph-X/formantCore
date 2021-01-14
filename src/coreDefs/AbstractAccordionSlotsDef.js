@@ -2,7 +2,7 @@
  * @def AbstractAccordionSlot
  * @isGroup true
  * 
- * @CSSify styleName : AbstractAccordionTemplate/true
+ * @CSSify styleName : AbstractAccordionTemplate/false
  * @CSSifyTheme themeName : basic-light
 */
 

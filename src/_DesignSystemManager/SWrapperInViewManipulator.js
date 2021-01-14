@@ -15,7 +15,7 @@ var SWrapperInViewManipulator = function(hostView) {
 		return null;
 	}
 	this.hostView = hostView;
-	this.viewAPI = hostView.viewAPI;
+	this.currentViewAPI = hostView.currentViewAPI;
 	this.s = hostView.sWrapper;
 	
 	this.rulesCache = new TypeManager.PropertyCache('rulesCache');
@@ -70,6 +70,21 @@ SWrapperInViewManipulator.prototype.setFontSize = function(fontSize) {
 	rule.attributes.fontSize = fontSize.toString() + 'px';
 	this.s.replaceStyle(rule, rule.attributes);
 }
+SWrapperInViewManipulator.prototype.setFontFamily = function(fontFamily) {
+	var rule = this.s.getRuleAsObject(':host').rule;
+	rule.attributes.fontFamily = fontFamily.toString();
+	this.s.replaceStyle(rule, rule.attributes);
+}
+SWrapperInViewManipulator.prototype.setTextInputFontSize = function(fontSize) {
+	var rule = this.s.getRuleAsObject('input[type=text]').rule;
+	rule.attributes.fontSize = fontSize.toString() + 'px';
+	this.s.replaceStyle(rule, rule.attributes);
+}
+SWrapperInViewManipulator.prototype.setTextInputFontFamily = function(fontFamily) {
+	var rule = this.s.getRuleAsObject('input[type=text]').rule;
+	rule.attributes.fontFamily = fontFamily.toString();
+	this.s.replaceStyle(rule, rule.attributes);
+}
 SWrapperInViewManipulator.prototype.getPresence = function() {
 	
 }
@@ -98,10 +113,10 @@ SWrapperInViewManipulator.prototype.restoreOriginalEmphasis = function() {
 	
 }
 SWrapperInViewManipulator.prototype.addEventListener = function(eventType, handler) {
-	this.viewAPI.addEventListener(eventType, handler);
+	this.currentViewAPI.addEventListener(eventType, handler);
 }
 SWrapperInViewManipulator.prototype.removeEventListener = function(eventType, handler) {
-	this.viewAPI.removeEventListener(eventType, handler);
+	this.currentViewAPI.removeEventListener(eventType, handler);
 }
 SWrapperInViewManipulator.prototype.getWidth = function(selector) {
 	var width;

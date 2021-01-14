@@ -95,7 +95,9 @@ Ignition.prototype.instanciateDOM = function() {
 		
 		// Connect DOM objects 
 		if (view.sWrapper) {
-			view.callCurrentViewAPI('getWrappingNode').append(view.sWrapper.styleElem.cloneNode(true));
+			view.sWrapper.styleElem = view.sWrapper.styleElem.cloneNode(true);
+//			console.log(view.styleHook.s.styleElem === view.sWrapper.styleElem);
+			view.callCurrentViewAPI('getWrappingNode').append(view.sWrapper.styleElem);
 		}
 //		if (view.parentView && view._parent) {
 //			console.log(Object.getPrototypeOf(view._parent).objectType);

@@ -289,8 +289,9 @@ var Stream = function(name, value, hostedInterface, transform, lazy) {
 	this.subscriptions = [];
 	
 	this._value;
-	this.value = (hostedInterface && typeof hostedInterface.getProp === 'function') ? hostedInterface.getProp(name) : value;
 	this.dirty;
+	if (typeof value !== 'undefined')
+		this.value = (hostedInterface && typeof hostedInterface.getProp === 'function') ? hostedInterface.getProp(name) : value;
 }
 Stream.prototype = {};
 Stream.prototype.objectType = 'Stream';

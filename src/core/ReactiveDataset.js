@@ -297,13 +297,14 @@ Object.defineProperty(RecitalDataset.prototype, 'targetContainerDeploy', {
 //				this.trackedComponent._children[key].streams.unfolded.value = null;
 //				this.trackedComponent._children[key].view.styleHook.setMaxHeight('ul', '0px');
 			}
-				
-			if (this.trackedComponent._children[key].view.getWrappingNode().firstChild !== this.trackedComponent._children[key].view.sWrapper.styleElem) {
+			
+//			console.log(this.trackedComponent._children[key].view.getWrappingNode().firstChild, this.trackedComponent._children[key].view.sWrapper.styleElem);
+//			if (this.trackedComponent._children[key].view.getWrappingNode().firstChild !== this.trackedComponent._children[key].view.sWrapper.styleElem) {
 //				if (key === 0)
-					this.trackedComponent._children[key].view.getWrappingNode().firstChild.replaceWith(this.trackedComponent._children[key].view.sWrapper.styleElem);
+//					this.trackedComponent._children[key].view.getWrappingNode().firstChild.replaceWith(this.trackedComponent._children[key].view.sWrapper.styleElem);
 //				else
 //					this.trackedComponent._children[key].view.getWrappingNode().firstChild.replaceWith(this.trackedComponent._children[key].view.sWrapper.styleElem.cloneNode(true));
-			}
+//			}
 		}, this);
 	}
 });
