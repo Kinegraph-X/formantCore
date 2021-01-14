@@ -28,6 +28,7 @@ var HToolbarComponent = require('src/coreComponents/HToolbarComponent/HToolbarCo
 var FlexColumnComponent = require('src/coreComponents/FlexColumnComponent/FlexColumnComponent');
 var FlexRowComponent = require('src/coreComponents/FlexRowComponent/FlexRowComponent');
 var FlexGridComponent = require('src/coreComponents/FlexGridComponent/FlexGridComponent');
+var ComponentPickingInput = require('src/coreComponents/ComponentPickingInput/ComponentPickingInput');
 //var ChildBoxComponent = require('src/coreComponents/ChildBoxComponent/ChildBoxComponent');
 
 var SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator')
@@ -437,7 +438,7 @@ var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilter
 	this.objectType = 'AbstractTree';
 	
 	this.addEventListener('update', function(e) {
-		console.log('abstractTree receives update and sets "selected"', e.data);
+//		console.log('abstractTree receives update and sets "selected"', e.data);
 		this.streams.selected.value = e.data.self_UID;
 	}.bind(this));
 	this.createEvent('exportdata');
@@ -825,6 +826,7 @@ Components.HToolbarComponent = HToolbarComponent;
 Components.FlexColumnComponent = FlexColumnComponent;
 Components.FlexRowComponent = FlexRowComponent;
 Components.FlexGridComponent = FlexGridComponent;
+Components.ComponentPickingInput = ComponentPickingInput;
 //Components.ChildBoxComponent = ChildBoxComponent;
 
 Components.SWrapperInViewManipulator = SWrapperInViewManipulator;

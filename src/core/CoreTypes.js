@@ -1372,6 +1372,18 @@ ComponentSubViewsHolder.prototype.addMemberViewFromDef = function(definition) {
 	return view;
 }
 
+ComponentSubViewsHolder.prototype.moveMemberViewFromTo = function(from, to, viewsRegisterIdx, offset) {
+	this.memberViews.splice(to, 0, this.memberViews.splice(from, 1)[0]);
+	if (offset && viewsRegisterIdx)
+		this.immediateAscendViewAFewStepsHelper(offset, viewsRegisterIdx);
+}
+
+ComponentSubViewsHolder.prototype.moveLastMemberViewTo = function(to, offset, viewsRegisterIdx) {
+	var from = this.memberViews.length - 1
+	if (offset && viewsRegisterIdx)
+		this.moveMemberViewFromTo(from, to, offset, viewsRegisterIdx);
+}
+
 ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definition) {
 	var lastView = TypeManager.viewsRegister.pop();
 	var view = new ComponentSubView(definition, this.parentView);
@@ -1383,8 +1395,8 @@ ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definiti
 
 ComponentSubViewsHolder.prototype.immediateAscendViewAFewStepsHelper = function(stepsCount, effectiveViewIdx) {
 	var ourLatelyAppendedView = TypeManager.viewsRegister.splice(effectiveViewIdx, 1)[0];
-	console.log(TypeManager.viewsRegister.length, stepsCount, TypeManager.viewsRegister[TypeManager.viewsRegister.length - 1 - stepsCount]);
-	TypeManager.viewsRegister.splice(TypeManager.viewsRegister.length - 1 - stepsCount, 0, ourLatelyAppendedView);
+//	console.log(TypeManager.viewsRegister.length, stepsCount, TypeManager.viewsRegister[TypeManager.viewsRegister.length - 1 - stepsCount]);
+	TypeManager.viewsRegister.splice(effectiveViewIdx - stepsCount, 0, ourLatelyAppendedView);
 }
 
 ComponentSubViewsHolder.prototype.resetMemberContent = function(idx, textContent) {

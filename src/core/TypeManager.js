@@ -542,6 +542,44 @@ var mockGroupDef = function() {
 exportedObjects.mockGroupDef = mockGroupDef;
 //console.log(mockGroupDef());
 
+var setAcceptsProp = function(definition, accepts, title) {
+	var acceptsObj = {accepts : accepts};
+	var titleObj = {title : title};
+	if (definition.getGroupHostDef()) {
+		if (title)
+			definition.getGroupHostDef().attributes.push(
+				new PropFactory(
+					titleObj
+				)
+			)
+		definition.getGroupHostDef().props.push(
+			new PropFactory(
+				acceptsObj
+			)
+		)
+	}
+	else if (definition.getHostDef()) {
+		if (title)
+			definition.getHostDef().attributes.push(
+				new PropFactory(
+					titleObj
+				)
+			)
+		definition.getHostDef().props.push(
+			new PropFactory(
+				acceptsObj
+			)
+		)
+	}
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -730,6 +768,7 @@ Object.assign(exportedObjects, {
 	subscribeOnChildModel : EventSubscriptionModel,					// Object EventSubscriptionsList
 	subscribeOnSelfModel : EventSubscriptionModel,					// Object EventSubscriptionsList
 	createSimpleComponentDef : HierarchicalComponentDefModel,		// Object HierarchicalComponentDef
+	setAcceptsProp : setAcceptsProp,
 	UIDGenerator : UIDGenerator
 });
 
