@@ -22,7 +22,7 @@ var abstractTreeDef = function(uniqueID, options, model) {
 	
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the ComposedComponent ctor in the TabPanel ctor
+//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
 			nodeName : 'folded-tree',
 			props : [
 				{selected : undefined}

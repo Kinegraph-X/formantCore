@@ -21,13 +21,26 @@ var AbstractAccordionDef = function(uniqueID, options, model) {
 	// Some CSS stuff (styles are directly injected in the main def below)
 	/**@CSSifySlots placeholder */
 	
+	var template = TypeManager.createComponentDef({
+			type : 'ComponentWithView',
+			nodeName : 'accordion-set',
+			props : [
+				{"accordion-set" : undefined}
+			]/**@CSSify Style componentStyle : AbstractAccordionPseudoSlot */
+	});
 	
 
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the ComposedComponent ctor in the TabPanel ctor
+//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
 			nodeName : 'reactive-accordion'/**@CSSifyStyle componentStyle : AbstractAccordionHost */
-		})
+		}),
+		lists : [
+			TypeManager.createComponentDef({
+					type : 'ComponentList',
+					template : template
+			})
+		]
 	}, null, 'rootOnly');
 	
 	return moduleDef;

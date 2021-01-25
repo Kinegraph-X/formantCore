@@ -1,9 +1,9 @@
 /**
- * @def LazySlottedComposedComponent
+ * @def LazySlottedCompoundComponent
  * @isGroup true
  * 
- * @CSSify styleName : LazySlottedComposedComponentHost/true
- * @CSSify styleName : LazySlottedComposedComponentPseudoslot/false
+ * @CSSify styleName : LazySlottedCompoundComponentHost/true
+ * @CSSify styleName : LazySlottedCompoundComponentPseudoslot/false
  * @CSSifyTheme themeName : basic-light
  * 
  */
@@ -40,7 +40,7 @@ var lazySlottedComponentDef = function(uniqueID, options, model) {
 							this.trigger('update', e.data, true);
 					}
 				}
-			]/**@CSSifyStyle componentStyle : LazySlottedComposedComponentPseudoslot */
+			]/**@CSSifyStyle componentStyle : LazySlottedCompoundComponentPseudoslot */
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 	
@@ -60,8 +60,8 @@ var lazySlottedComponentDef = function(uniqueID, options, model) {
 	 */
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the ComposedComponent ctor in the TabPanel ctor
-			nodeName : 'smart-tabs'/**@CSSifyStyle componentStyle : LazySlottedComposedComponentHost */
+//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
+			nodeName : 'smart-tabs'/**@CSSifyStyle componentStyle : LazySlottedCompoundComponentHost */
 		}),
 		lists : [
 			TypeManager.createComponentDef({

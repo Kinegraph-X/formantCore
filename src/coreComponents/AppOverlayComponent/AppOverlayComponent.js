@@ -14,7 +14,7 @@ var AppOverlayComponent = function(definition, parentView, parent) {
 }
 AppOverlayComponent.prototype = Object.create(Components.CompositorComponent.prototype);
 AppOverlayComponent.prototype.objectType = 'AppOverlayComponent';
-AppOverlayComponent.prototype.extendsCore = 'ComposedComponent';
+AppOverlayComponent.prototype.extendsCore = 'CompoundComponent';
 
 AppOverlayComponent.defaultDef = {
 	nodeName : 'app-overlay',

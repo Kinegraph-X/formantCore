@@ -46,7 +46,7 @@ var basicTableDef = function(uniqueID, options, model) {
 
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the ComposedComponent ctor in the TabPanel ctor
+//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
 			nodeName : 'extensible-table',
 			props : [
 				{updateChannel : undefined}

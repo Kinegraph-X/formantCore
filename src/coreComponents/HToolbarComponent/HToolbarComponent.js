@@ -14,7 +14,7 @@ var HToolbarComponent = function(definition, parentView, parent) {
 }
 HToolbarComponent.prototype = Object.create(Components.CompositorComponent.prototype);
 HToolbarComponent.prototype.objectType = 'HToolbarComponent';
-HToolbarComponent.prototype.extendsCore = 'ComposedComponent';
+HToolbarComponent.prototype.extendsCore = 'CompoundComponent';
 
 //HToolbarComponent.defaultDef = {
 //	nodeName : 'h-toolbar',

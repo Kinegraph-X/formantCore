@@ -14,7 +14,7 @@ var AppBoundaryComponent = function(definition, parentView, parent) {
 }
 AppBoundaryComponent.prototype = Object.create(Components.CompositorComponent.prototype);
 AppBoundaryComponent.prototype.objectType = 'AppBoundaryComponent';
-AppBoundaryComponent.prototype.extendsCore = 'ComposedComponent';
+AppBoundaryComponent.prototype.extendsCore = 'CompoundComponent';
 
 AppBoundaryComponent.defaultDef = {
 	nodeName : 'div',

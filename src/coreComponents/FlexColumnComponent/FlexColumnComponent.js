@@ -14,7 +14,7 @@ var FlexColumnComponent = function(definition, parentView, parent) {
 }
 FlexColumnComponent.prototype = Object.create(Components.CompositorComponent.prototype);
 FlexColumnComponent.prototype.objectType = 'FlexColumnComponent';
-FlexColumnComponent.prototype.extendsCore = 'ComposedComponent';
+FlexColumnComponent.prototype.extendsCore = 'CompoundComponent';
 
 FlexColumnComponent.defaultDef = {
 	nodeName : 'box-column',
@@ -31,15 +31,6 @@ FlexColumnComponent.prototype.createDefaultDef = function() {
 			'FlexColumnComponentDefaultDef',
 			'rootOnly'
 		);
-}
-
-
-FlexColumnComponent.prototype.getFirstChild = function() {
-	return this._children[0];
-}
-
-FlexColumnComponent.prototype.getChild = function(Idx) {
-	return this._children[Idx];
 }
 
 FlexColumnComponent.prototype.getRow = function(rowIdx) {

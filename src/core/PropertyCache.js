@@ -51,27 +51,27 @@ ObjectCache.prototype.reset = function() {
 var RequestCache = function(name) {
 	
 	ObjectCache.call(this, name);
-	this.currentlyBlockingPromises = [];
+	this.currentlyLiveRequests = [];
 }
 RequestCache.prototype = Object.create(ObjectCache.prototype);
 
-RequestCache.prototype.setItem = function(UID, value, blocking) {
+RequestCache.prototype.setItem = function(UID, requestObj, addToLiveSet) {
 	var req;
 	
-	if (blocking && (typeof this.getItem(UID) === 'undefined' || req.idxInChache === null)) {
-		req =  this.newItem(UID.toString(), value);
-		req.idxInCache = this.currentlyBlockingPromises.length;
-		this.currentlyBlockingPromises.push(
+	if (addToLiveSet && (typeof this.getItem(UID) === 'undefined' || req.idxInChache === null)) {
+		req =  this.newItem(UID.toString(), requestObj);
+		req.idxInCache = this.currentlyLiveRequests.length;
+		this.currentlyLiveRequests.push(
 			this.getPromiseFromRequest(req)
 		);
-		return Promise.all(this.currentlyBlockingPromises);
+		return Promise.all(this.currentlyLiveRequests);
 	}
-	else if (blocking && typeof this.getItem(UID) !== 'undefined') {
-		req =  this.newItem(UID.toString(), value);
-		this.currentlyBlockingPromises.splice(req.idxInChache, 1, this.getPromiseFromRequest(req));
-		return Promise.all(this.currentlyBlockingPromises);
+	else if (addToLiveSet && typeof this.getItem(UID) !== 'undefined') {
+		req =  this.newItem(UID.toString(), requestObj);
+		this.currentlyLiveRequests.splice(req.idxInChache, 1, this.getPromiseFromRequest(req));
+		return Promise.all(this.currentlyLiveRequests);
 	}
-	req =  this.newItem(UID.toString(), value);
+	req =  this.newItem(UID.toString(), requestObj);
 	return req;
 }
 
@@ -86,10 +86,18 @@ RequestCache.prototype.getPromiseFromRequest = function(req) {
 	});
 }
 
-RequestCache.prototype.getBlockingRequests = function() {
-	return Promise.all(this.currentlyBlockingPromises);	
+RequestCache.prototype.getLiveRequests = function(groupID) {
+	return Promise.all(
+		this.currentlyLiveRequests
+			.filter(function(req) {
+				return req.name === groupID;
+			})
+	);	
 }
 
+RequestCache.prototype.filterLiveRequests = function(groupID) {
+	return Promise.all(this.currentlyLiveRequests);	
+}
 
 
 

@@ -19,7 +19,6 @@ module.exports = [
 		defer`,
 				sWrapper : CreateStyle(
 						${null}StylesUseCache.use ? ${null}StylesUseCache.nameInCache : null,
-						null,
 						${null}Styles
-					).sWrapper`
+					)`
 	]

@@ -7,11 +7,14 @@ var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
 var Request = require('src/core/HTTPRequest');
 
-var ObservedHTTPRequest = function(name, subscriber, providerURL, pathToData, dataProcessingFunction) {
+var ObservedHTTPRequest = function(requestName, providerURL, pathToData, dataProcessingFunction, subscriber, prop) {
 	if (providerURL !== null && typeof providerURL !== 'string') {
-		console.warn(ObservedHTTPRequest.prototype.objectType, 'providerURL is neither a string nor explicitly null. Returning.');
+		console.error(ObservedHTTPRequest.prototype.objectType, 'providerURL is neither a string nor explicitly null.', providerURL, 'Returning...');
 		return false;
 	}
+	
+	this.name = requestName;
+	this.pending = false;
 	
 	this.idxInCache = null;
 	this.providerURL = providerURL.slice(-1) === '/' ? providerURL : providerURL + '/';
@@ -19,13 +22,15 @@ var ObservedHTTPRequest = function(name, subscriber, providerURL, pathToData, da
 	
 	Components.ComponentWithObservables.call(this, TypeManager.mockDef(), null, null);
 	this.objectType = 'ObservedHTTPRequest';
+
+	this.createEvent('response');
 	
-	dataProcessingFunction = typeof dataProcessingFunction === 'function' ? dataProcessingFunction : value => value;
-	this.streams[name] = new CoreTypes.Stream(name, null, null, dataProcessingFunction, true);
-	this.requestAsAStream = this.streams[name];
-	
-	if (Object.prototype.toString.call(subscriber) === '[object Object]' &&  subscriber.streams && subscriber.streams.updateChannel) {
-		this.requestAsAStream.subscribe(subscriber.streams.updateChannel, 'value', dataProcessingFunction);
+	this.dataProcessingFunction = typeof dataProcessingFunction === 'function' ? dataProcessingFunction : value => value;
+	this.requestAsAStream = this.streams[this.name] = new CoreTypes.Stream(this.name, null, null, this.dataProcessingFunction, true);
+//	console.log(this.requestAsAStream);
+
+	if (Object.prototype.toString.call(subscriber) === '[object Object]' || typeof subscriber === 'function') {
+		this.subscribe(subscriber, prop || null, this.dataProcessingFunction);
 	}
 }
 
@@ -34,23 +39,42 @@ Object.assign(proto_proto, Request.prototype);
 ObservedHTTPRequest.prototype = Object.create(proto_proto);
 ObservedHTTPRequest.prototype.objectType = 'ObservedHTTPRequest';
 
-ObservedHTTPRequest.prototype.subscribe = function(subscriber, prop, providerURL, pathToData, dataProcessingFunction) {
+ObservedHTTPRequest.prototype.subscribe = function(subscriber, prop, dataProcessingFunction) {
 	if (!subscriber || (Object.prototype.toString.call(subscriber) !== '[object Object]' && typeof subscriber !== 'function')) {
-		console.warn(this.objectType, 'subscriber is neither a function nor an object. Returning.');
+		console.warn(this.objectType, 'subscriber is neither a function nor an object.', subscriber, 'Returning...');
 		return;
 	}
-		
-	this.providerURL = (typeof providerURL === 'string' && (providerURL.slice(-1) === '/' ? providerURL : providerURL + '/')) || this.providerURL;
-	this.pathToData = typeof pathToData === 'string' ? pathToData : this.pathToData;
 	
 	prop = typeof subscriber === 'function' ? null : (prop || 'value');
-	subscriber = typeof subscriber.streams === 'object' ? subscriber.streams.updateChannel : subscriber;
-	dataProcessingFunction = typeof dataProcessingFunction === 'function' ? dataProcessingFunction : null;
+	if (typeof subscriber.streams === 'object') {
+		if (typeof subscriber.streams.serviceChannel !== 'object') {
+//			subscriber.render();
+			if (typeof subscriber.streams.serviceChannel !== 'object') {
+				console.warn(subscriber.objectType, 'Missing "serviceChannel" stream on automatic subscription to ObservableHTTPRequest');
+				if (!Object.keys(subscriber.streams))
+					console.log('No Stream found...');
+				for (let stream in subscriber.streams) {
+					console.log('The following stream has been found:', stream.name);
+				}
+			}
+			else
+				subscriber = subscriber.streams.serviceChannel;
+		}
+		else
+			subscriber = subscriber.streams.serviceChannel;
+	}
+	else {
+		subscriber = subscriber;
+	}
+	if (typeof dataProcessingFunction === 'function')
+		this.dataProcessingFunction = dataProcessingFunction;
 	
 	return this.requestAsAStream.subscribe(subscriber, prop, dataProcessingFunction);
 }
 
 ObservedHTTPRequest.prototype.sendRequest = async function(type, path, payload) {
+	this.pending = true;
+	
 	var self = this;
 	type = type || 'GET';
 	path = path || this.pathToData;
@@ -59,7 +83,8 @@ ObservedHTTPRequest.prototype.sendRequest = async function(type, path, payload) 
 	
 	var response = await this.xhr(type, this.providerURL + path, payload, range, 'application/json', 'json')
 		.catch(function(e) {
-			console.warn(this.objectType + ' : ' + this.requestAsAStream.name, 'HTTP async error caught');
+//			console.log(self);
+			console.warn(self.objectType + ' : ' + self.requestAsAStream.name, 'HTTP async error caught');
 		})
 //		.then(function(response) {
 ////			console.trace(response);

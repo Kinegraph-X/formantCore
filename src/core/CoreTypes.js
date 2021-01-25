@@ -13,8 +13,8 @@ var UIDGenerator = require('src/core/UIDGenerator');
 var PropertyCache = require('src/core/PropertyCache');
 var CachedTypes = require('src/core/CachedTypes');
 var idGenerator = TypeManager.UIDGenerator;
-var nodesRegister = TypeManager.nodesRegister;
-var viewsRegister = TypeManager.viewsRegister;
+var nodesRegistry = TypeManager.nodesRegistry;
+var viewsRegistry = TypeManager.viewsRegistry;
 
 var JSkeyboardMap = require('src/events/JSkeyboardMap');
 
@@ -23,8 +23,8 @@ var JSkeyboardMap = require('src/events/JSkeyboardMap');
 
 
 
-//console.log(nodesRegister);
-//console.log(viewsRegister);
+//console.log(nodesRegistry);
+//console.log(viewsRegistry);
 
 
 
@@ -601,6 +601,199 @@ Object.defineProperty(Subscription.prototype, 'execute', {
 
 
 
+
+
+
+/**
+ * A constructor for STREAMS more specifically used by providers objects
+ */
+
+var LazyResettableColdStream = function(name, value, hostedInterface, transform) {
+
+	this.forward = true;
+	this.name = name;
+	this.transform = transform || undefined;
+	this.inverseTransform;
+	this.subscriptions = [];
+	
+	this._value;
+	this._previousValues = [];
+	this.dirty;
+	this.lastIndexProvided = -1;
+	if (typeof value !== 'undefined')
+		this.value = value;
+}
+LazyResettableColdStream.prototype = Object.create(Stream.prototype);
+LazyResettableColdStream.prototype.objectType = 'LazyResettableColdStream';
+LazyResettableColdStream.prototype.constructor = LazyResettableColdStream;
+Object.defineProperty(LazyResettableColdStream.prototype, 'value', {
+	get : function() {
+		
+		if (this.dirty) {
+			this.lazyUpdate();
+		}
+		
+		return this.get();
+	},
+	
+	set : function(value) {
+		this.setAndUpdateConditional(value);
+		this.forward = true;
+	}
+});
+
+/**
+ * @method setAndUpdateConditional
+ * 		Avoid infinite recursion when setting a prop on a custom element : 
+ * 			- when set from outside : update and set the prop on the custom element
+ *			- after updating a prop on a custom element : update only
+ * 			- don't update when set from downward (reflected stream shall only call "set")
+ */
+LazyResettableColdStream.prototype.setAndUpdateConditional = function(value) {
+	this._value = value;
+	
+	if (this.forward) {
+		if (!this.transform) {
+			this._previousValues.push(value);
+			this.update();
+		}
+		else if (typeof this.transform === 'function') {
+			try {
+				// try/catch as the transform function is likely to always be outside of our scope
+				this._previousValues.push(this._value = this.transform(this._value));
+			}
+			catch(e) {
+				console.log('Exception thrown while the transform function was executing on self data: ', e, this._value);
+				return;
+			}
+			this.update();
+		}
+	}
+	else {
+		this.dirty = true;
+	}
+}
+
+LazyResettableColdStream.prototype.addSubscription = function(handlerOrHost, prop, inverseTransform) {
+	this.subscriptions.push(new ColdSubscription(handlerOrHost, prop, this, inverseTransform));
+	return this.subscriptions[this.subscriptions.length - 1];
+}
+
+LazyResettableColdStream.prototype.update = function() {
+	this.subscriptions.forEach(function(subscription) {
+		subscription.execute(this._previousValues);
+	}, this);
+	this.lastIndexProvided = this._previousValues.length - 1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * An Abstract Class to be used by the Stream Ctor
+ * 
+ * returns chainable callback assignment functions on subscription
+ * e.g. : childModules make use of this mecanism when automatically subscribing to streams on their parent :
+ * 		this.streams[parentState].subscribe(candidate.hostElem, childState).filter(desc.filter).map(desc.map);
+ */
+var ColdSubscription = function(subscriberObjOrHandler, subscriberProp, parent, inverseTransform) {
+	
+	this.subscriber = {
+		currentIndex : parent.lastIndexProvided,
+		prop : subscriberProp || null,
+		obj : typeof subscriberObjOrHandler === 'object' ? subscriberObjOrHandler : null,
+		cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function() {return this._stream._value},
+		inverseTransform : inverseTransform || function(value) {return value;},
+		_subscription : this,
+		_stream : parent
+	}
+//	typeof subscriberProp === 'string' ?
+	this._stream = parent;
+	this._firstPass = true;
+}
+ColdSubscription.prototype = Object.create(Subscription.prototype);
+ColdSubscription.prototype.objectType = 'ColdSubscription';
+
+Object.defineProperty(ColdSubscription.prototype, 'execute', {
+	value : function(valuesFromStack) {
+		valuesFromStack.forEach(function(val, key) {
+			if (key > this.subscriber.currentIndex) {
+				this.executeSingle(val);
+				this.subscriber.currentIndex++;
+			
+			}
+		}, this);
+	}
+})
+
+Object.defineProperty(ColdSubscription.prototype, 'executeSingle', {
+	value : function(value) {
+//		console.log('%c %s %c %s', 'color:coral', 'Subscription "execute"', 'color:firebrick', 'Stream : ' + this._stream.name, 'value', value);
+		var flag = true, val, desc;
+		if (value !== undefined) {
+			if (this.hasOwnProperty('filter'))
+				flag = this.filter(value);
+			if (flag && this.hasOwnProperty('map'))
+				val = this.map(value);
+			else if (flag)
+				val = value;
+			else
+				return;
+//			console.log('val', this._stream.name, val);
+			
+//			console.log('subscriber', this.subscriber);
+			if (this.subscriber.obj !== null && this.subscriber.prop !== null)
+				this.subscriber.obj[this.subscriber.prop] = val;
+			// second case shall only be reached if no prop is given : on a "reflected" subscription by a child component
+			else if (this.subscriber.obj && (desc = Object.getOwnPropertyDescriptor(this.subscriber.obj, 'value')) && typeof desc.set === 'function')
+				this.subscriber.obj.value = val;
+			else if (this.subscriber.obj === null)
+				this.subscriber.cb(this.subscriber.inverseTransform(val)); // inverseTransform may be a transparent function (is not when reflecting : we must not reflect the child state "as is" : the parent value may be "mapped requested" by the child)   
+		}
+		this._firstPass = false;
+	},
+	enumerable : true
+});
+
+Object.defineProperty(ColdSubscription.prototype, 'setPointerToStart', {
+	value : function() {
+		this.subscriber.currentIndex = 0;
+	}
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /**
  * A constructor for NUMBERED STREAMS : numbered streams should be part of a StreamPool
  */
@@ -1089,6 +1282,9 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 //	console.log(definition);
 	this._defUID = def.UID;
 	this.isCustomElem = def.isCustomElem;
+	this._sWrapperUID = def.sWrapper ? def.sWrapper.getName() : null;
+	this.styleHook;
+	this.sOverride = def.sOverride;
 	
 	this.objectType = 'ComponentView';
 	if (!def.nodeName) {
@@ -1099,18 +1295,20 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	this.currentViewAPI = new DOMViewAPI(def);
 	this.section = def.section;
 	
-	if (!nodesRegister.getItem(this._defUID))
-		nodesRegister.setItem(this._defUID, (new CachedTypes.CachedNode(def.nodeName, def.isCustomElem)));
+	if (!nodesRegistry.getItem(this._defUID))
+		nodesRegistry.setItem(this._defUID, (new CachedTypes.CachedNode(def.nodeName, def.isCustomElem)));
 	
 	if (!TypeManager.caches.attributes.getItem(this._defUID))
 		TypeManager.caches.attributes.setItem(this._defUID, def.attributes);
 		
-	viewsRegister.push(this);
+	viewsRegistry.push(this);
 
 	if (def !== definition) {
 		this._parent = parent;
 		this.targetSubView = null;
-		this.sWrapper = def.sOverrideWrapper ? def.sOverrideWrapper.handleStylesheetOverride(def.sWrapper) : def.sWrapper;
+//		if (def.sOverride) {
+//			
+//		}
 		this.styleHook = new SWrapperInViewManipulator(this);
 	
 		this.subViewsHolder;
@@ -1359,7 +1557,7 @@ ComponentSubViewsHolder.prototype.memberAt = function(idx) {
 
 ComponentSubViewsHolder.prototype.immediateAddMemberAt = function(idx, memberView) {
 	var backToTheFutureAmount = this.memberViews.length - idx;
-	TypeManager.viewsRegister.splice(TypeManager.viewsRegister.length - backToTheFutureAmount, 0, memberView);
+	TypeManager.viewsRegistry.splice(TypeManager.viewsRegistry.length - backToTheFutureAmount, 0, memberView);
 	this.memberViews.splice(idx, 1, memberView);
 }
 
@@ -1373,31 +1571,31 @@ ComponentSubViewsHolder.prototype.addMemberViewFromDef = function(definition) {
 	return view;
 }
 
-ComponentSubViewsHolder.prototype.moveMemberViewFromTo = function(from, to, viewsRegisterIdx, offset) {
+ComponentSubViewsHolder.prototype.moveMemberViewFromTo = function(from, to, viewsRegistryIdx, offset) {
 	this.memberViews.splice(to, 0, this.memberViews.splice(from, 1)[0]);
-	if (offset && viewsRegisterIdx)
-		this.immediateAscendViewAFewStepsHelper(offset, viewsRegisterIdx);
+	if (offset && viewsRegistryIdx)
+		this.immediateAscendViewAFewStepsHelper(offset, viewsRegistryIdx);
 }
 
-ComponentSubViewsHolder.prototype.moveLastMemberViewTo = function(to, offset, viewsRegisterIdx) {
+ComponentSubViewsHolder.prototype.moveLastMemberViewTo = function(to, offset, viewsRegistryIdx) {
 	var from = this.memberViews.length - 1
-	if (offset && viewsRegisterIdx)
-		this.moveMemberViewFromTo(from, to, offset, viewsRegisterIdx);
+	if (offset && viewsRegistryIdx)
+		this.moveMemberViewFromTo(from, to, offset, viewsRegistryIdx);
 }
 
 ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definition) {
-	var lastView = TypeManager.viewsRegister.pop();
+	var lastView = TypeManager.viewsRegistry.pop();
 	var view = new ComponentSubView(definition, this.parentView);
 	this.memberViews.unshift(view);
 	
-	TypeManager.viewsRegister.push(lastView);
+	TypeManager.viewsRegistry.push(lastView);
 	return view;
 }
 
 ComponentSubViewsHolder.prototype.immediateAscendViewAFewStepsHelper = function(stepsCount, effectiveViewIdx) {
-	var ourLatelyAppendedView = TypeManager.viewsRegister.splice(effectiveViewIdx, 1)[0];
-//	console.log(TypeManager.viewsRegister.length, stepsCount, TypeManager.viewsRegister[TypeManager.viewsRegister.length - 1 - stepsCount]);
-	TypeManager.viewsRegister.splice(effectiveViewIdx - stepsCount, 0, ourLatelyAppendedView);
+	var ourLatelyAppendedView = TypeManager.viewsRegistry.splice(effectiveViewIdx, 1)[0];
+//	console.log(TypeManager.viewsRegistry.length, stepsCount, TypeManager.viewsRegistry[TypeManager.viewsRegistry.length - 1 - stepsCount]);
+	TypeManager.viewsRegistry.splice(effectiveViewIdx - stepsCount, 0, ourLatelyAppendedView);
 }
 
 ComponentSubViewsHolder.prototype.resetMemberContent = function(idx, textContent) {
@@ -1656,6 +1854,7 @@ module.exports = {
 		Command : Command,
 		Worker : WorkerInterface,
 		Stream : Stream,
+		LazyResettableColdStream : LazyResettableColdStream,
 		NumberedStream : NumberedStream,
 		StreamPool : StreamPool,
 		ComponentView, ComponentView,

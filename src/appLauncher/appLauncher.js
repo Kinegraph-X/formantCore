@@ -27,13 +27,15 @@ var classConstructor = (function() {
 //		masterTimer = new MasterTimer(),
 		resizeObserver = new NodeResizeObserver(),
 		textSizeGetter = new TextSizeGetter(),
-		options = {},
+		options = {
+			
+		},
 		baseAppDefaultOptions = {
-			UIDPrefix : ''
+			UIDPrefix : '',
+			APIurl : ''
 		},
 		baseApp = {},
 		currentHostPath,
-		apiURL = 'http://servers.localhost:8080/',
 		browserName,
 		knownIDs = {};
 	
@@ -44,13 +46,14 @@ var classConstructor = (function() {
 		if (debugMode && debugMode[0])
 			debugMode = debugMode[0];
 		
-		options = baseAppDefaultOptions;
+		Object.assign(options, baseAppDefaultOptions);
 		if (typeof customOptions === 'object' && Object.keys(customOptions).length) {
 			for(var prop in customOptions) {
 				if (customOptions.hasOwnProperty(prop))
 					options[prop] = customOptions[prop];
 			};
 		}
+		
 		// ensure we have an underscore at the end of the "app specific" prefix
 		options.UIDPrefix = (options.UIDPrefix.lastIndexOf('_') === options.UIDPrefix.length - 1) ? options.UIDPrefix : options.UIDPrefix + '_';
 		
@@ -104,16 +107,18 @@ var classConstructor = (function() {
 	
 	var getUID = function(uniqueID) {
 		if (knownIDs.hasOwnProperty(options.UIDPrefix + uniqueID)) {
-//			console.log(uniqueID, knownIDs);
+//			console.log(options.UIDPrefix + uniqueID);
 			return knownIDs[options.UIDPrefix + uniqueID];
 		}
+		else if (knownIDs.hasOwnProperty(uniqueID)) {
+//			console.log(uniqueID);
+			return knownIDs[uniqueID];
+		}
 		else if (!knownIDs.hasOwnProperty(options.UIDPrefix + uniqueID) || !uniqueID || !uniqueID.length) {
-			uniqueID = uniqueID ? (options.UIDPrefix + uniqueID) : (options.UIDPrefix + ($.guid++).toString());
+			uniqueID = uniqueID ? (options.UIDPrefix + uniqueID) : (options.UIDPrefix + (Math.round(Math.random() * 10000)).toString());
 			knownIDs[uniqueID] = uniqueID;
 			return knownIDs[uniqueID];
 		}
-		else if (knownIDs.hasOwnProperty((uniqueID || ''))) // Hacky : knownIDs.hasOwnProperty('') won't ever return truthy
-			return knownIDs[uniqueID];
 	}
 	
 	var isKnownUID = function(uniqueID) {
@@ -133,11 +138,11 @@ var classConstructor = (function() {
 		launch : launch,
 		checkSupport : checkSupport,
 //		locks : locks,
+//		knownIDs : knownIDs,
 		getUID : getUID,
 		isKnownUID : isKnownUID,
 		setUID : setUID,
 		currentHostPath : currentHostPath,
-		apiURL : apiURL,
 		browserName : browserName
 	}
 })();

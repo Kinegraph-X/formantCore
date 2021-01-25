@@ -15,7 +15,7 @@ var RootViewComponent = function(definition, parentView, parent) {
 }
 RootViewComponent.prototype = Object.create(Components.CompositorComponent.prototype);
 RootViewComponent.prototype.objectType = 'RootViewComponent';
-RootViewComponent.prototype.extendsCore = 'ComposedComponent';
+RootViewComponent.prototype.extendsCore = 'CompoundComponent';
 RootViewComponent.prototype.render = function() {} 							// pure virtual (injected as a dependancy by AppIgnition)
 
 RootViewComponent.defaultDef = {

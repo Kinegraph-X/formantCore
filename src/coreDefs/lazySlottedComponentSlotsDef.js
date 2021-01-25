@@ -2,7 +2,7 @@
  * @def LazyHostComponentSlots
  * @isGroup false
  * 
- * @CSSify styleName : LazySlottedComposedComponentTabpanel/false
+ * @CSSify styleName : LazySlottedCompoundComponentTabpanel/false
  * @CSSifyTheme themeName : basic-light
  */
 
@@ -42,7 +42,7 @@ var lazySlottedComponentSlotsDef = function(uniqueID, options, model) {
 	var sectionDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
 			type : 'ComponentWithView',
-			nodeName : 'tab-panel'/**@CSSifyStyle componentStyle : LazySlottedComposedComponentTabpanel */
+			nodeName : 'tab-panel'/**@CSSifyStyle componentStyle : LazySlottedCompoundComponentTabpanel */
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 	

@@ -3,12 +3,41 @@
  * 
  */
 
-var generator = function() {
+var Generator = function() {
 	this.nextUID = 0;
 }
 
-generator.prototype.newUID = function() {
-	return this.nextUID++;
+Generator.prototype.newUID = function() {
+	return (this.nextUID++).toString();
 }
 
-module.exports = (new generator());
+
+
+
+var GeneratorForStyles = function() {
+	this.nextUID = 0;
+}
+
+GeneratorForStyles.prototype.newUID = function() {
+	return 'Style_' + (this.nextUID++).toString();
+}
+
+
+
+
+var GeneratorForDefs = function() {
+	this.nextUID = 0;
+}
+
+GeneratorForDefs.prototype.newUID = function() {
+	return 'Def_' + (this.nextUID++).toString();
+}
+
+
+
+
+module.exports =  {
+	UIDGenerator : new Generator(),
+	StyleUIDGenerator : new GeneratorForStyles(),
+	DefUIDGenerator : new GeneratorForDefs()
+}

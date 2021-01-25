@@ -346,6 +346,56 @@ Object.defineProperty(TaskDefinitionModel.prototype, 'execute', {
 
 
 
+/**
+ * @constructor PublisherDefinition
+ * @extends ValueObject
+ */
+var PublisherDefinitionModel = function(obj, isSpecial) {
+	
+	this._name = null;						// String
+	this.exportedTypes = null;				// Array
+	this.stream = null;						// Stream
+	this._publisherUID = null;				// String
+	ValueObject.call(this, obj, isSpecial);
+}
+PublisherDefinitionModel.prototype = Object.create(ValueObject.prototype);
+exportedObjects.PublisherDefinitionModel = PublisherDefinitionModel;
+Object.defineProperty(PublisherDefinitionModel.prototype, 'objectType', {value : 'GlobalyReacheableStream'});
+Object.defineProperty(PublisherDefinitionModel.prototype, 'tryReceiveConnection', {
+	value : function(subscriber) {
+			this.exportedTypes.forEach(function(type, sub) {
+				if (sub.acceptedTypes.indexOf(type) !== -1) {
+					this.stream.subscribe(sub.streams.updateChannel, 'value');
+				}
+			}.bind(this, subscriber));
+}});
+// Should not be used in the context of "single-provider" subscribers (the same DefinitionModel may be used in various types of registers)
+Object.defineProperty(PublisherDefinitionModel.prototype, 'tryLateReceiveConnection', {
+	value : function(publisherList) {
+		var publisher;
+		for(let publisherName in publisherList) {
+			publisher = publisherList[publisherName];
+			this.exportedTypes.forEach(function(type, pub) {
+				if (pub.exportedTypes.indexOf(type) !== -1) {
+					pub.stream.subscriptions.forEach(function(sub) {
+						this.stream.subscribe(sub.subscriber.obj, sub.subscriber.prop);
+					}, this);
+				}
+			}.bind(this, publisher));
+		}
+}});
+// TODO: should also be able to lateDisconnect:
+// when queried, answers true if it already holds a subscription
+// for the currently handled type and for the currently handled subscriber
+// (the register is responsible of passing those as args).
+// 	=> case of a subscriber which should only have -one- provider for a given type (color, font, padding, etc.) 
+
+
+
+
+
+
+
 
 
 
@@ -370,7 +420,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 		this.streams = [];							// Array [Prop, States]
 		this.targetSlotIndex = null;				// Number
 		this.sWrapper = null;						// Object StylesheetWrapper
-		this.sOverrideWrapper = null;				// Object StylesheetWrapper
+		this.sOverride = null;						// Object StylesheetWrapper
 		this.command = null;						// Object Command
 		this.reactOnParent = [];					// Array [ReactivityQuery]
 		this.reactOnSelf = [];						// Array [ReactivityQuery]
@@ -385,7 +435,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 	if (obj !== 'bare')
 		ValueObject.call(this, obj, isSpecial);
 	
-	this.UID = UIDGenerator.newUID().toString();
+	this.UID = UIDGenerator.DefUIDGenerator.newUID().toString();
 	
 	// Fast-access props
 	this.streams = this.props.concat(this.states);
@@ -423,7 +473,7 @@ Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {va
  */
 var ComponentListDefModel = function(obj, isSpecial) {
 
-	this.UID = typeof obj.UID === 'string' ? obj.UID : UIDGenerator.newUID().toString();
+	this.UID = typeof obj.UID === 'string' ? obj.UID : UIDGenerator.DefUIDGenerator.newUID().toString();
 	this.type = 'ComponentList';				// String
 	this.reflectOnModel = true;					// Boolean
 	this.augmentModel = false;					// Boolean
@@ -707,35 +757,35 @@ var caches = {};
 	});
 })();
 
-var hostsDefinitionsCacheRegister = new PropertyCache('hostsDefinitionsCacheRegister');
-var listsDefinitionsCacheRegister = new PropertyCache('listsDefinitionsCacheRegister');
-var permanentProvidersRegister = new RequestCache('permanentProvidersRegister');
+var hostsDefinitionsCacheRegistry = new PropertyCache('hostsDefinitionsCacheRegistry');
+var listsDefinitionsCacheRegistry = new PropertyCache('listsDefinitionsCacheRegistry');
+var permanentProvidersRegistry = new RequestCache('permanentProvidersRegistry');
 var boundingBoxesCache = new PropertyCache('boundingBoxesCache');
 var sWrappersCache = new PropertyCache('sWrappersCache');
 
-var hostsRegister = [];
-var typedHostsRegister = new PropertyCache('typedHostsRegister');
+var hostsRegistry = [];
+var typedHostsRegistry = new PropertyCache('typedHostsRegistry');
 
 /**
  * @typedCache {CachedNode} {ID : {nodeName : nodeName, cloneMother : DOMNode -but not yet-}}
  */
-var nodesRegister = new PropertyCache('nodesRegister');
+var nodesRegistry = new PropertyCache('nodesRegistry');
 
 /**
  * @typedStore {StoredView} {ID : view}
  */
-var viewsRegister = [];
+var viewsRegistry = [];
 
 /**
  * @typedStore {StoredAssocWithModel} {ID : keyOnModel}
  */
-var dataStoreRegister = new PropertyCache('dataStoreRegister');
+var dataStoreRegistry = new PropertyCache('dataStoreRegistry');
 
-console.log(hostsDefinitionsCacheRegister);
-console.log(listsDefinitionsCacheRegister);
-console.log(permanentProvidersRegister);
+console.log(hostsDefinitionsCacheRegistry);
+console.log(listsDefinitionsCacheRegistry);
+console.log(permanentProvidersRegistry);
 
-//console.log(viewsRegister);
+//console.log(viewsRegistry);
 
 
 
@@ -753,16 +803,16 @@ console.log(permanentProvidersRegister);
  */
 Object.assign(exportedObjects, {
 	PropertyCache : PropertyCache,
-	hostsDefinitionsCacheRegister : hostsDefinitionsCacheRegister,	// Object PropertyCache
-	listsDefinitionsCacheRegister : listsDefinitionsCacheRegister,	// Object PropertyCache
-	permanentProvidersRegister : permanentProvidersRegister,		// Object RequestCache
+	hostsDefinitionsCacheRegistry : hostsDefinitionsCacheRegistry,	// Object PropertyCache
+	listsDefinitionsCacheRegistry : listsDefinitionsCacheRegistry,	// Object PropertyCache
+	permanentProvidersRegistry : permanentProvidersRegistry,		// Object RequestCache
 	boundingBoxesCache : boundingBoxesCache,						// Object PropertyCache
 	sWrappersCache : sWrappersCache,								// Object PropertyCache
-	typedHostsRegister : typedHostsRegister,						// Object PropertyCache {defUID : [Components]}
+	typedHostsRegistry : typedHostsRegistry,						// Object PropertyCache {defUID : [Components]}
 	caches : caches,												// Object {prop : PropertyCache}
-	nodesRegister : nodesRegister,
-	viewsRegister : viewsRegister,
-	dataStoreRegister : dataStoreRegister,
+	nodesRegistry : nodesRegistry,
+	viewsRegistry : viewsRegistry,
+	dataStoreRegistry : dataStoreRegistry,
 	propsAreArray : propsAreArray,
 	reactivityQueries : reactivityQueries,
 	eventQueries : eventQueries,
@@ -773,6 +823,7 @@ Object.assign(exportedObjects, {
 	propsModel : PropFactory,										// Object AbstractProp
 	streamsModel : PropFactory,										// Object AbstractProp
 	TaskDefinition : TaskDefinitionModel,							// Object TaskDefinition
+	PublisherDefinition : PublisherDefinitionModel,					// Object PublisherDefinition
 	optionsModel : OptionsListModel,								// Object OptionsList
 	// "host" key catch the special condition and should always be flat ("artificial" deepening of flat defs is handled in the factory function)
 	hostModel : SingleLevelComponentDefModel,						// Object SingleLevelComponentDef
@@ -787,7 +838,9 @@ Object.assign(exportedObjects, {
 	subscribeOnSelfModel : EventSubscriptionModel,					// Object EventSubscriptionsList
 	createSimpleComponentDef : HierarchicalComponentDefModel,		// Object HierarchicalComponentDef
 	setAcceptsProp : setAcceptsProp,
-	UIDGenerator : UIDGenerator
+	UIDGenerator : UIDGenerator.UIDGenerator,
+	StyleUIDGenerator : UIDGenerator.StyleUIDGenerator,
+	DefUIDGenerator : UIDGenerator.DefUIDGenerator
 });
 
 console.log(exportedObjects.definitionsCache);

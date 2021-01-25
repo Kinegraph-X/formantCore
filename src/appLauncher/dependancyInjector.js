@@ -14,14 +14,14 @@ var App = require('src/core/AppIgnition');
 
 Components.CompositorComponent.createAppLevelExtendedComponent();
 
-App.coreComponents.LazySlottedComposedComponent.prototype.rDataset = rDataset;
+App.coreComponents.LazySlottedCompoundComponent.prototype.rDataset = rDataset;
 App.coreComponents.AbstractAccordion.prototype.rDataset = rDataset;
-App.coreComponents.LazySlottedComposedComponent.prototype.cSet = cSet;
+App.coreComponents.LazySlottedCompoundComponent.prototype.cSet = cSet;
 
 App.componentTypes.RootViewComponent.prototype.render = function(DOMNodeId) {
 	new App.DelayedDecoration(null, this);
 };
-App.coreComponents.LazySlottedComposedComponent.prototype.render = function(DOMNodeId, previousListHostDef) {
+App.coreComponents.LazySlottedCompoundComponent.prototype.render = function(DOMNodeId, previousListHostDef) {
 	new App.DelayedDecoration(DOMNodeId, this, previousListHostDef);
 };
 App.coreComponents.AbstractTree.prototype.render = function(DOMNodeId) {

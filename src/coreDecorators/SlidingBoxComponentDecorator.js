@@ -17,7 +17,7 @@ var SlidingBoxComponentDecorator = function(componentClass, ...args) {
 		
 		// hostedComponentDefinition is now a unique concrete def decorated through the component's default def
 		SlidingBoxComponentDecorator.populateHostsDefinitionsCacheRegister(hostedComponentDefinition);
-		TypeManager.typedHostsRegister.setItem(this._hostedDefUID, []);
+		TypeManager.typedHostsRegistry.setItem(this._hostedDefUID, []);
 		
 		componentTypeAsADecorator.call(this, definition, parentView, parent);
 		
@@ -40,7 +40,7 @@ var SlidingBoxComponentDecorator = function(componentClass, ...args) {
 		type : 'lateAddChild',
 		task : function(definition) {
 					new componentClass(
-						TypeManager.hostsDefinitionsCacheRegister.getItem(this._hostedDefUID),
+						TypeManager.hostsDefinitionsCacheRegistry.getItem(this._hostedDefUID),
 						this.view.subViewsHolder.memberViews[2],
 						this,
 						...args
@@ -62,7 +62,7 @@ SlidingBoxComponentDecorator.populateHostsDefinitionsCacheRegister = function(de
 		TypeManager.caches[prop].setItem(hostDefinition.UID, hostDefinition[prop]);
 	}
 	
-	TypeManager.hostsDefinitionsCacheRegister.setItem(hostDefinition.UID, definition);
+	TypeManager.hostsDefinitionsCacheRegistry.setItem(hostDefinition.UID, definition);
 }
 
 

@@ -70,7 +70,8 @@ var ComponentPickingInputDef = function(uniqueID, options, model) {
 //					},
 					{
 						from :  'inChannel',
-						to : 'updateChannel'
+						to : 'updateChannel',
+						map : function(val) {return this.adaptDBTypedValue(val);}
 					}
 				]
 			}),

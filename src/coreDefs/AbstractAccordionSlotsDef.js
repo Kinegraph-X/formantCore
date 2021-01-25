@@ -2,7 +2,7 @@
  * @def AbstractAccordionSlot
  * @isGroup true
  * 
- * @CSSify styleName : AbstractAccordionTemplate/false
+ * @CSSify styleName : AbstractAccordionSlotTemplate/false
  * @CSSifyTheme themeName : basic-light
 */
 
@@ -19,9 +19,11 @@ var AbstractAccordionSlotDef = function(uniqueID, options, model) {
 
 	
 	return TypeManager.createComponentDef({
-				type : 'GenericTitledPanelComponent',
-				nodeName : 'accordion-panel'/**@CSSify Style componentStyle : AbstractAccordionTemplate */
-			});
+			host : TypeManager.createComponentDef({
+				type : 'SomeMandatoryType',
+				nodeName : 'accordion-panel'/**@CSSify Style componentStyle : AbstractAccordionSlotTemplate */
+			})
+		}, null, 'rootOnly');
 }
 
 

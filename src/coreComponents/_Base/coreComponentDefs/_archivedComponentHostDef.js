@@ -46,7 +46,7 @@ var RootViewComponentDef = function(uniqueID, options, model) {
 //	console.log(hostStyles);
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the ComposedComponent ctor in the TabPanel ctor
+//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
 			nodeName : 'app-root'/**@CSSifyStyle componentStyle : RootViewComponentHost */,
 			sWrapper : CreateStyle(
 					hostStylesUseCache.use ? hostStylesUseCache.nameInCache : null,

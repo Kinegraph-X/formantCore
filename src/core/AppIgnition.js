@@ -3,18 +3,19 @@
  * @bootstraper ListInjector
  */
 
+var appConstants = require('src/appLauncher/appLauncher');
 var ElementCreator = require('src/UI/generics/GenericElementConstructor');
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Component = require('src/core/Component');
-var ComposedComponent = require('src/core/ComposedComponent');
-var componentTypes = ComposedComponent.componentTypes;
-var coreComponents = ComposedComponent.coreComponents;
+var CompoundComponent = require('src/core/CompoundComponent');
+var componentTypes = CompoundComponent.componentTypes;
+var coreComponents = CompoundComponent.coreComponents;
 
 var elementDecorator_Offset = require('src/UI/_mixins/elementDecorator_Offset');
 
 console.log(TypeManager.caches);
-//console.log(TypeManager.dataStoreRegister);
+//console.log(TypeManager.dataStoreRegistry);
 
 
 
@@ -44,7 +45,7 @@ Ignition.prototype.decorateComponentsThroughDefinitionsCache = function(listDef)
 	this.lateEventBindingAndBidirectionalReflection(listDef);
 
 	this.cleanRegisters();
-//	console.log(TypeManager.viewsRegister);
+//	console.log(TypeManager.viewsRegistry);
 }
 
 
@@ -54,8 +55,8 @@ Ignition.prototype.decorateComponentsThroughDefinitionsCache = function(listDef)
  * 
  */
 Ignition.prototype.instanciateDOM = function() {
-	var views = TypeManager.viewsRegister,
-		nodes = TypeManager.nodesRegister.cache,
+	var views = TypeManager.viewsRegistry,
+		nodes = TypeManager.nodesRegistry.cache,
 		attributesCache = TypeManager.caches.attributes.cache,
 		attributes,
 		effectiveViewAPI,
@@ -94,10 +95,21 @@ Ignition.prototype.instanciateDOM = function() {
 			view.callCurrentViewAPI('getMasterNode')._component = view._parent;
 		
 		// Connect DOM objects 
-		if (view.sWrapper) {
-			view.sWrapper.styleElem = view.sWrapper.styleElem.cloneNode(true);
-//			console.log(view.styleHook.s.styleElem === view.sWrapper.styleElem);
-			view.callCurrentViewAPI('getWrappingNode').append(view.sWrapper.styleElem);
+//		console.log(view._sWrapperUID);
+		if (view._sWrapperUID) {
+//			if (view._sWrapperUID === 'Automatic_CSS_ID_112')
+//				console.log(appConstants.knownIDs);
+			if (Object.prototype.toString.call(appConstants.getUID(view._sWrapperUID)) === '[object Object]') {
+//				console.log(view);
+				view.styleHook.s = appConstants.getUID(view._sWrapperUID).clone();
+				view.styleHook.s.overrideStyles(view.sOverride);
+				view.styleHook.s.shouldSerializeAll();
+				view.callCurrentViewAPI('getWrappingNode').append(view.styleHook.s.getStyleNode());
+//				console.log(view._sWrapperUID);
+//				console.log(view.styleHook.s);
+			}
+				
+			
 		}
 //		if (view.parentView && view._parent) {
 //			console.log(Object.getPrototypeOf(view._parent).objectType);
@@ -119,7 +131,7 @@ Ignition.prototype.instanciateDOM = function() {
  * 
  */
 Ignition.prototype.instanciateStreams = function() {
-	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
+	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
 	var streams = TypeManager.caches.streams.cache;
 	for (let defUID in typedComponentRegister) {
 		typedComponentRegister[defUID].forEach(function(component) {
@@ -140,7 +152,7 @@ Ignition.prototype.instanciateStreams = function() {
  * 
  */
 Ignition.prototype.handleReactivityAndEvents = function() {
-	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
+	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
 	var reactivityQueries, bindingHandler, component;
 	
 	TypeManager.reactivityQueries.forEach(function(subscriptionType) {
@@ -205,7 +217,7 @@ Ignition.prototype.lateEventBindingAndBidirectionalReflection = function(listDef
 	
 }
 Ignition.prototype.streamsBidirectionalReflectionBlank = function() {
-	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
+	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
 
 	for (let defUID in typedComponentRegister) {
 
@@ -221,16 +233,16 @@ Ignition.prototype.streamsBidirectionalReflectionBlank = function() {
 	}
 }
 Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
-	var typedComponentRegister = TypeManager.typedHostsRegister.cache;
+	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
 //	console.log(listDef.UID);
 	for (let defUID in typedComponentRegister) {
 		typedComponentRegister[defUID].forEach(function(component) {
 			if (!component.view)
 				return;
 			
-			// TMP Hack: call artificial "hook" on LazySlottedComposedComponent althopugh it's not a "ComponentWithHooks"
-			// (see LazySlottedComposedComponent & ColorSamplerSetComponent)
-			if (component instanceof Component.ComponentWithHooks || component instanceof coreComponents.LazySlottedComposedComponent)
+			// TMP Hack: call artificial "hook" on LazySlottedCompoundComponent althopugh it's not a "ComponentWithHooks"
+			// (see LazySlottedCompoundComponent & ColorSamplerSetComponent)
+			if (component instanceof Component.ComponentWithHooks || component instanceof coreComponents.LazySlottedCompoundComponent)
 				component.registerEvents();
 
 			this.defineStreamsBidirectionalReflection(defUID, component);
@@ -246,8 +258,8 @@ Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 //				return;
 //			}
 //			if (listDef.UID === '5')
-//				console.log(component._UID, TypeManager.dataStoreRegister.getItem(component._UID), TypeManager.dataStoreRegister);
-			if (typeof (dataStoreKey = TypeManager.dataStoreRegister.getItem(component._UID)) !== 'undefined')
+//				console.log(component._UID, TypeManager.dataStoreRegistry.getItem(component._UID), TypeManager.dataStoreRegistry);
+			if (typeof (dataStoreKey = TypeManager.dataStoreRegistry.getItem(component._UID)) !== 'undefined')
 				this.handleReflectionOnModel.call(component, listDef.reflectOnModel, listDef.augmentModel, listDef.each[dataStoreKey]);
 		}, this);
 	}
@@ -315,8 +327,8 @@ Ignition.prototype.handleReflectionOnModel = function(reflectOnModel, augmentMod
 
 
 Ignition.prototype.cleanRegisters = function() {
-	TypeManager.viewsRegister.length = 0;
-	TypeManager.typedHostsRegister.reset();	
+	TypeManager.viewsRegistry.length = 0;
+	TypeManager.typedHostsRegistry.reset();	
 }
 
 
@@ -349,7 +361,7 @@ IgnitionFromDef.prototype.objectType = 'IgnitionFromDef';
  */
 var IgnitionToComposed = function(definition, containerIdOrContainerNode) {
 	
-	var mainComponent = new ComposedComponent(definition, containerIdOrContainerNode); 
+	var mainComponent = new CompoundComponent(definition, containerIdOrContainerNode); 
 	this.decorateComponentsThroughDefinitionsCache();
 	return mainComponent;
 }
@@ -363,7 +375,7 @@ IgnitionToComposed.prototype.objectType = 'IgnitionToComposed';
  */
 var IgnitionToExtensible = function(definition, containerIdOrContainerNode) {
 	
-	var mainComponent = new componentTypes.SinglePassExtensibleComposedComponent(definition, containerIdOrContainerNode); 
+	var mainComponent = new componentTypes.SinglePassExtensibleCompoundComponent(definition, containerIdOrContainerNode); 
 	this.decorateComponentsThroughDefinitionsCache();
 //	document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.getMasterNode());
 	return mainComponent;

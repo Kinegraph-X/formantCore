@@ -11,12 +11,12 @@ var ScalesUtilities = require('src/tools/ScalesUtilities');
 
 
 var SWrapperInViewManipulator = function(hostView) {
-	if (!hostView.sWrapper) {
-		return null;
-	}
+//	if (!hostView.sWrapper) {
+//		return null;
+//	}
 	this.hostView = hostView;
 	this.currentViewAPI = hostView.currentViewAPI;
-	this.s = hostView.sWrapper;
+	this.s;// = hostView.sWrapper;
 	
 	this.rulesCache = new TypeManager.PropertyCache('rulesCache');
 //	this.textSizeGetter = textSizeGetter;
@@ -66,24 +66,16 @@ SWrapperInViewManipulator.prototype.storeFontSize = function(resolve, fontStyle)
 	resolve(this.fontSize = fontStyle.fontSize);
 }
 SWrapperInViewManipulator.prototype.setFontSize = function(fontSize) {
-	var rule = this.s.getRuleAsObject(':host').rule;
-	rule.attributes.fontSize = fontSize.toString() + 'px';
-	this.s.replaceStyle(rule, rule.attributes);
+	this.s.setProp(':host', 'fontSize', fontSize.toString() + 'px');
 }
 SWrapperInViewManipulator.prototype.setFontFamily = function(fontFamily) {
-	var rule = this.s.getRuleAsObject(':host').rule;
-	rule.attributes.fontFamily = fontFamily.toString();
-	this.s.replaceStyle(rule, rule.attributes);
+	this.s.setProp(':host', 'fontFamily', fontFamily.toString());
 }
 SWrapperInViewManipulator.prototype.setTextInputFontSize = function(fontSize) {
-	var rule = this.s.getRuleAsObject('input[type=text]').rule;
-	rule.attributes.fontSize = fontSize.toString() + 'px';
-	this.s.replaceStyle(rule, rule.attributes);
+	this.s.setProp('input[type=text]', 'fontSize', fontSize.toString() + 'px');
 }
 SWrapperInViewManipulator.prototype.setTextInputFontFamily = function(fontFamily) {
-	var rule = this.s.getRuleAsObject('input[type=text]').rule;
-	rule.attributes.fontFamily = fontFamily.toString();
-	this.s.replaceStyle(rule, rule.attributes);
+	this.s.setProp('input[type=text]', 'fontFamily', fontFamily.toString());
 }
 SWrapperInViewManipulator.prototype.getPresence = function() {
 	
@@ -150,9 +142,7 @@ SWrapperInViewManipulator.prototype.setMaxHeight = function(selector, h) {
 }
 
 SWrapperInViewManipulator.prototype.setFlex = function(selector, f) {
-	var rule = this.s.getRuleAsObject(selector).rule;
-	rule.attributes.flex = f.toString();
-	this.s.replaceStyle(rule, rule.attributes);
+	this.s.setProp(selector, 'flex', f.toString());
 }
 
 SWrapperInViewManipulator.prototype.getComponentViewAsCanvas = function(nodeName) {

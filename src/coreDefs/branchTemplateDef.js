@@ -23,7 +23,7 @@ var treeBranchDef = function(uniqueID, options, model) {
 	
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-			type : 'ComposedComponent',
+			type : 'CompoundComponent',
 			nodeName : 'tree-branch',
 			states : [
 				{expanded : undefined}

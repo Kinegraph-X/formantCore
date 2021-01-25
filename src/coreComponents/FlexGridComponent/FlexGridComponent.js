@@ -14,7 +14,7 @@ var FlexGridComponent = function(definition, parentView, parent) {
 }
 FlexGridComponent.prototype = Object.create(Components.CompositorComponent.prototype);
 FlexGridComponent.prototype.objectType = 'FlexGridComponent';
-FlexGridComponent.prototype.extendsCore = 'ComposedComponent';
+FlexGridComponent.prototype.extendsCore = 'CompoundComponent';
 
 FlexGridComponent.defaultDef = {
 	nodeName : 'box-grid',
@@ -41,15 +41,6 @@ FlexGridComponent.prototype.getRowOfColumn = function(rowIdx, colIdx) {
 
 FlexGridComponent.prototype.getColumnOfRow = function(rowIdx, colIdx) {
 	return this._children[colIdx]._children[rowIdx];
-}
-
-
-FlexGridComponent.prototype.getFirstChild = function() {
-	return this._children[0];
-}
-
-FlexGridComponent.prototype.getChild = function(Idx) {
-	return this._children[Idx];
 }
 
 FlexGridComponent.prototype.getColumn = function(colIdx) {

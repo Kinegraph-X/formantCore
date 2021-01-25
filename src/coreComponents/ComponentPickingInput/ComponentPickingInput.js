@@ -17,7 +17,7 @@ var ComponentPickingInput = function(definition, parentView, parent) {
 }
 ComponentPickingInput.prototype = Object.create(Components.CompositorComponent.prototype);
 ComponentPickingInput.prototype.objectType = 'ComponentPickingInput';
-ComponentPickingInput.prototype.extendsCore = 'ComposedComponent';
+ComponentPickingInput.prototype.extendsCore = 'CompoundComponent';
 
 //ComponentPickingInput.defaultDef = {
 //	nodeName : 'div',

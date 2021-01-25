@@ -51,7 +51,7 @@ ComponentDataProvider.prototype.getDataset = function(definition) {
 }
 
 /**
- * @async
+ * 
  */
 ComponentDataProvider.prototype.acquireData = function(apiURL, permanent, blocking) {
 //	console.log(this.colName);
@@ -82,7 +82,7 @@ ComponentDataProvider.prototype.acquireData = function(apiURL, permanent, blocki
 }
 
 ComponentDataProvider.prototype.registerAsBlocking = function(req, blocking) {
-	TypeManager.permanentProvidersRegister.setItem(
+	TypeManager.permanentProvidersRegistry.setItem(
 		this._UID + '-' + this.colName,
 		req,
 		blocking

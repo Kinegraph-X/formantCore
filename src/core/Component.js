@@ -23,6 +23,7 @@ var HierarchicalObject = function(definition, parentView, parent) {
 
 	this._parent = (parent && parent instanceof HierarchicalObject && parent.pushChild(this)) ? parent : null;
 	this._children = [];
+	this._fastAccessToChildren = {};
 }
 HierarchicalObject.prototype = Object.create(CoreTypes.EventEmitter.prototype);
 HierarchicalObject.prototype.objectType = 'HierarchicalObject';
@@ -36,10 +37,42 @@ HierarchicalObject.prototype.onAddChild = function(child, atIndex) {} 			// virt
 HierarchicalObject.prototype.onRemoveChild = function(child) {} 				// virtual
 
 /**
- * @param {object} child : an instance of another object
+ * 
  */
+HierarchicalObject.prototype.getFirstChild = function() {
+	return this._children[0];
+}
+
+HierarchicalObject.prototype.getChildAt = function(Idx) {
+	return this._children[Idx];
+}
+
 HierarchicalObject.prototype.getLastChild = function() {
 	return this._children[this._children.length - 1];
+}
+
+/**
+ * 
+ */
+HierarchicalObject.prototype.storePathToChild = function(pathName, componentPath) {
+	this._fastAccessToChildren[pathName] = componentPath;
+}
+
+HierarchicalObject.prototype.getChildFromStoredPath = function(pathName) {
+	var path = this._fastAccessToChildren[pathName].slice(0),
+		result = {
+			child : null
+		};
+	this.traverseChildrenAlongPath(path, result);
+	return result.child;
+}
+
+HierarchicalObject.prototype.traverseChildrenAlongPath = function(path, result) {
+	if (path.length > 1) {
+		this._children[path.shift().childKey].traverseChildrenAlongPath(path, result);
+	}
+	else
+		result.child = this._children[path.shift().childKey];
 }
 
 /**
@@ -165,6 +198,25 @@ HierarchicalObject.prototype.handleEventSubsOnChildrenAt = function(eventQueries
 	}, this);
 }
 
+
+HierarchicalObject.prototype.getPathToSelfFromRoot = function () {
+	function getNode(component) {
+		return {
+			childKey : component._key
+		};
+	}
+	var ret = [];
+	this.traverseAscendants(this, ret, getNode);
+	return ret.reverse();
+}
+
+HierarchicalObject.prototype.traverseAscendants = function (component, componentPath, getNode) {
+	
+	if (component._parent) {
+		componentPath.push(getNode(component));
+		this.traverseAscendants(component._parent, componentPath, getNode);
+	}
+}
 
 
 HierarchicalObject.prototype.getDescendantsAsNameTree = function (maxStrLen) {
@@ -510,11 +562,11 @@ var AbstractComponent = function(definition, parentView, parent) {
 	this._defComposedUID = '';
 	
 //	console.log(definition);
-	if (!TypeManager.hostsDefinitionsCacheRegister.getItem(this._defUID))
+	if (!TypeManager.hostsDefinitionsCacheRegistry.getItem(this._defUID))
 		this.populateStores(definition);
 	this.createEvent('update');
 	
-	TypeManager.typedHostsRegister.getItem(this._defUID).push(this);
+	TypeManager.typedHostsRegistry.getItem(this._defUID).push(this);
 }
 AbstractComponent.prototype = Object.create(AsyncActivableObject.prototype);
 AbstractComponent.prototype.objectType = 'AbstractComponent';
@@ -532,7 +584,7 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	if ((defaultDef = this.createDefaultDef())) {
 		this._defComposedUID = defaultDef.getHostDef().UID;
 		defaultHostDef = defaultDef.getHostDef();
-//		if (TypeManager.hostsDefinitionsCacheRegister.getItem(this._defUID, this._defComposedUID))
+//		if (TypeManager.hostsDefinitionsCacheRegistry.getItem(this._defUID, this._defComposedUID))
 //			return;
 	}
 	else
@@ -579,8 +631,11 @@ AbstractComponent.prototype.populateStores = function(definition) {
 	for (let prop in TypeManager.caches) {
 		TypeManager.caches[prop].setItem(this._defUID, hostDefinition[prop]);
 	}
-	TypeManager.hostsDefinitionsCacheRegister.setItem(this._defUID, definition);
-	TypeManager.typedHostsRegister.setItem(this._defUID, []);
+	TypeManager.hostsDefinitionsCacheRegistry.setItem(this._defUID, definition);
+	TypeManager.typedHostsRegistry.setItem(this._defUID, []);
+	
+	// HACK
+//	((hostDefinition.sOverride && hostDefinition.sWrapper) && hostDefinition.sWrapper.overrideStyles(hostDefinition.sOverride));
 }
 
 
@@ -948,14 +1003,14 @@ ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition
 	// Add that view to the subViewsHost->memberViews of the main view
 	
 	var statefullExtendedDef;
-	if (!(statefullExtendedDef = TypeManager.hostsDefinitionsCacheRegister.getItem(componentDefinition.host.UID + nodeDefinition.host.attributes.getObjectValueByKey('className')))) {
+	if (!(statefullExtendedDef = TypeManager.hostsDefinitionsCacheRegistry.getItem(componentDefinition.host.UID + nodeDefinition.host.attributes.getObjectValueByKey('className')))) {
 		// This also is tricky, as we keep all along the call stack that ComponentDef which should be a hostDef.
 		// The only reason being that we discriminate the "grouped" append in the second test-case above as the one having "members" and "no nodeName on host"
 		// TODO: THAT MUST CHANGE.
 		statefullExtendedDef = TypeManager.createComponentDef(nodeDefinition);
 		statefullExtendedDef.host.UID = componentDefinition.host.UID + nodeDefinition.host.attributes.getObjectValueByKey('className');
 		
-		TypeManager.hostsDefinitionsCacheRegister.setItem(statefullExtendedDef.host.UID, statefullExtendedDef);
+		TypeManager.hostsDefinitionsCacheRegistry.setItem(statefullExtendedDef.host.UID, statefullExtendedDef);
 		
 		// This approach is realy tricky: everything is crucial and the context is totally blurred:
 		// memberViewIdx anticipate on the next member view (the one we are currently building) to be appended ont the component's view: 
