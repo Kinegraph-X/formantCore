@@ -5,7 +5,9 @@
 var UIDGenerator = require('src/core/UIDGenerator');
 var PropertyCache = require('src/core/PropertyCache').ObjectCache;
 var RequestCache = require('src/core/PropertyCache').RequestCache;
+var StateMachineCache = require('src/core/PropertyCache').StateMachineCache;
 var CachedTypes = require('src/core/CachedTypes');
+var stateMachineCache = new StateMachineCache('stateMachineCache');
 var exportedObjects = {};
 
 /**
@@ -297,9 +299,17 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 					.reverse(this.inverseTransform)
 			);
 		}
+//		if (!queriedOrQueryingObj._parent)
+//			console.log(queriedOrQueryingObj);
+
+		var subscription = queriedOrQueryingObj._subscriptions[queriedOrQueryingObj._subscriptions.length - 1];
+		stateMachineCache.registerTransition(queriedOrQueryingObj._UID, queriedOrQueryingObj.objectType, this, queriedOrQueryingObj._parent._UID);
+		
 //		console.warn(this.from, this.to, stream.subscriptions.length, stream._value, stream);
 		if (stream._value)
 			stream.subscriptions[stream.subscriptions.length - 1].execute(stream._value);
+			
+		return subscription;
 }});
 
 
@@ -761,23 +771,24 @@ var hostsDefinitionsCacheRegistry = new PropertyCache('hostsDefinitionsCacheRegi
 var listsDefinitionsCacheRegistry = new PropertyCache('listsDefinitionsCacheRegistry');
 var permanentProvidersRegistry = new RequestCache('permanentProvidersRegistry');
 var boundingBoxesCache = new PropertyCache('boundingBoxesCache');
+
 var sWrappersCache = new PropertyCache('sWrappersCache');
 
 var hostsRegistry = [];
 var typedHostsRegistry = new PropertyCache('typedHostsRegistry');
 
 /**
- * @typedCache {CachedNode} {ID : {nodeName : nodeName, cloneMother : DOMNode -but not yet-}}
+ * @typedCache {CachedNode} {UID : {nodeName : nodeName, cloneMother : DOMNode -but not yet-}}
  */
 var nodesRegistry = new PropertyCache('nodesRegistry');
 
 /**
- * @typedStore {StoredView} {ID : view}
+ * @typedStore {StoredView} {UID : view}
  */
 var viewsRegistry = [];
 
 /**
- * @typedStore {StoredAssocWithModel} {ID : keyOnModel}
+ * @typedStore {StoredAssocWithModel} {UID : keyOnModel}
  */
 var dataStoreRegistry = new PropertyCache('dataStoreRegistry');
 
@@ -807,6 +818,7 @@ Object.assign(exportedObjects, {
 	listsDefinitionsCacheRegistry : listsDefinitionsCacheRegistry,	// Object PropertyCache
 	permanentProvidersRegistry : permanentProvidersRegistry,		// Object RequestCache
 	boundingBoxesCache : boundingBoxesCache,						// Object PropertyCache
+	stateMachineCache : stateMachineCache,							// Object PropertyCache
 	sWrappersCache : sWrappersCache,								// Object PropertyCache
 	typedHostsRegistry : typedHostsRegistry,						// Object PropertyCache {defUID : [Components]}
 	caches : caches,												// Object {prop : PropertyCache}

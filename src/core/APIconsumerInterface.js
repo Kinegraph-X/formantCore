@@ -1,20 +1,20 @@
 /**
- * @constructor APIconsumerInterface
+ * @constructor APIConsumerInterface
  */
 
 
 var TypeManager = require('src/core/TypeManager');
-var rDataset = require('src/core/ReactiveDataset');
-var Components = require('src/core/Component');
+//var rDataset = require('src/core/ReactiveDataset');
+//var Components = require('src/core/Component');
 
-var APIconsumerInterface = function(host) {
+var APIConsumerInterface = function(host) {
 	this.host = host;
-	this.objectType = 'APIconsumerInterface';
+	this.objectType = 'APIConsumerInterface';
 }
-APIconsumerInterface.prototype = Object.create(Object.prototype);
-APIconsumerInterface.prototype.objectType = 'APIconsumerInterface';
+APIConsumerInterface.prototype = Object.create(Object.prototype);
+APIConsumerInterface.prototype.objectType = 'APIConsumerInterface';
 
-APIconsumerInterface.prototype.subscribeToProvider = function(serverAPI, entryPoint) {
+APIConsumerInterface.prototype.subscribeToProvider = function(serverAPI, entryPoint) {
 	var request;
 	if (typeof serverAPI.registerEndPoint === 'function') {
 //		console.log(entryPoint);
@@ -24,20 +24,54 @@ APIconsumerInterface.prototype.subscribeToProvider = function(serverAPI, entryPo
 	}
 }
 
-APIconsumerInterface.prototype.subscribeToAllProviders = function(serverAPI) {
+APIConsumerInterface.prototype.subscribeToAllProviders = function(serverAPI) {
 	var requests;
 	if (serverAPI.sources.length) {
-		return requests = serverAPI.subscribeToAllProviders(this.host);
+		return requests = serverAPI.subscribeToAllEndPoints(this.host);
 	}
 }
 
-APIconsumerInterface.prototype.reactOnSelfInject = function(def) {
+APIConsumerInterface.prototype.shouldInjectReactOnSelf = function(def) {
 	if (def && !def.reactOnSelf.findObjectByValue('from', 'serviceChannel')) {
-		return {
+		return [{
 				from : 'serviceChannel',
 				cbOnly : true,
 				subscribe : function(value) {
-					this.typedSlots[0].resetLength();
+//					console.log(value);
+//					console.log(this);
+					
+					var endPointName, endPointIndex;
+					if (value.endPointName) {
+						endPointName = value.endPointName;
+						value = value.payload; 
+					}
+					
+					if (this.slotsAssociation && typeof this.slotsAssociation[endPointName] !== 'number')
+						return;
+						
+					endPointIndex = (this.slotsAssociation && this.slotsAssociation[endPointName]) || 0;
+					this.typedSlots[endPointIndex].resetLength();
+					
+					
+					
+					// DEBUG
+//					if (this.slotsAssociation) {
+//						console.log(endPointName, this.slotsAssociation[endPointName]);
+////							if (typeof this.slotsAssociation[endPointName] !== 'number')
+////								console.log(endPointName, this.slotsAssociation);
+////							else 
+//							if (this.typedSlots[endPointIndex])
+//								console.log(endPointName, this.typedSlots[endPointIndex].defaultListDef.getHostDef().template.getGroupHostDef().type);
+//							else
+//								console.log(endPointName, this.typedSlots);
+//					}
+////					else
+////						console.log(endPointName, 'no slotsAssociation');
+					
+
+					
+					
+//					console.log(endPointName, this, endPointIndex);
 					
 					if (Array.isArray(value)) {
 						// we got at least a set, but maybe a group of sets
@@ -46,22 +80,25 @@ APIconsumerInterface.prototype.reactOnSelfInject = function(def) {
 							if (value[0][0]._id) {
 								// we found the effective obj
 								var items = value.map(function(set) {
-									return this.typedSlots[0].newItem(set);
+									return this.typedSlots[endPointIndex].newItem(set);
 								}, this);
-								this.typedSlots[0].pushApply(items);
+								this.typedSlots[endPointIndex].pushApply(items);
+								
+//								console.log(this.typedSlots[endPointIndex]);
+//								debugger;
 							}
 						}
 						else {
-							// it's a single set
-							this.typedSlots[0].push(
-								this.typedSlots[0].newItem(value)
+							// it's a doc without nested docs
+							this.typedSlots[endPointIndex].push(
+								this.typedSlots[endPointIndex].newItem(value)
 							);
 						}
 					}
 					else
-						console.warn(this.objectType, 'set-viewers are meant to instanciate lists, but value received was not an array');
+						console.warn(this.objectType, 'For consistancy reasons, clients are meant to instanciate lists, but value received was not an array');
 				}
-			};
+			}];
 	}
 	else
 		return false;
@@ -76,4 +113,4 @@ APIconsumerInterface.prototype.reactOnSelfInject = function(def) {
 
 
 
-module.exports = APIconsumerInterface;
+module.exports = APIConsumerInterface;

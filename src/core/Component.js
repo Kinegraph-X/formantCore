@@ -6,10 +6,24 @@ var CoreTypes = require('src/core/CoreTypes');
 var TypeManager = require('src/core/TypeManager');
 var ElementDecorator = require('src/UI/_mixins/elementDecorator_HSD');
 
+var Logger = require('src/Error&Log/Logger');
+
 var Geometry = require('src/tools/Geometry');
 
 
-
+/**
+ * @constructor LoggingEventEmmitter
+ */
+var LoggingEventEmmitter = function(definition, parentView, parent) {
+	CoreTypes.EventEmitter.call(this);
+	this.objectType = 'LoggingEventEmmitter';
+	
+	this.logger = new Logger();
+	this.logger._currentlyCallingObjectType = Object.getPrototypeOf(this).objectType;
+	this.log = this.logger.log.bind(this.logger);
+}
+LoggingEventEmmitter.prototype = Object.create(CoreTypes.EventEmitter.prototype);
+LoggingEventEmmitter.prototype.objectType = 'LoggingEventEmmitter';
 
 
 
@@ -17,7 +31,7 @@ var Geometry = require('src/tools/Geometry');
  * @constructor HierarchicalObject
  */
 var HierarchicalObject = function(definition, parentView, parent) {
-	CoreTypes.EventEmitter.call(this);
+	LoggingEventEmmitter.call(this);
 	this.objectType = 'HierarchicalObject';
 	this._key;
 
@@ -25,7 +39,7 @@ var HierarchicalObject = function(definition, parentView, parent) {
 	this._children = [];
 	this._fastAccessToChildren = {};
 }
-HierarchicalObject.prototype = Object.create(CoreTypes.EventEmitter.prototype);
+HierarchicalObject.prototype = Object.create(LoggingEventEmmitter.prototype);
 HierarchicalObject.prototype.objectType = 'HierarchicalObject';
 /**
  * @virtual
@@ -59,11 +73,15 @@ HierarchicalObject.prototype.storePathToChild = function(pathName, componentPath
 }
 
 HierarchicalObject.prototype.getChildFromStoredPath = function(pathName) {
-	var path = this._fastAccessToChildren[pathName].slice(0),
-		result = {
+	var pathToChild = this._fastAccessToChildren[pathName].slice(0);
+	return this.getChildFromPath(pathToChild);
+}
+
+HierarchicalObject.prototype.getChildFromPath = function(pathAsArray) {
+	var result = {
 			child : null
 		};
-	this.traverseChildrenAlongPath(path, result);
+	this.traverseChildrenAlongPath(pathAsArray, result);
 	return result.child;
 }
 
@@ -662,16 +680,25 @@ ComponentWithObservables.prototype = Object.create(AbstractComponent.prototype);
 ComponentWithObservables.prototype.objectType = 'ComponentWithObservables';
 
 ComponentWithObservables.prototype.reactOnParentBinding = function(reactOnParent, parentComponent, subscriptionType) {
-//	console.log(subscriptionType, this, parentComponent);
+//	if (this.objectType === 'MultisetAccordionComponent')
+//		console.log(reactOnParent, this);
+	var subscribtion;
 	reactOnParent.forEach(function(query, key) {
-		query.subscribeToStream(parentComponent.streams[query.from], this);
+		subscribtion = query.subscribeToStream(parentComponent.streams[query.from], this);
+		if (subscribtion)
+			subscribtion.unAnonymize(this.UID, this.objectType);
 	}, this);
 }
 
 ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf, parentComponent, subscriptionType) {
-//	console.log(subscriptionType, this);
+//	if (this.objectType === 'MultisetAccordionComponent')
+//		console.log(reactOnSelf, this);
+	
+	var subscribtion;
 	reactOnSelf.forEach(function(query, key) {
-		query.subscribeToStream(this.streams[query.from || query.to], this);
+		subscribtion = query.subscribeToStream(this.streams[query.from || query.to], this);
+		if (subscribtion)
+			subscribtion.unAnonymize(this.UID, this.objectType);
 	}, this);
 
 }
@@ -1171,7 +1198,7 @@ ComponentWith_FastReactiveText.prototype.setContentFromArrayOnEachMemberView = f
 /**
  * @constructor ComponentStrokeAware
  */
-ComponentStrokeAware = function(definition, parentView, parent, isChildOfRoot) {
+var ComponentStrokeAware = function(definition, parentView, parent, isChildOfRoot) {
 	ComponentWithHooks.call(this, definition, parentView, parent, isChildOfRoot);
 //	this.objectType = 'ComponentStrokeAware';
 

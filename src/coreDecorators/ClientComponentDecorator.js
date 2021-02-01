@@ -18,8 +18,13 @@ var ClientComponentDecorator = function(componentType, concreteInterface) {
 		var inheritedType = ClientComponentInterface;
 		
 		var decoratedType = function(definition, parentView, parent) {
-			inheritingType.call(this, definition, parentView, parent);
+			inheritingType.	apply(this, arguments);
+			var objectType = this.objectType;
+			
 			inheritedType.call(this, concreteInterface, definition);
+			this.objectType = objectType;
+			
+//			console.log(definition);
 		};
 		
 		var proto_proto = Object.create(inheritingType.prototype);

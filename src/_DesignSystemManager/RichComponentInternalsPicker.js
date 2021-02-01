@@ -6,17 +6,19 @@ var appConstants = require('src/appLauncher/appLauncher');
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 
+var Logger = require('src/Error&Log/Logger');
+
 var DomToImageWorker = require('src/workers/DomToImage.worker');
 
 
-var RichComponentInternalsPicker = function(config) {
+var RichComponentInternalsPicker = function(config, action) {
 	this._pickingProcedure = [];
 	
-	if (config && Object.prototype.toString.call(config) === '[object Object]') {
-		for (var prop in config) {
-			if (config.hasOwnProperty(prop) && typeof this[config[prop]] === 'function')
-				this._pickingProcedure.push(this[config[prop]]);
-		}
+	if (config && Array.isArray(config)) {
+		config.forEach(function(method) {
+			if (typeof this[method] === 'function')
+				this._pickingProcedure.push(this[method]);
+		}, this);
 	}
 	else {
 		this._pickingProcedure = [
@@ -27,6 +29,15 @@ var RichComponentInternalsPicker = function(config) {
 	}
 }
 RichComponentInternalsPicker.prototype = Object.create(CoreTypes.EventEmitter.prototype);
+
+
+/**
+ * Already on HierarchicalObject.prototype
+ * (we also have getDescendantsAsNameTree(component))
+// */
+//RichComponentInternalsPicker.prototype.getDescendantsAsKeyValueTree = function(component) {
+//	
+//}
 
 RichComponentInternalsPicker.prototype.collect = function(component) {
 	var ret, promises = [];
@@ -79,6 +90,27 @@ RichComponentInternalsPicker.prototype.getAsImage = function(component) {
 			reject();
 	});
 }
+
+
+
+RichComponentInternalsPicker.prototype.handleComponentInStatesTree = function(component) {
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

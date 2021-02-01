@@ -24,7 +24,7 @@ var AbstractAccordionDef = function(uniqueID, options, model) {
 	var template = TypeManager.createComponentDef({
 			type : 'ComponentWithView',
 			nodeName : 'accordion-set',
-			props : [
+			states : [
 				{"accordion-set" : undefined}
 			]/**@CSSify Style componentStyle : AbstractAccordionPseudoSlot */
 	});

@@ -449,16 +449,16 @@ Stream.prototype.subscribe = function(handlerOrHost, prop, transform, inverseTra
  * filter method (syntactic sugar) :
  *	instanciates and registers a new subscription, and returns it for the caller to define the refinement functions (map) and the effective subscribtion
  */ 
-Stream.prototype.filter = function(filterFunc) {
-	return this.addSubscription().filter(filterFunc);
+Stream.prototype.filter = function(handlerOrHost, prop, filterFunc) {
+	return this.addSubscription(handlerOrHost, prop).filter(filterFunc);
 }
 
 /**
  * map method (syntactic sugar) :
  *	instanciates and registers a new subscription, and returns it for the caller to define the refinement functions (filter) and the effective subscribtion
  */ 
-Stream.prototype.map = function(mapFunc) {
-	return this.addSubscription().map(mapFunc);
+Stream.prototype.map = function(handlerOrHost, prop, mapFunc) {
+	return this.addSubscription(handlerOrHost, prop).map(mapFunc);
 }
 
 Stream.prototype.addSubscription = function(handlerOrHost, prop, inverseTransform) {
@@ -492,13 +492,16 @@ var Subscription = function(subscriberObjOrHandler, subscriberProp, parent, inve
 	this.subscriber = {
 			prop : subscriberProp || null,
 			obj : typeof subscriberObjOrHandler === 'object' ? subscriberObjOrHandler : null,
-			cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function() {return this._stream._value},
+			cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function defaultCb() {return this._stream._value},
 			inverseTransform : inverseTransform || function(value) {return value;},
 			_subscription : this,
 			_stream : parent
 	}
 //	typeof subscriberProp === 'string' ?
 	this._stream = parent;
+	this._subscriberUID = '';
+	this._subscriberType = '';
+	
 	this._firstPass = true;
 }
 //
@@ -592,7 +595,27 @@ Object.defineProperty(Subscription.prototype, 'execute', {
 	enumerable : true
 });
 
+Subscription.prototype.unAnonymize = function(subscriberUID, subscriberType) {
+	this._subscriberUID = subscriberUID;
+	this._subscriberType = subscriberType;
+	
+	return this;
+}
 
+Subscription.prototype.registerTransition = function(parent_UID) {
+	TypeManager.stateMachineCache.registerTransition(
+		this._subscriberUID,
+		this._subscriberType,
+		{
+			from : this._stream.name,
+			to : this.subscriber.prop,
+			map : this.map,
+			filter : this.filter,
+			subscribe : this.subscriber.cb
+		},
+		parent_UID
+	);
+}
 
 
 
@@ -608,7 +631,7 @@ Object.defineProperty(Subscription.prototype, 'execute', {
  * A constructor for STREAMS more specifically used by providers objects
  */
 
-var LazyResettableColdStream = function(name, value, hostedInterface, transform) {
+var LazyResettableColdStream = function(name, transform, value) {
 
 	this.forward = true;
 	this.name = name;
@@ -618,6 +641,7 @@ var LazyResettableColdStream = function(name, value, hostedInterface, transform)
 	
 	this._value;
 	this._previousValues = [];
+	this.lazy = true;
 	this.dirty;
 	this.lastIndexProvided = -1;
 	if (typeof value !== 'undefined')
@@ -629,7 +653,7 @@ LazyResettableColdStream.prototype.constructor = LazyResettableColdStream;
 Object.defineProperty(LazyResettableColdStream.prototype, 'value', {
 	get : function() {
 		
-		if (this.dirty) {
+		if (this.lazy && this.dirty) {
 			this.lazyUpdate();
 		}
 		
@@ -650,17 +674,19 @@ Object.defineProperty(LazyResettableColdStream.prototype, 'value', {
  * 			- don't update when set from downward (reflected stream shall only call "set")
  */
 LazyResettableColdStream.prototype.setAndUpdateConditional = function(value) {
+//	console.trace(value);
 	this._value = value;
+	this._previousValues.push(value);
 	
-	if (this.forward) {
+	if (this.forward && !this.lazy) {
 		if (!this.transform) {
-			this._previousValues.push(value);
 			this.update();
 		}
 		else if (typeof this.transform === 'function') {
 			try {
 				// try/catch as the transform function is likely to always be outside of our scope
-				this._previousValues.push(this._value = this.transform(this._value));
+				this._value = this.transform(this._value);
+				this._previousValues.splice(this._previousValues.length - 1, 1, this._value);
 			}
 			catch(e) {
 				console.log('Exception thrown while the transform function was executing on self data: ', e, this._value);
@@ -674,17 +700,37 @@ LazyResettableColdStream.prototype.setAndUpdateConditional = function(value) {
 	}
 }
 
+LazyResettableColdStream.prototype.update = function() {
+	
+	this.subscriptions.forEach(function(subscription) {
+		subscription.execute(this._previousValues);
+//		console.log(this._previousValues[0]);
+	}, this);
+	this.lastIndexProvided = this._previousValues.length - 1;
+}
+
+LazyResettableColdStream.prototype.lazyUpdate = function() {
+	if (typeof this.transform === 'function') {
+		try {
+			// try/catch as the transform function is likely to always be outside of our scope
+			this._value = this.transform(this._value);
+			this._previousValues.splice(this._previousValues.length - 1, 1, this._value);
+		}
+		catch(e) {
+			console.log('Exception thrown while the transform function was executing on self data: ', e, this._value);
+			return;
+		}
+	}
+	this.update();
+	this.dirty = false;
+}
+
 LazyResettableColdStream.prototype.addSubscription = function(handlerOrHost, prop, inverseTransform) {
+//	console.log(handlerOrHost, prop);
 	this.subscriptions.push(new ColdSubscription(handlerOrHost, prop, this, inverseTransform));
 	return this.subscriptions[this.subscriptions.length - 1];
 }
 
-LazyResettableColdStream.prototype.update = function() {
-	this.subscriptions.forEach(function(subscription) {
-		subscription.execute(this._previousValues);
-	}, this);
-	this.lastIndexProvided = this._previousValues.length - 1;
-}
 
 
 
@@ -706,12 +752,12 @@ LazyResettableColdStream.prototype.update = function() {
  * 		this.streams[parentState].subscribe(candidate.hostElem, childState).filter(desc.filter).map(desc.map);
  */
 var ColdSubscription = function(subscriberObjOrHandler, subscriberProp, parent, inverseTransform) {
-	
+//	console.log(parent.lastIndexProvided);
 	this.subscriber = {
 		currentIndex : parent.lastIndexProvided,
 		prop : subscriberProp || null,
 		obj : typeof subscriberObjOrHandler === 'object' ? subscriberObjOrHandler : null,
-		cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function() {return this._stream._value},
+		cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function defaultCb(val) {return val},
 		inverseTransform : inverseTransform || function(value) {return value;},
 		_subscription : this,
 		_stream : parent
@@ -725,11 +771,12 @@ ColdSubscription.prototype.objectType = 'ColdSubscription';
 
 Object.defineProperty(ColdSubscription.prototype, 'execute', {
 	value : function(valuesFromStack) {
+//		console.log(valuesFromStack);
 		valuesFromStack.forEach(function(val, key) {
 			if (key > this.subscriber.currentIndex) {
 				this.executeSingle(val);
 				this.subscriber.currentIndex++;
-			
+//				console.log(this.subscriber.currentIndex);
 			}
 		}, this);
 	}
@@ -737,7 +784,7 @@ Object.defineProperty(ColdSubscription.prototype, 'execute', {
 
 Object.defineProperty(ColdSubscription.prototype, 'executeSingle', {
 	value : function(value) {
-//		console.log('%c %s %c %s', 'color:coral', 'Subscription "execute"', 'color:firebrick', 'Stream : ' + this._stream.name, 'value', value);
+//		console.log('%c %s %c %s', 'color:coral', 'Subscription "execute"', 'color:firebrick', 'Stream : ' + this._stream.name, 'value:', value);
 		var flag = true, val, desc;
 		if (value !== undefined) {
 			if (this.hasOwnProperty('filter'))
@@ -750,7 +797,7 @@ Object.defineProperty(ColdSubscription.prototype, 'executeSingle', {
 				return;
 //			console.log('val', this._stream.name, val);
 			
-//			console.log('subscriber', this.subscriber);
+//			console.log(this.subscriber.obj !== null && this.subscriber.prop !== null);
 			if (this.subscriber.obj !== null && this.subscriber.prop !== null)
 				this.subscriber.obj[this.subscriber.prop] = val;
 			// second case shall only be reached if no prop is given : on a "reflected" subscription by a child component
@@ -1071,6 +1118,266 @@ WorkerInterface.prototype.handleError = function(response) {
 }
 
 WorkerInterface.__factory_name = 'WorkerInterface';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * @singleton PixiStage
+ */
+var PixiStage = {
+	 
+}
+
+PixiStage.renderer = null;
+PixiStage.stage = null;
+
+PixiStage.createRenderer = function() {
+	this.renderer = new PIXI.CanvasRenderer(window.innerWidth, window.innerHeight, {transparent:true, antialias : true, autoResize : true});
+}
+
+PixiStage.createStage = function() {
+	this.stage = new PIXI.Container();
+	
+	TweenMax.ticker.addEventListener("tick", function() {
+		renderer.render(stage);
+	});
+}
+
+PixiStage.getStage = function() {
+	return this.stage;
+}
+
+PixiStage.addChild = function(shape) {
+	this.stage.addChild(shape);
+}
+
+
+
+
+/*
+layerwidth = paddingLeft + marginLeft + nodeWidth
+layerHeight = paddingTop + marginTop + nodeHeigth
+
+position = {
+	x : this.getParentView.currentAPI.getOffset().x + layerWidth,
+	y : this.getParentView.currentAPI.getOffset().y + layerHeigth * this._parent._key
+}
+
+		=> extrapolate radial pos from domain = xMax - xMin, alpha = (x - xMin) * 2PI / domain, x = cos(alpha), y = sin(alpha)
+		
+getHandlePos is a pure function(entering||exiting, nodeSize, _Key)
+
+	=> could we use some lib to have complete DOM -> xy conversion ?
+		=> gl-html.js
+*/
+
+
+
+
+
+
+
+/**
+ * @constructor PixiView
+ */
+var PixiViewAPI = function(def) {
+	
+	this.nodeName = def.nodeName;
+	this.templateNodeName = def.templateNodeName;
+	
+	this.hostElem;
+	this.rootElem;
+	this.hostedInterface = {
+		setProp : PixiViewAPI.hostedInterface.setProp.bind(this),
+		getProp : PixiViewAPI.hostedInterface.getProp.bind(this)
+	};
+	this.presenceAsAProp = 'flex';
+	
+	this.objectType = 'PixiViewAPI';
+}
+PixiViewAPI.prototype = Object.create(EventEmitter.prototype);
+PixiViewAPI.prototype.objectType = 'PixiViewAPI';
+PixiViewAPI.prototype.constructor = PixiViewAPI;
+
+PixiViewAPI.hostedInterface = {
+	setProp : function(propName, value) {
+//		this.hostElem[propName] = value;
+	},
+	getProp : function(propName, value) {
+//		return this.hostElem[propName];
+	}
+};
+
+
+PixiViewAPI.prototype.setPresence = function(bool) {
+	this.hostElem.style.display = bool ? this.presenceAsAProp : 'none';
+}
+
+PixiViewAPI.prototype.addEventListener = function(eventName, handler) {
+	this.hostElem.addEventListener(eventName, handler);
+}
+
+/**
+ * 
+ */
+PixiViewAPI.prototype.setMasterNode = function(node) {
+	this.hostElem = node;
+	this.rootElem = node.shadowRoot;
+}
+
+/**
+ * 
+ */
+PixiViewAPI.prototype.getMasterNode = function() {
+	return this.hostElem;
+}
+
+/**
+ * 
+ */
+PixiViewAPI.prototype.getWrappingNode = function() {
+	return this.rootElem || this.hostElem;
+}
+
+/**
+ * 
+ */
+PixiViewAPI.prototype.isTextInput = function() {
+	return this.nodeName.toUpperCase() === 'INPUT';
+}
+
+/**
+ * 
+ */
+PixiViewAPI.prototype.getLowerIndexChildNode = function() {
+	try {
+		return this.getWrappingNode().children[atIndex - 1];
+	}
+	catch(e) {
+		return false;
+	}
+}
+
+/**
+ * 
+ */
+PixiViewAPI.prototype.setContentNoFail = function(value) {
+	if (this.isTextInput())
+		this.hostElem.value = value;
+	else
+		this.setNodeContent(value);
+}
+
+/**
+ * 
+ */
+PixiViewAPI.prototype.setTextContent = function(text) {
+	this.getWrappingNode().textContent = text;
+}
+
+/**
+ * 
+ */
+PixiViewAPI.prototype.setNodeContent = function(contentAsString) {
+	this.getWrappingNode().innerHTML = contentAsString;
+}
+
+/**
+ * 
+ */
+PixiViewAPI.prototype.appendTextNode = function(text) {
+	var elem = document.createElement('span');
+	elem.innerHTML = text;
+	this.getWrappingNode().appendChild(elem);
+}
+
+/**
+ * @param {Component} childNode
+ * @param {number} atIndex
+ */
+PixiViewAPI.prototype.addChildNodeAt = function(childNode, atIndex) {
+	var lowerIndexChild;
+	if (lowerIndexChild = this.getLowerIndexChildNode(atIndex))
+		lowerIndexChild.insertAdjacentElement('afterend', childNode);
+	else
+		this.getWrappingNode().appendChild(childNode);
+}
+
+/**
+ * @abstract
+ */
+PixiViewAPI.prototype.empty = function() {
+	this.getWrappingNode().innerHTML = null;
+	return true;
+}
+
+/**
+ * @param {array[string]} contentAsArray
+ * @param {string} templateNodeName
+ */
+PixiViewAPI.prototype.getMultilineContent = function(contentAsArray) {
+	return this.getFragmentFromContent(contentAsArray, this.templateNodeName);
+}
+
+/**
+ * @param {array[string]} contentAsArray
+ * @param {string} templateNodeName
+ */
+PixiViewAPI.prototype.getFragmentFromContent = function(contentAsArray, templateNodeName) {
+
+	var fragment = document.createDocumentFragment(), elem;
+	contentAsArray.forEach(function(val) {
+		var elem = document.createElement(templateNodeName);
+		elem.id = 'targetSubViewElem-' + TypeManager.UIDGenerator.newUID();
+		if (val instanceof HTMLElement) {
+			elem.appendChild(val);
+			fragment.appendChild(elem);
+			return;
+		}
+		
+		elem.innerHTML = val;
+		fragment.appendChild(elem);
+	}, this);
+	return fragment;
+}
+
+PixiViewAPI.prototype.setContentFromArray = function(contentAsArray) {
+	this.empty();
+	this.getWrappingNode().appendChild(this.getMultilineContent(contentAsArray));
+}
+
+
+
+
+
+
+
+
+
+
 
 
 

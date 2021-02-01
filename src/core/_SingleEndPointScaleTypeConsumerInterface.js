@@ -1,5 +1,5 @@
 /**
- * @constructor APIscaleTypeConsumerInterface
+ * @constructor SingleEndPointScaleTypeConsumerInterface
  */
 
 
@@ -7,14 +7,14 @@ var TypeManager = require('src/core/TypeManager');
 //var rDataset = require('src/core/ReactiveDataset');
 //var Components = require('src/core/Component');
 
-var APIscaleTypeConsumerInterface = function(host) {
+var SingleEndPointScaleTypeConsumerInterface = function(host) {
 	this.host = host;
-	this.objectType = 'APIscaleTypeConsumerInterface';
+	this.objectType = 'SingleEndPointScaleTypeConsumerInterface';
 }
-APIscaleTypeConsumerInterface.prototype = Object.create(Object.prototype);
-APIscaleTypeConsumerInterface.prototype.objectType = 'APIscaleTypeConsumerInterface';
+SingleEndPointScaleTypeConsumerInterface.prototype = Object.create(Object.prototype);
+SingleEndPointScaleTypeConsumerInterface.prototype.objectType = 'SingleEndPointScaleTypeConsumerInterface';
 
-APIscaleTypeConsumerInterface.prototype.subscribeToProvider = function(serverAPI, entryPoint) {
+SingleEndPointScaleTypeConsumerInterface.prototype.subscribeToProvider = function(serverAPI, entryPoint) {
 	var request;
 	if (typeof serverAPI.registerEndPoint === 'function') {
 //		console.log(entryPoint);
@@ -24,31 +24,22 @@ APIscaleTypeConsumerInterface.prototype.subscribeToProvider = function(serverAPI
 	}
 }
 
-APIscaleTypeConsumerInterface.prototype.subscribeToAllProviders = function(serverAPI) {
+SingleEndPointScaleTypeConsumerInterface.prototype.subscribeToAllProviders = function(serverAPI) {
 	var requests;
 	if (serverAPI.sources.length) {
 		return requests = serverAPI.subscribeToAllEndPoints(this.host);
 	}
 }
 
-APIscaleTypeConsumerInterface.prototype.shouldInjectReactOnSelf = function(def) {
-	if (def && !def.reactOnSelf.findObjectByValue('from', 'serviceChannel')) {
+SingleEndPointScaleTypeConsumerInterface.prototype.shouldInjectReactOnSelf = function(def) {
+	if (def && !def.reactOnSelf.findObjectByValue('from', 'updateChannel')) {
 //		console.log(def.reactOnSelf.findObjectByValue('from', 'serviceChannel'));
 		return [{
-				from : 'serviceChannel',
+				from : 'updateChannel',
 				cbOnly : true,
 				subscribe : function(value) {
 //					console.log(value);
 					
-					var endPointName, endPointIndex;
-					if (value.endPointName) {
-						endPointName = value.endPointName;
-						value = value.payload; 
-					}
-					
-					endPointIndex = (this.slotsAssociation && this.slotsAssociation[endPointName]) || 0;
-					
-					this.typedSlots[endPointIndex].resetLength();
 					var scalesAsStreams = this.getCustomStreams();
 					
 					if (Array.isArray(value)) {
@@ -58,11 +49,11 @@ APIscaleTypeConsumerInterface.prototype.shouldInjectReactOnSelf = function(def) 
 							if (value[0][0]._id) {
 								// we found the effective obj
 								var items = value.map(function(set) {
-									return this.typedSlots[endPointIndex].newItem(set);
+									return this.typedSlots[0].newItem(set);
 								}, this);
-								this.typedSlots[endPointIndex].pushApply(items);
+								this.typedSlots[0].pushApply(items);
 								
-								this.typedSlots[endPointIndex].forEach(function(item, idx) {
+								this.typedSlots[0].forEach(function(item, idx) {
 									this._children[idx]._children.forEach(function(child, key) {
 										child.streams.colorGetter = scalesAsStreams[key];
 									}, this);
@@ -70,10 +61,14 @@ APIscaleTypeConsumerInterface.prototype.shouldInjectReactOnSelf = function(def) 
 							}
 						}
 						else {
+//							console.log(this.typedSlots[0]);
+//							console.log('call to SingleEndPointScaleTypeConsumerInterface');
+//							debugger;
 							// it's a doc without nested docs (not suitable to build scales)
-							this.typedSlots[endPointIndex].push(
-								this.typedSlots[endPointIndex].newItem(value)
+							this.typedSlots[0].push(
+								this.typedSlots[0].newItem(value)
 							);
+							
 						}
 					}
 					else
@@ -94,4 +89,4 @@ APIscaleTypeConsumerInterface.prototype.shouldInjectReactOnSelf = function(def) 
 
 
 
-module.exports = APIscaleTypeConsumerInterface;
+module.exports = SingleEndPointScaleTypeConsumerInterface;

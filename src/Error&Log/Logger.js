@@ -8,6 +8,7 @@
 		this.objectType = 'Logger';
 		
 		this._currentlyCallingObjectName;
+		this._currentlyCallingObjectType;
 	}
 	Logger.prototype = {};//Object.create(Factory.CoreModule.prototype);
 	Logger.prototype.objectType = 'Logger';
@@ -24,7 +25,8 @@
 					}
 
 	Logger.prototype.changeCallingObject = function(e) {
-		this._currentlyCallingObjectName = e.data;
+		this._currentlyCallingObjectName = e.data.name;
+		this._currentlyCallingObjectType = e.data.objectType;
 	}
 
 	Logger.prototype.log = function(isOfType) {
@@ -88,6 +90,6 @@
 			OK : 'OK'
 	}
 	
-var logger =  new Logger();
+//var logger =  new Logger();
 
-module.exports = logger;
+module.exports = Logger;

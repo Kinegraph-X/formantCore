@@ -26,7 +26,7 @@ var ObservedHTTPRequest = function(requestName, providerURL, pathToData, dataPro
 	this.createEvent('response');
 	
 	this.dataProcessingFunction = typeof dataProcessingFunction === 'function' ? dataProcessingFunction : value => value;
-	this.requestAsAStream = this.streams[this.name] = new CoreTypes.Stream(this.name, null, null, this.dataProcessingFunction, true);
+	this.requestAsAStream = this.streams[this.name] = new CoreTypes.LazyResettableColdStream(this.name, this.dataProcessingFunction);
 //	console.log(this.requestAsAStream);
 
 	if (Object.prototype.toString.call(subscriber) === '[object Object]' || typeof subscriber === 'function') {
@@ -45,31 +45,34 @@ ObservedHTTPRequest.prototype.subscribe = function(subscriber, prop, dataProcess
 		return;
 	}
 	
+	var component = subscriber;
 	prop = typeof subscriber === 'function' ? null : (prop || 'value');
 	if (typeof subscriber.streams === 'object') {
 		if (typeof subscriber.streams.serviceChannel !== 'object') {
-//			subscriber.render();
-			if (typeof subscriber.streams.serviceChannel !== 'object') {
-				console.warn(subscriber.objectType, 'Missing "serviceChannel" stream on automatic subscription to ObservableHTTPRequest');
-				if (!Object.keys(subscriber.streams))
-					console.log('No Stream found...');
-				for (let stream in subscriber.streams) {
-					console.log('The following stream has been found:', stream.name);
-				}
+			console.warn(subscriber.objectType, 'Missing "serviceChannel" stream on automatic subscription to ObservableHTTPRequest');
+			if (!Object.keys(subscriber.streams))
+				console.log('No Stream found...');
+			for (let stream in subscriber.streams) {
+				console.log('The following stream has been found:', stream.name);
 			}
-			else
-				subscriber = subscriber.streams.serviceChannel;
 		}
 		else
 			subscriber = subscriber.streams.serviceChannel;
 	}
-	else {
+	else
 		subscriber = subscriber;
-	}
+		
 	if (typeof dataProcessingFunction === 'function')
 		this.dataProcessingFunction = dataProcessingFunction;
+		
+	var subscription = this.requestAsAStream.subscribe(subscriber, prop, dataProcessingFunction);
+	if (component._UID)
+		subscription.unAnonymize(component._UID, component.objectType)
+	if (component._parent)
+		subscription.registerTransition(component._parent._UID);
 	
-	return this.requestAsAStream.subscribe(subscriber, prop, dataProcessingFunction);
+	return subscription;
+				
 }
 
 ObservedHTTPRequest.prototype.sendRequest = async function(type, path, payload) {
@@ -97,7 +100,10 @@ ObservedHTTPRequest.prototype.sendRequest = async function(type, path, payload) 
 		return;
 	}
 //	console.log(response);
-	this.requestAsAStream.value = response;
+	this.requestAsAStream.value = {
+			endPointName : this.name,
+			payload : response
+		};
 }
 
 ObservedHTTPRequest.prototype.getResult = function() {

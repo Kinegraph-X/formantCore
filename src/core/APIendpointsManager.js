@@ -45,7 +45,7 @@ APIendpointsManager.prototype.iterateOnEndPoints = function(endPointsArray, APIu
  */
 APIendpointsManager.prototype.newEndPoint = function(endPoint) {
 	this.knownEndPoints.push(endPoint);
-	return new ObservedHTTPRequest(this.name, this.APIurl, endPoint + this.APIpath, this.transformFunc);
+	return new ObservedHTTPRequest(endPoint, this.APIurl, endPoint + this.APIpath, this.transformFunc);
 }
 
 /**
@@ -119,13 +119,14 @@ APIendpointsManager.prototype.acquireAsync = function() {
 
 APIendpointsManager.prototype.acquireAsPromise = function() {
 	this.acquireAsync();
-	return TypeManager.permanentProvidersRegistry.getLiveRequests(this.name);
+	return TypeManager.permanentProvidersRegistry.getLiveRequests(this.knownEndPoints);
 }
 
 APIendpointsManager.prototype.getResultsLazy = async function(results, source, key) {
 	var uniqueName = source.name + '_' + source.pathToData;
 	TypeManager.permanentProvidersRegistry.setItem(uniqueName, source, 'addToLiveSet');
 	await source.sendRequest();
+//	console.log(source.requestAsAStream.subscriptions);
 	results.push(source.requestAsAStream.value);
 }
 

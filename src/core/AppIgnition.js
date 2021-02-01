@@ -33,10 +33,10 @@ Ignition.prototype.decorateComponentsThroughDefinitionsCache = function(listDef)
 	this.instanciateDOM();
 	
 	// instanciate streams
-	this.instanciateStreams();
+	this.instanciateStreams(listDef);
 	
 	// handle reactivity and event subscription : each component holds a "unique ID from the def" => retrieve queries from the "reactivity" register
-	this.handleReactivityAndEvents();
+	this.handleReactivityAndEvents(listDef);
 	
 	// decorate DOM Objects with :
 	// * 						- streams
@@ -130,7 +130,7 @@ Ignition.prototype.instanciateDOM = function() {
  * INITIALIZATION CHAPTER : instanciate Streams
  * 
  */
-Ignition.prototype.instanciateStreams = function() {
+Ignition.prototype.instanciateStreams = function(listDef) {
 	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
 	var streams = TypeManager.caches.streams.cache;
 	for (let defUID in typedComponentRegister) {
@@ -151,7 +151,7 @@ Ignition.prototype.instanciateStreams = function() {
  * INITIALIZATION CHAPTER : handle reactivity & events
  * 
  */
-Ignition.prototype.handleReactivityAndEvents = function() {
+Ignition.prototype.handleReactivityAndEvents = function(listDef) {
 	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
 	var reactivityQueries, bindingHandler, component;
 	
@@ -162,6 +162,11 @@ Ignition.prototype.handleReactivityAndEvents = function() {
 			reactivityQueries = TypeManager.caches[subscriptionType].cache[defUID];
 			
 			typedComponentRegister[defUID].forEach(function(component) {
+				if (listDef && (component._children.length >= 3 || reactivityQueries.length > 3)) {	//typedComponentRegister[defUID].listItemMembersCount
+//					console.log(reactivityQueries, component);
+					return;
+				}
+				
 				if (!reactivityQueries.length)
 					return;
 
@@ -249,6 +254,7 @@ Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 		}, this);
 	}
 	
+	var dataStoreKey;
 	for (let defUID in typedComponentRegister) {
 //		console.log(defUID, typedComponentRegister[defUID]);
 		typedComponentRegister[defUID].forEach(function(component) {

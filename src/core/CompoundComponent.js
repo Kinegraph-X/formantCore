@@ -110,6 +110,9 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 		definition.getHostDef().subSections.push(null);
 	});
 
+	if (!definition.getGroupHostDef())
+		console.log(this);
+	
 	if (!TypeManager.hostsDefinitionsCacheRegistry.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
 		shouldExtend = true;
 
@@ -177,15 +180,21 @@ CompoundComponent.prototype.instanciateSubSections = function(definition) {
 }
 
 CompoundComponent.prototype.instanciateMembers = function(definition) {
+//	console.log(typeof Components.ColorSamplerSetComponentAsClient);
 	var type;
 	definition.members.forEach(function(memberDef) {
 		type = memberDef.getHostDef().getType() || (memberDef.getGroupHostDef() && memberDef.getGroupHostDef().getType());
-//		console.log(type, type in Components, this.view);
+//		if (type === 'ColorSamplerSetComponentAsClient')
+//			console.log(type, type in Components, Components);
 		
 		if (type in Components && type !== 'CompoundComponent')
 			new Components[type](memberDef, this.view, this);
-		else if (memberDef.getGroupHostDef())
-			new CompoundComponent(memberDef, this.view, this);
+		else if (memberDef.getGroupHostDef()) {
+			if (Components[type]) 
+				new Components[type](memberDef, this.view, this);
+			else
+				new CompoundComponent(memberDef, this.view, this);
+		}
 		else if (memberDef.getHostDef().nodeName)
 			this.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(memberDef, this.view, this));
 	}, this);
@@ -232,7 +241,10 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 	else
 		return;
 
-	var templateDef = definition.getHostDef().template, composedComponent, type, reNewsWrapper = templateDef.getHostDef().sWrapper ? false : true, hadChildren = templateDef.members.length;
+	var templateDef = definition.getHostDef().template,
+		composedComponent,
+		type;
+		
 //	console.log(templateDef);
 	definition.getHostDef().each.forEach(function(item, key) {
 		
@@ -242,19 +254,26 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 			TypeManager.dataStoreRegistry.setItem(composedComponent._UID, key);
 		}
 		else if (templateDef.getGroupHostDef()) {
-			composedComponent = new CompoundComponent(templateDef, this._parent.view, this._parent);
+			if ((type = templateDef.getGroupHostDef().getType()) && Components[type]) {
+//				if (type === 'ColorSamplerSetComponentAsClient' || type === 'GenericTitledPanelComponent') {
+//					console.log(type, type in Components, Components);
+//				}
+				composedComponent = new Components[type](templateDef, this._parent.view, this._parent);
+			}
+			else
+				composedComponent = new CompoundComponent(templateDef, this._parent.view, this._parent);
 			TypeManager.dataStoreRegistry.setItem(composedComponent._UID, key);
 		}
 		else
 			this._parent.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(templateDef, this._parent.view, this._parent));
 		
-		if (reNewsWrapper) {
-			templateDef.getHostDef().sWrapper = null;
-			templateDef.getHostDef().UID = TypeManager.UIDGenerator.newUID().toString();
-			var diff = 0;
-			if (diff = (templateDef.members.length - hadChildren))
-				templateDef.members.splice(hadChildren, diff);
-		}
+//		if (reNewsWrapper) {
+//			templateDef.getHostDef().sWrapper = null;
+//			templateDef.getHostDef().UID = TypeManager.UIDGenerator.newUID().toString();
+//			var diff = 0;
+//			if (diff = (templateDef.members.length - hadChildren))
+//				templateDef.members.splice(hadChildren, diff);
+//		}
 	}, this);
 
 	//	console.log(this);
@@ -816,11 +835,15 @@ AbstractTable.prototype.getRow = function(idx) {
 var createAbstractAccordionDef = require('src/coreDefs/AbstractAccordionDef');
 var createAbstractAccordionSlotDef = require('src/coreDefs/AbstractAccordionSlotsDef');
 
-var AbstractAccordion = function(def, parentView, parent, hostedTypes) {
+var AbstractAccordion = function(definition, parentView, parent, hostedTypes) {
+	if (!definition.getGroupHostDef().nodeName)
+		definition = createAbstractAccordionDef();
+		
 	this.slotsCount = 0;
-	this.slotsDefFactory = this.slotsDefFactory || createAbstractAccordionSlotDef;
 	
 	this.typedSlots = [];
+	this.slotsAssociation = {};
+	this.slotsDefFactory = this.slotsDefFactory || createAbstractAccordionSlotDef;
 
 	if (Array.isArray(hostedTypes) && hostedTypes.length) {
 		this.slotsCount = hostedTypes.length;
@@ -830,7 +853,7 @@ var AbstractAccordion = function(def, parentView, parent, hostedTypes) {
 		console.warn('AbstractAccordion', 'a "hostedTypes" arg should be provided, unless the component shall have no child');
 	}
 
-	CompoundComponent.call(this, def || createAbstractAccordionDef(), parentView, parent);
+	CompoundComponent.call(this, definition || createAbstractAccordionDef(), parentView, parent);
 	
 	this.objectType = 'AbstractAccordion';
 	this.affectSlots(hostedTypes);
@@ -841,26 +864,28 @@ AbstractAccordion.prototype.objectType = 'AbstractAccordion';
 coreComponents.AbstractAccordion = AbstractAccordion;
 
 AbstractAccordion.prototype.updateDefinitionBasedOnSlotsCouunt = function(definition, hostedTypes) {
-	hostedTypes.forEach(function(type) {
+	hostedTypes.forEach(function(hostSpec, key) {
 		definition.lists[0].getHostDef().each.push(
 			{"accordion-set" : 'set_1'}
 		);
-	});
+		this.slotsAssociation[hostSpec.endPointName] = key;
+	}, this);
 }
 
 /**
  * @same_as TypedListComponent
  */
 AbstractAccordion.prototype.affectSlots = function(hostedTypes) {
-	
+//	console.log(this._children.length);
 	for (var i = 0; i < this.slotsCount; i++) {
 		this.typedSlots.push(new this.rDataset(
 			this._children[i],
 			this._children[i],
 			this.slotsDefFactory(),
-			[])
+			['updateChannel'])
 		);
-		this.typedSlots[i].defaultListTemplate.getHostDef().template.getGroupHostDef().type = hostedTypes[i];
+		this.typedSlots[i].defaultListDef.getHostDef().template.getGroupHostDef().type = hostedTypes[i].componentType;
+//		console.log(this.typedSlots[i].defaultListDef.getHostDef());
 	}
 
 	return true;
