@@ -18,6 +18,7 @@ var coreComponents = {};
 Components.RootViewComponent = require('src/coreComponents/RootViewComponent/RootViewComponent');
 Components.AppOverlayComponent = require('src/coreComponents/AppOverlayComponent/AppOverlayComponent');
 Components.AppBoundaryComponent = require('src/coreComponents/AppBoundaryComponent/AppBoundaryComponent');
+Components.IFrameComponent = require('src/coreComponents/IFrameComponent/IFrameComponent');
 Components.HToolbarComponent = require('src/coreComponents/HToolbarComponent/HToolbarComponent');
 Components.FlexColumnComponent = require('src/coreComponents/FlexColumnComponent/FlexColumnComponent');
 Components.FlexRowComponent = require('src/coreComponents/FlexRowComponent/FlexRowComponent');
@@ -71,7 +72,7 @@ Components.VisualSetHostComponent = require('src/UI/Generics/VisualSetHostCompon
 Object.assign(Components, require(componentTypes.misc));
 delete componentTypes.misc;
 for (let type in componentTypes) {
-	
+
 	if (typeof componentTypes[type] === 'string')
 		Components[type] = require(componentTypes[type]);
 }
@@ -112,7 +113,7 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 
 	if (!definition.getGroupHostDef())
 		console.log(this);
-	
+
 	if (!TypeManager.hostsDefinitionsCacheRegistry.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
 		shouldExtend = true;
 
@@ -126,9 +127,9 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 	if (definition.getGroupHostDef().getType() && Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef) {
 		this.createDefaultDef = Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
 	}
-//	console.log(parent);
-//	console.log(definition);
-	
+	//	console.log(parent);
+	//	console.log(definition);
+
 	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, parent, isChildOfRoot);  // feed with host def
 	this.objectType = 'CompoundComponent';
 
@@ -164,7 +165,7 @@ CompoundComponent.prototype.instanciateSubSections = function(definition) {
 	var type, component;
 	definition.subSections.forEach(function(subSectionDef) {
 		type = subSectionDef.getHostDef().getType() || (subSectionDef.getGroupHostDef() && subSectionDef.getGroupHostDef().getType());
-//		console.log(type, type in Components);
+		//		console.log(type, type in Components);
 		if (type in Components && type !== 'CompoundComponent' && type !== 'FlexColumnComponent' && type !== 'FlexRowComponent' && type !== 'FlexGridComponent' && type !== 'HToolbarComponent') {
 			component = new Components[type](subSectionDef, this.view, null, 'isChildOfRoot');
 			// mandatory, as we need to append memberViews on subViews without accessing the component's scope
@@ -180,17 +181,17 @@ CompoundComponent.prototype.instanciateSubSections = function(definition) {
 }
 
 CompoundComponent.prototype.instanciateMembers = function(definition) {
-//	console.log(typeof Components.ColorSamplerSetComponentAsClient);
+	//	console.log(typeof Components.ColorSamplerSetComponentAsClient);
 	var type;
 	definition.members.forEach(function(memberDef) {
 		type = memberDef.getHostDef().getType() || (memberDef.getGroupHostDef() && memberDef.getGroupHostDef().getType());
-//		if (type === 'ColorSamplerSetComponentAsClient')
-//			console.log(type, type in Components, Components);
-		
+		//		if (type === 'ColorSamplerSetComponentAsClient')
+		//			console.log(type, type in Components, Components);
+
 		if (type in Components && type !== 'CompoundComponent')
 			new Components[type](memberDef, this.view, this);
 		else if (memberDef.getGroupHostDef()) {
-			if (Components[type]) 
+			if (Components[type])
 				new Components[type](memberDef, this.view, this);
 			else
 				new CompoundComponent(memberDef, this.view, this);
@@ -244,20 +245,20 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 	var templateDef = definition.getHostDef().template,
 		composedComponent,
 		type;
-		
-//	console.log(templateDef);
+
+	//	console.log(templateDef);
 	definition.getHostDef().each.forEach(function(item, key) {
-		
+
 		if ((type = templateDef.getHostDef().getType())) {
-//			console.log(type, key, templateDef.getHostDef());
+			//			console.log(type, key, templateDef.getHostDef());
 			composedComponent = new Components[type](templateDef, this._parent.view, this._parent);
 			TypeManager.dataStoreRegistry.setItem(composedComponent._UID, key);
 		}
 		else if (templateDef.getGroupHostDef()) {
 			if ((type = templateDef.getGroupHostDef().getType()) && Components[type]) {
-//				if (type === 'ColorSamplerSetComponentAsClient' || type === 'GenericTitledPanelComponent') {
-//					console.log(type, type in Components, Components);
-//				}
+				//				if (type === 'ColorSamplerSetComponentAsClient' || type === 'GenericTitledPanelComponent') {
+				//					console.log(type, type in Components, Components);
+				//				}
 				composedComponent = new Components[type](templateDef, this._parent.view, this._parent);
 			}
 			else
@@ -266,14 +267,14 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 		}
 		else
 			this._parent.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(templateDef, this._parent.view, this._parent));
-		
-//		if (reNewsWrapper) {
-//			templateDef.getHostDef().sWrapper = null;
-//			templateDef.getHostDef().UID = TypeManager.UIDGenerator.newUID().toString();
-//			var diff = 0;
-//			if (diff = (templateDef.members.length - hadChildren))
-//				templateDef.members.splice(hadChildren, diff);
-//		}
+
+		//		if (reNewsWrapper) {
+		//			templateDef.getHostDef().sWrapper = null;
+		//			templateDef.getHostDef().UID = TypeManager.UIDGenerator.newUID().toString();
+		//			var diff = 0;
+		//			if (diff = (templateDef.members.length - hadChildren))
+		//				templateDef.members.splice(hadChildren, diff);
+		//		}
 	}, this);
 
 	//	console.log(this);
@@ -300,7 +301,7 @@ var LazySlottedCompoundComponent = function(definition, parentView, parent, alre
 	var stdDefinition = definition || createLazySlottedComponentDef();
 	this.typedSlots = [];
 	this.slotsCount = this.slotsCount || 2;
-//	console.log(this.slotsDef);
+	//	console.log(this.slotsDef);
 	this.slotsDef = this.slotsDef || slotsDef || createLazySlottedComponentSlotstDef();
 
 	// Proceeding that way (i.e. not using the complete mixin mechanism : "addInterface") allows us to choose in which order the ctors are called
@@ -312,15 +313,15 @@ var LazySlottedCompoundComponent = function(definition, parentView, parent, alre
 	// We could choose not to call the CompoundComponent ctor, but then we wouldn't be able to define subSections or members (ou would have to explicitly call the methods then)
 	// Other issue : the CompoundComponent ctor would be called with the arguments received by the mergedConstructor(), and they do not include a definition object
 	// Keeping that here makes the code base cleaner
-	
+
 	// Get a definition :
 	// Here, the initial def allows an undefined number of tabs
 	this.updateDefinitionBasedOnSlotsCount(stdDefinition);
 
 	CompoundComponent.call(this, stdDefinition, parentView, parent);
-		
-//	console.log('LazySlottedCompoundComponent - Ctor Rendering \n\n\n');
-//	this.render(null, stdDefinition.lists[0].host);
+
+	//	console.log('LazySlottedCompoundComponent - Ctor Rendering \n\n\n');
+	//	this.render(null, stdDefinition.lists[0].host);
 
 	this.objectType = 'LazySlottedCompoundComponent';
 
@@ -332,9 +333,9 @@ var LazySlottedCompoundComponent = function(definition, parentView, parent, alre
 	for (let i = 0, l = this.slotsCount; i < l; i++) {
 		this.typedSlots[i].setSchema(['slotTitle']);
 	}
-	
+
 	this.createEvent('header_clicked');
-	
+
 	this.slotsCache = new TypeManager.PropertyCache('LazySlottedCompoundComponentSlotsCache' + this._UID);
 }
 LazySlottedCompoundComponent.prototype = Object.create(CompoundComponent.prototype);
@@ -350,7 +351,7 @@ LazySlottedCompoundComponent.prototype.registerEvents = function() {
 }
 
 LazySlottedCompoundComponent.prototype.updateDefinitionBasedOnSlotsCount = function(definition) {
-//	definition.lists[0].host.each = [];
+	//	definition.lists[0].host.each = [];
 	for (let i = 0, l = this.slotsCount; i < l; i++) {
 		definition.lists[0].host.each.push({ 'slot-id': 'slot' + i });
 	}
@@ -407,9 +408,9 @@ LazySlottedCompoundComponent.prototype.pushApplyToSlot = function(slotNbr, conte
 		else
 			return value;
 	}, this);
-//	console.log(cAsArray.slice(0));
+	//	console.log(cAsArray.slice(0));
 	this.typedSlots[slotNbr].pushApply(cAsArray);
-//	return contentAsArray;
+	//	return contentAsArray;
 }
 
 LazySlottedCompoundComponent.prototype.pushDefaultToSlot = function(slotNbr) {
@@ -440,12 +441,12 @@ LazySlottedCompoundComponent.prototype.cacheSlots = function(userlandUID) {
 	for (let i = 0, l = this.slotsCount; i < l; i++) {
 		if (!this.slotsCache.getItem(userlandUID + i.toString())) {
 			var savedSlot = {
-				content : this.typedSlots[i].slice(0),
-				children : this.typedSlots[i].rootComponent._children.slice(0)
+				content: this.typedSlots[i].slice(0),
+				children: this.typedSlots[i].rootComponent._children.slice(0)
 			}
 			this.slotsCache.setItem(userlandUID + i.toString(), savedSlot);
 		}
-//		this.typedSlots[i].resetLength();
+		//		this.typedSlots[i].resetLength();
 	}
 }
 
@@ -459,7 +460,7 @@ LazySlottedCompoundComponent.prototype.retrieveSlots = function(userlandUID) {
 				this.typedSlots[i].rootComponent.pushChild(child);
 				if (child.view) // this.slotsCache.getItem(userlandUID1) is a pseudo component (an object with an init() method)
 					this.typedSlots[i].rootComponent.view.addChildAt(child.view, slot.children.length); //  (- 1  & slot.children.length) cause 0 would cause an append (see view.addChildAt())
-			},  this);
+			}, this);
 		}
 	}
 }
@@ -482,9 +483,9 @@ var createBranchTemplateDef = require('src/coreDefs/branchTemplateDef');
 var createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
 
 var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilterFunction) {
-//	console.log(definition, parentView, parent, jsonData);
+	//	console.log(definition, parentView, parent, jsonData);
 	var stdDefinition = createAbstractTreeDef();
-	
+
 	/**
 	 * Standard Implementation :
 	 * (this requirements may be overridden through extension. see affectClickEvents())
@@ -496,19 +497,20 @@ var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilter
 	this.pseudoModel = [];
 	this.listTemplate = TypeManager.createComponentDef({ type: 'ComponentList' });
 	this.listTemplate.getHostDef().each = this.pseudoModel;
-	
+
 	this.expanded = 'expanded';
 
 	CompoundComponent.call(this, stdDefinition, parentView, parent);
 	this.objectType = 'AbstractTree';
-	
+
 	this.addEventListener('update', function(e) {
-//		console.log('abstractTree receives update and sets "selected"', e.data);
+		//		console.log('abstractTree receives update and sets "selected"', e.data);
 		this.streams.selected.value = e.data.self_UID;
 	}.bind(this));
 	this.createEvent('exportdata');
-	
-	this.renderJSON(jsonData, nodeFilterFunction);
+
+	if (jsonData && Object.prototype.toString.call(jsonData) === '[object Object]')
+		this.renderJSON(jsonData, nodeFilterFunction);
 }
 AbstractTree.prototype = Object.create(CompoundComponent.prototype);
 AbstractTree.prototype.objectType = 'AbstractTree';
@@ -516,13 +518,13 @@ coreComponents.AbstractTree = AbstractTree;
 
 AbstractTree.prototype.createMember = function(memberSpec, parent) {
 	var type = memberSpec.type, componentDef, component;
-//	console.log(memberSpec);
+	//	console.log(memberSpec);
 	if (memberSpec.children.length) {
 		if (typeof (componentDef = TypeManager.definitionsCache.isKnownUID('branchTemplate_' + type)) === 'string') {
 			componentDef = TypeManager.createComponentDef(this.branchTemplate, 'branchTemplate_' + type);
 			//			componentDef.getGroupHostDef().attributes.push(TypeManager.PropsFactory({textContent : this.getHeaderTitle(type)}));
 		}
-		
+
 		component = new CompoundComponent(componentDef, parent.view, parent);
 		TypeManager.dataStoreRegistry.setItem(component._UID, this.pseudoModel.length);
 		this.pseudoModel.push(this.getHeaderTitle(memberSpec));
@@ -541,14 +543,14 @@ AbstractTree.prototype.getHeaderTitle = function(memberSpec) {
 		return {
 			headerTitle: "[".concat(len, "]"),
 			displayedas: memberSpec.type,
-			expanded : this.expanded
-			};
+			expanded: this.expanded
+		};
 	else if (memberSpec.type === 'object')
 		return {
 			headerTitle: "{".concat(len, "}"),
 			displayedas: memberSpec.type,
-			expanded : this.expanded
-			};
+			expanded: this.expanded
+		};
 }
 
 AbstractTree.prototype.getKeyValueObj = function(memberSpec) {
@@ -570,7 +572,7 @@ AbstractTree.prototype._typeof = function(obj) {
 		};
 	}
 
-	return _typeof(obj);	
+	return _typeof(obj);
 }
 
 AbstractTree.prototype.getDataType = function(obj) {
@@ -655,12 +657,12 @@ AbstractTree.prototype.instanciateTreeMembers = function(tree, nodeFilterFunctio
 }
 
 AbstractTree.prototype.renderJSON = function(jsonData, nodeFilterFunction) {
-//	console.log(jsonData);
+	//	console.log(jsonData);
 	var parsedData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 	var tree = this.createTree(parsedData);
-//	console.log(parsedData, tree);
+	//	console.log(parsedData, tree);
 	this.instanciateTreeMembers(tree, nodeFilterFunction);
-	
+
 	var DOMNodeId;
 	this.render(DOMNodeId);
 	return tree;
@@ -671,14 +673,14 @@ AbstractTree.prototype.reset = function() {
 	this.clearEventListeners('exportdata');
 }
 
-AbstractTree.prototype.render = function() {} 									// pure virtual (injected as a dependancy by AppIgnition)
+AbstractTree.prototype.render = function() { } 									// pure virtual (injected as a dependancy by AppIgnition)
 AbstractTree.prototype.affectClickEvents = function(memberDesc, component) { 	// virtual with default (implemented through override on extension)
 	this.affectClickEvents_Base(memberDesc, component);
 }
 
 AbstractTree.prototype.affectClickEvents_Base = function(memberDesc, component) {
 	var self = this;
-	
+
 	if (memberDesc.children.length) {
 		// Say we have a header node, containing 2 pictos (arrows), and an appended span, key: value
 		component._children[0].addEventListener('clicked_ok', function(e) {
@@ -694,16 +696,16 @@ AbstractTree.prototype.affectClickEvents_Base = function(memberDesc, component) 
 		component.registerClickEvents = function() {
 			if (!component._eventHandlers.clicked_ok)
 				component.createEvent('clicked_ok');
-			
+
 			Object.getPrototypeOf(this).registerClickEvents.call(this);
-			
+
 			// Say we have 2 divs with key : value
 			this.view.subViewsHolder.memberViews[1].getWrappingNode().addEventListener('click', function(e) {
 				this.trigger('clicked_ok', e);
 			}.bind(component));
 			component.addEventListener('clicked_ok', function(e) {
 				this.streams.selected.value = 'selected';
-				this.trigger('update', {self_UID : component._UID}, true);
+				this.trigger('update', { self_UID: component._UID }, true);
 				self.trigger('exportdata', memberDesc.projectedData);
 			}.bind(component));
 		}
@@ -729,21 +731,21 @@ AbstractTree.prototype.affectClickEvents_Base = function(memberDesc, component) 
 var createAbstractTableDef = require('src/coreDefs/abstractTableDef');
 var createAbstractTableSlotsDef = require('src/coreDefs/abstractTableSlotsDef');
 
-	
+
 var AbstractTable = function(def, parentView, parent) {
 	this.slotsCount = 2;
-	
+
 	var stdDef = def || createAbstractTableDef();
 	this.slotsDef = this.slotsDef || createAbstractTableSlotsDef();
 	this.columnsCount = this.columnsCount || 2;
 	this.rowsCount = 0;
-	
+
 	LazySlottedCompoundComponent.call(this, stdDef, parentView, parent);
 	this.typedSlots[0].setSchema(['headerTitle']);
 	this.typedSlots[1].setSchema(['rowContentAsArray']);
-	
+
 	// This concern is left to the implementation discretion
-//	this.setcolumnsCount(this.columnsCount);
+	//	this.setcolumnsCount(this.columnsCount);
 }
 
 /**
@@ -758,7 +760,7 @@ coreComponents.AbstractTable = AbstractTable;
 AbstractTable.prototype.setcolumnsCount = function(columnsCount, headerTitles) {
 	this.columnsCount = columnsCount;
 	this.typedSlots[0].resetLength();
-//	console.log(this.typedSlots[0]);
+	//	console.log(this.typedSlots[0]);
 	if (!Array.isArray(headerTitles)) {
 		headerTitles = ['idx'];
 		for (let i = 1; i < columnsCount; i++) {
@@ -774,11 +776,11 @@ AbstractTable.prototype.setcolumnsCount = function(columnsCount, headerTitles) {
 AbstractTable.prototype.pushToSlotFromText = function(slotNbr, content) {
 	// Here, newItem() depends on the type given in the ctor... or afterwards with setSchema()
 	this.typedSlots[slotNbr].push(this.typedSlots[slotNbr].newItem(content));
-	
+
 	if (slotNbr === 0) {
 		var lastChild = this._children[0].getLastChild();
 		lastChild.view.getMasterNode().addEventListener('mousedown', function(e) {
-			this.trigger('header_clicked', {self_key : lastChild._key});
+			this.trigger('header_clicked', { self_key: lastChild._key });
 			this._children[0].childButtonsSortedLoop(lastChild._key);
 		}.bind(this));
 	}
@@ -795,11 +797,11 @@ AbstractTable.prototype.pushApplyToSlot = function(slotNbr, contentAsArray) {
 	}, this);
 
 	this.typedSlots[slotNbr].pushApply(cAsArray);
-	
+
 	if (slotNbr === 0) {
 		for (let i = lastChildIndex; i < this._children[0]._children.length; i++) {
 			this._children[0]._children[i].view.getMasterNode().addEventListener('mousedown', function(e) {
-				this.trigger('header_clicked', {self_key : this._children[0]._children[i]._key});
+				this.trigger('header_clicked', { self_key: this._children[0]._children[i]._key });
 				this._children[0].childButtonsSortedLoop(this._children[0]._children[i]._key);
 			}.bind(this));
 		}
@@ -838,9 +840,9 @@ var createAbstractAccordionSlotDef = require('src/coreDefs/AbstractAccordionSlot
 var AbstractAccordion = function(definition, parentView, parent, hostedTypes) {
 	if (!definition.getGroupHostDef().nodeName)
 		definition = createAbstractAccordionDef();
-		
+
 	this.slotsCount = 0;
-	
+
 	this.typedSlots = [];
 	this.slotsAssociation = {};
 	this.slotsDefFactory = this.slotsDefFactory || createAbstractAccordionSlotDef;
@@ -854,11 +856,11 @@ var AbstractAccordion = function(definition, parentView, parent, hostedTypes) {
 	}
 
 	CompoundComponent.call(this, definition || createAbstractAccordionDef(), parentView, parent);
-	
+
 	this.objectType = 'AbstractAccordion';
 	this.affectSlots(hostedTypes);
-	
-} 
+
+}
 AbstractAccordion.prototype = Object.create(CompoundComponent.prototype);
 AbstractAccordion.prototype.objectType = 'AbstractAccordion';
 coreComponents.AbstractAccordion = AbstractAccordion;
@@ -866,7 +868,7 @@ coreComponents.AbstractAccordion = AbstractAccordion;
 AbstractAccordion.prototype.updateDefinitionBasedOnSlotsCouunt = function(definition, hostedTypes) {
 	hostedTypes.forEach(function(hostSpec, key) {
 		definition.lists[0].getHostDef().each.push(
-			{"accordion-set" : 'set_1'}
+			{ "accordion-set": 'set_1' }
 		);
 		this.slotsAssociation[hostSpec.endPointName] = key;
 	}, this);
@@ -876,7 +878,7 @@ AbstractAccordion.prototype.updateDefinitionBasedOnSlotsCouunt = function(defini
  * @same_as TypedListComponent
  */
 AbstractAccordion.prototype.affectSlots = function(hostedTypes) {
-//	console.log(this._children.length);
+	//	console.log(this._children.length);
 	for (var i = 0; i < this.slotsCount; i++) {
 		this.typedSlots.push(new this.rDataset(
 			this._children[i],
@@ -885,7 +887,7 @@ AbstractAccordion.prototype.affectSlots = function(hostedTypes) {
 			['updateChannel'])
 		);
 		this.typedSlots[i].defaultListDef.getHostDef().template.getGroupHostDef().type = hostedTypes[i].componentType;
-//		console.log(this.typedSlots[i].defaultListDef.getHostDef());
+		//		console.log(this.typedSlots[i].defaultListDef.getHostDef());
 	}
 
 	return true;
@@ -937,8 +939,8 @@ Components.CompositorComponent.prototype.acquireCompositor = function(inheriting
 	if (inheritedType in Components || inheritedType in coreComponents) {
 		var objectType = inheritingType.prototype.objectType;
 		inheritingType.prototype.Compositor = coreComponents[inheritedType];
-//		console.log(Object.create(coreComponents[inheritedType].prototype));
-//		console.log(Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(coreComponents[inheritedType].prototype), inheritingType.prototype));
+		//		console.log(Object.create(coreComponents[inheritedType].prototype));
+		//		console.log(Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(coreComponents[inheritedType].prototype), inheritingType.prototype));
 		inheritingType.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(coreComponents[inheritedType].prototype), inheritingType.prototype);
 		inheritingType.prototype.objectType = objectType;
 		if (!inheritingType.prototype._implements || !inheritingType.prototype._implements.length)
@@ -951,7 +953,7 @@ Components.CompositorComponent.prototype.acquireCompositor = function(inheriting
 Components.CompositorComponent.createAppLevelExtendedComponent = function() {
 	var extension2ndPass = {};
 	for (var componentType in Components) {
-//		console.log(Components[componentType].prototype.hasOwnProperty('extendsCore'), componentType, Components[componentType].prototype.extendsCore);
+		//		console.log(Components[componentType].prototype.hasOwnProperty('extendsCore'), componentType, Components[componentType].prototype.extendsCore);
 		if (Components[componentType].prototype.hasOwnProperty('extendsCore'))
 			Components.CompositorComponent.prototype.acquireCompositor(Components[componentType], Components[componentType].prototype.extendsCore);
 		else if (Components[componentType].prototype.hasOwnProperty('extends'))

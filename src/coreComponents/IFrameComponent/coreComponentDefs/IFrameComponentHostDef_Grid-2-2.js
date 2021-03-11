@@ -2,7 +2,7 @@
  * @def IFrameComponent
  * @isGroup false
  * 
- * @CSSify styleName : IFrameComponentHost/true
+ * @CSSify styleName : IFrameComponentHost_Grid-2-2/false
  * @CSSify styleName : IFrameComponentTemplate/false
  * @CSSifyTheme themeName : basic-light
  * 
@@ -19,7 +19,7 @@ var IFrameComponentDef = function(uniqueID, options, model) {
 	
 	
 	var moduleDef = TypeManager.createComponentDef({
-			nodeName : 'iframe'/**@CSSifyStyle componentStyle : IFrameComponentHost */
+			nodeName : 'iframe'/**@CSSifyStyle componentStyle : IFrameComponentHost_Grid-2-2 */
 		});
 	
 	return moduleDef;

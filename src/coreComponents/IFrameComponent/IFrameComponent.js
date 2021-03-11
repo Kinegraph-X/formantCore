@@ -12,21 +12,21 @@ var createIFrameComponentHostDef = require('src/coreComponents/IFrameComponent/c
 var IFrameComponent = function(definition, parentView, parent) {
 	var self = this;
 	this._connectionEstablished = false;
-	
 	this.targetOrigin = window.location.href;
-	this._src = definition.getHostDef().src;
-	delete definition.getHostDef().src;
+	
+//	this._src = definition.getHostDef().src;
+//	delete definition.getHostDef().src;
 //	console.log(definition);
 
-	if (!definition.getHostDef().attributes.findObjectByKey('src'))
-		definition.getHostDef().attributes.push(new TypeManager.attributesModel({src : this._src}));
-		
+//	if (!definition.getHostDef().attributes.findObjectByKey('src'))
+//		definition.getHostDef().attributes.push(new TypeManager.attributesModel({src : this._src}));
+	
 	Components.ComponentWithView.call(this, definition, parentView, parent);
 	
-	// TODO: condition this top the presence of the node...
+	// TODO: condition this to the presence of the node...
 	var connect = setInterval(function() {
 		if (!self._connectionEstablished) {
-			if (self.view.getMasterNode().contentWindow) {
+			if (self.view.getMasterNode() && self.view.getMasterNode().contentWindow) {
 //				console.log(self.view.getMasterNode().contentWindow);
 				console.log('ping sent');
 				self.view.getMasterNode().contentWindow.postMessage('ping', self.targetOrigin);

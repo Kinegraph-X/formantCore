@@ -55,7 +55,8 @@ Ignition.prototype.decorateComponentsThroughDefinitionsCache = function(listDef)
  * 
  */
 Ignition.prototype.instanciateDOM = function() {
-	var views = TypeManager.viewsRegistry,
+	var rootNodeIfDOM,
+		views = TypeManager.viewsRegistry,
 		nodes = TypeManager.nodesRegistry.cache,
 		attributesCache = TypeManager.caches.attributes.cache,
 		attributes,
@@ -102,9 +103,22 @@ Ignition.prototype.instanciateDOM = function() {
 			if (Object.prototype.toString.call(appConstants.getUID(view._sWrapperUID)) === '[object Object]') {
 //				console.log(view);
 				view.styleHook.s = appConstants.getUID(view._sWrapperUID).clone();
-				view.styleHook.s.overrideStyles(view.sOverride);
+				if (view.sOverride)
+					view.styleHook.s.overrideStyles(view.sOverride);
 				view.styleHook.s.shouldSerializeAll();
-				view.callCurrentViewAPI('getWrappingNode').append(view.styleHook.s.getStyleNode());
+				
+				// For style overrides and custom def objects.
+				// But take care to give an explicit ID, as the iframe is -no- shadow root
+//				console.log(view.currentViewAPI.nodeName);
+				if (view.currentViewAPI.nodeName === 'iframe') {
+					if (rootNodeIfDOM.shadowRoot)
+						rootNodeIfDOM.shadowRoot.prepend(view.styleHook.s.getStyleNode());
+					// crappy fallback
+					else
+						document.body.prepend(view.styleHook.s.getStyleNode());
+				}
+				else
+					view.callCurrentViewAPI('getWrappingNode').append(view.styleHook.s.getStyleNode());
 //				console.log(view._sWrapperUID);
 //				console.log(view.styleHook.s);
 			}
@@ -119,6 +133,11 @@ Ignition.prototype.instanciateDOM = function() {
 //		}
 		if (view.parentView && view.parentView.callCurrentViewAPI('getWrappingNode'))
 			view.parentView.callCurrentViewAPI('getWrappingNode').append(view.callCurrentViewAPI('getMasterNode'));
+		
+		// This is quite risky, as for now rootView is instanciated first,
+		// but do we have any guarantee this will always be the case ?
+		if (!rootNodeIfDOM && view.currentViewAPI.nodeName === 'app-root')
+			rootNodeIfDOM = view.callCurrentViewAPI('getMasterNode');
 	});
 }
 

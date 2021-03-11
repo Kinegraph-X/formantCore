@@ -181,11 +181,14 @@ var PropFactory = function(obj) {
 		Object.defineProperty(PropFactory.props[key].prototype, 'objectType', {
 			value :  'AbstractProp'
 		});
-		
+//		console.log(obj, PropFactory.props[key]);
 		return (new PropFactory.props[key](obj));
 	}
-	else
+	else {
+//		console.log(obj, PropFactory.props[key]);
 		return (new PropFactory.props[key](obj));
+	}
+		
 }
 PropFactory.props = {};
 exportedObjects.PropFactory = PropFactory;

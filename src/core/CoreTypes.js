@@ -1591,6 +1591,7 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	this.isCustomElem = def.isCustomElem;
 	this._sWrapperUID = def.sWrapper ? def.sWrapper.getName() : null;
 	this.styleHook;
+//	console.log(def.sOverride);
 	this.sOverride = def.sOverride;
 	
 	this.objectType = 'ComponentView';

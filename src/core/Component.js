@@ -621,11 +621,16 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 			if (hostDef[prop] === null)
 				hostDef[prop] = defaultHostDef[prop];
 		});
+		// TODO: At first, we weren't allowing override,
+		// => Is it really the right way to do it ?
 		if (hostDef.sWrapper === null)
 			hostDef.sWrapper = defaultHostDef.sWrapper;
 		if (hostDef.command === null)
 			hostDef.command = defaultHostDef.command;
-			
+		
+		// Brutal subSections & members override:
+		// => descendant views are easier to define in the Component's class
+		// 		and should not be different in the runtime immplementation
 		if (defaultDef.subSections.length)
 			Array.prototype.push.apply(definition.subSections, defaultDef.subSections);
 		

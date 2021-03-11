@@ -4,41 +4,41 @@
 
 
 var CanvasTypes = {
-	defaultLineWidth : 1,
-	defaultLineColor : 0x777777,
-	defaultLineAlpha : 1,
-	itemBgColor : 0xFFFFFF,
-	itemBorderColor : 0xDADADA,
-	defaultBorderWidth : 1,
-	defaultFontSize : '24px',
-	defaultFontFamily : 'Arial Narrow',
-	defaultFontWeight : '400',
-	defaultFontColor : 0x000000,
-	defaultFontAlign : 'left',
-	defaultLineHeight : 29,
-	defaultSubflow : 'neutral',
-	defaultHandleHeight : 57,
-	defaultHandleWidth : 7,
-	defaultSplineWidth : 4,
-	defaultBigSplineWidth : 12,
-	defaultSplineColor : 0xDDDDDD,
-	defaultSplineDash : [
-		
+	defaultLineWidth: 1,
+	defaultLineColor: 0x777777,
+	defaultLineAlpha: 1,
+	itemBgColor: 0xFFFFFF,
+	itemBorderColor: 0xDADADA,
+	defaultBorderWidth: 1,
+	defaultFontSize: '24px',
+	defaultFontFamily: 'Arial Narrow',
+	defaultFontWeight: '400',
+	defaultFontColor: 0x000000,
+	defaultFontAlign: 'left',
+	defaultLineHeight: 29,
+	defaultSubflow: 'neutral',
+	defaultHandleHeight: 57,
+	defaultHandleWidth: 7,
+	defaultSplineWidth: 4,
+	defaultBigSplineWidth: 12,
+	defaultSplineColor: 0xDDDDDD,
+	defaultSplineDash: [
+
 	],
-	defaultSplineAlpha : .64,
-	defaultTensionOffset : 22,
-	variableAlpha : 1,
-	defaultColors : {
-		"input" : 0xAAAAAA,
-		"neutral" : 0x999999,
-		"special" : 0x000000
+	defaultSplineAlpha: .64,
+	defaultTensionOffset: 22,
+	variableAlpha: 1,
+	defaultColors: {
+		"input": 0xAAAAAA,
+		"neutral": 0x999999,
+		"special": 0x000000
 	},
-	graphStartingPoint : {x : 0, y : 0},
-	defaultBoxWidth : 64,
-	defaultBoxHeight : 64,
-	defaultBorderRadius : 2,
-	defaultH_Interval : 84,
-	defaultV_Interval : 12
+	graphStartingPoint: { x: 0, y: 0 },
+	defaultBoxWidth: 64,
+	defaultBoxHeight: 64,
+	defaultBorderRadius: 2,
+	defaultH_Interval: 84,
+	defaultV_Interval: 12
 };
 
 
@@ -56,16 +56,16 @@ CanvasTypes.LineStyle = function(obj) {
 }
 
 Object.defineProperty(CanvasTypes.prototype, 'lineWidth', {
-	value : CanvasTypes.defaultLineWidth
+	value: CanvasTypes.defaultLineWidth
 });
 Object.defineProperty(CanvasTypes.prototype, 'color', {
-	value : CanvasTypes.itemBorderColor
+	value: CanvasTypes.itemBorderColor
 });
 Object.defineProperty(CanvasTypes.prototype, 'lineAlpha', {
-	value : CanvasTypes.defaultSplineAlpha
+	value: CanvasTypes.defaultSplineAlpha
 });
 Object.defineProperty(CanvasTypes.prototype, 'lineDash', {
-	value : CanvasTypes.defaultSplineDash
+	value: CanvasTypes.defaultSplineDash
 });
 
 CanvasTypes.FillStyle = function(obj) {
@@ -73,10 +73,10 @@ CanvasTypes.FillStyle = function(obj) {
 		Object.assign(this, obj);
 }
 Object.defineProperty(CanvasTypes.prototype, 'fillColor', {
-	value : CanvasTypes.itemBgColor
+	value: CanvasTypes.itemBgColor
 });
 Object.defineProperty(CanvasTypes.prototype, 'fillAlpha', {
-	value : CanvasTypes.variableAlpha
+	value: CanvasTypes.variableAlpha
 });
 
 CanvasTypes.textStyle = function(obj) {
@@ -84,27 +84,27 @@ CanvasTypes.textStyle = function(obj) {
 		Object.assign(this, obj);
 
 	if (this.fontSize !== CanvasTypes.options.defaultFontSize)
-		this.lineHeight =  Number(this.fontSize.slice(0, 2)) + 5;
+		this.lineHeight = Number(this.fontSize.slice(0, 2)) + 5;
 	else
 		this.lineHeight = CanvasTypes.options.defaultFontSize;
 }
 Object.defineProperty(CanvasTypes.prototype, 'fontFamily', {
-	value : CanvasTypes.defaultFontFamily
+	value: CanvasTypes.defaultFontFamily
 });
 Object.defineProperty(CanvasTypes.prototype, 'fontColor', {
-	value : CanvasTypes.defaultFontColor
+	value: CanvasTypes.defaultFontColor
 });
 Object.defineProperty(CanvasTypes.prototype, 'fontSize', {
-	value : CanvasTypes.defaultFontSize
+	value: CanvasTypes.defaultFontSize
 });
 Object.defineProperty(CanvasTypes.prototype, 'fontWeight', {
-	value : CanvasTypes.defaultFontWeight
+	value: CanvasTypes.defaultFontWeight
 });
 Object.defineProperty(CanvasTypes.prototype, 'textAlign', {
-	value : CanvasTypes.defaultFontAlign
+	value: CanvasTypes.defaultFontAlign
 });
 Object.defineProperty(CanvasTypes.prototype, 'lineHeight', {
-	value : CanvasTypes.defaultLineHeight
+	value: CanvasTypes.defaultLineHeight
 });
 
 CanvasTypes.Position = function(obj) {
@@ -112,10 +112,10 @@ CanvasTypes.Position = function(obj) {
 		Object.assign(this, obj);
 }
 Object.defineProperty(CanvasTypes.prototype, 'x', {
-	value : 0
+	value: 0
 });
 Object.defineProperty(CanvasTypes.prototype, 'y', {
-	value : 0
+	value: 0
 });
 
 CanvasTypes.Size = function(obj) {
@@ -123,10 +123,10 @@ CanvasTypes.Size = function(obj) {
 		Object.assign(this, obj);
 }
 Object.defineProperty(CanvasTypes.prototype, 'width', {
-	value : CanvasTypes.defaultBoxWidth
+	value: CanvasTypes.defaultBoxWidth
 });
 Object.defineProperty(CanvasTypes.prototype, 'height', {
-	value : CanvasTypes.defaultBoxHeight
+	value: CanvasTypes.defaultBoxHeight
 });
 
 
@@ -155,11 +155,11 @@ Object.defineProperty(CanvasTypes.prototype, 'height', {
 CanvasTypes._baseShape = function(lineStyle, fillStyle) {
 	lineStyle = lineStyle || new CanvasTypes.LineStyle();
 	fillStyle = fillStyle || new CanvasTypes.FillStyle();
-	
+
 	this.lineWidth = lineStyle.lineWidth;
 	this.lineColor = lineStyle.lineColor;
 	this.lineAlpha = lineStyle.lineAlpha;
-	this.lineDash =  lineStyle.lineDash;
+	this.lineDash = lineStyle.lineDash;
 	this.fillColor = fillStyle.fillColor;
 	this.fillAlpha = fillStyle.fillAlpha;
 
@@ -171,7 +171,7 @@ CanvasTypes._baseShape.prototype.draw = function() {
 	this._shape.lineStyle(this.lineWidth, this.lineColor, this.lineAlpha, this.lineDash);
 }
 
-CanvasTypes._baseShape.prototype.clear = function () {
+CanvasTypes._baseShape.prototype.clear = function() {
 	this._shape.clear();
 	this.draw();
 }
@@ -215,7 +215,7 @@ CanvasTypes._baseSprite = function(texture) {
 	this._shape = new PIXI.extras.TilingSprite(texture);
 }
 
-CanvasTypes._baseSprite.prototype.generateNew = function (texture) {
+CanvasTypes._baseSprite.prototype.generateNew = function(texture) {
 	this._shape.destroy();
 	this._shape = new PIXI.extras.TilingSprite(texture);
 }
@@ -253,40 +253,40 @@ CanvasTypes._baseSprite.prototype.generateNew = function (texture) {
  * @param fill {number(hex)}
  * @param align {string}
  */
-CanvasTypes._text = function (textContent, textStyle, position, rotation) {
+CanvasTypes._text = function(textContent, textStyle, position, rotation) {
 	textStyle = textStyle || new CanvasTypes.TextStyle();
-	
+
 	this._text;
 	this.text = textContent || '';
-	
+
 	this.fontFamily = textStyle.fontFamily || CanvasTypes.options.defaultFontFamily;
 	this.fontColor = textStyle.textColor || CanvasTypes.options.defaultFontColor;
 	this.fontSize = textStyle.fontSize || CanvasTypes.options.defaultFontSize;
 	this.fontWeight = textStyle.fontWeight || CanvasTypes.options.defaultFontWeight;
 	this.textAlign = textStyle.textAlign || CanvasTypes.options.defaultFontAlign;
 	this.lineHeight = textStyle.lineHeight || Number(font[1].slice(0, 2)) + 5;
-	
+
 	this.position = position || new CanvasTypes.Position();
 	this.rotation = rotation || new CanvasTypes.Rotation();
-	
+
 	this.draw();
 }
 
 CanvasTypes._text.prototype.draw = function() {
-	
+
 	this._text = new PIXI.Text(this.text, {
-		font : this.fontWeight + ' ' + this.fontSize + ' ' + this.fontFamily,
-		fill : this.fontColor,
-		align : this.textAlign,
-		lineHeight : this.lineHeight
-		}
+		font: this.fontWeight + ' ' + this.fontSize + ' ' + this.fontFamily,
+		fill: this.fontColor,
+		align: this.textAlign,
+		lineHeight: this.lineHeight
+	}
 	);
 	this._text.position = this.position
 	this._text.rotation = this.rotation
-	this._text.scale = {x : .5, y : .5};
+	this._text.scale = { x: .5, y: .5 };
 }
 
-CanvasTypes._text.prototype.reDraw = function () {
+CanvasTypes._text.prototype.reDraw = function() {
 	this.draw();
 }
 
@@ -338,7 +338,7 @@ CanvasTypes.AbstractNode = function(position, lineStyle, fillStyle) {
 	this.lineStyle = lineStyle || new CanvasTypes.LineStyle();
 	this.fillStyle = fillStyle || new CanvasTypes.FillStyle();
 	this.position = position || new CanvasTypes.Position();
-	
+
 	this._baseShape = new CanvasTypes._baseShape(position, this.lineStyle, this.fillStyle);
 	this.shape = this._baseShape._shape;
 	this.shape.__type = 'AbstractNode';
@@ -349,7 +349,7 @@ CanvasTypes.AbstractNode.prototype.draw = function() {		// Pure Virtual
 
 };
 
-CanvasTypes.AbstractNode.prototype.reDraw = function () {	// Defaulted Virtual
+CanvasTypes.AbstractNode.prototype.reDraw = function() {	// Defaulted Virtual
 	this._baseShape.clear();
 	this.draw();
 }
@@ -368,11 +368,11 @@ CanvasTypes.AbstractBox = function(position, size, lineStyle, fillStyle, borderR
 	this._baseShape = new CanvasTypes._baseRect(size, lineStyle, fillStyle);
 	this.shape = this._baseShape._shape;
 	this.shape.__type = 'AbstractBox';
-	
+
 	this.width = this.shape.width;
 	this.height = this.shape.height;
-	
-//	this.draw();
+
+	//	this.draw();
 }
 CanvasTypes.AbstractBox.prototype = Object.create(CanvasTypes.AbstractNode.prototype);
 
@@ -391,8 +391,8 @@ CanvasTypes.AbstractRidgeBorderBox = function(position, size, lineStyle, fillSty
 	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, borderRadius);
 
 	this.shape.__type = 'AbstractRidgeBorderBox';
-	
-//	this.draw();
+
+	//	this.draw();
 }
 CanvasTypes.AbstractRidgeBorderBox.prototype = Object.create(CanvasTypes.AbstractBox.prototype);
 
@@ -401,22 +401,22 @@ CanvasTypes.AbstractRidgeBorderBox.prototype.draw = function() {
 	var tensionFactorComplement = this.borderRadius * .025;
 	var halvedBorderWidth = Math.max(1, this.borderWidth / 2);
 	var this.borderRadius = this.width / 2;
-	var yStart = Math.floor((this.borderWidth  - 0.001) / 2);
-	var offsetedHalfWidth =  this.width / 2 - halvedBorderWidth;
-	var offsetedHalfHeight =  this.height / 2 - halvedBorderWidth;
-	
+	var yStart = Math.floor((this.borderWidth - 0.001) / 2);
+	var offsetedHalfWidth = this.width / 2 - halvedBorderWidth;
+	var offsetedHalfHeight = this.height / 2 - halvedBorderWidth;
+
 	this._baseShape._shape.beginFill(this._baseShape.fillColor, 1);
 	this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.width - this.borderWidth, this.height - this.borderWidth, this.borderRadius);
 	this._baseShape._shape.endFill();
 
-	this.shape.lineStyle(this._baseShape.lineWidth, this._baseShape.lineColor, 1, this._baseShape.lineDash);	
+	this.shape.lineStyle(this._baseShape.lineWidth, this._baseShape.lineColor, 1, this._baseShape.lineDash);
 	this.shape.moveTo(this.borderRadius, yStart);
-	
+
 	this.shape.lineTo(this.width - this.borderRadius, yStart);
 	this.shape.bezierCurveTo(this.width - this.borderRadius + tensionFactor, yStart, this.width - halvedBorderWidth, 0 + tensionFactorComplement, this.width - halvedBorderWidth, 0 + this.borderRadius);
 	this.shape.lineTo(this.width + offsetedHalfWidth, this.height - this.borderRadius);
 	this.shape.bezierCurveTo(this.width - halvedBorderWidth, this.height - tensionFactorComplement, this.width - tensionFactorComplement, this.height - halvedBorderWidth, this.width - this.borderRadius, this.height - halvedBorderWidth);
-	
+
 	// To be continued...
 };
 
@@ -434,8 +434,8 @@ CanvasTypes.AbstractDisc = function(position, size, lineStyle, fillStyle) {
 	size = new CanvasTypes.Size(size);
 	borderRadius = this.borderRadius = size.width / 2;
 	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, borderRadius);
-	
-//	this.draw();
+
+	//	this.draw();
 }
 CanvasTypes.AbstractDisc.prototype = Object.create(CanvasTypes.AbstractBox.prototype);
 
@@ -454,30 +454,30 @@ CanvasTypes.AbstractDisc.prototype = Object.create(CanvasTypes.AbstractBox.proto
 
 
 CanvasTypes.NodeHandleDefaults = {
-	width : 12,
-	borderWidth : 1,
-	fillColor : 0xDDDDDD,
-	borderColor : 0x777777
+	width: 12,
+	borderWidth: 1,
+	fillColor: 0xDDDDDD,
+	borderColor: 0x777777
 };
 
 
 CanvasTypes.NodeHandle = function(position) {
 	var size = new CanvasTypes.Size({
-		width : CanvasTypes.NodeHandleDefaults.width,
-		height : CanvasTypes.NodeHandleDefaults.width
+		width: CanvasTypes.NodeHandleDefaults.width,
+		height: CanvasTypes.NodeHandleDefaults.width
 	});
 	var fillStyle = new CanvasTypes.FillStyle({
-		fillColor : CanvasTypes.NodeHandleDefaults.fillColor
+		fillColor: CanvasTypes.NodeHandleDefaults.fillColor
 	});
 	var lineStyle = new CanvasTypes.LineStyle({
-		lineWidth : CanvasTypes.NodeHandleDefaults.borderWidth,
-		lineColor : CanvasTypes.NodeHandleDefaults.borderColor
+		lineWidth: CanvasTypes.NodeHandleDefaults.borderWidth,
+		lineColor: CanvasTypes.NodeHandleDefaults.borderColor
 	});
-	
+
 	var borderRadius = this.borderRadius = size / 2;
 	CanvasTypes.AbstractDisc.call(this, position, size, lineStyle, fillStyle, borderRadius);
-	
-//	this.draw();
+
+	//	this.draw();
 }
 CanvasTypes.NodeHandle.prototype = Object.create(CanvasTypes.AbstractDisc.prototype);
 
@@ -491,33 +491,175 @@ CanvasTypes.NodeHandle.prototype = Object.create(CanvasTypes.AbstractDisc.protot
 
 
 CanvasTypes.NodeShapeDefaults = {
-	width : 113,
-	borderWidth : 1,
-	fillColor : 0xFFFFFF,
-	borderColor : 0xAAAAAA,
-	borderRadius : 12
+	width: 113,
+	borderWidth: 1,
+	fillColor: 0xFFFFFF,
+	borderColor: 0xAAAAAA,
+	borderRadius: 12
 };
 
 
 CanvasTypes.NodeShape = function(position) {
 	var size = new CanvasTypes.Size({
-		width : CanvasTypes.NodeShapeDefaults.width,
-		height : CanvasTypes.NodeShapeDefaults.width
+		width: CanvasTypes.NodeShapeDefaults.width,
+		height: CanvasTypes.NodeShapeDefaults.width
 	});
 	var fillStyle = new CanvasTypes.FillStyle({
-		fillColor : CanvasTypes.NodeShapeDefaults.fillColor
+		fillColor: CanvasTypes.NodeShapeDefaults.fillColor
 	});
 	var lineStyle = new CanvasTypes.LineStyle({
-		lineWidth : CanvasTypes.NodeShapeDefaults.borderWidth,
-		lineColor : CanvasTypes.NodeShapeDefaults.borderColor
+		lineWidth: CanvasTypes.NodeShapeDefaults.borderWidth,
+		lineColor: CanvasTypes.NodeShapeDefaults.borderColor
 	});
-	
+
 	this.borderRadius = CanvasTypes.NodeShapeDefaults.borderRadius;
 	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, this.borderRadius);
-	
-//	this.draw();
+
+	//	this.draw();
 }
 CanvasTypes.NodeShape.prototype = Object.create(CanvasTypes.AbstractBox.prototype);
+
+
+
+
+
+
+
+
+
+CanvasTypes.InputShapeDefaults = {
+	width: 227,
+	height: 27,
+	borderWidth: 1,
+	fillColor: 0xFFFFFF,
+	borderColor: 0x999999,
+	borderRadius: 3
+};
+
+CanvasTypes.InputShape = function(position) {
+	var size = new CanvasTypes.Size({
+		width: CanvasTypes.InputShapeDefaults.width,
+		height: CanvasTypes.InputShapeDefaults.height
+	});
+	var fillStyle = new CanvasTypes.FillStyle({
+		fillColor: CanvasTypes.InputShapeDefaults.fillColor
+	});
+	var lineStyle = new CanvasTypes.LineStyle({
+		lineWidth: CanvasTypes.InputShapeDefaults.borderWidth,
+		lineColor: CanvasTypes.InputShapeDefaults.borderColor
+	});
+
+	this.borderRadius = CanvasTypes.InputShapeDefaults.borderRadius;
+	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, this.borderRadius);
+
+	//	this.draw();
+}
+CanvasTypes.InputShape.prototype = Object.create(CanvasTypes.AbstractBox.prototype);
+
+CanvasTypes.InputShape.prototype.draw = function() {
+	this.shape.fillStyle(this.fillStyle.color, this.fillStyle.alpha);
+	this.shape.lineStyle(this.lineStyle.color, this.lineStyle.width, this.lineStyle.alpha);
+	this.shape.lineTo(
+		//		[
+		//		new Vector(this.position.x + size * 0.39363, this.position.y + size * 0.79),
+		//		new Vector(this.position.x + size * 0.16, this.position.y + size * 0.5549),
+		//		new Vector(this.position.x + size * 0.27347, this.position.y + size * 0.44071),
+		//		new Vector(this.position.x + size * 0.39694, this.position.y + size * 0.5649),
+		//		new Vector(this.position.x + size * 0.72983, this.position.y + size * 0.23),
+		//		new Vector(this.position.x + size * 0.84, this.position.y + size * 0.34085),
+		//		new Vector(this.position.x + size * 0.39363, this.position.y + size * 0.79)
+		//		]
+	);
+	this.ctx.fill();
+}
+
+// tree = parseTree(node)
+// stack = parseStackingContexts(tree);
+// renderStack(stack);
+
+
+// if (!styles.isVisible()) return
+// this.renderStackContent(stack)
+//=>
+	// 1. the background and borders of the element forming the stacking context.
+	// this.renderNodeBackgroundAndBorders(stack.element) // === **paint** arg
+		// styles = paint.container.styles;
+		//borders = [
+		//	{ style: styles.borderTopStyle, color: styles.borderTopColor },
+		//	{ style: styles.borderRightStyle, color: styles.borderRightColor },
+		//	{ style: styles.borderBottomStyle, color: styles.borderBottomColor },
+		//	{ style: styles.borderLeftStyle, color: styles.borderLeftColor }
+		//];
+		// calculateBackgroundCurvedPaintingArea(getBackgroundValueForIndex(styles.backgroundClip, 0), paint.curves)
+		// this.path(backgroundPaintingArea);
+		// this.renderBackgroundImage(paint.container)
+		// border = borders_1[_i];
+		// this.renderBorder(border.color, side, paint.curves)
+		// // curvePoints are vectors
+		// parsePathForBorder(curvePoints, side)
+		// => this.path(parsePathForBorder(curvePoints, side));
+	
+	// Looping through the 1st level children, render nodes
+		// for (const child of stack.negativeZIndex) {
+			// child = _a[_i];
+			// this.renderStack(child) ........ see above
+		// }
+	
+	// If () 3. For all its in-flow, non-positioned, block-level descendants in tree order:
+		// this.renderNodeContent(stack.element) === **paint**
+	
+	
+	// If (standard ?) Looping through the 1st level children, render nodes
+		// for (const child of stack.nonInlineLevel) {
+			// child = _a[_i];
+			// this.renderNode(child)........ see above
+		// }
+	
+	// If () stack.nonPositionedFloats
+		// for (const child of stack.nonPositionedInlineLevel) {
+			// child = _a[_i];
+			// this.renderStack(child)........ see above
+		// }
+	
+	// If () stack.nonPositionedInlineLevel
+		// for (const child of stack.inlineLevel) {
+			// child = _a[_i];
+			// this.renderStack(child)........ see above
+		// }
+	
+	
+	// If () stack.inlineLevel : render child nodes
+		// for (const child of stack.inlineLevel) {
+			// child = _a[_i];
+			// this.renderNode(child)........ see above
+		// }
+	
+	// If () zeroOrAutoZIndexOrTransformedOrOpacity
+		// for (const child of stack.zeroOrAutoZIndexOrTransformedOrOpacity) {
+			// child = _a[_i];
+			// this.renderStack(child)
+		// }
+	
+	// If () positiveZIndex
+		// for (const child of stack.positiveZIndex) {
+			// child = _a[_i];
+			// this.renderStack(child)
+		// }
+	
+	// Finally: text & positionned content
+		// this.renderNodeContent(paint)
+	
+
+
+
+
+
+
+
+
+
+
+
 
 
 
