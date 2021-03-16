@@ -29,7 +29,8 @@ RootViewComponent.defaultDef = {
 
 RootViewComponent.prototype.createDefaultDef = function() {
 	return TypeManager.createComponentDef(
-		// RootView is a special case: as it is instanciated under the hood by the AppIgniter, effective Component's Style isn't used
+		// RootView is a special case: as it is not meant to be instanciated outside of the AppIgniter,
+		// effective Component's Style isn't used here, but rather passed as an explicit def
 //			Object.assign(RootViewComponent.defaultDef, createRootViewComponentHostDef()),
 			RootViewComponent.defaultDef,
 			'RootViewComponentDefaultDef'

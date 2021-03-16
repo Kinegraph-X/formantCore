@@ -22,6 +22,7 @@ var IFrameComponent = function(definition, parentView, parent) {
 //		definition.getHostDef().attributes.push(new TypeManager.attributesModel({src : this._src}));
 	
 	Components.ComponentWithView.call(this, definition, parentView, parent);
+	this.objectType = 'IFrameComponent';
 	
 	// TODO: condition this to the presence of the node...
 	var connect = setInterval(function() {

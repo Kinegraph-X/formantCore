@@ -1456,7 +1456,14 @@ DOMViewAPI.prototype.getWrappingNode = function() {
  * 
  */
 DOMViewAPI.prototype.isTextInput = function() {
-	return this.nodeName.toUpperCase() === 'INPUT';
+	return this.nodeName.toUpperCase() === 'INPUT' || this.nodeName.toUpperCase() === 'TEXTAREA';
+}
+
+/**
+ * 
+ */
+DOMViewAPI.prototype.getTextInputValue = function() {
+	return this.getMasterNode().value;
 }
 
 /**
@@ -1590,6 +1597,7 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	this._defUID = def.UID;
 	this.isCustomElem = def.isCustomElem;
 	this._sWrapperUID = def.sWrapper ? def.sWrapper.getName() : null;
+	// TODO: styleHook.s refers to the AbstractStylesheet => change that, it's not at all explicit
 	this.styleHook;
 //	console.log(def.sOverride);
 	this.sOverride = def.sOverride;

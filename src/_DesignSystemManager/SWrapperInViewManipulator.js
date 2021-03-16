@@ -16,6 +16,7 @@ var SWrapperInViewManipulator = function(hostView) {
 //	}
 	this.hostView = hostView;
 	this.currentViewAPI = hostView.currentViewAPI;
+	// TODO: this.s refers to the AbstractStylesheet => change that, it's not at all explicit
 	this.s;// = hostView.sWrapper;
 	
 	this.rulesCache = new TypeManager.PropertyCache('rulesCache');

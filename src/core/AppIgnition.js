@@ -109,11 +109,13 @@ Ignition.prototype.instanciateDOM = function() {
 				
 				// For style overrides and custom def objects.
 				// But take care to give an explicit ID, as the iframe is -no- shadow root
+				// 		=> and at this point of risk, we should as well target the parent element
+				// 		when appending the style Elem... It would be way more scopped...
 //				console.log(view.currentViewAPI.nodeName);
 				if (view.currentViewAPI.nodeName === 'iframe') {
 					if (rootNodeIfDOM.shadowRoot)
 						rootNodeIfDOM.shadowRoot.prepend(view.styleHook.s.getStyleNode());
-					// crappy fallback
+					// FIXME: this should be of no use: crappy fallback
 					else
 						document.body.prepend(view.styleHook.s.getStyleNode());
 				}
@@ -439,9 +441,9 @@ DelayedDecoration.prototype.objectType = 'DelayedDecoration';
  */
 var createRootViewComponentHostDef = require('src/coreComponents/RootViewComponent/coreComponentDefs/RootViewComponentHostDef');
 
-var RootView = function(igniterForChild, prepagePage) {
+var RootView = function(igniterForChild, preparePage) {
 	var component;
-	if (prepagePage)
+	if (preparePage)
 		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().moduleDef));
 	else
 		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().minimalModuleDef));
