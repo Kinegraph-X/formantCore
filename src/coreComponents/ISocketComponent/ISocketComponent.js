@@ -26,8 +26,8 @@ ISocketComponent.prototype.createEvents = function() {
 }
 
 ISocketComponent.prototype.handleMessage = function(e) {
-
-	if (e.data === 'ping') {
+//	console.log(e.data, 'ping/' + this._originLocation.match(/\?page=([a-zA-Z]+)/)[1]);
+	if (e.data === 'ping/' + this._originLocation.match(/\?page=([a-zA-Z]+)/)[1]) {
 		this._originLocation = this._originLocation || e.origin;
 		this._sourceWindow = e.source;
 		e.source.postMessage('pong', this._localLocation);

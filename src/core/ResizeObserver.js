@@ -45,6 +45,7 @@ NodeResizeObserver.prototype = Object.create(EventEmitter.prototype);
 NodeResizeObserver.prototype.objectType = 'NodeResizeObserver';
 
 NodeResizeObserver.prototype.observe = function(node, cb) {
+	
 	if (!this.resizeObserver)
 		return;
 
@@ -55,6 +56,19 @@ NodeResizeObserver.prototype.observe = function(node, cb) {
 	}
 	this.createEvent(node.id);
 	this.addEventListener(node.id, cb);
+	
+	// Due to some race condition the "resize" event may not be fired for already connected nodes...
+	// 		=> emulate it...
+	// TODO: study that more carefully... (related to the layout being already resolved in the browser, etc.)
+	if (node.ownerDocument) {
+		var bBox = node.getBoundingClientRect();
+		var boundingBox = {
+			h : bBox.h,
+			w : bBox.w
+		};
+		this.trigger(node.id, {boundingBox : boundingBox});
+	}
+	
 	this.resizeObserver.observe(node, {box : 'border-box'});
 }
 
@@ -73,6 +87,8 @@ NodeResizeObserver.prototype.unobserve = function(node) {
 
 NodeResizeObserver.prototype.getSize = function(observerEntries) {
 	var boundingBox = {};
+	
+	
 	observerEntries.forEach(function(entry) {
 		if (!this.hasStdEvent(entry.target.id))
 			return;

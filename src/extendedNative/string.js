@@ -162,6 +162,44 @@ Object.defineProperty(String.prototype, 'ws2nbsp', {
 	}
 );
 
+Object.defineProperty(String.prototype, 'getNcharsAsCharArray', {
+	value : function(length, offset) {
+		if (offset > this.length) {
+			offset = 0;
+			length = this.length;
+		}
+		else if ((offset + length) > this.length) {
+			length = this.length - offset;
+		}
+//			Math.max(0, this.length - offset);
+		var i = 0, ret = [];
+		while (i < length) {
+			ret.push(this[offset + i]);
+			i++;
+		}
+		return ret;
+	}
+});
+
+Object.defineProperty(String.prototype, 'getNcharsAsByteArray', {
+	value : function(length, offset) {
+		if (offset > this.length) {
+			offset = 0;
+			length = this.length;
+		}
+		else if ((offset + length) > this.length) {
+			length = this.length - offset;
+		}
+//			Math.max(0, this.length - offset);
+		var i = 0, ret = [];
+		while (i < length) {
+			ret.push(this.charCodeAt(offset + i));
+			i++;
+		}
+		return ret;
+	}
+});
+
 // Source: http://www.antiyes.com/jquery-blink-plugin
 //http://www.antiyes.com/jquery-blink/jquery-blink.js
 //(function($) {

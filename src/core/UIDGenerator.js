@@ -36,8 +36,20 @@ GeneratorForDefs.prototype.newUID = function() {
 
 
 
+var GeneratorFor16bitsInt = function() {
+	this.nextUID = 0;
+}
+
+GeneratorFor16bitsInt.prototype.newUID = function() {
+	return [this.nextUID++ >> 8, this.nextUID & 0x00FF] ;
+}
+
+
+
+
 module.exports =  {
 	UIDGenerator : new Generator(),
 	StyleUIDGenerator : new GeneratorForStyles(),
-	DefUIDGenerator : new GeneratorForDefs()
+	DefUIDGenerator : new GeneratorForDefs(),
+	GeneratorFor16bitsInt : new GeneratorFor16bitsInt()
 }

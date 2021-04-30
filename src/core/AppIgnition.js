@@ -66,6 +66,8 @@ Ignition.prototype.instanciateDOM = function() {
 	views.forEach(function(view, key) {
 		
 		attributes = attributesCache[view._defUID];
+//		if (!attributes)
+//			console.log(view);
 		effectiveViewAPI = view.currentViewAPI;
 		
 		if (nodes[view._defUID].cloneMother) {
@@ -86,11 +88,11 @@ Ignition.prototype.instanciateDOM = function() {
 			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_Offset);
 		}
 		
-		masterNode = view.callCurrentViewAPI('getMasterNode');
-		attributes.forEach(function(attrObject) {
-			if (attrObject.getName().indexOf('on') === 0)
-				masterNode[attrObject.getName()] = attrObject.getValue();
-		});
+//		masterNode = view.callCurrentViewAPI('getMasterNode');
+//		attributes.forEach(function(attrObject) {
+//			if (attrObject.getName().indexOf('on') === 0)
+//				masterNode[attrObject.getName()] = attrObject.getValue();
+//		});
 		
 		if (view._parent)
 			view.callCurrentViewAPI('getMasterNode')._component = view._parent;
@@ -99,7 +101,7 @@ Ignition.prototype.instanciateDOM = function() {
 //		console.log(view._sWrapperUID);
 		if (view._sWrapperUID) {
 //			if (view._sWrapperUID === 'Automatic_CSS_ID_112')
-//				console.log(appConstants.knownIDs);
+//				console.log(view._sWrapperUID, appConstants.getUID(view._sWrapperUID));
 			if (Object.prototype.toString.call(appConstants.getUID(view._sWrapperUID)) === '[object Object]') {
 //				console.log(view);
 				view.styleHook.s = appConstants.getUID(view._sWrapperUID).clone();
@@ -121,6 +123,7 @@ Ignition.prototype.instanciateDOM = function() {
 				}
 				else
 					view.callCurrentViewAPI('getWrappingNode').append(view.styleHook.s.getStyleNode());
+//				console.log(view.styleHook.s.getStyleNode());
 //				console.log(view._sWrapperUID);
 //				console.log(view.styleHook.s);
 			}
@@ -174,7 +177,7 @@ Ignition.prototype.instanciateStreams = function(listDef) {
  */
 Ignition.prototype.handleReactivityAndEvents = function(listDef) {
 	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
-	var reactivityQueries, bindingHandler, component;
+	var reactivityQueries, eventQueries, bindingHandler, component;
 	
 	TypeManager.reactivityQueries.forEach(function(subscriptionType) {
 		bindingHandler = subscriptionType + 'Binding';
@@ -359,6 +362,31 @@ Ignition.prototype.cleanRegisters = function() {
 }
 
 
+/**
+ * @method Ignition.prototype.getUpperWrappingComponentOutsideAppScope
+ */
+
+Ignition.prototype.getWrappingComponentOutsideAppScope = function(selector) {
+	if (typeof window.parent === 'undefined') {
+		console.warn('AppIgnition.getWrappingComponentOutsideAppScope: can only be called from insed an IFrame (no parent window found). Returning...');
+		return;
+	}
+	
+	var matchingFrameElement;
+	if ((matchingFrameElement = window.parent.document.querySelector('app-root').shadowRoot.querySelector(selector))) {
+		return matchingFrameElement._component;
+	}
+	else if (!selector){
+		console.error('AppIgnition helper method for IFrames: getting a ref on a component outside of the app\'s scope requires passing a DOM selector');
+	}
+	else {
+		console.error('AppIgnition helper method for IFrames: no matching IFrame element for the given selector');
+	}
+}
+
+
+
+
 
 
 
@@ -447,7 +475,7 @@ var RootView = function(igniterForChild, preparePage) {
 		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().moduleDef));
 	else
 		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().minimalModuleDef));
-		
+	
 	if (igniterForChild && typeof igniterForChild.init === 'function') {
 		igniterForChild.init(component.view, component);
 	}
@@ -458,6 +486,9 @@ var RootView = function(igniterForChild, preparePage) {
 }
 RootView.prototype = Object.create(Ignition.prototype);
 RootView.prototype.objectType = 'RootView';
+
+
+
 
 
 

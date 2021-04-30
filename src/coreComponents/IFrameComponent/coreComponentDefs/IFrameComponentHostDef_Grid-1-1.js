@@ -2,7 +2,7 @@
  * @def IFrameComponent
  * @isGroup false
  * 
- * @CSSify styleName : IFrameComponentHost/true
+ * @CSSify styleName : IFrameComponentHost_Grid-1-1/false
  * @CSSify styleName : IFrameComponentTemplate/false
  * @CSSifyTheme themeName : basic-light
  * 
@@ -19,19 +19,7 @@ var IFrameComponentDef = function(uniqueID, options, model) {
 	
 	
 	var moduleDef = TypeManager.createComponentDef({
-			nodeName : 'iframe'/**@CSSifyStyle componentStyle : IFrameComponentHost */
-			
-			// Local App-Root can't be child of the IFrame Component, as it's instanciation
-			// occurs way later...
-//			subscribeOnChild : [
-//				{
-//					on : 'update',
-//					subscribe : function(e) {
-//						if (e.bubble)
-//							this.trigger('update', e.data);
-//					}
-//				}
-//			]
+			nodeName : 'iframe'/**@CSSifyStyle componentStyle : IFrameComponentHost_Grid-1-1 */
 		});
 	
 	return moduleDef;

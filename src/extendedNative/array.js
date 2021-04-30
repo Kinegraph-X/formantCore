@@ -180,9 +180,6 @@ Object.defineProperty(ArrayBuffer.prototype, 'append', {
 			
 			a = b = tmp = undefined;
 			
-			delete a;
-			delete b;
-			delete tmp;
 
 			return ret;
 		}

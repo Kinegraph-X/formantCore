@@ -497,11 +497,13 @@ ExtensibleObject.prototype.mergeOwnProperties = function(keepNonStdProtosOrProto
 ExtensibleObject.prototype.onExtend = function(namespace) {
 	if (!(namespace.prototype.hasOwnProperty('_asyncInitTasks')))
 		Object.defineProperty(namespace.prototype, '_asyncInitTasks', {
-			value : []
+			value : [],
+			writable : true,
 		});
 	if (!(namespace.prototype.hasOwnProperty('_asyncRegisterTasks')))
 		Object.defineProperty(namespace.prototype, '_asyncRegisterTasks', {
-			value : []
+			value : [],
+			writable : true,
 		}); 
 }
 
@@ -578,6 +580,11 @@ var AbstractComponent = function(definition, parentView, parent) {
 
 	this._defUID = definition.getHostDef().UID;
 	this._defComposedUID = '';
+	
+	if (typeof this._defUID === 'undefined') {
+		console.warn('No UID found in definition: the hierarchical structure of the def might be wrong. eg: a group def has been defined and its type is not "CompoundComponent", etc. Returning...');
+		return;
+	}
 	
 //	console.log(definition);
 	if (!TypeManager.hostsDefinitionsCacheRegistry.getItem(this._defUID))
@@ -731,11 +738,15 @@ var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) 
 	
 	this.command = definition.getHostDef().command;
 	this.view;
+//	console.log(definition);
 	
-	if (definition.getHostDef().nodeName)
+	if (definition.getHostDef().nodeName) {
 		this.instanciateView(definition, parentView, this, isChildOfRoot);
-		
-	this.styleHook = this.view.styleHook;
+		this.styleHook = this.view.styleHook;
+	}
+	else
+		console.warn('A ComponentWithView failed to instanciate a view.', 'The _defUID is ', definition.getHostDef().UID, 'The nodeName is ', definition.getHostDef().nodeName)
+	
 }
 ComponentWithView.prototype = Object.create(ComponentWithObservables.prototype);
 ComponentWithView.prototype.objectType = 'ComponentWithView';
@@ -998,12 +1009,21 @@ ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(compon
 	var newDef = state ? this.extendDefToStatefull(componentDefinition, nodeDefinition, state) : nodeDefinition;
 	
 	var view;
-	if (newDef.getHostDef().nodeName)
+	if (newDef.getHostDef().nodeName) {
 		this.view.subViewsHolder.addMemberViewFromDef(newDef.getHostDef());
+		// HACK: the renderer expects a view to cache its "attributes" prop
+		// NOT WORKING?: caches items are inndexed on the defUID of the component
+		// FINAL HYPOTHESIS: not needed...
+//		TypeManager.caches['attributes'].setItem(newDef.getHostDef().UID, newDef.getHostDef()['attributes']);
+	}
 	
 	if (newDef.members.length) {
 		newDef.members.forEach(function(memberDef) {
 			this.view.subViewsHolder.addMemberViewFromDef(memberDef);
+			// HACK: the renderer expects a view to cache its "attributes" prop
+			// NOT WORKING?: caches items are inndexed on the defUID of the component
+			// FINAL HYPOTHESIS: not needed...
+//			TypeManager.caches['attributes'].setItem(memberDef.UID, memberDef['attributes']);
 		}, this);
 	}
 }

@@ -100,6 +100,12 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 	//	console.log(definition);
 	this._firstListUIDSeen = null;
 	var shouldExtend = false;
+	
+	// Any custom element must be befined when calling the Def Factory, unless there's no shadow DOM
+//	if (!definition.getGroupHostDef().nodeName) {
+//		definition.getGroupHostDef().nodeName = 'compound-view';
+//		console.log(definition.getGroupHostDef());
+//	}
 
 	// Let's use an elementary and perf efficient hack right here, at the beginning, and abuse the ascendant component with a symbolic def,
 	// for the view to be instanciated with the correct context (knowing how many subSections we have is crucial when connecting children)
@@ -112,7 +118,7 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 	});
 
 	if (!definition.getGroupHostDef())
-		console.log(this);
+		console.error('CompoundComponent was not given a groupDef', this);
 
 	if (!TypeManager.hostsDefinitionsCacheRegistry.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
 		shouldExtend = true;
