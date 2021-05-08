@@ -27,15 +27,19 @@ SpecialDependencyInjector.prototype.getNaiveDOM = function() {
 }
 
 SpecialDependencyInjector.prototype.getNaiveDOMTree = function () {
+	
 	function getNode(component) {
 		return {
+			startIdx : 0,
 			name : Object.getPrototypeOf(component).objectType.slice(0),
+			views : this.getInDepthViewStructure(component),
 			children : [],
 			styleDataStructure : component.styleHook ? component.styleHook.s : null
 		};
+//		var meta = this.getViewRelatedNodeDescription(component);
 	}
-	var ret = getNode(this);
-	this.collectNaiveDOMandStyleInDescendants(this, ret, getNode);
+	var ret = getNode.call(this, this);
+	this.collectNaiveDOMandStyleInDescendants(this, ret, getNode.bind(this));
 	return ret;
 }
 
@@ -53,6 +57,43 @@ SpecialDependencyInjector.prototype.collectNaiveDOMandStyleInDescendants = funct
 
 	return componentTree;
 }
+
+SpecialDependencyInjector.prototype.getInDepthViewStructure = function (component) {
+	var masterNode = component.view.getMasterNode();
+	return {
+		masterView : {
+			nodeName : masterNode.nodeName,
+			nodeId : masterNode.id,
+			classNames : masterNode.classNames	
+		},
+		memberViews : component.view.subViewsHolder.memberViews.map(function(view) {
+			masterNode = view.getMasterNode();
+			return {
+				nodeName : masterNode.nodeName,
+				nodeId : masterNode.id,
+				classNames : masterNode.classNames	
+			};
+		}),
+		subSections : component.view.subViewsHolder.subViews.map(function(view) {
+			masterNode = view.getMasterNode();
+			return {
+				nodeName : masterNode.nodeName,
+				nodeId : masterNode.id,
+				classNames : masterNode.classNames	
+			};
+		})
+	};
+}
+
+//SpecialDependencyInjector.prototype.getViewRelatedNodeDescription = function (view) {
+//	var masterNode = view.getMasterNode();
+//	
+//	return {
+//		nodeName : masterNode.nodeName,
+//		nodeId : masterNode.Id,
+//		classNames : masterNode.classList
+//	};
+//}
 
 
 

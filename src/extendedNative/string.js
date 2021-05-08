@@ -181,7 +181,7 @@ Object.defineProperty(String.prototype, 'getNcharsAsCharArray', {
 	}
 });
 
-Object.defineProperty(String.prototype, 'getNcharsAsByteArray', {
+Object.defineProperty(String.prototype, 'getNcharsAsCharCodesArray', {
 	value : function(length, offset) {
 		if (offset > this.length) {
 			offset = 0;

@@ -41,7 +41,7 @@ var GeneratorFor16bitsInt = function() {
 }
 
 GeneratorFor16bitsInt.prototype.newUID = function() {
-	return [this.nextUID++ >> 8, this.nextUID & 0x00FF] ;
+	return [this.nextUID++ & 0x00FF, this.nextUID >> 8] ;
 }
 
 
