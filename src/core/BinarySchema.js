@@ -15,6 +15,10 @@ var BinarySchema = function(name, propsList, sizes) {
 	
 	if (!BinarySchema.schemas.name) {
 		var size = 0;
+		propsList.forEach(function(propName, key) {
+			size += sizes[key];
+		}, this);
+			
 		var schema = function(propsList, sizes) {
 			propsList.forEach(function(propName, key) {
 				this[propName] = sizes[key];
@@ -32,10 +36,11 @@ var BinarySchema = function(name, propsList, sizes) {
 		});
 				
 		BinarySchema.schemas.name = schema;
-		return schema;
+		console.log(new schema(propsList, sizes));
+		return new schema(propsList, sizes);
 	}
 	else
-		return BinarySchema.schemas.name;
+		return new BinarySchema.schemas.name(propsList, sizes);
 }
 
 BinarySchema.prototype = {};

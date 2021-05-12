@@ -180,7 +180,6 @@ Object.defineProperty(ArrayBuffer.prototype, 'append', {
 			
 			a = b = tmp = undefined;
 			
-
 			return ret;
 		}
 	}

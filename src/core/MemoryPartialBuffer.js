@@ -12,9 +12,9 @@ var TypeManager = require('src/core/TypeManager');
 
 var BufferFromSchema = function(binarySchema) {
 	this.objectType = 'BufferFromSchema';
-	
-	this._buffer = new Uint8Array(binarySchema.prototype.size);
-	this.occupancy = new Uint8Array(binarySchema.prototype.size / 8);
+//	console.log(binarySchema);
+	this._buffer = new Uint8Array(binarySchema.size);
+	this.occupancy = new Uint8Array(binarySchema.size / 8);
 	
 	this.propRef = [];
 	
@@ -26,6 +26,9 @@ var BufferFromSchema = function(binarySchema) {
 		]);
 		offset += binarySchema[prop];
 	}
+	
+	this._byteLength = 0;
+	this._size = offset;
 }
 
 BufferFromSchema.prototype = Object.create(Uint8Array.prototype);
@@ -56,8 +59,13 @@ BufferFromSchema.prototype.set = function(val, offset) {
 	var onAlignementOffset = offset % 8;
 	var startOffset = offset - onAlignementOffset;
 	
-	this._buffer.set(val, offset);
-	this.occupancy.set(this.occupancy[startOffset] | BufferFromSchema.eightBitsMasks[onAlignementOffset]);
+//	if (this._byteLength <= offset) {
+//		this._buffer = new Uint8Array(this._buffer.buffer.append(new ArrayBuffer(this._size)));
+//		this._byteLength = this._buffer.byteLength;
+//	}
+	
+	this._buffer.set(Array.isArray(val) ? val : [val], offset);
+	this.occupancy.set([this.occupancy[startOffset] | BufferFromSchema.eightBitsMasks[onAlignementOffset]]);
 }
 
 BufferFromSchema.prototype.invalidate = function(offset) {

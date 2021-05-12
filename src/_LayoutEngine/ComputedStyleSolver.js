@@ -24,6 +24,7 @@ ComputedStyleSolver.viewTypes = [
 
 ComputedStyleSolver.prototype.aggregateRules = function(naiveDOM, collectedSWrappers) {
 	
+	// TODO: define an explicit type for the flat-type-tree
 	var rulesBuffers = [
 		new MemoryBufferStack(8)
 	];
@@ -44,11 +45,23 @@ ComputedStyleSolver.prototype.aggregateRules = function(naiveDOM, collectedSWrap
 		currentRulesBuffer = rulesBuffers[currentBufferIdx];
 		
 		// TODO: recurse...
+		console.log(node.views.masterView.nodeName);
 		node.startIdx = currentRulesBuffer._byteLength;
 		currentRulesBuffer.append(this.getOptimizedSelectorFromNode(node));
 		
 		currentBufferIdx++;
 	}, this);
+	
+//	performance.mark('rootRulesBuffer.traverse');
+	var toMatch = 1 + 4;
+	var value;
+	rootRulesBuffer.traverse(
+		function(buffer, startOffset, length) {
+			value = buffer[startOffset + toMatch];
+		}
+	);
+//	performance.measure('bench_style_datastructures_traversal', 'rootRulesBuffer.traverse');
+//	console.log('bench_style_datastructures_traversal',  performance.getEntriesByName('bench_style_datastructures_traversal')[0].duration, 'ms');
 	
 	return rulesBuffers;
 }
@@ -57,7 +70,7 @@ ComputedStyleSolver.prototype.getOptimizedSelectorFromSWrapper = function(sWrapp
 	var rulesBuffer = new ArrayBuffer(0);
 	
 	for (var rule in sWrapper.rules) {
-		rulesBuffer.append(sWrapper.rules[rule].styleIFace.compactedViewOnSelector.buffer);
+		rulesBuffer = rulesBuffer.append(sWrapper.rules[rule].styleIFace.compactedViewOnSelector._buffer.buffer);
 	}
 	
 	return new Uint8Array(rulesBuffer);
@@ -66,11 +79,11 @@ ComputedStyleSolver.prototype.getOptimizedSelectorFromSWrapper = function(sWrapp
 ComputedStyleSolver.prototype.getOptimizedSelectorFromNode = function(node) {
 	var rulesBuffer = new ArrayBuffer(0);
 	
-	if (!node.styleDataStucture)
+	if (!node.styleDataStructure)
 		return rulesBuffer;
-		
-	for (var rule in node.styleDataStucture.rules) {
-		rulesBuffer.append(node.styleDataStucture.rules[rule].styleIFace.compactedViewOnSelector.buffer);
+	
+	for (var rule in node.styleDataStructure.rules) {
+		rulesBuffer = rulesBuffer.append(node.styleDataStructure.rules[rule].styleIFace.compactedViewOnSelector._buffer.buffer);
 	}
 	
 	return new Uint8Array(rulesBuffer);
