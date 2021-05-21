@@ -29,13 +29,16 @@ SpecialDependencyInjector.prototype.getNaiveDOM = function() {
 SpecialDependencyInjector.prototype.getNaiveDOMTree = function () {
 	
 	function getNode(component) {
+//		console.log(Object.getPrototypeOf(component).objectType.slice(0));
 		return {
-			startIdx : 0,
+			styleRefstartIdx : 0,
+			styleRefLength : 0,
 			name : Object.getPrototypeOf(component).objectType.slice(0),
 			views : this.getInDepthViewStructure(component),
 			children : [],
 			styleDataStructure : component.styleHook ? component.styleHook.s : null
 		};
+		
 //		var meta = this.getViewRelatedNodeDescription(component);
 	}
 	var ret = getNode.call(this, this);
@@ -62,24 +65,24 @@ SpecialDependencyInjector.prototype.getInDepthViewStructure = function (componen
 	var masterNode = component.view.getMasterNode();
 	return {
 		masterView : {
-			nodeName : masterNode.nodeName,
+			nodeName : masterNode.nodeName.toLowerCase(),
 			nodeId : masterNode.id,
-			classNames : masterNode.classNames	
+			classNames : masterNode.classList	
 		},
 		memberViews : component.view.subViewsHolder.memberViews.map(function(view) {
 			masterNode = view.getMasterNode();
 			return {
-				nodeName : masterNode.nodeName,
+				nodeName : masterNode.nodeName.toLowerCase(),
 				nodeId : masterNode.id,
-				classNames : masterNode.classNames	
+				classNames : masterNode.classList	
 			};
 		}),
 		subSections : component.view.subViewsHolder.subViews.map(function(view) {
 			masterNode = view.getMasterNode();
 			return {
-				nodeName : masterNode.nodeName,
+				nodeName : masterNode.nodeName.toLowerCase(),
 				nodeId : masterNode.id,
-				classNames : masterNode.classNames	
+				classNames : masterNode.classList	
 			};
 		})
 	};

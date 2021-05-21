@@ -183,12 +183,18 @@ Object.defineProperty(String.prototype, 'getNcharsAsCharArray', {
 
 Object.defineProperty(String.prototype, 'getNcharsAsCharCodesArray', {
 	value : function(length, offset) {
-		if (offset > this.length) {
+//		console.log(offset, this.length, this, offset > this.length);
+		if (offset >= this.length) {
 			offset = 0;
 			length = this.length;
 		}
 		else if ((offset + length) > this.length) {
-			length = this.length - offset;
+			// Avoid capturing only one char...
+			if ((offset + length) > (this.length - (length - 1))) {
+				offset = 0;
+			}
+			else
+				length = this.length - offset;
 		}
 //			Math.max(0, this.length - offset);
 		var i = 0, ret = [];
@@ -196,7 +202,7 @@ Object.defineProperty(String.prototype, 'getNcharsAsCharCodesArray', {
 			ret.push(this.charCodeAt(offset + i));
 			i++;
 		}
-		return ret;
+		return [offset, ret];
 	}
 });
 

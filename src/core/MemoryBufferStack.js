@@ -13,7 +13,7 @@ var MemoryBufferStack = function(itemSize, itemCount, isAbsoluteSize) {
 	this.itemSize = itemSize;
 	this._byteLength = 0;
 	this._buffer = new Uint8Array(itemSize * itemCount);
-	this.occupancy = new Uint8Array(itemSize * itemCount / 8);
+	this.occupancy = new Uint8Array(itemCount / 8);
 	
 //	this.bytePointer = 0;
 }
@@ -56,7 +56,7 @@ MemoryBufferStack.prototype.set = function(val, offset) {
 	
 	this._byteLength = this._buffer.byteLength;
 	this._buffer.set(val, offset);
-	this.occupancy.set(this.occupancy[startOffset] | MemoryBufferStack.eightBitsMasks[onAlignementOffset]);
+	this.occupancy.set(this.occupancy[Math.floor(startOffset / 8)] | MemoryBufferStack.eightBitsMasks[onAlignementOffset]);
 }
 
 MemoryBufferStack.prototype.setFromIndex = function(val, idx) {
@@ -74,7 +74,7 @@ MemoryBufferStack.prototype.setFromIndex = function(val, idx) {
 	
 	this._byteLength = this._buffer.byteLength;
 	this._buffer.set(val, offset);
-	this.occupancy.set(this.occupancy[startOffset] | MemoryBufferStack.eightBitsMasks[onAlignementOffset]);
+	this.occupancy.set(this.occupancy[Math.floor(startOffset / 8)] | MemoryBufferStack.eightBitsMasks[onAlignementOffset]);
 }
 
 MemoryBufferStack.prototype.invalidate = function(offset) {
@@ -82,7 +82,7 @@ MemoryBufferStack.prototype.invalidate = function(offset) {
 	var onAlignementOffset = offset % 8;
 	var startOffset = offset - onAlignementOffset;
 	
-	this.occupancy.set(this.occupancy[startOffset] & ~MemoryBufferStack.eightBitsMasks[onAlignementOffset]);
+	this.occupancy.set(this.occupancy[Math.floor(startOffset / 8)] & ~MemoryBufferStack.eightBitsMasks[onAlignementOffset]);
 }
 
 MemoryBufferStack.prototype.invalidateFromIndex = function(idx) {
@@ -91,7 +91,7 @@ MemoryBufferStack.prototype.invalidateFromIndex = function(idx) {
 	var onAlignementOffset = offset % 8;
 	var startOffset = offset - onAlignementOffset;
 	
-	this.occupancy.set(this.occupancy[startOffset] & ~MemoryBufferStack.eightBitsMasks[onAlignementOffset]);
+	this.occupancy.set(this.occupancy[Math.floor(startOffset / 8)] & ~MemoryBufferStack.eightBitsMasks[onAlignementOffset]);
 }
 
 MemoryBufferStack.prototype.append = function(val) {
@@ -107,12 +107,12 @@ MemoryBufferStack.prototype.append = function(val) {
 	this._buffer.set(val, offset);
 //	console.log(val._byteLength, val.byteLength, val, Math.ceil((val._byteLength || val.byteLength) / 8));
 	
-	if (this.occupancy.byteLength <= this._byteLength / 8)
-		this.occupancy = new Uint8Array(this.occupancy.buffer.append(new ArrayBuffer(Math.ceil((val._byteLength || val.byteLength) / 8))));
+	if (this.occupancy.byteLength <= (this._byteLength / this.itemSize) / 8)
+		this.occupancy = new Uint8Array(this.occupancy.buffer.append(new ArrayBuffer(Math.ceil((val._byteLength || val.byteLength) / (this.itemSize * 8)))));
 //	console.log(val);
 	
 	var occupancyValues = [], idx;
-	for (let i = 0, l = val._byteLength || val.byteLength; i < l; i++) {
+	for (let i = 0, l = (val._byteLength || val.byteLength) / this.itemSize; i < l; i++) {
 //		(function() {
 			idx = Math.floor(i / 8);
 //			console.log(offset, self.occupancy[Math.floor(i / 8)] | MemoryBufferStack.eightBitsMasks[ i % 8 ], Math.floor(i / 8));
@@ -122,16 +122,13 @@ MemoryBufferStack.prototype.append = function(val) {
 	}
 	
 //	console.log(occupancyValues, offset, this.occupancy);
-	self.occupancy.set(occupancyValues, Math.floor(offset / 8));
+	self.occupancy.set(occupancyValues, Math.floor((offset / this.itemSize) / 8));
 	
 }
 
 MemoryBufferStack.prototype.traverse = function(callback) {
-	var currentOffset = 0, currentValue = new Uint8Array(this._buffer.buffer, currentOffset * this.itemSize, this.itemSize);
-	var nextJump = 1, nextValue;
+	var currentOffset = 0;
 	var maxOffset = this._byteLength / this.itemSize - 1;
-//	nextValue = currentValue;
-
 
 	// Instanciate a new jumperHost
 	// Pass jumperHost to the initJumper function
@@ -148,68 +145,35 @@ MemoryBufferStack.prototype.traverse = function(callback) {
 	// Loop
 	
 	while (currentOffset < maxOffset) {
-//		currentValue = nextValue;
-//		console.log(currentOffset, this.getBuffer(currentOffset), currentValue);
-
-		GetNextJump(currentOffset) - 1;
-		nextJump = jumperHost.jumper;
-		
-		// test
-//		console.log('currentOffset', currentOffset);
-//		nextJump = 1;	
-		
-		currentOffset += nextJump;
-		
-		//  test
-//		console.log('currentOffset', currentOffset, 'maxOffset', maxOffset);
-		
-//		if (currentOffset > maxOffset) {
-//			console.warn('MemoryBufferStack : Traverse function is going to jump : offset (is ' + currentOffset + ') * itemSize (is ' + this.itemSize + ') >= _byteLength (is ' + this._byteLength +') to an out of bound offset. Returning...');
-//			break;
-//		}
-//		nextValue = new Uint8Array(this._buffer.buffer, currentOffset * this.itemSize, this.itemSize);
-		callback(this._buffer.buffer, currentOffset * this.itemSize, this.itemSize);
-//		console.log('nextJump', nextJump);
-
+//		console.log(currentOffset, maxOffset);
+		GetNextJump(currentOffset);
+		currentOffset += jumperHost.jumper;
+		callback(this._buffer, currentOffset * this.itemSize, this.itemSize);
 		jumperHost.jumper = 1;
 	}
 	
-//	nextJump = this.traversingSequenceGetNextJump(currentOffset) - 2;
-//	nextValue = new Uint8Array(this._buffer.buffer, (currentOffset + nextJump) * this.itemSize, this.itemSize);
-//	console.log(nextJump, this.getBuffer(2), nextValue);
-	
-	return nextValue;
+//	console.log(this._buffer.buffer);
 }
 
 MemoryBufferStack.prototype.traversingSequenceGetNextJumpFunction = function(jumperCallback) {
 	return this.getImplicitTestFunction(jumperCallback);
-	
-//	var subPointer = 0;
-//	for (var i = 0, l = this.occupancy.byteLength; i < l; i++) {
-//		
-//	}
-//	var occupiedValue = this.occupancy[Math.floor(byteIdx)] & MemoryBufferStack.eightBitsMasks[ byteIdx % 8 ];
-//	var nextFuncToCall = implicitTestFunction(byteIdx);
-
-//	implicitTestFunction(byteIdx);
-	
-//	console.log(nextFuncToCall);
-	
-//	return jumperHost.jumper;
 }
 
 MemoryBufferStack.prototype.initJumper = function(jumperHost) {
-	jumperHost.jumper = 1;
 	var capturedArray = [];
 	var res = 0;
 	var exp = '0 !== curriedFunction(inParam)';
+	// Let's see that as a hint for the optimizer: capture a unique instance of the arrayMin func in the closure
+	var arrMin = arrayMin.bind(null);
 	
 	function jumperFunction(bufferIdx) {
 		capturedArray[0] = jumperHost.jumper;
 		capturedArray[1] = this.getNextOccupancyValue(bufferIdx);
-		res = arrayMin(capturedArray);
+		res = arrMin(capturedArray);
+//		res = arrayMin(capturedArray);
 //		console.log(jumperHost.jumper);
 		jumperHost.jumper++;
+//		console.log(jumperHost.jumper);
 		return res;
 	}
 	
