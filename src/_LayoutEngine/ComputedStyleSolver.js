@@ -151,14 +151,14 @@ ComputedStyleSolver.prototype.matchingFunction = function(matches, view) {
 	
 	if (testValue = view.nodeId.toLowerCase()) {
 		testType = Style.constants['idIsProof'];
-		if (match = this.iterateOnRulesAndMatchSelector(testType, testValue))
+		if (match = this.iterateOnRulesAndMatchSelectorV2(testType, testValue))
 			matches.push(match);
 	}
 	if (view.classNames.length) {
 		testType = Style.constants['classIsProof'];
 		view.classNames.forEach(function(className) {
 			testValue = className.toLowerCase();
-			if (match = this.iterateOnRulesAndMatchSelector(testType, testValue))
+			if (match = this.iterateOnRulesAndMatchSelectorV2(testType, testValue))
 				matches.push(match);
 		}, this);
 	}
@@ -166,8 +166,13 @@ ComputedStyleSolver.prototype.matchingFunction = function(matches, view) {
 	// May loop twice cause there's always a  tagName...
 	testType = Style.constants['tagIsProof'];
 	testValue = view.nodeName;
-	if (match = this.iterateOnRulesAndMatchSelector(testType, testValue))
+	if (match = this.iterateOnRulesAndMatchSelectorV2(testType, testValue))
 		matches.push(match);
+}
+
+ComputedStyleSolver.prototype.iterateOnRulesAndMatchSelectorV2 = function(testType, testValue) {
+	this.CSSRulesBuffer.traverseAndJump(0);
+//	console.log(this.CSSRulesBuffer.traverseAndJump(0));
 }
 
 ComputedStyleSolver.prototype.iterateOnRulesAndMatchSelector = function(testType, testValue) {

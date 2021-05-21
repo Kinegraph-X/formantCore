@@ -15,6 +15,8 @@ var MemoryBufferStack = function(itemSize, itemCount, isAbsoluteSize) {
 	this._buffer = new Uint8Array(itemSize * itemCount);
 	this.occupancy = new Uint8Array(itemCount / 8);
 	
+	this.traverseAndJump = this.setLogicForTraverseAndJump();
+	
 //	this.bytePointer = 0;
 }
 
@@ -31,6 +33,38 @@ MemoryBufferStack.eightBitsMasks = [
 	0x40,
 	0x80
 ]
+
+MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
+	this.jumperHost = new JumperHost();
+	this.occupancySolver = new OccupancySolver(this.occupancy, this.itemSize);
+	
+	var doArrayMin = new DoArrayMinFunction();
+	var shouldJump = function(bufferIdx) {
+		return !doArrayMin.do(this.jumperHost.jumper, this.occupancySolver.getOccupancyFromBufferIdx(bufferIdx));
+	}.bind(this);
+	
+//	var exp = '0 !== doRecurseFunction(inParam)';
+//	var doCallTest  = this.getExpAsFunc(exp);
+	
+	var shouldRecurse = function(bufferIdx) {
+		console.log(shouldJump(bufferIdx));
+		
+		this.jumperHost.jumper++;
+		return jumpDecisiveBranches[+(shouldJump(bufferIdx++))];
+		
+	}.bind(this);
+	
+	var jumpDecisiveBranches = new BranchesAsArray(shouldRecurse);
+	
+	return function(bufferIdx) {
+//		console.log(this.jumperHost.jumper, shouldRecurse(bufferIdx));
+		
+		this.jumperHost.reset();
+		shouldRecurse(bufferIdx)(bufferIdx);
+		
+		console.log(this.jumperHost.jumper);
+	}.bind(this);
+}
 
 MemoryBufferStack.prototype.getOffsetForBuffer = function(bufferIndex) {
 
@@ -134,9 +168,11 @@ MemoryBufferStack.prototype.traverse = function(callback) {
 	// Pass jumperHost to the initJumper function
 	// Instanciate the whole closure hierarchy
 	// Assign the returned implicitTestFunction to a variable named "GetNextJump"
-	var jumperHost = new JumperHost();
-	var jumperCallback = this.initJumper(jumperHost);
-	var GetNextJump = this.traversingSequenceGetNextJumpFunction(jumperCallback);
+//	var jumperHost = new JumperHost();
+//	var jumperCallback = this.initJumper(jumperHost);
+//	var GetNextJump = this.traversingSequenceGetNextJumpFunction(jumperCallback);
+	
+	
 	
 	// A jump implies:
 	// Call "GetNextJump(byteIdx)"
@@ -160,29 +196,28 @@ MemoryBufferStack.prototype.traversingSequenceGetNextJumpFunction = function(jum
 }
 
 MemoryBufferStack.prototype.initJumper = function(jumperHost) {
-	var capturedArray = [];
-	var res = 0;
-	var exp = '0 !== curriedFunction(inParam)';
-	// Let's see that as a hint for the optimizer: capture a unique instance of the arrayMin func in the closure
-	var arrMin = arrayMin.bind(null);
+//	var capturedArray = [];
+//	var res = 0;
+//	var exp = '0 !== curriedFunction(inParam)';
+//	// Let's see that as a hint for the optimizer: capture a unique instance of the arrayMin func in the closure
+//	var arrMin = arrayMin.bind(null);
 	
 	function jumperFunction(bufferIdx) {
 		capturedArray[0] = jumperHost.jumper;
 		capturedArray[1] = this.getNextOccupancyValue(bufferIdx);
 		res = arrMin(capturedArray);
-//		res = arrayMin(capturedArray);
 //		console.log(jumperHost.jumper);
 		jumperHost.jumper++;
 //		console.log(jumperHost.jumper);
 		return res;
 	}
 	
-	return MemoryBufferStack.prototype.getExpAsCallback.call(null, exp).bind(null, jumperFunction.bind(this));
+	return MemoryBufferStack.prototype.getExpAsFunc.call(null, exp).bind(null, jumperFunction.bind(this));
 }
 
-MemoryBufferStack.prototype.getExpAsCallback = function(exp) {
+MemoryBufferStack.prototype.getExpAsFunc = function(exp) {
 //	console.log("exp : ' + exp + '", ' + 'curriedFunction, inParam' + ', ' + exp + '); 
-	return new Function('curriedFunction', 'inParam', 'return ' + exp + ';');
+	return new Function('doRecurseFunction', 'inParam', 'return ' + exp + ';');
 }
 
 MemoryBufferStack.prototype.getImplicitTestFunction = function(lambda) {
@@ -190,7 +225,7 @@ MemoryBufferStack.prototype.getImplicitTestFunction = function(lambda) {
 	
 	var implicitTestFunction = function (bufferIdx) {
 //		console.log(branches[Number(lambda(bufferIdx))]);
-		return branches[Number(lambda(bufferIdx))];
+		return branches[Number(!!lambda(bufferIdx))];
 	};
 	
 	branches[0] = MemoryBufferStack.prototype.recursivelyCall.bind(this, implicitTestFunction);
@@ -221,9 +256,48 @@ MemoryBufferStack.prototype.noOp = function() {
 
 
 
+
+
+
+
+MemoryBufferStack.prototype.noOp = function() {
+//	console.log('noOp');
+}
+
+
+var BranchesAsArray = function(ifCallClause) {
+	return [
+		MemoryBufferStack.prototype.noOp,
+		ifCallClause
+	];
+}
+
+
+
+
+
+
 var JumperHost = function() {
-	this.jumper = 1;
+	this.jumper = 0;
 	
+}
+JumperHost.prototype.reset = function() {
+	this.jumper = 0;
+}
+
+
+
+var OccupancySolver = function(occupancyBuffer, itemSize) {
+	this._buffer = occupancyBuffer;
+	this._itemSize = itemSize;
+}
+OccupancySolver.prototype.getOccupancyFromBufferIdx = function(bufferIdx) {
+	var bitFieldOffset = bufferIdx % 8;
+	return (this._buffer[Math.floor(bufferIdx / 8)] & MemoryBufferStack.eightBitsMasks[bitFieldOffset]) >> bitFieldOffset;
+}
+OccupancySolver.prototype.getOccupancyFromAbsoluteIdx = function(absoluteIdx) {
+	var bitFieldOffset = (absoluteIdx / this.itemSize) % 8;
+	return (this._buffer[Math.floor((absoluteIdx / this.itemSize) / 8)] & MemoryBufferStack.eightBitsMasks[bitFieldOffset]) >> bitFieldOffset;
 }
 
 
@@ -233,7 +307,16 @@ var arrayMin = function(arr) {
 	return Math.min.apply(arr);
 }
 
-
+var DoArrayMinFunction = function() {
+	// Let's see that as a hint for the optimizer: capture a unique instance of the arrayMin func in the closure
+	this.arrMin = arrayMin.bind(null);
+	this.cachedArr = [];
+}
+DoArrayMinFunction.prototype.do = function(val0, val1) {
+	this.cachedArr[0] = val0;
+	this.cachedArr[1] = val1;
+	return this.arrMin(this.cachedArr);
+}
 
 
 
