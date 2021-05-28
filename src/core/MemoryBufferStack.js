@@ -35,35 +35,39 @@ MemoryBufferStack.eightBitsMasks = [
 ]
 
 MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
-	this.jumperHost = new JumperHost();
-	this.occupancySolver = new OccupancySolver(this.occupancy, this.itemSize);
+	var self = this;
+	var getBuffer = this.getBuffer;
+	var bufferCount = this._byteLength / this.itemSize;
+	var jumperHost = new JumperHost();
+	var occupancySolver = new OccupancySolver(this.occupancy, this.itemSize);
 	
 	var doArrayMin = new DoArrayMinFunction();
 	var shouldJump = function(bufferIdx) {
-		return !doArrayMin.do(this.jumperHost.jumper, this.occupancySolver.getOccupancyFromBufferIdx(bufferIdx));
-	}.bind(this);
-	
-//	var exp = '0 !== doRecurseFunction(inParam)';
-//	var doCallTest  = this.getExpAsFunc(exp);
+		return bufferIdx < bufferCount
+			&& !doArrayMin.do(jumperHost.jumper, occupancySolver.getOccupancyFromBufferIdx(bufferIdx))
+			&& !!++jumperHost.jumper;
+	};
 	
 	var shouldRecurse = function(bufferIdx) {
-		console.log(shouldJump(bufferIdx));
-		
-		this.jumperHost.jumper++;
-		return jumpDecisiveBranches[+(shouldJump(bufferIdx++))];
-		
-	}.bind(this);
+		return jumpDecisionBranches[+(shouldJump(bufferIdx))];
+	};
 	
-	var jumpDecisiveBranches = new BranchesAsArray(shouldRecurse);
+	var jumpDecisionBranches = new BranchesAsArray(shouldRecurse);
 	
 	return function(bufferIdx) {
-//		console.log(this.jumperHost.jumper, shouldRecurse(bufferIdx));
-		
-		this.jumperHost.reset();
+		jumperHost.reset();
 		shouldRecurse(bufferIdx)(bufferIdx);
 		
-		console.log(this.jumperHost.jumper);
-	}.bind(this);
+		return jumperHost.jumper;
+	};
+}
+
+MemoryBufferStack.prototype.branchlessLoop = function(callback, startBufferIdx, endBufferIdx) {	// 
+	(startBufferIdx < endBufferIdx
+		&& callback(startBufferIdx, this.getBuffer(startBufferIdx))		// console.log(startBufferIdx)
+		&& (startBufferIdx += this.traverseAndJump(startBufferIdx))
+		)
+			&& this.branchlessLoop(callback, startBufferIdx, endBufferIdx);
 }
 
 MemoryBufferStack.prototype.getOffsetForBuffer = function(bufferIndex) {
@@ -72,7 +76,6 @@ MemoryBufferStack.prototype.getOffsetForBuffer = function(bufferIndex) {
 }
 
 MemoryBufferStack.prototype.getBuffer = function(bufferIndex) {
-//	console.log(bufferIndex);
 	return new Uint8Array(this._buffer.buffer, bufferIndex * this.itemSize, this.itemSize);
 }
 
@@ -139,80 +142,19 @@ MemoryBufferStack.prototype.append = function(val) {
 	this._buffer = new Uint8Array(this._buffer.buffer.append(new ArrayBuffer(val._byteLength || val.byteLength)));
 	this._byteLength = this._buffer.byteLength;
 	this._buffer.set(val, offset);
-//	console.log(val._byteLength, val.byteLength, val, Math.ceil((val._byteLength || val.byteLength) / 8));
 	
 	if (this.occupancy.byteLength <= (this._byteLength / this.itemSize) / 8)
 		this.occupancy = new Uint8Array(this.occupancy.buffer.append(new ArrayBuffer(Math.ceil((val._byteLength || val.byteLength) / (this.itemSize * 8)))));
-//	console.log(val);
 	
 	var occupancyValues = [], idx;
 	for (let i = 0, l = (val._byteLength || val.byteLength) / this.itemSize; i < l; i++) {
-//		(function() {
 			idx = Math.floor(i / 8);
-//			console.log(offset, self.occupancy[Math.floor(i / 8)] | MemoryBufferStack.eightBitsMasks[ i % 8 ], Math.floor(i / 8));
 			occupancyValues[idx] = occupancyValues[idx] | MemoryBufferStack.eightBitsMasks[ i % 8 ];
-//			console.log(self.occupancy);
-//		})();
 	}
 	
-//	console.log(occupancyValues, offset, this.occupancy);
+
 	self.occupancy.set(occupancyValues, Math.floor((offset / this.itemSize) / 8));
 	
-}
-
-MemoryBufferStack.prototype.traverse = function(callback) {
-	var currentOffset = 0;
-	var maxOffset = this._byteLength / this.itemSize - 1;
-
-	// Instanciate a new jumperHost
-	// Pass jumperHost to the initJumper function
-	// Instanciate the whole closure hierarchy
-	// Assign the returned implicitTestFunction to a variable named "GetNextJump"
-//	var jumperHost = new JumperHost();
-//	var jumperCallback = this.initJumper(jumperHost);
-//	var GetNextJump = this.traversingSequenceGetNextJumpFunction(jumperCallback);
-	
-	
-	
-	// A jump implies:
-	// Call "GetNextJump(byteIdx)"
-	// Access jumperHost to get the length of the jump
-	// Reset jumperHost
-	// Loop
-	
-	while (currentOffset < maxOffset) {
-//		console.log(currentOffset, maxOffset);
-		GetNextJump(currentOffset);
-		currentOffset += jumperHost.jumper;
-		callback(this._buffer, currentOffset * this.itemSize, this.itemSize);
-		jumperHost.jumper = 1;
-	}
-	
-//	console.log(this._buffer.buffer);
-}
-
-MemoryBufferStack.prototype.traversingSequenceGetNextJumpFunction = function(jumperCallback) {
-	return this.getImplicitTestFunction(jumperCallback);
-}
-
-MemoryBufferStack.prototype.initJumper = function(jumperHost) {
-//	var capturedArray = [];
-//	var res = 0;
-//	var exp = '0 !== curriedFunction(inParam)';
-//	// Let's see that as a hint for the optimizer: capture a unique instance of the arrayMin func in the closure
-//	var arrMin = arrayMin.bind(null);
-	
-	function jumperFunction(bufferIdx) {
-		capturedArray[0] = jumperHost.jumper;
-		capturedArray[1] = this.getNextOccupancyValue(bufferIdx);
-		res = arrMin(capturedArray);
-//		console.log(jumperHost.jumper);
-		jumperHost.jumper++;
-//		console.log(jumperHost.jumper);
-		return res;
-	}
-	
-	return MemoryBufferStack.prototype.getExpAsFunc.call(null, exp).bind(null, jumperFunction.bind(this));
 }
 
 MemoryBufferStack.prototype.getExpAsFunc = function(exp) {
@@ -220,34 +162,6 @@ MemoryBufferStack.prototype.getExpAsFunc = function(exp) {
 	return new Function('doRecurseFunction', 'inParam', 'return ' + exp + ';');
 }
 
-MemoryBufferStack.prototype.getImplicitTestFunction = function(lambda) {
-	var branches = new Array(2);
-	
-	var implicitTestFunction = function (bufferIdx) {
-//		console.log(branches[Number(lambda(bufferIdx))]);
-		return branches[Number(!!lambda(bufferIdx))];
-	};
-	
-	branches[0] = MemoryBufferStack.prototype.recursivelyCall.bind(this, implicitTestFunction);
-	branches[1] = MemoryBufferStack.prototype.noOp;
-	
-	return implicitTestFunction; 
-}
-
-MemoryBufferStack.prototype.recursivelyCall = function(implicitTestFunction, bufferIdx) {
-//	console.log(this.getNextOccupancyValue(byteIdx));
-	return implicitTestFunction(bufferIdx)(this.getNextOccupancyValue(bufferIdx));
-}
-
-MemoryBufferStack.prototype.getNextOccupancyValue = function(bufferIdx) {
-//	console.log(bufferIdx, (this.occupancy[Math.floor(bufferIdx / this.itemSize)] & MemoryBufferStack.eightBitsMasks[bufferIdx % this.itemSize]) >> (bufferIdx % this.itemSize));
-	bufferIdx++;
-	return (this.occupancy[Math.floor(bufferIdx / this.itemSize)] & MemoryBufferStack.eightBitsMasks[bufferIdx % this.itemSize]) >> (bufferIdx % this.itemSize);
-}
-
-MemoryBufferStack.prototype.noOp = function() {
-	console.log('noOp');
-}
 
 
 
@@ -271,6 +185,7 @@ var BranchesAsArray = function(ifCallClause) {
 		ifCallClause
 	];
 }
+BranchesAsArray.prototype = {};
 
 
 
@@ -278,11 +193,11 @@ var BranchesAsArray = function(ifCallClause) {
 
 
 var JumperHost = function() {
-	this.jumper = 0;
+	this.jumper = 1;
 	
 }
 JumperHost.prototype.reset = function() {
-	this.jumper = 0;
+	this.jumper = 1;
 }
 
 

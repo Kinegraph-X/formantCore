@@ -37,7 +37,7 @@ var NodeResizeObserver = function() {
 	this.objectType = 'NodeResizeObserver';
 		
 	this.resizeObserver;
-	if (ResizeObserver)
+	if (typeof ResizeObserver !== 'undefined')
 		this.resizeObserver = new ResizeObserver(this.getSize.bind(this));
 }
 

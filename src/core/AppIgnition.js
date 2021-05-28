@@ -30,7 +30,10 @@ Ignition.prototype.decorateComponentsThroughDefinitionsCache = function(listDef)
 	
 	// instanciate DOM objects through cloning : DOM attributes are always static
 	// 					=> iterate on the "views" register
-	this.instanciateDOM();
+	
+//	console.log(typeof document !== 'undefined' && typeof document.ownerDocument !== 'undefined');
+	if (typeof document !== 'undefined' && typeof document.ownerDocument !== 'undefined')
+		this.instanciateDOM();
 	
 	// instanciate streams
 	this.instanciateStreams(listDef);
@@ -481,6 +484,12 @@ var RootView = function(igniterForChild, preparePage) {
 	}
 
 	component.render();
+	
+	// HACK: before we generalize the API for style objects, there's only the DOM...
+	//		=> don't try to append a node to the DOM if we're outside the browser
+	if (typeof document === 'undefined' || typeof document.ownerDocument === 'undefined')
+		return component;
+	
 	document.querySelector('body').prepend(component.view.getMasterNode());
 	return component;
 }

@@ -1442,7 +1442,7 @@ DOMViewAPI.prototype.setMasterNode = function(node) {
  * 
  */
 DOMViewAPI.prototype.getMasterNode = function() {
-	return this.hostElem;
+	return this.hostElem || {};		// FIXME: TODO: remove the fallback (needed while we don't have any other ViewAPI...)
 }
 
 /**

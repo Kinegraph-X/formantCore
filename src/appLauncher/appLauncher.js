@@ -2,6 +2,13 @@
  * @module appLauncher
  */
 
+// Get compatibility with node.js and standalone engines
+//if (typeof window === 'undefined') {
+//	if (typeof global === 'undefined')
+//		window = this;
+//	else
+//		window = global;
+//}
 
 // TODO : Should not polute the namespace of this function : think seriously of removing the affectation to vars, as we only need to "execute" the require
 
@@ -42,7 +49,7 @@ var classConstructor = (function() {
 
 	var launch = function(customOptions) {
 		
-		debugMode = window.location.href.match(/[\?&]debug=(.+)&?/)
+		debugMode = window.location && window.location.href.match(/[\?&]debug=(.+)&?/)
 		if (debugMode && debugMode[0])
 			debugMode = debugMode[0];
 		
@@ -63,14 +70,14 @@ var classConstructor = (function() {
 		// Validate init
 		Validate.options = {format: "flat"};
 		
-		currentHostPath = window.location.href.match(/(.*\/)[^/]*$/)[1];
+		currentHostPath = window.location && window.location.href.match(/(.*\/)[^/]*$/)[1];
 		browserName = parseUserAgent();
 		
 //		masterTimer.startQueue();
 	}
 	
 	var parseUserAgent = function() {
-		var UA = window.navigator.userAgent;
+		var UA = window.navigator && window.navigator.userAgent;
 		
 		// Mobile
 		if (/iPad/i.test(UA) || /iPhone/i.test(UA)) {

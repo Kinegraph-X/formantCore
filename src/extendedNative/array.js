@@ -353,6 +353,16 @@ Object.defineProperty(Array.prototype, 'inverseSortOnObjectProp',  {
 
 
 
+
+
+
+
+
+
+
+
+
+
 Object.defineProperty(ArrayBuffer.prototype, 'bufferToString', {
 	writable : false,
 	value : function () {

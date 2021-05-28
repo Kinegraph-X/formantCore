@@ -22,6 +22,47 @@ Object.defineProperty(Object.prototype, 'sortObjectByPropName', {
 		for (var key in arr) {
 			newObj[arr[key]] = obj[arr[key]];
 		}
-		return newObj;
+		return newObj;	
 	}
 });
+
+
+
+
+
+// As the Array ctor inherits from the Object ctor,
+// any method present on Object.prototype should be available on Array
+Object.defineProperty(Object.prototype, 'toDebugString', {
+	value : function() {
+		return JSON.stringify(Object.fromEntries(Object.entries(this)));
+	}
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

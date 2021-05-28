@@ -3,7 +3,7 @@
  */
 
 var TypeManager = require('src/core/TypeManager');
-
+var BinarySlice = require('src/core/BinarySlice');
 
 
 
@@ -16,19 +16,33 @@ var BufferFromSchema = function(binarySchema) {
 	this._buffer = new Uint8Array(binarySchema.size);
 	this.occupancy = new Uint8Array(binarySchema.size / 8);
 	
-	this.propRef = [];
-	
-	var offset = 0; 
+	this.binarySchema = {};
+	var offset = 0;
 	for (var prop in binarySchema) {
-		this.propRef.push([
-			prop,
-			offset
-		]);
-		offset += binarySchema[prop];
+		if (!binarySchema.hasOwnProperty(prop))
+			return;
+		this.binarySchema[prop] = new BinarySlice(
+			binarySchema[prop].start,
+			binarySchema[prop].length
+		);
+		offset += binarySchema[prop].length;
 	}
+	
+	// TODO: It that worth something ?
+//	this.propRef = [];
+//	var offset = 0; 
+//	for (var prop in binarySchema) {
+//		this.propRef.push([
+//			prop,
+//			offset
+//		]);
+//		offset += binarySchema[prop];
+//	}
 	
 	this._byteLength = 0;
 	this._size = offset;
+	
+//	console.log(this.binarySchema);
 }
 
 BufferFromSchema.prototype = Object.create(Uint8Array.prototype);
@@ -44,6 +58,10 @@ BufferFromSchema.eightBitsMasks = [
 	0x40,
 	0x80
 ]
+
+BufferFromSchema.prototype.get = function(idx) {
+	return this._buffer[idx];
+}
 
 BufferFromSchema.prototype.getOffsetForProp = function(propName) {
 	var offset = 0;

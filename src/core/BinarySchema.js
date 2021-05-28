@@ -3,7 +3,7 @@
  */
 
 var TypeManager = require('src/core/TypeManager');
-
+var BinarySlice = require('src/core/BinarySlice');
 
 
 
@@ -14,15 +14,16 @@ var BinarySchema = function(name, propsList, sizes) {
 	this.objectType = 'BinarySchema';
 	
 	if (!BinarySchema.schemas.name) {
-		var size = 0;
+		var objectSize = 0;
 		propsList.forEach(function(propName, key) {
-			size += sizes[key];
+			objectSize += sizes[key];
 		}, this);
 			
-		var schema = function(propsList, sizes) {
-			propsList.forEach(function(propName, key) {
-				this[propName] = sizes[key];
-				size += sizes[key];
+		var schema = function(propertiesList, sizesFromSchema) {
+			var size = 0;
+			propertiesList.forEach(function(propName, key) {
+				this[propName] = new BinarySlice(size, sizesFromSchema[key]);
+				size += sizesFromSchema[key];
 			}, this);
 		}
 		Object.defineProperty(schema.prototype, 'objectType', {
@@ -32,11 +33,11 @@ var BinarySchema = function(name, propsList, sizes) {
 			value : name
 		});
 		Object.defineProperty(schema.prototype, 'size', {
-			value : size
+			value : objectSize
 		});
 				
 		BinarySchema.schemas.name = schema;
-		console.log(new schema(propsList, sizes));
+//		console.log(new schema(propsList, sizes));
 		return new schema(propsList, sizes);
 	}
 	else
@@ -47,6 +48,35 @@ BinarySchema.prototype = {};
 BinarySchema.prototype.objectType = 'BinarySchema';
 
 BinarySchema.schemas = {};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

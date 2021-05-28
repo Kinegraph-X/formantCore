@@ -9,6 +9,10 @@ var NodeResizeObserver = require('src/core/ResizeObserver');
 
 
 var TextSizeGetter = function() {
+	
+	if (typeof document === 'undefined' || typeof document.ownerDocument === 'undefined')
+		return;
+		
 	// width calculation
 	this.initCb;
 	this.textWidthCanvas = document.createElement("canvas");
