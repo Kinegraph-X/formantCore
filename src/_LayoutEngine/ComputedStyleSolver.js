@@ -31,7 +31,7 @@ var ComputedStyleSolver = function(naiveDOM, collectedSWrappers) {
 	// HINT: https://meiert.com/en/blog/70-percent-css-repetition
 	// "The average number of declarations is 6121 [...]"
 	// "the average number of unique declarations is 1,698"
-	//		=> we should think of optimizing the stylesheet before matching or computing anything...
+	//		=> TODO: we should think of optimizing the stylesheet before matching or computing anything...
 	// "The website with the most declarations, Kickstarter, uses 33,938 declarations [...]"
 	this.CSSRulesBuffer = this.scaleCSSBuffer(naiveDOM, collectedSWrappers);
 	
@@ -191,7 +191,8 @@ ComputedStyleSolver.prototype.traverseAndGetOptimizedSelectors = function(node) 
 	node.styleRefstartIdx = this.CSSRulesBuffer._byteLength;
 	this.getOptimizedSelectorFromNode(node);
 //	this.currentRulesBuffer.append(bufferFromSelectors);
-	node.styleRefLength = this.CSSRulesBuffer._byteLength;
+	node.styleRefEndIdx = this.CSSRulesBuffer._byteLength - this.CSSRulesBuffer.itemSize;
+	node.styleRefLength = this.CSSRulesBuffer._byteLength - node.styleRefstartIdx;
 		
 	node.children.forEach(function(childNode) {
 		this.traverseAndGetOptimizedSelectors(childNode)
@@ -240,29 +241,31 @@ ComputedStyleSolver.prototype.testNodeAgainstSelectors = function(node) {
 ComputedStyleSolver.prototype.matchingFunction = function(view) {
 	var match, testType, testValue;
 	
+	// TODO: perf => extract those String litterals
+	
 	if (testValue = view.nodeId.toLowerCase()) {
 		testType = Style.constants['idIsProof'];
 		this.iterateOnRulesAndMatchSelector(testType, testValue);
-//		if (match = this.iterateOnRulesAndMatchSelector(testType, testValue))
-//			matches.push(match);
 	}
 	if (view.classNames.length) {
 		testType = Style.constants['classIsProof'];
 		view.classNames.forEach(function(className) {
 			testValue = className.toLowerCase();
 			this.iterateOnRulesAndMatchSelector(testType, testValue);
-//			if (match = this.iterateOnRulesAndMatchSelector(testType, testValue))
-//				matches.push(match);
 		}, this);
 	}
 	
 	// May loop twice cause there's always a  tagName...
 	testType = Style.constants['tagIsProof'];
+	
 	testValue = view.nodeName;
-//	console.log(testValue);
 	this.iterateOnRulesAndMatchSelector(testType, testValue);
-//	if (match = this.iterateOnRulesAndMatchSelector(testType, testValue))
-//		matches.push(match);
+	
+	// Should do an additional loop to handle the shadowDOM case
+//	if (this.isShadowHost(view)) {
+//		testValue = ':host';
+//		this.iterateOnRulesAndMatchSelector(testType, testValue);
+//	}
 }
 
 ComputedStyleSolver.prototype.iterateOnRulesAndMatchSelector = function(testType, testValue) {

@@ -64,15 +64,11 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 }
 
 MemoryBufferStack.prototype.getBranchlessLoop = function() {
-	// Unuseful: Benchmarks show correct hoisting of captured value as constant
-//	var _buffer = this._buffer;
 
 	var branchlessLoop = function(callback, startBufferIdx, endBufferIdx) {
-		
 		if (startBufferIdx > endBufferIdx)
 			return;
 		
-//		console.log(new Uint8Array(this._buffer.buffer, startBufferIdx * this.itemSize, this.itemSize));
 		callback(this._buffer, startBufferIdx * this.itemSize);
 		startBufferIdx += this.traverseAndJumpFunction(startBufferIdx);
 		branchlessLoop(callback, startBufferIdx, endBufferIdx);
