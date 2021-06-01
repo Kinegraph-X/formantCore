@@ -39,8 +39,8 @@ var BufferFromSchema = function(binarySchema) {
 //		offset += binarySchema[prop];
 //	}
 	
-	this._byteLength = 0;
-	this._size = offset;
+	this._byteLength = binarySchema.size;
+//	this._size = offset;
 	
 //	console.log(this.binarySchema);
 }

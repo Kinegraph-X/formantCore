@@ -183,10 +183,10 @@ Object.defineProperty(String.prototype, 'getNcharsAsCharArray', {
 
 Object.defineProperty(String.prototype, 'getNcharsAsCharCodesArray', {
 	value : function(length, offset) {
-//		console.log(offset, this.length, this, offset > this.length);
+//		console.log(offset, this.length, this, offset >= this.length);
 		if (offset >= this.length) {
 			offset = 0;
-			length = this.length;
+			length = this.length < length ? this.length : length;
 		}
 		else if ((offset + length) > this.length) {
 			// Avoid capturing only one char...
@@ -202,6 +202,7 @@ Object.defineProperty(String.prototype, 'getNcharsAsCharCodesArray', {
 			ret.push(this.charCodeAt(offset + i));
 			i++;
 		}
+//		console.log(ret);
 		return [offset, ret];
 	}
 });

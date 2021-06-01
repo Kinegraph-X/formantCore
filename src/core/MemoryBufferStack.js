@@ -15,7 +15,8 @@ var MemoryBufferStack = function(itemSize, itemCount, isAbsoluteSize) {
 	this._buffer = new Uint8Array(itemSize * itemCount);
 	this.occupancy = new Uint8Array(itemCount / 8);
 	
-	this.traverseAndJump = this.setLogicForTraverseAndJump();
+	this.traverseAndJumpFunction = this.setLogicForTraverseAndJump();
+	this.branchlessLoop = this.getBranchlessLoop();
 	
 //	this.bytePointer = 0;
 }
@@ -43,7 +44,7 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 	
 	var doArrayMin = new DoArrayMinFunction();
 	var shouldJump = function(bufferIdx) {
-		return bufferIdx < bufferCount
+		return (jumperHost.jumper + bufferIdx) < bufferCount
 			&& !doArrayMin.do(jumperHost.jumper, occupancySolver.getOccupancyFromBufferIdx(bufferIdx))
 			&& !!++jumperHost.jumper;
 	};
@@ -62,12 +63,22 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 	};
 }
 
-MemoryBufferStack.prototype.branchlessLoop = function(callback, startBufferIdx, endBufferIdx) {
-	(startBufferIdx < endBufferIdx
-		&& callback(startBufferIdx, this.getBuffer(startBufferIdx))		// console.log(startBufferIdx)
-		&& (startBufferIdx += this.traverseAndJump(startBufferIdx))
-		)
-			&& this.branchlessLoop(callback, startBufferIdx, endBufferIdx);
+MemoryBufferStack.prototype.getBranchlessLoop = function() {
+	// Unuseful: Benchmarks show correct hoisting of captured value as constant
+//	var _buffer = this._buffer;
+
+	var branchlessLoop = function(callback, startBufferIdx, endBufferIdx) {
+		
+		if (startBufferIdx > endBufferIdx)
+			return;
+		
+//		console.log(new Uint8Array(this._buffer.buffer, startBufferIdx * this.itemSize, this.itemSize));
+		callback(this._buffer, startBufferIdx * this.itemSize);
+		startBufferIdx += this.traverseAndJumpFunction(startBufferIdx);
+		branchlessLoop(callback, startBufferIdx, endBufferIdx);
+	}.bind(this);
+	
+	return branchlessLoop;
 }
 
 MemoryBufferStack.prototype.getOffsetForBuffer = function(bufferIndex) {
@@ -76,6 +87,7 @@ MemoryBufferStack.prototype.getOffsetForBuffer = function(bufferIndex) {
 }
 
 MemoryBufferStack.prototype.getBuffer = function(bufferIndex) {
+//	return this._buffer;
 	return new Uint8Array(this._buffer.buffer, bufferIndex * this.itemSize, this.itemSize);
 }
 
@@ -131,29 +143,38 @@ MemoryBufferStack.prototype.invalidateFromIndex = function(idx) {
 	this.occupancy.set(this.occupancy[Math.floor(startOffset / 8)] & ~MemoryBufferStack.eightBitsMasks[onAlignementOffset]);
 }
 
+/**
+ * 
+ * @param MemoryPartialBuffer val
+ */
 MemoryBufferStack.prototype.append = function(val) {
-	if  (!val._byteLength && !val.byteLength)
+//	console.log(val);
+	if  (!val._byteLength)
 		return;
 	
 	// offsets for occupancy map
-	var self = this;
-	var offset = this._buffer.buffer.byteLength;
+//	var self = this;
+	var offset = this._byteLength;
 	
-	this._buffer = new Uint8Array(this._buffer.buffer.append(new ArrayBuffer(val._byteLength || val.byteLength)));
-	this._byteLength = this._buffer.byteLength;
-	this._buffer.set(val, offset);
+	if (this._byteLength + val._byteLength > this._buffer.byteLength) {
+		this._buffer = new Uint8Array(this._buffer.buffer.append(new ArrayBuffer(val._byteLength)));
+		this.occupancy = new Uint8Array(this.occupancy.buffer.append(new ArrayBuffer(Math.ceil((val._byteLength) / (this.itemSize * 8)))));
+	}
 	
-	if (this.occupancy.byteLength <= (this._byteLength / this.itemSize) / 8)
-		this.occupancy = new Uint8Array(this.occupancy.buffer.append(new ArrayBuffer(Math.ceil((val._byteLength || val.byteLength) / (this.itemSize * 8)))));
+	this._buffer.set(val._buffer, offset);	
+	this._byteLength += val._byteLength;
+	
+//	if (this.occupancy.byteLength <= (this._byteLength / this.itemSize) / 8)
+//		this.occupancy = new Uint8Array(this.occupancy.buffer.append(new ArrayBuffer(Math.ceil((val._byteLength || val.byteLength) / (this.itemSize * 8)))));
 	
 	var occupancyValues = [], idx;
-	for (let i = 0, l = (val._byteLength || val.byteLength) / this.itemSize; i < l; i++) {
+	for (let i = offset % this.itemSize, l = i + val._byteLength / this.itemSize; i < l; i++) {
 			idx = Math.floor(i / 8);
 			occupancyValues[idx] = occupancyValues[idx] | MemoryBufferStack.eightBitsMasks[ i % 8 ];
 	}
 	
 
-	self.occupancy.set(occupancyValues, Math.floor((offset / this.itemSize) / 8));
+	this.occupancy.set(occupancyValues, Math.floor((offset / this.itemSize) / 8));
 	
 }
 

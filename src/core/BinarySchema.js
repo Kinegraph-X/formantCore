@@ -1,5 +1,5 @@
 /**
- * constructor BinarySchema
+ * constructor BinarySchemaFactory
  */
 
 var TypeManager = require('src/core/TypeManager');
@@ -10,10 +10,9 @@ var BinarySlice = require('src/core/BinarySlice');
 
 
 
-var BinarySchema = function(name, propsList, sizes) {
-	this.objectType = 'BinarySchema';
+var BinarySchemaFactory = function(name, propsList, sizes) {
 	
-	if (!BinarySchema.schemas.name) {
+	if (!BinarySchemaFactory.schemas.name) {
 		var objectSize = 0;
 		propsList.forEach(function(propName, key) {
 			objectSize += sizes[key];
@@ -26,6 +25,8 @@ var BinarySchema = function(name, propsList, sizes) {
 				size += sizesFromSchema[key];
 			}, this);
 		}
+		
+		schema.prototype = {};
 		Object.defineProperty(schema.prototype, 'objectType', {
 			value : 'BinarySchema'
 		});
@@ -35,21 +36,19 @@ var BinarySchema = function(name, propsList, sizes) {
 		Object.defineProperty(schema.prototype, 'size', {
 			value : objectSize
 		});
-				
-		BinarySchema.schemas.name = schema;
+		
+		BinarySchemaFactory.schemas.name = schema;
 //		console.log(new schema(propsList, sizes));
 		return new schema(propsList, sizes);
 	}
 	else
-		return new BinarySchema.schemas.name(propsList, sizes);
+		return new BinarySchemaFactory.schemas.name(propsList, sizes);
 }
 
-BinarySchema.prototype = {};
-BinarySchema.prototype.objectType = 'BinarySchema';
+BinarySchemaFactory.prototype = {};
+BinarySchemaFactory.prototype.objectType = 'BinarySchemaFactory';
 
-BinarySchema.schemas = {};
-
-
+BinarySchemaFactory.schemas = {};
 
 
 
@@ -83,4 +82,6 @@ BinarySchema.schemas = {};
 
 
 
-module.exports = BinarySchema;
+
+
+module.exports = BinarySchemaFactory;
