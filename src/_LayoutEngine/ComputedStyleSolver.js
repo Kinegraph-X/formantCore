@@ -101,12 +101,7 @@ ComputedStyleSolver.prototype.getOptimizedSelectorFromSWrapper = function(sWrapp
 	var rulesBuffer = new ArrayBuffer(0);
 	
 	for (var rule in sWrapper.rules) {
-//		if (sWrapper.rules.hasOwnProperty(rule)) {
-//			if (typeof sWrapper.rules[rule].styleIFace.compactedViewOnSelector._buffer.buffer === 'undefined')
-//				console.log('selector', sWrapper.rules[rule].selector);
-//			else
-				rulesBuffer = rulesBuffer.append(sWrapper.rules[rule].styleIFace.compactedViewOnSelector._buffer.buffer);	
-//		}
+		rulesBuffer = rulesBuffer.append(sWrapper.rules[rule].styleIFace.compactedViewOnSelector._buffer.buffer);	
 	}
 	
 	return new Uint8Array(rulesBuffer);
@@ -119,12 +114,7 @@ ComputedStyleSolver.prototype.getOptimizedSelectorFromNode = function(node) {
 		return rulesBuffer;
 	
 	for (var rule in node.styleDataStructure.rules) {
-//		if (node.styleDataStructure.rules.hasOwnProperty(rule)) {
-//			if (typeof node.styleDataStructure.rules[rule].styleIFace.compactedViewOnSelector._buffer.buffer === 'undefined')
-//				console.log('selector', node.styleDataStructure.rules[rule].selector);
-//			else
-				rulesBuffer = rulesBuffer.append(node.styleDataStructure.rules[rule].styleIFace.compactedViewOnSelector._buffer.buffer);
-//		}
+		rulesBuffer = rulesBuffer.append(node.styleDataStructure.rules[rule].styleIFace.compactedViewOnSelector._buffer.buffer);
 	}
 	
 	return new Uint8Array(rulesBuffer);
@@ -146,7 +136,7 @@ ComputedStyleSolver.prototype.traverseAndGetOptimizedSelectors = function(curren
 
 ComputedStyleSolver.prototype.traverseAndMatchDOM = function(naiveDOM) {
 //	var matches = [];
-	console.log('traverseAndMatchDOM');
+//	console.log('traverseAndMatchDOM');
 	naiveDOM.children.forEach(function(node) {
 		this.testNodeAgainstSelectors(node)
 	}, this);
@@ -210,7 +200,7 @@ ComputedStyleSolver.prototype.matchingFunction = function(view) {
 
 ComputedStyleSolver.prototype.iterateOnRulesAndMatchSelector = function(testType, testValue) {
 	var self = this;
-	console.log('iterateOnRulesAndMatchSelector');
+//	console.log('iterateOnRulesAndMatchSelector');
 	this.CSSRulesBuffer.branchlessLoop(
 		(bufferIdx, buffer) => {
 //			self.storeMatches(

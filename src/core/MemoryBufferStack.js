@@ -15,7 +15,8 @@ var MemoryBufferStack = function(itemSize, itemCount, isAbsoluteSize) {
 	this._buffer = new Uint8Array(itemSize * itemCount);
 	this.occupancy = new Uint8Array(itemCount / 8);
 	
-	this.traverseAndJump = this.setLogicForTraverseAndJump();
+	this.traverseAndJumpFunction = this.setLogicForTraverseAndJump();
+	this.branchlessLoop = this.getBranchlessLoop(this.getBuffer.bind(this), this.traverseAndJumpFunction);
 	
 //	this.bytePointer = 0;
 }
@@ -62,12 +63,18 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 	};
 }
 
-MemoryBufferStack.prototype.branchlessLoop = function(callback, startBufferIdx, endBufferIdx) {	// 
+MemoryBufferStack.prototype.getBranchlessLoop = function(getBuffer, traverseAndJumpFunction) {
+//	var bufferGetter = this.getBuffer.bind(this);
+//	var traverseAndJumpFunction = this.traverseAndJumpFunction.bind(this);
+	var branchlessLoop = function(callback, startBufferIdx, endBufferIdx) {
 	(startBufferIdx < endBufferIdx
-		&& callback(startBufferIdx, this.getBuffer(startBufferIdx))		// console.log(startBufferIdx)
-		&& (startBufferIdx += this.traverseAndJump(startBufferIdx))
+		&& callback(startBufferIdx, getBuffer(startBufferIdx))		// console.log(startBufferIdx)
+		&& (startBufferIdx += traverseAndJumpFunction(startBufferIdx))
 		)
-			&& this.branchlessLoop(callback, startBufferIdx, endBufferIdx);
+		&& branchlessLoop(callback, startBufferIdx, endBufferIdx);
+	};
+	
+	return branchlessLoop;
 }
 
 MemoryBufferStack.prototype.getOffsetForBuffer = function(bufferIndex) {
