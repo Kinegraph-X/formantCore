@@ -25,7 +25,14 @@ var ComputedStyleSolver = function(naiveDOM, collectedSWrappers) {
 		);
 	this.iteratorCallback = this.getIteratorCallback();
 	
-	// For now, let's scale the CSS memoryBuffer to a size big enough to handle 3000 rules
+	// For now, let's scale the CSS memoryBuffer to a size big enough to handle 2000 rules
+	//		=> Benchmarks showed that allocating buffers bigger than 16 KB causes instabilities in perf
+	//			(3000 items / 8 Bytes) = 24 KB, was seemingly too big for TurboFan.
+	// HINT: https://meiert.com/en/blog/70-percent-css-repetition
+	// "The average number of declarations is 6121 [...]"
+	// "the average number of unique declarations is 1,698"
+	//		=> we should think of optimizing the stylesheet before matching or computing anything...
+	// "The website with the most declarations, Kickstarter, uses 33,938 declarations [...]"
 	this.CSSRulesBuffer = this.scaleCSSBuffer(naiveDOM, collectedSWrappers);
 	
 	this.aggregateRules(
@@ -48,6 +55,10 @@ ComputedStyleSolver.viewTypes = [
 	'subSections',
 	'memberViews'
 ];
+
+ComputedStyleSolver.prototype.scaleCSSBuffer = function(naiveDOM, collectedSWrappers) {
+	return new MemoryBufferStack(8, 1500);
+}
 
 ComputedStyleSolver.prototype.getOffsettedMatcher = function(collectedSWrappers) {
 	if (!collectedSWrappers.length)
@@ -130,10 +141,6 @@ ComputedStyleSolver.prototype.getSelfExitingMatcher = function(branches, matcher
 				testBuffer
 		);
 	}
-}
-
-ComputedStyleSolver.prototype.scaleCSSBuffer = function(naiveDOM, collectedSWrappers) {
-	return new MemoryBufferStack(8, 3000);
 }
 
 ComputedStyleSolver.prototype.aggregateRules = function(naiveDOM, collectedSWrappers) {
