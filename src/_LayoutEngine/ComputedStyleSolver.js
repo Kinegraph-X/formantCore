@@ -203,11 +203,11 @@ ComputedStyleSolver.prototype.iterateOnRulesAndMatchSelector = function(testType
 //	console.log('iterateOnRulesAndMatchSelector');
 	this.CSSRulesBuffer.branchlessLoop(
 		(bufferIdx, buffer) => {
-//			self.storeMatches(
-				self.optimizedMatcher(testType, testValue, buffer, buffer[1]);
-//				testValue,
-//				bufferIdx
-//			);
+			self.storeMatches(
+				self.optimizedMatcher(testType, testValue, buffer, buffer[1]),
+				testValue,
+				bufferIdx
+			);
 			// return true in order not to block the loop
 			return true;
 		},
