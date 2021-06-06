@@ -775,6 +775,13 @@ var listsDefinitionsCacheRegistry = new PropertyCache('listsDefinitionsCacheRegi
 var permanentProvidersRegistry = new RequestCache('permanentProvidersRegistry');
 var boundingBoxesCache = new PropertyCache('boundingBoxesCache');
 
+// TODO: this cache is used by the RichComponenentInternalsPicker, 
+// to resolve the sWrapper associated with a component out of its UID (? to be confirmed/precised), but
+// we also need a MasterStyleCache, to store each CSS rule at global level,
+// and resolve the binding between a matched rules and a (pseudo-)DOM node, from any outer scope.
+// 		=> could we enhance this cache so it would allow to retrieve a whole sWrapper
+//		al well as a single CSS rule, in order -not- to duplicate the caches used for CSS ?
+// 	=> think of that deeply, and validate any choice regarding performances.
 var sWrappersCache = new PropertyCache('sWrappersCache');
 
 var hostsRegistry = [];
@@ -795,9 +802,21 @@ var viewsRegistry = [];
  */
 var dataStoreRegistry = new PropertyCache('dataStoreRegistry');
 
+/**
+ * @typedStore {StoredStyleIFace} {UID : UID_OfTheOpitimizedSelectorBuffer}
+ */
+var masterStyleRegistry = new PropertyCache('masterStyleRegistry');
+
+/**
+ * @typedStore {StoredNodeFromNaiveDOM} {UID : nodeUID}
+ */
+var naiveDOMRegistry = new PropertyCache('naiveDOMRegistry');
+
 console.log(hostsDefinitionsCacheRegistry);
 console.log(listsDefinitionsCacheRegistry);
-console.log(permanentProvidersRegistry);
+//console.log(naiveDOMRegistry);
+console.log(masterStyleRegistry);
+//console.log(permanentProvidersRegistry);
 
 //console.log(viewsRegistry);
 
@@ -824,6 +843,8 @@ Object.assign(exportedObjects, {
 	stateMachineCache : stateMachineCache,							// Object PropertyCache
 	sWrappersCache : sWrappersCache,								// Object PropertyCache
 	typedHostsRegistry : typedHostsRegistry,						// Object PropertyCache {defUID : [Components]}
+	naiveDOMRegistry : naiveDOMRegistry,							// Object PropertyCache
+	masterStyleRegistry : masterStyleRegistry,						// Object PropertyCache
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegistry : nodesRegistry,
 	viewsRegistry : viewsRegistry,

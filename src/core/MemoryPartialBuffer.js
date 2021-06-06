@@ -59,8 +59,19 @@ BufferFromSchema.eightBitsMasks = [
 	0x80
 ]
 
-BufferFromSchema.prototype.get = function(idx) {
-	return this._buffer[idx];
+// TODO: retrieve the binary length from the BinarySchema
+// TODO benchmark resolving long integers using a DataView or another TypedArray
+BufferFromSchema.prototype.get = function(idx, binaryLength) {
+	if (!binaryLength)
+		return this._buffer[idx];
+	else {
+		var ret = 0, bitwiseOffset = 0;
+		for (let i = idx, l = idx + binaryLength; i < l; i++) {
+			ret = ret | (this._buffer[i] << bitwiseOffset * 8);
+			bitwiseOffset++;
+		}
+		return ret;
+	}
 }
 
 BufferFromSchema.prototype.getOffsetForProp = function(propName) {

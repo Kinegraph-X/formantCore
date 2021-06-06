@@ -9,9 +9,9 @@
 
 var TypeManager = require('src/core/TypeManager');
 var Components = require('src/core/Component');
+//var UIDGenerator = require('src/core/UIDGenerator').UIDGenerator;
 
-
-
+var NaiveDOMNode = require('src/_LayoutEngine/NaiveDOMNode');
 
 
 // NOTE: should not be a ctor, but helper functions
@@ -27,18 +27,17 @@ SpecialDependencyInjector.prototype.getNaiveDOM = function() {
 }
 
 SpecialDependencyInjector.prototype.getNaiveDOMTree = function () {
-	
+	var nodeUID;
 	function getNode(component) {
-//		console.log(Object.getPrototypeOf(component).objectType.slice(0));
 		return {
-			styleRefstartIdx : 0,
-			styleRefLength : 0,
-			name : Object.getPrototypeOf(component).objectType.slice(0),
-			views : this.getInDepthViewStructure(component),
-			children : [],
-			styleDataStructure : component.styleHook ? component.styleHook.s : null
-		};
-		
+				styleRefstartIdx : 0,
+				styleRefLength : 0,
+				_UID : nodeUID,
+				name : Object.getPrototypeOf(component).objectType.slice(0),
+				views : this.getInDepthViewStructure(component),
+				children : [],
+				styleDataStructure : component.styleHook ? component.styleHook.s : null
+			};
 //		var meta = this.getViewRelatedNodeDescription(component);
 	}
 	var ret = getNode.call(this, this);
@@ -62,28 +61,14 @@ SpecialDependencyInjector.prototype.collectNaiveDOMandStyleInDescendants = funct
 }
 
 SpecialDependencyInjector.prototype.getInDepthViewStructure = function (component) {
-	var masterNode = component.view.getMasterNode();
+	var hostNode, subNodesGroup;
 	return {
-		masterView : {
-			nodeName : masterNode.nodeName.toLowerCase(),
-			nodeId : masterNode.id,
-			classNames : masterNode.classList	
-		},
+		masterView : (hostNode = new NaiveDOMNode(component.view, 0)),
+		subSections : (subNodesGroup = component.view.subViewsHolder.subViews.map(function(view) {
+			return new NaiveDOMNode(view, 1, hostNode, component.view);
+		})),
 		memberViews : component.view.subViewsHolder.memberViews.map(function(view) {
-			masterNode = view.getMasterNode();
-			return {
-				nodeName : masterNode.nodeName.toLowerCase(),
-				nodeId : masterNode.id,
-				classNames : masterNode.classList	
-			};
-		}),
-		subSections : component.view.subViewsHolder.subViews.map(function(view) {
-			masterNode = view.getMasterNode();
-			return {
-				nodeName : masterNode.nodeName.toLowerCase(),
-				nodeId : masterNode.id,
-				classNames : masterNode.classList	
-			};
+			return new NaiveDOMNode(view, 2, hostNode, component.view, subNodesGroup);
 		})
 	};
 }

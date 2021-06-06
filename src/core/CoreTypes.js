@@ -36,6 +36,52 @@ var JSkeyboardMap = require('src/events/JSkeyboardMap');
 
 
 
+
+
+
+/**
+ * @constructor Pair
+ * 
+ * @param String name
+ * @param String value
+ */
+var Pair = function(name, value) {
+	this.name = name;
+	this.value = value;
+}
+Pair.prototype = {};
+
+
+
+
+
+var ListOfPairs = function(pseudoNameValuePairsList) {
+	for (let i = 0, l = pseudoNameValuePairsList.length; i < l; i++) {
+		this.push(
+			new Pair(
+				pseudoNameValuePairsList[i].name,
+				pseudoNameValuePairsList[i].value
+			)
+		);
+	}
+}
+ListOfPairs.prototype = Object.create(Array.prototype);
+Object.defineProperty(ListOfPairs.prototype, 'objectType', {
+	value : 'ListOfPairs'
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
 /**
  * @constructor EventEmitter
  */
@@ -2166,16 +2212,18 @@ var commonStates = {
 
 
 module.exports = {
-		EventEmitter : EventEmitter,
-		Command : Command,
-		Worker : WorkerInterface,
-		Stream : Stream,
-		LazyResettableColdStream : LazyResettableColdStream,
-		NumberedStream : NumberedStream,
-		StreamPool : StreamPool,
-		ComponentView, ComponentView,
-		ComponentSubView : ComponentSubView,
-		ComponentSubViewsHolder : ComponentSubViewsHolder,
-		CanvasView : CanvasView,
-		commonStates : commonStates
+	Pair : Pair,
+	ListOfPairs : ListOfPairs,
+	EventEmitter : EventEmitter,
+	Command : Command,
+	Worker : WorkerInterface,
+	Stream : Stream,
+	LazyResettableColdStream : LazyResettableColdStream,
+	NumberedStream : NumberedStream,
+	StreamPool : StreamPool,
+	ComponentView, ComponentView,
+	ComponentSubView : ComponentSubView,
+	ComponentSubViewsHolder : ComponentSubViewsHolder,
+	CanvasView : CanvasView,
+	commonStates : commonStates
 }
