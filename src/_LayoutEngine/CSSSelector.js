@@ -24,30 +24,40 @@ CSSSelector.prototype.toString = function() {
 CSSSelector.prototype.extractMostSpecificPartFromSelector = function() {
 	this.components = new CSSSelectorComponentList(this.selectorStr);
 
-	return this.cascadeOnSpecificity(this.components[(this.components.length - 1).toString()].value);
+	return this.cascadeOnSpecificity(this.components[this.components.length - 1].value);
 }
 
 CSSSelector.prototype.cascadeOnSpecificity = function(rightMost) {
 	var match;
 	
-	match = rightMost.match(CSSSelectorComponent.prototype.typeIsId);
+	match = rightMost.match(this.typeIsId);
+//	(rightMost === ':host' && console.log(rightMost, match));
 	if (match) {
 		this.selectorProofingPartType = this.constants.idIsProof;
 		return match[1];
 	}
 	else {
-		match = rightMost.match(CSSSelectorComponent.prototype.typeIsClass);
+		match = rightMost.match(this.typeIsClass);
+//		(rightMost === ':host' && console.log(rightMost, match));
 		if (match) {
 			this.selectorProofingPartType = this.constants.classIsProof;
 			return match[1] || match[2];
 		}
 		else {
-			//   ':host'.match(/[^\.#:](\w+)/) 	=> 		Array [ "host", "ost"]
-			match = rightMost.match(CSSSelectorComponent.prototype.typeIsTag);
+			match = rightMost.match(this.typeIsHost);
+//			(rightMost === ':host' && console.log(rightMost, match));
+			if (match) {
+				this.selectorProofingPartType = this.constants.hostIsProof;
+				return match[0];
+			}
+			else {
+			match = rightMost.match(this.typeIsTag);
+//			(rightMost === ':host' && console.log(rightMost, match));
 			if (match) {
 				this.selectorProofingPartType = this.constants.tagIsProof;
 				return match[0];
 			}
+		}
 		}
 	}
 	
@@ -58,7 +68,8 @@ CSSSelector.prototype.constants = {
 	rawSelectorIsProof : 0,
 	idIsProof : 1,
 	classIsProof : 2,
-	tagIsProof : 3
+	tagIsProof : 3,
+	hostIsProof : 4
 }
 
 
@@ -126,8 +137,8 @@ CSSSelectorComponent.prototype.objectType = 'CSSSelectorComponent';
 CSSSelectorComponent.prototype.typeIsUniversal = /^\*$/;
 CSSSelectorComponent.prototype.typeIsId = /#(\w+)/;
 CSSSelectorComponent.prototype.typeIsClass = /\.([\w_-]+)|\[class.?="([\w_-]+)"\]/;
-CSSSelectorComponent.prototype.typeIsTag = /[^\.#:][\w_-]+/;
 CSSSelectorComponent.prototype.typeIsHost = /:host/;
+CSSSelectorComponent.prototype.typeIsTag = /[^\.#\:][-s\w_]+/;
 
 CSSSelectorComponent.prototype.getType = function(componentAsStr) {
 	// TODO: we have very few means to identify the case of an "attribute" qualifying a component
@@ -197,6 +208,7 @@ CSSSelectorComponent.prototype.relationConstants = {
 
 CSSSelectorComponent.prototype.splitter = /,|\s/;
 
+CSSSelectorComponent.prototype.shadowDOMHostSpecialKeyword = ':host';
 
 
 
@@ -216,9 +228,16 @@ CSSSelectorComponent.prototype.splitter = /,|\s/;
 
 
 
+CSSSelector.prototype.typeIsUniversal = CSSSelectorComponent.prototype.typeIsUniversal;
+CSSSelector.prototype.typeIsId = CSSSelectorComponent.prototype.typeIsId;
+CSSSelector.prototype.typeIsClass = CSSSelectorComponent.prototype.typeIsClass;
+CSSSelector.prototype.typeIsTag = CSSSelectorComponent.prototype.typeIsTag;
+CSSSelector.prototype.typeIsHost = CSSSelectorComponent.prototype.typeIsHost;
 
 CSSSelector.prototype.interestingTokens = CSSSelectorComponent.prototype.interestingTokens;
 CSSSelector.prototype.typeConstants = CSSSelectorComponent.prototype.typeConstants;
 CSSSelector.prototype.relationConstants = CSSSelectorComponent.prototype.relationConstants;
+
+CSSSelector.prototype.shadowDOMHostSpecialKeyword = CSSSelectorComponent.prototype.shadowDOMHostSpecialKeyword;
 
 module.exports = CSSSelector;

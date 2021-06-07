@@ -3,7 +3,7 @@
  */
 
 var TypeManager = require('src/core/TypeManager');
-
+var CSSSelector = require('src/_LayoutEngine/CSSSelector');
 
 
 
@@ -44,6 +44,7 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 	
 	var doArrayMin = new DoArrayMinFunction();
 	var shouldJump = function(bufferIdx) {
+//		console.log((jumperHost.jumper + bufferIdx) < bufferCount);
 		return (jumperHost.jumper + bufferIdx) < bufferCount
 			&& !doArrayMin.do(jumperHost.jumper, occupancySolver.getOccupancyFromBufferIdx(bufferIdx))
 			&& !!++jumperHost.jumper;
@@ -66,12 +67,14 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 MemoryBufferStack.prototype.getBranchlessLoop = function() {
 
 	var branchlessLoop = function(callback, startBufferIdx, endBufferIdx) {
-		if (startBufferIdx > endBufferIdx)
+//		console.log(startBufferIdx);
+		if (startBufferIdx >= endBufferIdx)
 			return;
 		
 		callback(this._buffer, startBufferIdx * this.itemSize);
 		startBufferIdx += this.traverseAndJumpFunction(startBufferIdx);
 		branchlessLoop(callback, startBufferIdx, endBufferIdx);
+//		console.log(startBufferIdx);
 	}.bind(this);
 	
 	return branchlessLoop;
@@ -140,16 +143,16 @@ MemoryBufferStack.prototype.invalidateFromIndex = function(idx) {
 }
 
 /**
+ * @function MemoryBufferStack.prototype.append
  * 
  * @param MemoryPartialBuffer val
  */
 MemoryBufferStack.prototype.append = function(val) {
-//	console.log(val);
+
 	if  (!val._byteLength)
 		return;
 	
 	// offsets for occupancy map
-//	var self = this;
 	var offset = this._byteLength;
 	
 	if (this._byteLength + val._byteLength > this._buffer.byteLength) {
@@ -157,27 +160,26 @@ MemoryBufferStack.prototype.append = function(val) {
 		this.occupancy = new Uint8Array(this.occupancy.buffer.append(new ArrayBuffer(Math.ceil((val._byteLength) / (this.itemSize * 8)))));
 	}
 	
-	this._buffer.set(val._buffer, offset);	
+	this._buffer.set(val._buffer, this._byteLength);	
 	this._byteLength += val._byteLength;
 	
-//	if (this.occupancy.byteLength <= (this._byteLength / this.itemSize) / 8)
-//		this.occupancy = new Uint8Array(this.occupancy.buffer.append(new ArrayBuffer(Math.ceil((val._byteLength || val.byteLength) / (this.itemSize * 8)))));
-	
-	var occupancyValues = [], idx;
-	for (let i = offset % this.itemSize, l = i + val._byteLength / this.itemSize; i < l; i++) {
-			idx = Math.floor(i / 8);
-			occupancyValues[idx] = occupancyValues[idx] | MemoryBufferStack.eightBitsMasks[ i % 8 ];
+	var occupancyValues = [], initialBufferIdx = offset / this.itemSize, occupancyPointer, currentOccupancyPointer;
+	for (let bufferIdx = offset / this.itemSize, max = this._byteLength / this.itemSize; bufferIdx < max; bufferIdx++) {
+//		console.log(bufferIdx, bufferIdx % 8, Math.floor((bufferIdx - initialBufferIdx) / 8));
+		occupancyPointer = Math.floor((bufferIdx - initialBufferIdx) / 8);
+		currentOccupancyPointer = Math.floor(bufferIdx / 8);
+		occupancyValues[occupancyPointer] = this.occupancy[currentOccupancyPointer] | MemoryBufferStack.eightBitsMasks[ bufferIdx % 8 ];
 	}
 	
-
+//	console.log(occupancyValues, Math.floor((offset / this.itemSize) / 8));
 	this.occupancy.set(occupancyValues, Math.floor((offset / this.itemSize) / 8));
 	
 }
 
-MemoryBufferStack.prototype.getExpAsFunc = function(exp) {
+//MemoryBufferStack.prototype.getExpAsFunc = function(exp) {
 //	console.log("exp : ' + exp + '", ' + 'curriedFunction, inParam' + ', ' + exp + '); 
-	return new Function('doRecurseFunction', 'inParam', 'return ' + exp + ';');
-}
+//	return new Function('doRecurseFunction', 'inParam', 'return ' + exp + ';');
+//}
 
 
 
@@ -225,6 +227,7 @@ var OccupancySolver = function(occupancyBuffer, itemSize) {
 }
 OccupancySolver.prototype.getOccupancyFromBufferIdx = function(bufferIdx) {
 	var bitFieldOffset = bufferIdx % 8;
+ 	console.log((this._buffer[Math.floor(bufferIdx / 8)] & MemoryBufferStack.eightBitsMasks[bitFieldOffset]) >> bitFieldOffset);
 	return (this._buffer[Math.floor(bufferIdx / 8)] & MemoryBufferStack.eightBitsMasks[bitFieldOffset]) >> bitFieldOffset;
 }
 OccupancySolver.prototype.getOccupancyFromAbsoluteIdx = function(absoluteIdx) {

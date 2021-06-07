@@ -12,7 +12,7 @@ var CompoundComponent = require('src/core/CompoundComponent');
 var componentTypes = CompoundComponent.componentTypes;
 var coreComponents = CompoundComponent.coreComponents;
 
-var elementDecorator_Offset = require('src/UI/_mixins/elementDecorator_Offset');
+var elementDecorator_OffsetProp = require('src/UI/_mixins/elementDecorator_Offset');
 
 console.log(TypeManager.caches);
 //console.log(TypeManager.dataStoreRegistry);
@@ -76,7 +76,7 @@ Ignition.prototype.instanciateDOM = function() {
 		if (nodes[view._defUID].cloneMother) {
 			// nodes[view._defUID].cloneMother.cloneNode(true); => deep clone : also copies the nested nodes (textual contents are nodes...)
 			view.callCurrentViewAPI('setMasterNode', nodes[view._defUID].cloneMother.cloneNode(true));
-			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_Offset);
+			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_OffsetProp);
 		}
 		else {
 			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
@@ -88,7 +88,7 @@ Ignition.prototype.instanciateDOM = function() {
 					nodes[view._defUID].cloneMother[attrObject.getName()] = attrObject.getValue();
 			});
 			view.callCurrentViewAPI('setMasterNode', nodes[view._defUID].cloneMother.cloneNode(true));
-			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_Offset);
+			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_OffsetProp);
 		}
 		
 //		masterNode = view.callCurrentViewAPI('getMasterNode');

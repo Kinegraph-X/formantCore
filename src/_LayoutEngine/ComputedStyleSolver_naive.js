@@ -8,22 +8,9 @@ var Style = require('src/editing/Style');
 
 
 var ComputedStyleSolver = function(naiveDOM, collectedSWrappers) {
-	
-//	console.log(naiveDOM.toDebugString(), collectedSWrappers.toDebugString());
+
 	this.objectType = 'ComputedStyleSolver';
 	this.matches = [];
-	
-//	var offsettedMatcher = this.getOffsettedMatcher(
-//			collectedSWrappers
-//		);
-//	var branches = new BranchesAsArray(
-//			offsettedMatcher
-//		);
-//	this.optimizedMatcher = this.getSelfExitingMatcher(
-//			branches,
-//			offsettedMatcher
-//		);
-//	this.iteratorCallback = this.getIteratorCallback();
 	
 	this.collectedSWrappers = collectedSWrappers;
 	this.traverseAndMatchDOM(
@@ -33,8 +20,6 @@ var ComputedStyleSolver = function(naiveDOM, collectedSWrappers) {
 	this.tmpRes = this.matches.reduce(function(acc, val) {
 		return acc += val + ',\n';
 	}, '')
-	
-//	console.log();
 }
 
 ComputedStyleSolver.prototype = {}
@@ -103,58 +88,51 @@ ComputedStyleSolver.prototype.matchingFunction = function(view, sWrapper) {
 	
 	// May loop twice cause there's always a  tagName...
 	testValue = view.nodeName;
-	this.iterateOnGlobalRulesAndMatchSelector(testValue);
-	this.iterateOnShadowRulesAndMatchSelector(testValue, sWrapper);
+	this.iterateOnGlobalRulesAndMatchSelector(testValueview, view);
+//	this.iterateOnShadowRulesAndMatchSelector(testValue, sWrapper);
 }
 
 ComputedStyleSolver.prototype.iterateOnGlobalRulesAndMatchSelector = function(testValue) {
 	
 	this.collectedSWrappers.forEach(function(sWrapper) {
 		Object.values(sWrapper.rules).forEach(function(rule) {
-			if (this.extractMostSpecificPartFromSelector(rule.selector) === testValue)
-				this.matches.push(testValue + ' / (' + rule.selector + ') - ' + sWrapper.name.slice(0, 9));
+			if (this.extractMostSpecificPartFromSelector(rule.selector.value) === testValue)
+				this.matches.push([testValue, rule.compactedViewOnSelector.get(6, 2)]);
 		}, this);	
 	}, this);
 	
 }
 
-ComputedStyleSolver.prototype.iterateOnShadowRulesAndMatchSelector = function(testValue, sWrapper) {
-	if (!sWrapper)
-		return;
-	
-	Object.values(sWrapper.rules).forEach(function(rule) {
-		if (this.extractMostSpecificPartFromSelector(rule.selector) === testValue)
-			this.matches.push(testValue + ' / (' + rule.selector + ') - ' + sWrapper.name.slice(0, 9));
-	}, this);
-}
+//ComputedStyleSolver.prototype.iterateOnShadowRulesAndMatchSelector = function(testValue, sWrapper) {
+//	if (!sWrapper)
+//		return;
+//	
+//	Object.values(sWrapper.rules).forEach(function(rule) {
+//		if (this.extractMostSpecificPartFromSelector(rule.selector) === testValue)
+//			this.matches.push(testValue + ' / (' + rule.selector + ') - ' + sWrapper.name.slice(0, 9));
+//	}, this);
+//}
 
 ComputedStyleSolver.prototype.extractMostSpecificPartFromSelector = function(selector) {
-	var splitted = selector.split(/\,|\s/g);
-	if (!splitted)
-		splitted = selector;
-		
-	return this.cascadeOnSpecificity(splitted[splitted.length - 1]);
+	return this.cascadeOnSpecificity(selector.components[selector.components.length - 1]);
 }
 
 ComputedStyleSolver.prototype.cascadeOnSpecificity = function(rightMost) {
 	var match;
 	
-	match = rightMost.match(/#(\w+)/);
+	match = CSSSelector.prototype.typeIsID.test(rightMost);
 	if (match) {
-//		this.selectorProofingPartType = Style.constants.idIsProof;
 		return match[1];
 	}
 	else {
-		match = rightMost.match(/\.([\w_-]+)|\[class.?="([\w_-]+)"\]/);
+		match = CSSSelector.prototype.typeIsClass.test(rightMost);
 		if (match) {
-//			this.selectorProofingPartType = Style.constants.classIsProof;
 			return match[1] || match[2];
 		}
 		else {
 			//   ':host'.match(/[^\.#:](\w+)/) 	=> 		Array [ "host", "ost"]
-			match = rightMost.match(/[^\.#:][\w_-]+/);
+			match = CSSSelector.prototype.typeIsTagName.test(rightMost);
 			if (match) {
-//				this.selectorProofingPartType = Style.constants.tagIsProof;
 				return match[0];
 			}
 		}

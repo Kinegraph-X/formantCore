@@ -33,6 +33,7 @@ SpecialDependencyInjector.prototype.getNaiveDOMTree = function () {
 				styleRefstartIdx : 0,
 				styleRefLength : 0,
 				_UID : nodeUID,
+				isShadowHost : component.view.currentViewAPI ? component.view.currentViewAPI.isShadowHost : false,
 				name : Object.getPrototypeOf(component).objectType.slice(0),
 				views : this.getInDepthViewStructure(component),
 				children : [],

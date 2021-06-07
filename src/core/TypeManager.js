@@ -424,7 +424,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 		this.UID = null								// overridden at function end
 		this.type = null,							// String
 		this.nodeName = null;						// String
-		this.isCustomElem = false					// Boolean
+		this.isCustomElem = false;					// Boolean
 		this.templateNodeName = null;				// String
 		this.attributes = [];						// Array [AttributeDesc]
 		this.section = null;						// Number
@@ -452,7 +452,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 	
 	// Fast-access props
 	this.streams = this.props.concat(this.states);
-	this.isCustomElem = (this.nodeName && this.nodeName.indexOf('-') !== -1);
+	this.isCustomElem = (this.nodeName !== null && this.nodeName.indexOf('-') !== -1);
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.SingleLevelComponentDefModel = SingleLevelComponentDefModel;
@@ -788,7 +788,7 @@ var hostsRegistry = [];
 var typedHostsRegistry = new PropertyCache('typedHostsRegistry');
 
 /**
- * @typedCache {CachedNode} {UID : {nodeName : nodeName, cloneMother : DOMNode -but not yet-}}
+ * @typedCache {CachedNode} {UID : {nodeName : nodeName, isCustomElem : isCustomElem, cloneMother : DOMNode -but not yet-}}
  */
 var nodesRegistry = new PropertyCache('nodesRegistry');
 

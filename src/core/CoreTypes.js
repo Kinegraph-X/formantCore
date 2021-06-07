@@ -1440,7 +1440,7 @@ PixiViewAPI.prototype.setContentFromArray = function(contentAsArray) {
  * @constructor DOMView
  */
 var DOMViewAPI = function(def) {
-	
+	this.isShadowHost = def.isCustomElem;
 	this.nodeName = def.nodeName;
 	this.templateNodeName = def.templateNodeName;
 	

@@ -26,7 +26,7 @@ CSSRulesBufferManager.prototype.aggregateRules = function(naiveDOM, collectedSWr
 		this.getOptimizedSelectorFromSWrapper(sWrapper);
 	}, this);
 	
-	this.traverseDOMAndGetOptimizedSelectors(naiveDOM);
+	this.traverseDOMAndGetOptimizedSelectors(naiveDOM, false);
 }
 
 CSSRulesBufferManager.prototype.getOptimizedSelectorFromSWrapper = function(sWrapper) {
@@ -46,14 +46,26 @@ CSSRulesBufferManager.prototype.getOptimizedSelectorFromNode = function(node) {
 	}, this);
 }
 
-CSSRulesBufferManager.prototype.traverseDOMAndGetOptimizedSelectors = function(node) {
-	
-	node.styleRefStartIdx = this.CSSRulesBuffer._byteLength;
-	this.getOptimizedSelectorFromNode(node);
-	node.styleRefLength = this.CSSRulesBuffer._byteLength - node.styleRefstartIdx; 
+CSSRulesBufferManager.prototype.traverseDOMAndGetOptimizedSelectors = function(node, isShadowingActive) {
+//	console.log('traverseDOMAndGetOptimizedSelectors', node.isShadowHost || isShadowingActive);
+	if (node.isShadowHost || isShadowingActive) {
+//		console.log(this.CSSRulesBuffer._byteLength);
+		isShadowingActive = true;
+		node.styleRefStartIdx = this.CSSRulesBuffer._byteLength;
+//		console.log(node.views.masterView.nodeName, this.CSSRulesBuffer._byteLength);
+		this.getOptimizedSelectorFromNode(node);
+		node.styleRefLength = this.CSSRulesBuffer._byteLength - node.styleRefStartIdx;
+//		console.log(node.views.masterView.nodeName, this.CSSRulesBuffer._byteLength);
 		
+//		console.log(node.views.masterView.nodeName, node.styleRefStartIdx, node.styleRefLength);
+	}
+	else {
+		isShadowingActive = false;
+		this.getOptimizedSelectorFromNode(node);
+	}
+	
 	node.children.forEach(function(childNode) {
-		this.traverseDOMAndGetOptimizedSelectors(childNode);
+		this.traverseDOMAndGetOptimizedSelectors(childNode, isShadowingActive);
 	}, this);
 	
 }

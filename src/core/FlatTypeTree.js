@@ -6,7 +6,7 @@
 
 var TypeManager = require('src/core/TypeManager');
 
-
+// Not implemented any time: for archive purpose.
 // Filter unoccupied positions using branchless filtering
 // https://www.yumpu.com/en/document/read/42229757/branchless-vectorized-median-filtering
 // Find the next occupied pos by recursively solving the nextIsEmpty equality

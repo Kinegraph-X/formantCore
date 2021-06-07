@@ -118,16 +118,18 @@ CSSSelectorsMatcher.prototype.traverseAndMatchDOM = function(naiveDOM) {
 
 CSSSelectorsMatcher.prototype.testNodeAgainstSelectors = function(node) {
 	var view, typeIdx = 0, currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
+	var shadowDOMRestrictionStart = node.styleRefStartIdx;
+	var shadowDOMRestrictionEnd = node.styleRefStartIdx + node.styleRefLength;
 	
 	while (currentViewType) {
 		// node.views.masterNode is ALWAYS flat
 		if (typeIdx === 0) {
 			view = node.views[currentViewType];
-			this.matchingFunction(view, view._UID);
+			this.matchingFunction(view, view._UID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd, node.isShadowHost);
 		}
 		else {
 			node.views[currentViewType].forEach(function(view) {
-				this.matchingFunction(view, view._UID);	
+				this.matchingFunction(view, view._UID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd);	
 			}, this);
 		}
 		
@@ -140,39 +142,42 @@ CSSSelectorsMatcher.prototype.testNodeAgainstSelectors = function(node) {
 	}, this);
 }
 
-CSSSelectorsMatcher.prototype.matchingFunction = function(view, viewUID) {
+CSSSelectorsMatcher.prototype.matchingFunction = function(view, viewUID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd, isShadowHost) {
 	var match, testType, testValue;
 	
 	if (testValue = view.nodeId.toLowerCase()) {
 		testType = CSSSelector.prototype.constants.idIsProof;
-		this.iterateOnRulesAndMatchSelector(testType, testValue, viewUID);
+		this.iterateOnRulesAndMatchSelector(testType, testValue, viewUID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd);
 	}
 	if (view.classNames.length) {
 		testType = CSSSelector.prototype.constants.classIsProof;
 		view.classNames.forEach(function(className) {
 			testValue = className.toLowerCase();
-			this.iterateOnRulesAndMatchSelector(testType, testValue, viewUID);
+			this.iterateOnRulesAndMatchSelector(testType, testValue, viewUID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd);
 		}, this);
 	}
 	
-	// May loop twice cause there's always a  tagName...
+	// May loop twice cause there's always a tagName...
 	testType = CSSSelector.prototype.constants.tagIsProof;
 	
 	testValue = view.nodeName;
-	this.iterateOnRulesAndMatchSelector(testType, testValue, viewUID);
+	this.iterateOnRulesAndMatchSelector(testType, testValue, viewUID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd);
 	
 	// Should do an additional loop to handle the shadowDOM case
-//	if (this.isShadowHost(view)) {
-//		testValue = ':host';
-//		this.iterateOnRulesAndMatchSelector(testType, testValue, viewUID);
-//	}
+	if (isShadowHost) {
+		testType = CSSSelector.prototype.constants.hostIsProof;
+		testValue = CSSSelector.prototype.shadowDOMHostSpecialKeyword;
+//		console.log('isShadowHost', testType, testValue, shadowDOMRestrictionStart, shadowDOMRestrictionEnd);
+		this.iterateOnRulesAndMatchSelector(testType, testValue, viewUID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd);
+	}
 }
 
-CSSSelectorsMatcher.prototype.iterateOnRulesAndMatchSelector = function(testType, testValue, viewUID) {
+CSSSelectorsMatcher.prototype.iterateOnRulesAndMatchSelector = function(testType, testValue, viewUID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd) {
+//	console.log(testValue, shadowDOMRestrictionStart / this.CSSRulesBuffer.itemSize, shadowDOMRestrictionEnd / this.CSSRulesBuffer.itemSize);
 	this.CSSRulesBuffer.branchlessLoop(
 		this.iteratorCallback.bind(null, testType, testValue, viewUID),
-		0,
-		this.CSSRulesBuffer._byteLength / this.CSSRulesBuffer.itemSize - 1
+		shadowDOMRestrictionStart / this.CSSRulesBuffer.itemSize,
+		(shadowDOMRestrictionEnd / this.CSSRulesBuffer.itemSize) || (this.CSSRulesBuffer._byteLength / this.CSSRulesBuffer.itemSize - 1)
 	);
 }
 
@@ -192,7 +197,7 @@ CSSSelectorsMatcher.prototype.getIteratorCallback = function() {
 
 CSSSelectorsMatcher.prototype.storeMatches = function(isMatch, matchedViewUID, bufferPointerPosition, matchedBuffer) {
 	// Let's pretend we haven't seen the below magic numbers (and solve that when a better approach is more obvious)...
-	
+//	(isMatch && console.log('isMatch', bufferPointerPosition, matchedViewUID, ((matchedBuffer[bufferPointerPosition + 7] << 8) | matchedBuffer[bufferPointerPosition + 6]).toString()));
 	isMatch
 		&& this.matches.addResult(
 				matchedViewUID,
@@ -217,16 +222,16 @@ var MatcherResult = function() {
 MatcherResult.prototype = {};
 MatcherResult.prototype.objectType = 'MatcherResult';
 
-MatcherResult.prototype.reset = function(testedValue, bufferUID) {
+MatcherResult.prototype.reset = function() {
 	this.results = [];
 }
 
-MatcherResult.prototype.addResult = function(testedValue, bufferUID) {
-	this.results.push(this.newResult(testedValue, bufferUID));
+MatcherResult.prototype.addResult = function(testedValue, UID) {
+	this.results.push(this.newResult(testedValue, UID));
 }
 
-MatcherResult.prototype.newResult = function(testedValue, bufferUID) {
-	return [testedValue, bufferUID];
+MatcherResult.prototype.newResult = function(testedValue, UID) {
+	return [testedValue, UID];
 }
 
 

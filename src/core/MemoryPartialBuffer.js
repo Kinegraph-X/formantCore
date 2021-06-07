@@ -12,9 +12,6 @@ var BinarySlice = require('src/core/BinarySlice');
 
 var BufferFromSchema = function(binarySchema) {
 	this.objectType = 'BufferFromSchema';
-//	console.log(binarySchema);
-	this._buffer = new Uint8Array(binarySchema.size);
-	this.occupancy = new Uint8Array(binarySchema.size / 8);
 	
 	this.binarySchema = {};
 	var offset = 0;
@@ -28,19 +25,9 @@ var BufferFromSchema = function(binarySchema) {
 		offset += binarySchema[prop].length;
 	}
 	
-	// TODO: It that worth something ?
-//	this.propRef = [];
-//	var offset = 0; 
-//	for (var prop in binarySchema) {
-//		this.propRef.push([
-//			prop,
-//			offset
-//		]);
-//		offset += binarySchema[prop];
-//	}
-	
-	this._byteLength = binarySchema.size;
-//	this._size = offset;
+	this._buffer = new Uint8Array(binarySchema.size);
+	this.occupancy = new Uint8Array(binarySchema.size / 8);
+	this._byteLength = 0;
 	
 //	console.log(this.binarySchema);
 }
@@ -60,7 +47,8 @@ BufferFromSchema.eightBitsMasks = [
 ]
 
 // TODO: retrieve the binary length from the BinarySchema
-// TODO benchmark resolving long integers using a DataView or another TypedArray
+// TODO: benchmark resolving integers that are longer than 8bits
+// using a DataView or another TypedArray
 BufferFromSchema.prototype.get = function(idx, binaryLength) {
 	if (!binaryLength)
 		return this._buffer[idx];
@@ -84,17 +72,16 @@ BufferFromSchema.prototype.getOffsetForProp = function(propName) {
 }
 
 BufferFromSchema.prototype.set = function(val, offset) {
+	val = Array.isArray(val) ? val : [val];
 	// offsets for occupancy map
+	offset = ((typeof offset !== 'number') || this._byteLength);
 	var onAlignementOffset = offset % 8;
 	var startOffset = offset - onAlignementOffset;
 	
-//	if (this._byteLength <= offset) {
-//		this._buffer = new Uint8Array(this._buffer.buffer.append(new ArrayBuffer(this._size)));
-//		this._byteLength = this._buffer.byteLength;
-//	}
-	
-	this._buffer.set(Array.isArray(val) ? val : [val], offset);
+	this._buffer.set(val, offset);
 	this.occupancy.set([this.occupancy[startOffset] | BufferFromSchema.eightBitsMasks[onAlignementOffset]]);
+	this._byteLength = (offset && Math.max(offset + val.length, this._byteLength)) || val.length;
+//	console.log(this._byteLength);
 }
 
 BufferFromSchema.prototype.invalidate = function(offset) {
