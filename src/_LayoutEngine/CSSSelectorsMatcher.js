@@ -50,26 +50,37 @@ CSSSelectorsMatcher.prototype.getOffsettedMatcher = function() {
 		Style.prototype.optimizedSelectorBufferSchema.selectorProofingPartType.start;
 	
 	var getStartingOffsetInString = function(bufferPointerPosition, testBuffer) {
+//		console.log(bufferPointerPosition + standardOffsetForStartingOffsetInString, testBuffer[bufferPointerPosition + standardOffsetForStartingOffsetInString]);
 		return testBuffer[bufferPointerPosition + standardOffsetForStartingOffsetInString]; //idem: standardOffsetForStartingOffsetInString is currently 0
 	}
 	
 	// testBuffer is an Uint8Array: TODO: observe a consistent style and type it as MemoryBuffer
 	// 	(and then, we shall call testBuffer.get)
+	// NOTE: getNextCharToMatch is allowed to  return NaN
+	// 		=> we point to the buffer based on
 	var getNextCharToMatch = function(testBuffer, bufferPointerPosition, currentOffset) {
 		return testBuffer[bufferPointerPosition + standardOffsetForSelector + currentOffset];
 	}
 	
 	return function providePossibleMatchCandidate(testType, testValue, bufferPointerPosition, testBuffer, currentOffset) {
+//		(testType === testBuffer[bufferPointerPosition + standardOffsetForProofType]
+//			&& console.log(testType, testValue, bufferPointerPosition + standardOffsetForSelector + currentOffset, testBuffer, bufferPointerPosition, getStartingOffsetInString(
+//						bufferPointerPosition, testBuffer
+//					), testValue.charCodeAt(
+//					getStartingOffsetInString(
+//						bufferPointerPosition, testBuffer
+//					) + currentOffset)));
 		return testType === testBuffer[bufferPointerPosition + standardOffsetForProofType]
-			&& getNextCharToMatch(
-					testBuffer,
-					bufferPointerPosition,
-					currentOffset
-				) === testValue.charCodeAt(
-					getStartingOffsetInString(
-						bufferPointerPosition, testBuffer
-					) + currentOffset
-				);
+				&& getStartingOffsetInString(bufferPointerPosition, testBuffer) < testValue.length
+				&& getNextCharToMatch(
+						testBuffer,
+						bufferPointerPosition,
+						currentOffset
+					) === testValue.charCodeAt(		// getNextCharToMatch is allowed to  return NaN
+						getStartingOffsetInString(
+							bufferPointerPosition, testBuffer
+						) + currentOffset
+					);
 	};
 }
 
@@ -159,7 +170,6 @@ CSSSelectorsMatcher.prototype.matchingFunction = function(view, viewUID, shadowD
 	
 	// May loop twice cause there's always a tagName...
 	testType = CSSSelector.prototype.constants.tagIsProof;
-	
 	testValue = view.nodeName;
 	this.iterateOnRulesAndMatchSelector(testType, testValue, viewUID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd);
 	

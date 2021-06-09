@@ -4,7 +4,7 @@
 
 var TypeManager = require('src/core/TypeManager');
 var CSSSelector = require('src/_LayoutEngine/CSSSelector');
-
+var _functionalStyleHelpers = require('src/core/_functionalStyleHelpers');
 
 
 var MemoryBufferStack = function(itemSize, itemCount, isAbsoluteSize) {
@@ -39,10 +39,10 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 	var self = this;
 	var getBuffer = this.getBuffer;
 	var bufferCount = this._byteLength / this.itemSize;
-	var jumperHost = new JumperHost();
-	var occupancySolver = new OccupancySolver(this.occupancy, this.itemSize);
+	var jumperHost = new this.JumperHost();
+	var occupancySolver = new this.OccupancySolver(this.occupancy, this.itemSize);
 	
-	var doArrayMin = new DoArrayMinFunction();
+	var doArrayMin = new this.DoArrayMinFunction();
 	var shouldJump = function(bufferIdx) {
 //		console.log((jumperHost.jumper + bufferIdx) < bufferCount);
 		return (jumperHost.jumper + bufferIdx) < bufferCount
@@ -54,7 +54,7 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 		return jumpDecisionBranches[+(shouldJump(bufferIdx))];
 	};
 	
-	var jumpDecisionBranches = new BranchesAsArray(shouldRecurse);
+	var jumpDecisionBranches = new this.BranchesAsArray(shouldRecurse);
 	
 	return function(bufferIdx) {
 		jumperHost.reset();
@@ -67,7 +67,7 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 MemoryBufferStack.prototype.getBranchlessLoop = function() {
 
 	var branchlessLoop = function(callback, startBufferIdx, endBufferIdx) {
-//		console.log(startBufferIdx);
+//		console.log(stasrtBufferIdx);
 		if (startBufferIdx >= endBufferIdx)
 			return;
 		
@@ -145,7 +145,7 @@ MemoryBufferStack.prototype.invalidateFromIndex = function(idx) {
 /**
  * @function MemoryBufferStack.prototype.append
  * 
- * @param MemoryPartialBuffer val
+ * @param editing val
  */
 MemoryBufferStack.prototype.append = function(val) {
 
@@ -192,45 +192,39 @@ MemoryBufferStack.prototype.append = function(val) {
 
 
 
-
-MemoryBufferStack.prototype.noOp = function() {
-//	console.log('noOp');
-}
-
-
-var BranchesAsArray = function(ifCallClause) {
+MemoryBufferStack.prototype.BranchesAsArray = function(ifCallClause) {
 	return [
-		MemoryBufferStack.prototype.noOp,
+		_functionalStyleHelpers.noOp,
 		ifCallClause
 	];
 }
-BranchesAsArray.prototype = {};
+MemoryBufferStack.prototype.BranchesAsArray.prototype = {};
 
 
 
 
 
 
-var JumperHost = function() {
+MemoryBufferStack.prototype.JumperHost = function() {
 	this.jumper = 1;
 	
 }
-JumperHost.prototype.reset = function() {
+MemoryBufferStack.prototype.JumperHost.prototype.reset = function() {
 	this.jumper = 1;
 }
 
 
 
-var OccupancySolver = function(occupancyBuffer, itemSize) {
+MemoryBufferStack.prototype.OccupancySolver = function(occupancyBuffer, itemSize) {
 	this._buffer = occupancyBuffer;
 	this._itemSize = itemSize;
 }
-OccupancySolver.prototype.getOccupancyFromBufferIdx = function(bufferIdx) {
+MemoryBufferStack.prototype.OccupancySolver.prototype.getOccupancyFromBufferIdx = function(bufferIdx) {
 	var bitFieldOffset = bufferIdx % 8;
- 	console.log((this._buffer[Math.floor(bufferIdx / 8)] & MemoryBufferStack.eightBitsMasks[bitFieldOffset]) >> bitFieldOffset);
+// 	console.log((this._buffer[Math.floor(bufferIdx / 8)] & MemoryBufferStack.eightBitsMasks[bitFieldOffset]) >> bitFieldOffset);
 	return (this._buffer[Math.floor(bufferIdx / 8)] & MemoryBufferStack.eightBitsMasks[bitFieldOffset]) >> bitFieldOffset;
 }
-OccupancySolver.prototype.getOccupancyFromAbsoluteIdx = function(absoluteIdx) {
+MemoryBufferStack.prototype.OccupancySolver.prototype.getOccupancyFromAbsoluteIdx = function(absoluteIdx) {
 	var bitFieldOffset = (absoluteIdx / this.itemSize) % 8;
 	return (this._buffer[Math.floor((absoluteIdx / this.itemSize) / 8)] & MemoryBufferStack.eightBitsMasks[bitFieldOffset]) >> bitFieldOffset;
 }
@@ -238,16 +232,16 @@ OccupancySolver.prototype.getOccupancyFromAbsoluteIdx = function(absoluteIdx) {
 
 
 
-var arrayMin = function(arr) {
+MemoryBufferStack.prototype.arrayMin = function(arr) {
 	return Math.min.apply(arr);
 }
 
-var DoArrayMinFunction = function() {
+MemoryBufferStack.prototype.DoArrayMinFunction = function() {
 	// Let's see that as a hint for the optimizer: capture a unique instance of the arrayMin func in the closure
 	this.arrMin = arrayMin.bind(null);
 	this.cachedArr = [];
 }
-DoArrayMinFunction.prototype.do = function(val0, val1) {
+MemoryBufferStack.prototype.DoArrayMinFunction.prototype.do = function(val0, val1) {
 	this.cachedArr[0] = val0;
 	this.cachedArr[1] = val1;
 	return this.arrMin(this.cachedArr);

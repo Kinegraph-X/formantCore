@@ -25,7 +25,7 @@ CSSRulesBufferManager.prototype.aggregateRules = function(naiveDOM, collectedSWr
 	collectedSWrappers.forEach(function(sWrapper) {
 		this.getOptimizedSelectorFromSWrapper(sWrapper);
 	}, this);
-	
+	this.CSSRulesBufferInitialLength = this.CSSRulesBuffer._byteLength;
 	this.traverseDOMAndGetOptimizedSelectors(naiveDOM, false);
 }
 
@@ -40,6 +40,10 @@ CSSRulesBufferManager.prototype.getOptimizedSelectorFromNode = function(node) {
 	
 	if (!node.styleDataStructure)
 		return;
+	else if (node.styleDataStructure  && !node.isShadowHost) {
+		console.warn('CSSRulesBufferManager:', 'Trying to append rules from an inline styleElem altough the component was not defined as shadowHost.');
+		return;
+	}	
 	
 	Object.values(node.styleDataStructure.rules).forEach(function(rule) {
 		this.CSSRulesBuffer.append(rule.styleIFace.compactedViewOnSelector);
@@ -47,7 +51,9 @@ CSSRulesBufferManager.prototype.getOptimizedSelectorFromNode = function(node) {
 }
 
 CSSRulesBufferManager.prototype.traverseDOMAndGetOptimizedSelectors = function(node, isShadowingActive) {
+
 //	console.log('traverseDOMAndGetOptimizedSelectors', node.isShadowHost || isShadowingActive);
+	// FIXME: randomly inserted style elements won't be taken in account when not shadowed
 	if (node.isShadowHost || isShadowingActive) {
 //		console.log(this.CSSRulesBuffer._byteLength);
 		isShadowingActive = true;
@@ -59,9 +65,12 @@ CSSRulesBufferManager.prototype.traverseDOMAndGetOptimizedSelectors = function(n
 		
 //		console.log(node.views.masterView.nodeName, node.styleRefStartIdx, node.styleRefLength);
 	}
+	// FIXME: set a permanent test-case for some obvious shadow & non-shadow mixed cases
 	else {
 		isShadowingActive = false;
+		node.styleRefStartIdx = 0;
 		this.getOptimizedSelectorFromNode(node);
+		node.styleRefLength = this.CSSRulesBufferInitialLength;
 	}
 	
 	node.children.forEach(function(childNode) {
