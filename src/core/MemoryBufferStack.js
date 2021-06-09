@@ -238,7 +238,7 @@ MemoryBufferStack.prototype.arrayMin = function(arr) {
 
 MemoryBufferStack.prototype.DoArrayMinFunction = function() {
 	// Let's see that as a hint for the optimizer: capture a unique instance of the arrayMin func in the closure
-	this.arrMin = arrayMin.bind(null);
+	this.arrMin = MemoryBufferStack.prototype.arrayMin.bind(null);
 	this.cachedArr = [];
 }
 MemoryBufferStack.prototype.DoArrayMinFunction.prototype.do = function(val0, val1) {
