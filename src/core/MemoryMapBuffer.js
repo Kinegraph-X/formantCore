@@ -3,15 +3,13 @@
  */
 
 var TypeManager = require('src/core/TypeManager');
-var SplittedAttributes = require('src/editing/SplittedAttributes');
 var MemoryBufferStack= require('src/core/MemoryBufferStack');
-var MemoryCSSPropertyBuffer = require('src/_LayoutEngine/MemoryCSSPropertyBuffer');
 
-var MemoryMapBuffer = function(itemSize, initialLoad) {
+var MemoryMapBuffer = function(itemSize, initialContent) {
 	this.objectType = 'MemoryMapBuffer';
 	
 	
-	var propsCount = this.propertiesStaticArray.length;
+	var propsCount = Object.keys(this.propertiesStaticMap).length;
 	this.propAddresses = (new Uint8Array(propsCount)).fill(255);
 	this.itemSize = itemSize;
 	this._buffer = new Uint8Array(propsCount * itemSize);
@@ -22,6 +20,9 @@ var MemoryMapBuffer = function(itemSize, initialLoad) {
 }
 MemoryMapBuffer.prototype = Object.create(Uint8Array.prototype);
 MemoryMapBuffer.prototype.objectType = 'MemoryMapBuffer';
+
+MemoryMapBuffer.prototype.propertiesStaticMap = {};					// virtual
+MemoryMapBuffer.prototype.propertiesAccessGroupsBoudaries = {};		// virtual
 
 MemoryMapBuffer.prototype.setLogicForTraverseAndJump = MemoryBufferStack.prototype.setLogicForTraverseAndJump;
 MemoryMapBuffer.prototype.getBranchlessLoop = MemoryBufferStack.prototype.getBranchlessLoop;
@@ -40,6 +41,7 @@ MemoryMapBuffer.prototype.DoArrayMinFunction = MemoryBufferStack.prototype.DoArr
 //}
 
 MemoryMapBuffer.prototype.getProperty = function(propertyName) {
+	
 	if (typeof this.propertiesStaticMap[propertyName] === 'undefined') {
 		console.warn('MemoryMapBuffer:get', 'The requested property ' + propertyName + 'is not implemented', 'Returning...');
 		return;	
@@ -78,8 +80,7 @@ MemoryMapBuffer.prototype.unfragmentBuffer = function(removedCount) {
 	return true;	
 }
 
-MemoryMapBuffer.prototype.propertiesStaticMap = SplittedAttributes.allKnownCSSPropertiesStaticMap;
-MemoryMapBuffer.prototype.propertiesAccessGroupsBoudaries = SplittedAttributes.allKnownCSSPropertiesBoudaries;
+
 
  
 

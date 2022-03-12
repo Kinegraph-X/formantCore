@@ -97,7 +97,7 @@ for (let type in componentTypes) {
  * @constructor CompoundComponent
  */
 var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) {
-	//	console.log(definition);
+//		console.log(definition);
 	this._firstListUIDSeen = null;
 	var shouldExtend = false;
 	

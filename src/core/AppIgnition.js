@@ -81,6 +81,7 @@ Ignition.prototype.instanciateDOM = function() {
 		else {
 			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
 //			console.log(nodes[view._defUID].cloneMother);
+//			console.log(nodes[view._defUID]);
 			attributes.forEach(function(attrObject) {
 				if (attrObject.getName().indexOf('aria') === 0)
 					nodes[view._defUID].cloneMother.setAria(attrObject.getName(), attrObject.getValue());
@@ -146,6 +147,7 @@ Ignition.prototype.instanciateDOM = function() {
 		// but do we have any guarantee this will always be the case ?
 		if (!rootNodeIfDOM && view.currentViewAPI.nodeName === 'app-root')
 			rootNodeIfDOM = view.callCurrentViewAPI('getMasterNode');
+//			rootNodeIfDOM = view.callCurrentViewAPI('getWrappingNode');
 	});
 }
 
@@ -372,6 +374,11 @@ Ignition.prototype.cleanRegisters = function() {
 Ignition.prototype.getWrappingComponentOutsideAppScope = function(selector) {
 	if (typeof window.parent === 'undefined') {
 		console.warn('AppIgnition.getWrappingComponentOutsideAppScope: can only be called from insed an IFrame (no parent window found). Returning...');
+		return;
+	}
+	else if (window.parent.document.querySelector('app-root').shadowRoot === null) {
+		console.log(window.parent.document.querySelector('app-root'));
+		console.error('AppIgnition.getWrappingComponentOutsideAppScope: the DOMelem named app-root has no shadowRoot. Returning...');
 		return;
 	}
 	

@@ -23,12 +23,18 @@ CSSSelectorsMatcherRefiner.prototype.refineMatches = function(matchResult, impor
 				importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
 				importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
 			)
-				&& this.appendStyleToComputedStyle(
+				&& this.publishToBeComputedStyle(
 					match[0],											// match[0] is a node UID
 //					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
 					importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
 					importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
 				);
+//				&& this.appendStyleToComputedStyle(
+//					match[0],											// match[0] is a node UID
+////					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
+//					importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
+//					importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
+//				);
 		
 	}, this);
 }
@@ -59,15 +65,32 @@ CSSSelectorsMatcherRefiner.prototype.isActualMatch = function(componentsList, in
 	return true;
 }
 
+/**
+ * 
+ * @param String viewUID : The UID stored on the view type we defined in our naiveDOM experiment
+ * @param sWrapper refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
+ */
 CSSSelectorsMatcherRefiner.prototype.appendStyleToComputedStyle = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
 	var view = importedNaiveDOMRegistry.getItem(viewUID);
 	
 	// TODO: improve the case where we don't have yet a computedStyle object (defaulted to null in the ctor)
-	view.computedStyle = view.computedStyle
-		? refToStyle.copyAndMergeWithStyle(view.computedStyle)
-		: refToStyle.copyAndMergeWithStyle(refToStyle);
+//	view.computedStyle = view.computedStyle
+//		? refToStyle.copyAndMergeWithStyle(view.computedStyle)
+//		: refToStyle.copyAndMergeWithStyle(refToStyle);
 	
 //	console.log(view.computedStyle);
+	return true;
+}
+
+/**
+ * 
+ * @param String viewUID : The UID stored on the view type we defined in our naiveDOM experiment
+ * @param sWrapper refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
+ */
+CSSSelectorsMatcherRefiner.prototype.publishToBeComputedStyle = function(viewUID, refToStyle) {
+//	console.log(refToStyle);
+	TypeManager.pendingStyleRegistry.setItem(viewUID, refToStyle);
+
 	return true;
 }
 

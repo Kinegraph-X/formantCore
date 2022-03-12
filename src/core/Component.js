@@ -616,6 +616,7 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		this._defComposedUID = this._defUID;
 	
 	var hostDef = definition.getHostDef();
+	
 //	console.log(hostDef.sWrapper === null, Object.getPrototypeOf(this).objectType, defaultHostDef);
 	if (defaultDef) {
 		TypeManager.propsAreArray.forEach(function(prop) {
@@ -644,6 +645,8 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		if (defaultDef.members.length)
 			Array.prototype.push.apply(definition.members, defaultDef.members);
 	}
+	
+//	console.log(defaultDef, hostDef, hostDef.nodeName);
 }
 
 /**

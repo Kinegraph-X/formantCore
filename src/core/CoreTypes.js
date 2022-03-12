@@ -1639,7 +1639,7 @@ DOMViewAPI.prototype.setContentFromArray = function(contentAsArray) {
  */
 var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	var def = definition.getHostDef() || definition;
-//	console.log(definition);
+//	console.log(def);
 	this._defUID = def.UID;
 	this.isCustomElem = def.isCustomElem;
 	this._sWrapperUID = def.sWrapper ? def.sWrapper.getName() : null;

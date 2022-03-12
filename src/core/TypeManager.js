@@ -424,7 +424,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 		this.UID = null								// overridden at function end
 		this.type = null,							// String
 		this.nodeName = null;						// String
-		this.isCustomElem = false;					// Boolean
+		this.isCustomElem = null;					// Boolean
 		this.templateNodeName = null;				// String
 		this.attributes = [];						// Array [AttributeDesc]
 		this.section = null;						// Number
@@ -452,7 +452,9 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 	
 	// Fast-access props
 	this.streams = this.props.concat(this.states);
-	this.isCustomElem = (this.nodeName !== null && this.nodeName.indexOf('-') !== -1);
+	this.isCustomElem = this.nodeName !== null ? this.nodeName.indexOf('-') !== -1 : null;
+//	console.error(this.nodeName, this, obj);
+//	console.log("this.isCustomElem", this.isCustomElem, this.nodeName !== null, this.nodeName.indexOf('-') !== -1);
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.SingleLevelComponentDefModel = SingleLevelComponentDefModel;
@@ -808,6 +810,11 @@ var dataStoreRegistry = new PropertyCache('dataStoreRegistry');
 var masterStyleRegistry = new PropertyCache('masterStyleRegistry');
 
 /**
+ * @typedStore {StoredStyleIFace} {UID : UID_OfTheViewIdentifiedAsNeedingUpdate}
+ */
+var pendingStyleRegistry = new PropertyCache('pendingStyleRegistry');
+
+/**
  * @typedStore {StoredNodeFromNaiveDOM} {UID : nodeUID}
  */
 var naiveDOMRegistry = new PropertyCache('naiveDOMRegistry');
@@ -845,6 +852,7 @@ Object.assign(exportedObjects, {
 	typedHostsRegistry : typedHostsRegistry,						// Object PropertyCache {defUID : [Components]}
 	naiveDOMRegistry : naiveDOMRegistry,							// Object PropertyCache
 	masterStyleRegistry : masterStyleRegistry,						// Object PropertyCache
+	pendingStyleRegistry : pendingStyleRegistry,					// Object PropertyCache
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegistry : nodesRegistry,
 	viewsRegistry : viewsRegistry,

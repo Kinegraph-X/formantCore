@@ -87,6 +87,12 @@ Object.defineProperty(String.prototype, 'capitalizeFirstChar', {
 	}
 });
 
+Object.defineProperty(String.prototype, 'lowerCaseFirstChar', {
+	value : function() {
+		return this.slice(0, 1).toLowerCase() + this.slice(1);
+	}
+});
+
 Object.defineProperty(String.prototype, 'hexEncode', {
 	value : function(){
 				var hex, i;
