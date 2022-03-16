@@ -73,10 +73,10 @@ CSSSelectorsMatcherRefiner.prototype.isActualMatch = function(componentsList, in
 CSSSelectorsMatcherRefiner.prototype.appendStyleToComputedStyle = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
 	var view = importedNaiveDOMRegistry.getItem(viewUID);
 	
-	// TODO: improve the case where we don't have yet a computedStyle object (defaulted to null in the ctor)
-//	view.computedStyle = view.computedStyle
-//		? refToStyle.copyAndMergeWithStyle(view.computedStyle)
-//		: refToStyle.copyAndMergeWithStyle(refToStyle);
+	// TODO: (this method is no more in use, so "done" and obsolete) improve the case where we don't have yet a computedStyle object (defaulted to null in the ctor)
+	view.computedStyle = view.computedStyle
+		? refToStyle.copyAndMergeWithStyle(view.computedStyle)
+		: refToStyle.copyAndMergeWithStyle(refToStyle);
 	
 //	console.log(view.computedStyle);
 	return true;

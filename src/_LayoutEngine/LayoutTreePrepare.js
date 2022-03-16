@@ -16,31 +16,75 @@ var CSSPropertySetBuffer = require('src/editing/CSSPropertySetBuffer');
 
 
 
-var LayoutTreePrepare = function(naiveDOM, importedMasterStyleRegistry) {
+var LayoutTreePrepare = function(naiveDOM, importedMasterStyleRegistry, CSSSelectorMatchingResults) {
 	this.objectType = 'LayoutTreePrepare';
 	
-	this.importedMasterStyleRegistry = importedMasterStyleRegistry;
-	this.layoutTree = this.constructLayoutTree(naiveDOM);
+//	this.importedMasterStyleRegistry = importedMasterStyleRegistry;
+//	this.CSSSelectorMatchingResults = CSSSelectorMatchingResults;
+	
+	this.layoutTree = this.constructLayoutTree(naiveDOM); //, importedMasterStyleRegistry, CSSSelectorMatchingResults);
 }
 LayoutTreePrepare.prototype = {};
 LayoutTreePrepare.prototype.objectType = 'LayoutTreePrepare';
 
-LayoutTreePrepare.prototype.constructLayoutTree = function(naiveDOM) {
-	var layoutRoot = new LayoutNode(naiveDOM, null);
-	this.recursiveBuildLayoutTree(layoutRoot, naiveDOM);
-	return layoutRoot;
+LayoutTreePrepare.prototype.constructLayoutTree = function(naiveDOM) { //, importedMasterStyleRegistry, CSSSelectorMatchingResults) {
+	var layoutRoot = new LayoutNode(naiveDOM.views[2]);
+//	console.log('layoutRoot', layoutRoot);
+	return new LayoutTreeBuilder(naiveDOM, layoutRoot); //, importedMasterStyleRegistry, CSSSelectorMatchingResults);
 }
 
-LayoutTreePrepare.prototype.recursiveBuildLayoutTree = function(currentLayoutNode, node) {
-	var layoutNode;
-	node.children.forEach(function(childNode) {
-		layoutNode = new LayoutNode(childNode, currentLayoutNode);
-		this.recursiveBuildLayoutTree(layoutNode, childNode);
+
+
+
+
+
+
+var LayoutTreeBuilder = function(sourceDOMNode, layoutRoot) { //, importedMasterStyleRegistry, CSSSelectorMatchingResults) {
+	this.objectType = 'LayoutTreeBuilder';
+	
+//	this.importedMasterStyleRegistry = importedMasterStyleRegistry;
+//	this.CSSSelectorMatchingResults = CSSSelectorMatchingResults;
+
+	this.alternateFlatAndRecursiveBuild(sourceDOMNode, layoutRoot);
+}
+LayoutTreeBuilder.prototype = {};
+LayoutTreeBuilder.prototype.objectType = 'LayoutTreeBuilder';
+
+LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMNode, layoutParentNode) {
+	var currentLayoutNode = layoutParentNode, childLayoutNode, childDOMNodeAsAView;
+	sourceDOMNode.children.forEach(function(childDOMNode) {
+		var typeIdx = 0, currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
+		// when represented as naiveDOM, leaf-components have no children, they only hold views
+		while (currentViewType) {
+			// childDOMNode.views.masterView is ALWAYS flat
+			if (typeIdx === 0) {
+				childDOMNodeAsAView = childDOMNode.views.masterView;
+				this.retrieveEffectiveStyleRuleFromSelectorMatching(childDOMNodeAsAView._UID);
+				childLayoutNode = new LayoutNode(childDOMNodeAsAView, currentLayoutNode);
+//				console.log('masterView', childDOMNodeAsAView.nodeName, childLayoutNode);
+			}
+			else {
+				childDOMNode.views[currentViewType].forEach(function(subChildDOMNodeAsAView) {
+//					console.log(
+//						'subOrMemberView',
+//						subChildDOMNodeAsAView.nodeName, 
+						new LayoutNode(subChildDOMNodeAsAView, childLayoutNode)
+//					);
+				}, this);
+			}
+			typeIdx++;
+			currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
+		}
+		currentLayoutNode = childLayoutNode;
+		
+		this.alternateFlatAndRecursiveBuild(childDOMNode, currentLayoutNode);
+		
 	}, this);
+	return currentLayoutNode;
 }
 
-LayoutTreePrepare.prototype.newLayoutNode = function(node) {
-	return new LayoutNode(node);
+LayoutTreeBuilder.prototype.retrieveEffectiveStyleRuleFromSelectorMatching = function(DOMNodeUID) {
+	console.log(TypeManager.pendingStyleRegistry);
 }
 
 
@@ -52,12 +96,16 @@ LayoutTreePrepare.prototype.newLayoutNode = function(node) {
 
 
 
-var LayoutNode = function(sourceDOMNode, layoutParentNode) {
+var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode) {
 	this.objectType = 'LayoutNode';
 	this._parent = layoutParentNode;
 	
+//	console.log(sourceDOMNodeAsView);
+//	return;
+	
 	this.computedStyle = new CSSPropertySetBuffer();
-	this.computedStyle.merge(this.queryStyleUpdate(sourceDOMNode));
+//	console.log(this.computedStyle);
+//	this.computedStyle.merge(this.queryStyleUpdate(sourceDOMNodeAsView));
 	
 	this.dimensions = {
 		inline : 0,
@@ -78,27 +126,13 @@ LayoutNode.prototype.objectType = 'LayoutNode';
 LayoutNode.prototype.queryStyleUpdate = function(node) {
 	if  (node.objectType === 'ComponentView')
 		return this.publishRequestForStyleUpdate(node);
-			
-	var view, typeIdx = 0, currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx], styleUpdate;
-	while (currentViewType) {
-		// node.views.masterNode is ALWAYS flat
-		if (typeIdx === 0) {
-			view = node.views[currentViewType];
-			styleUpdate = this.publishRequestForStyleUpdate(view._UID);
-		}
-		else {
-			node.views[currentViewType].forEach(function(view) {
-				new LayoutNode(view, this);	
-			}, this);
-		}
-		
-		typeIdx++;
-		currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
-	}
+	
+	
 	
 	return styleUpdate; 
 }
 
+// TODO: How is the pub/sub mechanism supposed to be designed ?
 LayoutNode.prototype.publishRequestForStyleUpdate = function(viewUID) {
 	var matchedStyle = TypeManager.pendingStyleRegistry.getItem(viewUID);
 //	TypeManager.pendingStyleRegistry.deleteItem(viewUID);
@@ -106,6 +140,10 @@ LayoutNode.prototype.publishRequestForStyleUpdate = function(viewUID) {
 //	console.log(matchedStyle);
 	
 	return matchedStyle;
+}
+
+LayoutNode.prototype.getAvailableSpace = function() {
+	
 }
 
 
