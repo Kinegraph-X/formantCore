@@ -366,10 +366,14 @@ Object.defineProperty(Array.prototype, 'inverseSortOnObjectProp',  {
 Object.defineProperty(ArrayBuffer.prototype, 'bufferToString', {
 	writable : false,
 	value : function () {
-		var str;
+		var str = '', tArray = new Uint8Array(this);
 		for(var i = 0, l = this.byteLength; i < l; i++) {
-			str += String.prototype.fromCharCode.call(null, this[i]);
+			if (tArray[i] === 0)
+				break;
+			
+			str += String.fromCharCode(tArray[i]);
 		}
+		
 		return str;
 	}
 });

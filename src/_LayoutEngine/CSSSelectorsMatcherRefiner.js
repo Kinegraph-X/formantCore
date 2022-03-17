@@ -23,6 +23,12 @@ CSSSelectorsMatcherRefiner.prototype.refineMatches = function(matchResult, impor
 				importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
 				importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
 			)
+				&& this.fillDefaultStyles(
+					match[0],											// match[0] is a node UID
+//					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
+					importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
+					importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
+				)
 				&& this.publishToBeComputedStyle(
 					match[0],											// match[0] is a node UID
 //					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
@@ -43,7 +49,6 @@ CSSSelectorsMatcherRefiner.prototype.validateMatch = function(viewUID, refToStyl
 //	var view = TypeManager.naiveDOMRegistry.getItem(viewUID);
 	var view = importedNaiveDOMRegistry.getItem(viewUID);
 	
-	// if isActualMatch return true
 	if (refToStyle.selector.components.length === 1) {
 		return true;
 	}
@@ -70,16 +75,12 @@ CSSSelectorsMatcherRefiner.prototype.isActualMatch = function(componentsList, in
  * @param String viewUID : The UID stored on the view type we defined in our naiveDOM experiment
  * @param sWrapper refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
  */
-CSSSelectorsMatcherRefiner.prototype.appendStyleToComputedStyle = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
+CSSSelectorsMatcherRefiner.prototype.fillDefaultStyles = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
 	var view = importedNaiveDOMRegistry.getItem(viewUID);
+	console.log(view.nodeName);
 	
-	// TODO: (this method is no more in use, so "done" and obsolete) improve the case where we don't have yet a computedStyle object (defaulted to null in the ctor)
-	view.computedStyle = view.computedStyle
-		? refToStyle.copyAndMergeWithStyle(view.computedStyle)
-		: refToStyle.copyAndMergeWithStyle(refToStyle);
+	// Default "display" style
 	
-//	console.log(view.computedStyle);
-	return true;
 }
 
 /**
@@ -102,6 +103,37 @@ CSSSelectorsMatcherRefiner.prototype.publishToBeComputedStyle = function(viewUID
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * 
+ * @param String viewUID : The UID stored on the view type we defined in our naiveDOM experiment
+ * @param sWrapper refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
+ */
+CSSSelectorsMatcherRefiner.prototype.appendStyleToComputedStyle = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
+	var view = importedNaiveDOMRegistry.getItem(viewUID);
+	
+	// T_ODO: (this method is no more in use, so "done" and obsolete) improve the case where we don't have yet a computedStyle object (defaulted to null in the ctor)
+	view.computedStyle = view.computedStyle
+		? refToStyle.copyAndMergeWithStyle(view.computedStyle)
+		: refToStyle.copyAndMergeWithStyle(refToStyle);
+	
+//	console.log(view.computedStyle);
+	return true;
+}
 
 
 

@@ -25,7 +25,7 @@ ObjectCache.prototype.setItem = function(mainID, mainValue, composedWithID) {
 		return this.newItem(mainID.toString() + '-' + composedWithID.toString(), mainValue);
 }
 
-ObjectCache.prototype.deleteItem = function(mainID) {
+ObjectCache.prototype.deleteItem = function(mainID, composedWithID) {
 	if (!composedWithID)
 		delete this.cache[mainID.toString()];
 	else

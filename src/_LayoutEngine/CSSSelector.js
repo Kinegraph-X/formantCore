@@ -10,7 +10,7 @@ var CSSSelector = function(selectorAsStr) {
 	//		=> instanciate a list by default
 	
 	this.selectorStr = selectorAsStr;
-	this.components = new CSSSelectorComponentList();	// Dummy object to avoid hidden class transition
+	this.components = new CSSSelectorComponentList();	// Dummy object to avoid hidden-class transition
 	this.selectorProofingPartType = 0;
 	this.rightMost = this.extractMostSpecificPartFromSelector();
 }

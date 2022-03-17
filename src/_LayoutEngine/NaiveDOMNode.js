@@ -26,7 +26,7 @@ var NaiveDOMNode = function(view, hierarchicalDepth, hostNode, hostView, subNode
 	this.classNames = masterNode.classList.values();
 	this.attributes = new CoreTypes.ListOfPairs(masterNode.attributes);
 	
-	this.computedStyle = null;
+//	this.computedStyle = null;
 	
 	TypeManager.naiveDOMRegistry.setItem(
 		this._UID,
