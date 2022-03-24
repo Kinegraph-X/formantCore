@@ -69,6 +69,7 @@ SpecialDependencyInjector.prototype.getInDepthViewStructure = function (componen
 			return new NaiveDOMNode(view, 1, hostNode, component.view);
 		})),
 		memberViews : component.view.subViewsHolder.memberViews.map(function(view) {
+//			console.log(component.view);
 			return new NaiveDOMNode(view, 2, hostNode, component.view, subNodesGroup);
 		})
 	};

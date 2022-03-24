@@ -83,7 +83,7 @@ Object.defineProperty(String.prototype, 'hyphensToDromedar', {
 
 Object.defineProperty(String.prototype, 'capitalizeFirstChar', {
 	value : function() {
-		return this.slice(0, 1).toUpperCase() + this.slice(1);
+		return this.slice(0, 1).toUpperCase() + this.slice(1).toLowerCase();
 	}
 });
 

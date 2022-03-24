@@ -365,16 +365,24 @@ Object.defineProperty(Array.prototype, 'inverseSortOnObjectProp',  {
 
 Object.defineProperty(ArrayBuffer.prototype, 'bufferToString', {
 	writable : false,
-	value : function () {
-		var str = '', tArray = new Uint8Array(this);
-		for(var i = 0, l = this.byteLength; i < l; i++) {
-			if (tArray[i] === 0)
-				break;
-			
-			str += String.fromCharCode(tArray[i]);
+	value : function (strLength) {
+		var tArray;
+		if (strLength) {
+			tArray = new Uint8Array(this, 0, strLength);
 		}
-		
-		return str;
+		else {
+			tArray = new Uint8Array(this);
+			for(var i = 0, l = this.byteLength; i < l; i++) {
+				if (tArray[i] === 0) {
+					tArray = tArray.slice(0, i);
+					break;
+				}
+	//			str += String.fromCharCode(tArray[i]);
+			}
+	//		return str;
+		}
+//		console.log(Array.prototype.slice.call(tArray));
+		return String.fromCharCode(...Array.prototype.slice.call(tArray));
 	}
 });
 

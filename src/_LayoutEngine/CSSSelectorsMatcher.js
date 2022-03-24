@@ -183,7 +183,7 @@ CSSSelectorsMatcher.prototype.matchingFunction = function(view, viewUID, shadowD
 }
 
 CSSSelectorsMatcher.prototype.iterateOnRulesAndMatchSelector = function(testType, testValue, viewUID, shadowDOMRestrictionStart, shadowDOMRestrictionEnd) {
-//	console.log(testValue, shadowDOMRestrictionStart / this.CSSRulesBuffer.itemSize, shadowDOMRestrictionEnd / this.CSSRulesBuffer.itemSize);
+//	console.log(CSSSelector.prototype.constants.tagIsProof, testValue, shadowDOMRestrictionStart / this.CSSRulesBuffer.itemSize, shadowDOMRestrictionEnd / this.CSSRulesBuffer.itemSize);
 	this.CSSRulesBuffer.branchlessLoop(
 		this.iteratorCallback.bind(null, testType, testValue, viewUID),
 		shadowDOMRestrictionStart / this.CSSRulesBuffer.itemSize,

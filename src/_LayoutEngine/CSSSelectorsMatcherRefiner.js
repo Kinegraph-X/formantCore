@@ -23,12 +23,13 @@ CSSSelectorsMatcherRefiner.prototype.refineMatches = function(matchResult, impor
 				importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
 				importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
 			)
-				&& this.fillDefaultStyles(
-					match[0],											// match[0] is a node UID
-//					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
-					importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
-					importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
-				)
+				// NOTA : this is obsolete
+//				&& this.fillDefaultStyles(
+//					match[0],											// match[0] is a node UID
+////					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
+//					importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
+//					importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
+//				)
 				&& this.publishToBeComputedStyle(
 					match[0],											// match[0] is a node UID
 //					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
@@ -75,13 +76,17 @@ CSSSelectorsMatcherRefiner.prototype.isActualMatch = function(componentsList, in
  * @param String viewUID : The UID stored on the view type we defined in our naiveDOM experiment
  * @param sWrapper refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
  */
-CSSSelectorsMatcherRefiner.prototype.fillDefaultStyles = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
-	var view = importedNaiveDOMRegistry.getItem(viewUID);
-	console.log(view.nodeName);
-	
-	// Default "display" style
-	
-}
+// NOTA : this is obsolete
+//CSSSelectorsMatcherRefiner.prototype.fillDefaultStyles = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
+//	var view = importedNaiveDOMRegistry.getItem(viewUID);
+////	console.log(view.nodeName)//, refToStyle);
+//	
+//	// Default "display" style
+//	if (typeof refToStyle.attrIFace.locallyEffectiveAttributesList.display === 'undefined')
+//		refToStyle.attrIFace.locallyEffectiveAttributesList.display = 'inline-block';
+//	
+//	return true;
+//}
 
 /**
  * 

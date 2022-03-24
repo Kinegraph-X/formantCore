@@ -82,6 +82,64 @@ Object.defineProperty(ListOfPairs.prototype, 'objectType', {
 
 
 
+
+var DimensionsPair = function(initialValues) {
+	this.objectType = 'DimensionsPair';
+	this.inline = initialValues ? initialValues[0] : 0;
+	this.block = initialValues ? initialValues[1] : 0;
+}
+DimensionsPair.prototype = {};
+DimensionsPair.prototype.objectType = 'DimensionsPair';
+
+DimensionsPair.prototype.set = function(valuesPair) {
+	this.inline = valuesPair[0];
+	this.block = valuesPair[1];
+}
+DimensionsPair.prototype.add = function(valuesPair) {
+	this.inline += valuesPair[0];
+	this.block += valuesPair[1];
+}
+DimensionsPair.prototype.substract = function(valuesPair) {
+	this.inline -= valuesPair[0];
+	this.block -= valuesPair[1];
+}
+//dimensionsPair.prototype.getInlineValue = function() {
+//	return this.inline;
+//}
+//dimensionsPair.prototype.getBlockValue = function() {
+//	return this.block;
+//}
+//dimensionsPair.prototype.setInlineValue = function(inline) {
+//	this.inline = inline;
+//}
+//dimensionsPair.prototype.setBlockValue = function(block) {
+//	this.block = block;
+//}
+
+
+
+var AvailableSpace = function(initialValues) {
+	DimensionsPair.call(this, initialValues);
+	this.objectType = 'AvailableSpace';
+	this.childCount = 0;
+	this.inlineOffset = initialValues ? initialValues[2] : 0;
+	this.blockOffset = initialValues ? initialValues[3] : 0;
+}
+AvailableSpace.prototype = Object.create(DimensionsPair.prototype);
+AvailableSpace.prototype.objectType = 'AvailableSpace';
+
+
+
+
+
+
+
+
+
+
+
+
+
 /**
  * @constructor EventEmitter
  */
@@ -2214,6 +2272,8 @@ var commonStates = {
 module.exports = {
 	Pair : Pair,
 	ListOfPairs : ListOfPairs,
+	DimensionsPair : DimensionsPair,
+	AvailableSpace : AvailableSpace,
 	EventEmitter : EventEmitter,
 	Command : Command,
 	Worker : WorkerInterface,

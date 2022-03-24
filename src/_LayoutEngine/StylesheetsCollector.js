@@ -9,7 +9,7 @@ var AbstractStylesheet = require('src/editing/AbstractStylesheet');
 var AdvandcedAttributesList = require('src/editing/SplittedAttributes');
 
 // require CSS-parser...
-var parser = require('src/parsers/css-parser');
+var parser = require('src/parsers/css-parser_forked');
 
 var StylesheetsCollector = function(originLocation, needsSync) {
 	var self = this;

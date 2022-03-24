@@ -8,7 +8,7 @@ var NodeResizeObserver = require('src/core/ResizeObserver');
 //var appConstants = require('src/appLauncher/appLauncher');
 
 
-var TextSizeGetter = function() {
+var TextSizeGetter = function(fontStyle) {
 	
 	if (typeof document === 'undefined' || typeof document.ownerDocument === 'undefined')
 		return;
@@ -68,6 +68,20 @@ TextSizeGetter.prototype.getTextWidth = function(string) {
 	if (typeof string === 'undefined')
 		return;
     return this.textWidthCanvasCtx.measureText(string).width;
+}
+
+TextSizeGetter.prototype.getTextSizeDependingOnStyle = function(string, fontStyle) {
+	if (typeof string === 'undefined')
+		return;
+	if (fontStyle)
+		this.textWidthCanvasCtx.font = fontStyle;
+		
+	var textSize = this.textWidthCanvasCtx.measureText(string);
+	
+    return [
+			textSize.width,
+			textSize.actualBoundingBoxAscent + textSize.actualBoundingBoxDescent
+			];
 }
 
 module.exports = TextSizeGetter;
