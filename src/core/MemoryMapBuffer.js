@@ -8,8 +8,7 @@ var MemoryBufferStack= require('src/core/MemoryBufferStack');
 var MemoryMapBuffer = function(itemSize, initialContent) {
 	this.objectType = 'MemoryMapBuffer';
 	
-	
-	var propsCount = Object.keys(this.propertiesStaticMap).length;
+	var propsCount = this.propertiesStaticArray.length;
 	this.propAddresses = (new Uint8Array(propsCount)).fill(255);
 	this.itemSize = itemSize;
 	this._buffer = new Uint8Array(propsCount * itemSize);
@@ -21,7 +20,7 @@ var MemoryMapBuffer = function(itemSize, initialContent) {
 MemoryMapBuffer.prototype = Object.create(Uint8Array.prototype);
 MemoryMapBuffer.prototype.objectType = 'MemoryMapBuffer';
 
-MemoryMapBuffer.prototype.propertiesStaticMap = {};					// virtual
+MemoryMapBuffer.prototype.propertiesStaticArray= [];				// virtual
 MemoryMapBuffer.prototype.propertiesAccessGroupsBoudaries = {};		// virtual
 
 MemoryMapBuffer.prototype.setLogicForTraverseAndJump = MemoryBufferStack.prototype.setLogicForTraverseAndJump;

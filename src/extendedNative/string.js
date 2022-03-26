@@ -198,14 +198,17 @@ Object.defineProperty(String.prototype, 'getNcharsAsCharCodesArray', {
 			// Avoid capturing only one char...
 			if ((offset + length) > (this.length - (length - 1))) {
 				offset = 0;
+				length = this.length < length ? this.length : length;
 			}
 			else
 				length = this.length - offset;
 		}
 //			Math.max(0, this.length - offset);
-		var i = 0, ret = [];
-		while (i < length) {
-			ret.push(this.charCodeAt(offset + i));
+		var i = offset, end = i + length, ret = [];
+//		console.log(i, end);
+		while (i < end) {
+//			console.log(this[i]);
+			ret.push(this.charCodeAt(i));
 			i++;
 		}
 //		console.log(ret);

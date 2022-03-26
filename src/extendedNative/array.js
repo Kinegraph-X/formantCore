@@ -382,7 +382,7 @@ Object.defineProperty(ArrayBuffer.prototype, 'bufferToString', {
 	//		return str;
 		}
 //		console.log(Array.prototype.slice.call(tArray));
-		return String.fromCharCode(...Array.prototype.slice.call(tArray));
+		return String.fromCharCode(...tArray);
 	}
 });
 

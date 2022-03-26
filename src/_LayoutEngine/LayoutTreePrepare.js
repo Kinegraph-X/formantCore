@@ -222,30 +222,40 @@ LayoutNode.prototype.publishRequestForStyleUpdate = function(viewUID) {
 LayoutNode.prototype.populateInheritedStyle = function() {
 //	console.log('inheritedAttributes', this._parent.computedStyle.getPropertyGroupAsObject('inheritedAttributes'));
 //	console.log('inheritedAttributes', this.nodeName, this._parent.nodeName, this._parent.computedStyle.getPropertyGroupAsBuffer('inheritedAttributes'));
-	this.computedStyle.setPropertyGroupFromBuffer(
+	this.computedStyle.overridePropertyGroupFromGroupBuffer(
 		'inheritedAttributes',
 		this._parent.computedStyle.getPropertyGroupAsBuffer('inheritedAttributes')
 	);
 }
 
-LayoutNode.prototype.populateAllComputedStyle = function(HRcomputedStyle) {
+LayoutNode.prototype.populateAllComputedStyle = function(attrIFace) {
 	var attrList, propBuffer;
-//	console.log('populateAllComputedStyle', this.nodeName);
+//	console.log('populateAllComputedStyle', this.nodeName, attrIFace);
 	
 	// TODO: optimize these two for-in loops
-	for (var attrGroup in HRcomputedStyle) {
-		attrList = HRcomputedStyle[attrGroup];
-//		console.log(attrList);
-		if (attrGroup === 'stdAttributesList')
+	for (var attrGroup in attrIFace) {
+//		attrList = attrIFace[attrGroup];
+		
+		if (attrGroup === 'stdAttributes')
 			continue;
-		for (var attr in attrList) {
-//			console.log(attr, attrList[attr]);
+		
+		this.computedStyle.setPropertyGroupFromGroupBuffer(
+			attrGroup,
+			attrIFace[attrGroup].CSSPropertySetBuffer.getPropertyGroupAsBuffer(attrGroup)
+			);
+//		for (var attr in attrList) {
+//			if (attr === 'display')
+//				console.log(this.nodeName, attr, attrList[attr]);
 			// TODO: find a faster way than using that StylePropertyConverter method :
 			// 		it uses a new PropertyBuffer each time and is slow for shorthand properties
-			propBuffer = stylePropertyConverter.toCSSPropertyBuffer(attr, attrList[attr]);
+//			propBuffer = stylePropertyConverter.toCSSPropertyBuffer(attr, attrList[attr]);
+			
+//			console.log(HRcomputedStyle[attrGroup]);
+//			console.log(HRcomputedStyle[attrGroup].CSSPropertySetBuffer.getProp(attr));
+//			propBuffer = HRcomputedStyle[attrGroup].CSSPropertySetBuffer.getProp(attr);
 //			console.log(propBuffer.bufferedValueToString(), propBuffer);
-			this.computedStyle.setPropFromBuffer(attr, propBuffer);
-		}
+//			this.computedStyle.setPropFromBuffer(attr, propBuffer);
+//		}
 	}
 //	console.log(this.computedStyle._buffer);
 //	console.log(this.computedStyle.bufferedValueToString('padding', 'repr'));
@@ -258,7 +268,6 @@ LayoutNode.prototype.populateAllComputedStyle = function(HRcomputedStyle) {
 
 LayoutNode.prototype.getLayoutAlgo = function(nodeName) {
 	var valueOfDisplayProp = this.isTextNode ? '' : this.getDisplayProp(nodeName);
-//	console.log(this.isTextNode);
 	
 	switch (valueOfDisplayProp) {
 		case 'inline' : return new InlineLayoutAlgo(this);
@@ -271,11 +280,11 @@ LayoutNode.prototype.getLayoutAlgo = function(nodeName) {
 }
 
 LayoutNode.prototype.getDisplayProp = function(nodeName) {
-	var valueOfDisplayProp = this.computedStyle.bufferedValueToString('display');
+	var valueOfDisplayProp = this.computedStyle.getPropAsString('display');
 //	console.log(valueOfDisplayProp);
 
 	if (!valueOfDisplayProp.length)
-		console.error('LayoutNode : valueOfDisplayProp has a zero length. Seems the CSS initialValue hasn\'t been taken in account');
+		console.warn('LayoutNode ' + this.nodeName + ' : valueOfDisplayProp has a zero length. Seems the CSS initialValue hasn\'t been taken in account');
 	
 	if (valueOfDisplayProp === 'inline') {
 //		console.log(this._parent.layoutAlgo.algoName);
