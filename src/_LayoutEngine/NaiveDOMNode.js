@@ -19,14 +19,15 @@ var UIDGenerator = require('src/core/UIDGenerator').UIDGenerator;
  * All is conditionned on the presence of the view Object as the layoutTreePrepare is using this constructor
  * to build a "viewport" layoutNode
  */
-var NaiveDOMNode = function(view, hierarchicalDepth, hostNode, hostView, subNodesGroup) {
+var NaiveDOMNode = function(viewWrapper, view, hierarchicalDepth, hostNode, hostView, subNodesGroup) {
 	this.objectType = 'NaiveDOMNode';
 	
 	var masterNode = view ? view.getMasterNode() : null;
 //	console.log(masterNode);
-	
-	this._parentNode = view ? this.getParentNode(view, hierarchicalDepth, hostNode, hostView, subNodesGroup) : null;
+	this._viewWrapper = viewWrapper;
+	this._parentView = view ? this.getParentView(view, hierarchicalDepth, hostNode, hostView, subNodesGroup) : null;
 	this._UID = UIDGenerator.newUID();
+	
 	this.nodeName = view ? masterNode.nodeName.toLowerCase() : null;
 	this.nodeId = view ? masterNode.id : null;
 	this.classNames = view ? masterNode.classList.values() : null;
@@ -56,7 +57,7 @@ NaiveDOMNode.prototype.hasAttributes = function() {
 	return this.attributes.length !== 0;
 }
 
-NaiveDOMNode.prototype.getParentNode = function(view, hierarchicalDepth, hostNode, hostView, subNodesGroup) {
+NaiveDOMNode.prototype.getParentView = function(view, hierarchicalDepth, hostNode, hostView, subNodesGroup) {
 	switch(hierarchicalDepth) {
 		case 0 : 
 			return null;

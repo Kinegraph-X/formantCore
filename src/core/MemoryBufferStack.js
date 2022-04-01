@@ -2,8 +2,8 @@
  * constructor MemoryBufferStack
  */
 
-var TypeManager = require('src/core/TypeManager');
-var CSSSelector = require('src/_LayoutEngine/CSSSelector');
+//var TypeManager = require('src/core/TypeManager');
+//var CSSSelectorsList = require('src/editing/CSSSelectorsList');
 var _functionalStyleHelpers = require('src/core/_functionalStyleHelpers');
 
 
@@ -67,7 +67,7 @@ MemoryBufferStack.prototype.setLogicForTraverseAndJump = function() {
 MemoryBufferStack.prototype.getBranchlessLoop = function() {
 
 	var branchlessLoop = function(callback, startBufferIdx, endBufferIdx) {
-//		console.log(stasrtBufferIdx);
+//		console.log(startBufferIdx, endBufferIdx, this.itemSize);
 		if (startBufferIdx >= endBufferIdx)
 			return;
 		
@@ -160,9 +160,11 @@ MemoryBufferStack.prototype.append = function(val) {
 		this.occupancy = new Uint8Array(this.occupancy.buffer.append(new ArrayBuffer(Math.ceil((val._byteLength) / (this.itemSize * 8)))));
 	}
 	
+	// update data buffer
 	this._buffer.set(val._buffer, this._byteLength);	
 	this._byteLength += val._byteLength;
 	
+	// Update occupancy buffer
 	var occupancyValues = [], initialBufferIdx = offset / this.itemSize, occupancyPointer, currentOccupancyPointer;
 	for (let bufferIdx = offset / this.itemSize, max = this._byteLength / this.itemSize; bufferIdx < max; bufferIdx++) {
 //		console.log(bufferIdx, bufferIdx % 8, Math.floor((bufferIdx - initialBufferIdx) / 8));

@@ -108,6 +108,7 @@ Ignition.prototype.instanciateDOM = function() {
 //				console.log(view._sWrapperUID, appConstants.getUID(view._sWrapperUID));
 			if (Object.prototype.toString.call(appConstants.getUID(view._sWrapperUID)) === '[object Object]') {
 //				console.log(view);
+//				console.log(appConstants.getUID(view._sWrapperUID));
 				view.styleHook.s = appConstants.getUID(view._sWrapperUID).clone();
 				if (view.sOverride)
 					view.styleHook.s.overrideStyles(view.sOverride);

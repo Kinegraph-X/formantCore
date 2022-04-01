@@ -117,28 +117,28 @@ ComputedStyleSolver.prototype.extractMostSpecificPartFromSelector = function(sel
 	return this.cascadeOnSpecificity(selector.components[selector.components.length - 1]);
 }
 
-ComputedStyleSolver.prototype.cascadeOnSpecificity = function(rightMost) {
+ComputedStyleSolver.prototype.cascadeOnSpecificity = function(rightMosts) {
 	var match;
 	
-	match = CSSSelector.prototype.typeIsID.test(rightMost);
+	match = CSSSelectorsList.prototype.typeIsID.test(rightMosts);
 	if (match) {
 		return match[1];
 	}
 	else {
-		match = CSSSelector.prototype.typeIsClass.test(rightMost);
+		match = CSSSelectorsList.prototype.typeIsClass.test(rightMosts);
 		if (match) {
 			return match[1] || match[2];
 		}
 		else {
 			//   ':host'.match(/[^\.#:](\w+)/) 	=> 		Array [ "host", "ost"]
-			match = CSSSelector.prototype.typeIsTagName.test(rightMost);
+			match = CSSSelectorsList.prototype.typeIsTagName.test(rightMosts);
 			if (match) {
 				return match[0];
 			}
 		}
 	}
 	
-	return rightMost;
+	return rightMosts;
 }
 
 

@@ -4,6 +4,7 @@
 
 var TypeManager = require('src/core/TypeManager');
 var MemoryBufferStack= require('src/core/MemoryBufferStack');
+var CSSSelectorsList = require('src/editing/CSSSelectorsList');
 
 var CSSRulesBufferManager = require('src/_LayoutEngine/CSSRulesBufferManager');
 var CSSSelectorsMatcher = require('src/_LayoutEngine/CSSSelectorsMatcher');
@@ -46,7 +47,7 @@ ComputedStyleSolver.prototype.objectType = 'ComputedStyleSolver';
 
 
 ComputedStyleSolver.prototype.scaleCSSBuffer = function() {
-	return new MemoryBufferStack(8, 1500);
+	return new MemoryBufferStack(CSSSelectorsList.prototype.optimizedSelectorBufferSchema.size, 1500);
 }
 
 

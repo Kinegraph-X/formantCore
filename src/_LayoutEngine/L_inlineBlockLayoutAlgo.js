@@ -54,6 +54,7 @@ InlineBlockLayoutAlgo.prototype.resetBlockAvailableSpaceOffset = function() {
 	this.availableSpace.blockOffset = this.layoutNode.computedStyle.bufferedValueToNumber('paddingBlockStart');
 }
 InlineBlockLayoutAlgo.prototype.getUpToDateRemainingAvailableSpace = function() {
+//	console.log(this.layoutNode.dimensions);
 	return new CoreTypes.DimensionsPair([
 		this.layoutNode._parent.availableSpace.inline - this.layoutNode.dimensions.inline,
 		this.layoutNode._parent.availableSpace.block - this.layoutNode.dimensions.block
@@ -111,6 +112,7 @@ InlineBlockLayoutAlgo.prototype.setOffsets = function(dimensions) {
 InlineBlockLayoutAlgo.prototype.setEvenlySpacedOffsets = function(dimensions) {
 //	console.log('called setEvenlySpacedOffsets', this.layoutNode.nodeName, 'this.layoutNode.isLastChild', this.layoutNode.isLastChild);
 	var remainingAvailableSpace = this.getUpToDateRemainingAvailableSpace();
+//	console.log(remainingAvailableSpace);
 	this.layoutNode.offsets.inline = this.layoutNode._parent.availableSpace.inlineOffset + remainingAvailableSpace.inline / (this.layoutNode._parent.availableSpace.childCount + 1);
 	this.layoutNode._parent.availableSpace.inlineOffset = this.layoutNode.offsets.inline + this.layoutNode.dimensions.inline;
 }
@@ -219,6 +221,8 @@ InlineBlockLayoutAlgo.prototype.updateParentDimensions = function(dimensions) {
 }
 
 InlineBlockLayoutAlgo.prototype.getInlineDimension = function() {
+//	console.log(this.layoutNode.computedStyle.getPosForProp('width') * this.layoutNode.computedStyle.itemSize, this.layoutNode.computedStyle._buffer);
+//	console.log(this.layoutNode.computedStyle.bufferedValueToNumber('width'));
 	return this.layoutNode.computedStyle.bufferedValueToNumber('width');
 }
 

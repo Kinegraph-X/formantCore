@@ -10,7 +10,7 @@ var BinarySlice = require('src/core/BinarySlice');
 
 
 
-var BufferFromSchema = function(binarySchema) {
+var BufferFromSchema = function(binarySchema, initialLoad) {
 	this.objectType = 'BufferFromSchema';
 	
 	this.binarySchema = {};
@@ -24,10 +24,13 @@ var BufferFromSchema = function(binarySchema) {
 		);
 		offset += binarySchema[prop].length;
 	}
-	
+//	console.log(binarySchema.size);
 	this._buffer = new Uint8Array(binarySchema.size);
 	this.occupancy = new Uint8Array(binarySchema.size / 8);
 	this._byteLength = 0;
+	
+	if (initialLoad)
+		this.set(initialLoad, 0);
 	
 //	console.log(this.binarySchema);
 }
@@ -53,6 +56,7 @@ BufferFromSchema.prototype.get = function(idx, binaryLength) {
 	if (!binaryLength)
 		return this._buffer[idx];
 	else {
+		// we unpack 16 and 32 bits integers here
 		var ret = 0, bitwiseOffset = 0;
 		for (let i = idx, l = idx + binaryLength; i < l; i++) {
 			ret = ret | (this._buffer[i] << bitwiseOffset * 8);
@@ -72,9 +76,9 @@ BufferFromSchema.prototype.getOffsetForProp = function(propName) {
 }
 
 BufferFromSchema.prototype.set = function(val, offset) {
-	val = Array.isArray(val) ? val : [val];
+	val = (Array.isArray(val) || Object.getPrototypeOf(val) === Uint8Array.prototype) ? val : [val];
 	// offsets for occupancy map
-	offset = ((typeof offset !== 'number') || this._byteLength);
+	offset = typeof offset !== 'number' ? this._byteLength : offset;
 	var onAlignementOffset = offset % 8;
 	var startOffset = offset - onAlignementOffset;
 	

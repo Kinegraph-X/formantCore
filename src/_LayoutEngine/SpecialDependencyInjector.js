@@ -28,17 +28,20 @@ SpecialDependencyInjector.prototype.getNaiveDOM = function() {
 
 SpecialDependencyInjector.prototype.getNaiveDOMTree = function () {
 	var nodeUID;
-	function getNode(component) {
-		return {
-				styleRefstartIdx : 0,
-				styleRefLength : 0,
-				_UID : nodeUID,
-				isShadowHost : component.view.currentViewAPI ? component.view.currentViewAPI.isShadowHost : false,
-				name : Object.getPrototypeOf(component).objectType.slice(0),
-				views : this.getInDepthViewStructure(component),
-				children : [],
-				styleDataStructure : component.styleHook ? component.styleHook.s : null
-			};
+	function getNode(component, parentNode) {
+		var node = {
+			styleRefstartIdx : 0,
+			styleRefLength : 0,
+			_UID : component._UID,
+			_parentNode : parentNode,
+			isShadowHost : component.view.currentViewAPI ? component.view.currentViewAPI.isShadowHost : false,
+			name : Object.getPrototypeOf(component).objectType.slice(0),
+			views : {},
+			children : [],
+			styleDataStructure : component.styleHook ? component.styleHook.s : null
+		};
+		node.views = this.getInDepthViewStructure(component, node);
+		return node;
 //		var meta = this.getViewRelatedNodeDescription(component);
 	}
 	var ret = getNode.call(this, this);
@@ -46,31 +49,31 @@ SpecialDependencyInjector.prototype.getNaiveDOMTree = function () {
 	return ret;
 }
 
-SpecialDependencyInjector.prototype.collectNaiveDOMandStyleInDescendants = function (component, componentTree, getNode) {
+SpecialDependencyInjector.prototype.collectNaiveDOMandStyleInDescendants = function (component, componentTreeParent, getNode) {
 	var node;
 	component._children.forEach(function(child) {
-		node = getNode(child);
+		node = getNode(child, componentTreeParent);
 		if (Array.isArray(child._children) && child._children.length) {
-			componentTree.children.push(this.collectNaiveDOMandStyleInDescendants(child, node, getNode));
+			componentTreeParent.children.push(this.collectNaiveDOMandStyleInDescendants(child, node, getNode));
 		}
 		else {
-			componentTree.children.push(node);
+			componentTreeParent.children.push(node);
 		}
 	}, this);
 
-	return componentTree;
+	return componentTreeParent;
 }
 
-SpecialDependencyInjector.prototype.getInDepthViewStructure = function (component) {
+SpecialDependencyInjector.prototype.getInDepthViewStructure = function (component, viewsWrapper) {
 	var hostNode, subNodesGroup;
 	return {
-		masterView : (hostNode = new NaiveDOMNode(component.view, 0)),
+		masterView : (hostNode = new NaiveDOMNode(viewsWrapper, component.view, 0)),
 		subSections : (subNodesGroup = component.view.subViewsHolder.subViews.map(function(view) {
-			return new NaiveDOMNode(view, 1, hostNode, component.view);
+			return new NaiveDOMNode(viewsWrapper, view, 1, hostNode, component.view);
 		})),
 		memberViews : component.view.subViewsHolder.memberViews.map(function(view) {
 //			console.log(component.view);
-			return new NaiveDOMNode(view, 2, hostNode, component.view, subNodesGroup);
+			return new NaiveDOMNode(viewsWrapper, view, 2, hostNode, component.view, subNodesGroup);
 		})
 	};
 }

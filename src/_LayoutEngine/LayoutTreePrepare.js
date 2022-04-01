@@ -15,6 +15,7 @@ var CoreTypes = require('src/core/CoreTypes');
 var NaiveDOMNode = require('src/_LayoutEngine/NaiveDOMNode');
 var CSSSelectorsMatcher = require('src/_LayoutEngine/CSSSelectorsMatcher');
 var CSSPropertySetBuffer = require('src/editing/CSSPropertySetBuffer');
+var CSSPropertyDescriptors = require('src/editing/CSSPropertyDescriptors');
 
 var ComputedStyleSolver = require('src/_LayoutEngine/ComputedStyleSolver');
 
@@ -35,22 +36,18 @@ var LayoutTreePrepare = function(naiveDOM, collectedSWrappers, importedMasterSty
 	this.objectType = 'LayoutTreePrepare';
 	
 	this.masterStyleRegistry = importedMasterStyleRegistry;
-//	this.CSSSelectorMatchingResults = CSSSelectorMatchingResults;
 	
-	this.layoutTree = this.constructLayoutTree(naiveDOM, collectedSWrappers); //, importedMasterStyleRegistry, CSSSelectorMatchingResults);
+	this.layoutTree = this.constructLayoutTree(naiveDOM, collectedSWrappers);
 }
 LayoutTreePrepare.prototype = {};
 LayoutTreePrepare.prototype.objectType = 'LayoutTreePrepare';
 
-LayoutTreePrepare.prototype.constructLayoutTree = function(naiveDOM, collectedSWrappers) { //, importedMasterStyleRegistry, CSSSelectorMatchingResults) {
+LayoutTreePrepare.prototype.constructLayoutTree = function(naiveDOM, collectedSWrappers) {
 	var layoutViewPort = new LayoutRoot(new CoreTypes.DimensionsPair(this.retrieveWindowInitialSize()));
 	// FIXME: We retrieve the style of the body tag, but we should retrieve ALL the cascade of styles from "body" to the ACTUAL container
-	this.retrieveWindowStyle(layoutViewPort, naiveDOM, collectedSWrappers);
+//	this.retrieveWindowStyle(layoutViewPort, naiveDOM, collectedSWrappers);
 	var layoutRoot = new LayoutNode(naiveDOM.views.memberViews[2], layoutViewPort);
-	
-//	console.log(naiveDOM.views);
-//	console.log('layoutRoot', layoutRoot);
-	return new LayoutTreeBuilder(naiveDOM, layoutRoot); //, importedMasterStyleRegistry, CSSSelectorMatchingResults);
+	return new LayoutTreeBuilder(naiveDOM, layoutRoot);
 }
 
 LayoutTreePrepare.prototype.retrieveWindowInitialSize = function() {
@@ -76,12 +73,8 @@ LayoutTreePrepare.prototype.retrieveWindowStyle = function(layoutViewPort, naive
 
 
 
-var LayoutTreeBuilder = function(sourceDOMNode, layoutRoot) { //, importedMasterStyleRegistry, CSSSelectorMatchingResults) {
+var LayoutTreeBuilder = function(sourceDOMNode, layoutRoot) {
 	this.objectType = 'LayoutTreeBuilder';
-	
-//	this.importedMasterStyleRegistry = importedMasterStyleRegistry;
-//	this.CSSSelectorMatchingResults = CSSSelectorMatchingResults;
-
 	this.alternateFlatAndRecursiveBuild(sourceDOMNode, layoutRoot);
 }
 LayoutTreeBuilder.prototype = {};
@@ -90,10 +83,7 @@ LayoutTreeBuilder.prototype.objectType = 'LayoutTreeBuilder';
 LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMNode, layoutParentNode) {
 	var currentLayoutNode = layoutParentNode, childLayoutNode, childDOMNodeAsAView, subChildLayoutNode, textContentKey, textNode;
 	
-//	console.log('in', currentLayoutNode.nodeName);
-	
 	sourceDOMNode.children.forEach(function(childDOMNode) {
-//		console.log('loop on children');
 		var typeIdx = 0, currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
 		// when represented as naiveDOM, leaf-components have no children, they only hold views
 		while (currentViewType) {
@@ -103,9 +93,8 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 //				childLayoutNode = new LayoutNode(childDOMNodeAsAView, layoutParentNode);
 				// TODO: optimization : textContent may be passed as an argument to the layoutNode Ctor
 				// TODO: optimization : the presence of a textContent may be identified by a less expensive mean
-//				console.log(childDOMNodeAsAView.attributes);
 				if ((textContentKey = childDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false) {
-//					console.log(textContent.value);
+
 					textNode = new NaiveDOMNode();
 					textNode.attributes.push(new CoreTypes.Pair(
 						'textContent',
@@ -117,21 +106,12 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 				}
 				else
 					childLayoutNode = new LayoutNode(childDOMNodeAsAView, layoutParentNode, true);
-//				console.log('masterView', childDOMNodeAsAView.nodeName, childLayoutNode);
 			}
 			else {
 				subChildLayoutNode = undefined;
 				childDOMNode.views[currentViewType].forEach(function(subChildDOMNodeAsAView, key) {
-//					console.log(
-//						'subOrMemberView',
-//						subChildDOMNodeAsAView.nodeName,
-//						childLayoutNode.nodeName
-//					);
-//						subChildLayoutNode = new LayoutNode(subChildDOMNodeAsAView, childLayoutNode);
 						// TODO: optimization : the presence of a textContent may be identified by a less expensive mean
 						if ((textContentKey = subChildDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false) {
-//							console.log(textContent.value);
-							
 							// FIXME: there should be as many textNodes as there are words => Fix that in the layout algo ?
 							textNode = new NaiveDOMNode();
 							textNode.attributes.push(new CoreTypes.Pair(
@@ -150,7 +130,6 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 			currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
 		}
 		currentLayoutNode = childLayoutNode;
-//		console.log('out', currentLayoutNode.nodeName);
 		
 		this.alternateFlatAndRecursiveBuild(childDOMNode, currentLayoutNode);
 		
@@ -158,9 +137,6 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 	return currentLayoutNode;
 }
 
-//LayoutTreeBuilder.prototype.retrieveEffectiveStyleRuleFromSelectorMatching = function(DOMNodeUID) {
-//	console.log(TypeManager.pendingStyleRegistry);
-//}
 
 
 
@@ -171,35 +147,32 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 
 
 
-var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode, isLastChild) {
+var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode) {
 	this.objectType = 'LayoutNode';
 	this._parent = layoutParentNode;
 	this.nodeName = sourceDOMNodeAsView.nodeName;
-
-//	console.log(this.nodeName);
 	
 	// TODO: optimization : textContent may be passed as an argument to the layoutNode Ctor
 	var textContent = sourceDOMNodeAsView.attributes.findObjectByValue('name', 'textContent');
 	this.textContent = textContent ? textContent.value : '';
 	this.isTextNode = this.textContent.length ? true : false;
-//	console.log(this.textContent);
 	
 	this.availableSpace = new CoreTypes.AvailableSpace();
 	this.computedStyle = new CSSPropertySetBuffer();
+	
+	var applicableStyles = this.queryStyleUpdate(sourceDOMNodeAsView);
+
 	this.populateInheritedStyle();
-	this.populateAllComputedStyle(this.queryStyleUpdate(sourceDOMNodeAsView));
+	this.populateAllComputedStyle(applicableStyles);
 	
 	this.dimensions = new CoreTypes.DimensionsPair();
 	this.offsets = new CoreTypes.DimensionsPair();
 	
 	this.isFlexChild = false;
 	this.layoutAlgo = this.getLayoutAlgo(this.nodeName);
-	
 
-//	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.dimensions);
-//	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.offsets);
-//	console.log(this);
-//	console.log(this.nodeName, this.layoutAlgo);
+	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.dimensions);
+	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.offsets);
 }
 LayoutNode.prototype = {};
 LayoutNode.prototype.objectType = 'LayoutNode';
@@ -212,58 +185,35 @@ LayoutNode.prototype.queryStyleUpdate = function(sourceDOMNodeAsView) {
 
 // TODO: How is the pub/sub mechanism supposed to be designed ?
 LayoutNode.prototype.publishRequestForStyleUpdate = function(viewUID) {
-	var matchedStyle = TypeManager.pendingStyleRegistry.getItem(viewUID);
+//	console.log(TypeManager.pendingStyleRegistry);
 
-	// should delete the registry-item later
-//	TypeManager.pendingStyleRegistry.deleteItem(viewUID);
-	return matchedStyle ? matchedStyle.attrIFace : new SplittedAttributes({});
+	// TODO: matchedStyle should  be an array
+	// => populate the TypeManager.pendingStyleRegistry with an array
+	// 		in CSSSelectorsMatcherRefiner.publishToBeComputedStyle
+	// => get it back here and iterate in LayoutNode.prototype.populateAllComputedStyle
+
+	var matchedStyles = TypeManager.pendingStyleRegistry.getItem(viewUID);
+	return matchedStyles ? matchedStyles : [new SplittedAttributes({})];
 }
 
 LayoutNode.prototype.populateInheritedStyle = function() {
-//	console.log('inheritedAttributes', this._parent.computedStyle.getPropertyGroupAsObject('inheritedAttributes'));
-//	console.log('inheritedAttributes', this.nodeName, this._parent.nodeName, this._parent.computedStyle.getPropertyGroupAsBuffer('inheritedAttributes'));
 	this.computedStyle.overridePropertyGroupFromGroupBuffer(
 		'inheritedAttributes',
 		this._parent.computedStyle.getPropertyGroupAsBuffer('inheritedAttributes')
 	);
 }
 
-LayoutNode.prototype.populateAllComputedStyle = function(attrIFace) {
-	var attrList, propBuffer;
-//	console.log('populateAllComputedStyle', this.nodeName, attrIFace);
-	
-	// TODO: optimize these two for-in loops
-	for (var attrGroup in attrIFace) {
-//		attrList = attrIFace[attrGroup];
-		
-		if (attrGroup === 'stdAttributes')
-			continue;
-		
-		this.computedStyle.setPropertyGroupFromGroupBuffer(
-			attrGroup,
-			attrIFace[attrGroup].CSSPropertySetBuffer.getPropertyGroupAsBuffer(attrGroup)
-			);
-//		for (var attr in attrList) {
-//			if (attr === 'display')
-//				console.log(this.nodeName, attr, attrList[attr]);
-			// TODO: find a faster way than using that StylePropertyConverter method :
-			// 		it uses a new PropertyBuffer each time and is slow for shorthand properties
-//			propBuffer = stylePropertyConverter.toCSSPropertyBuffer(attr, attrList[attr]);
-			
-//			console.log(HRcomputedStyle[attrGroup]);
-//			console.log(HRcomputedStyle[attrGroup].CSSPropertySetBuffer.getProp(attr));
-//			propBuffer = HRcomputedStyle[attrGroup].CSSPropertySetBuffer.getProp(attr);
-//			console.log(propBuffer.bufferedValueToString(), propBuffer);
-//			this.computedStyle.setPropFromBuffer(attr, propBuffer);
-//		}
-	}
-//	console.log(this.computedStyle._buffer);
-//	console.log(this.computedStyle.bufferedValueToString('padding', 'repr'));
-	
-//	console.log(this.computedStyle.bufferedValueToNumber('paddingInlineStart'));
-//	console.log(this.computedStyle.bufferedValueToNumber('paddingBlockStart'));
-//	console.log(this.computedStyle.bufferedValueToNumber('paddingInlineEnd'));
-//	console.log(this.computedStyle.bufferedValueToNumber('paddingBlockEnd'));
+LayoutNode.prototype.populateAllComputedStyle = function(matchedStyles) {
+	var attrIFace, orderedStyles = matchedStyles;
+	orderedStyles.forEach(function(style) {
+		attrIFace = style.attrIFace;
+		for (var attrGroup in attrIFace) {
+			this.computedStyle.overridePropertyGroupFromGroupBuffer(
+				attrGroup,
+				attrIFace[attrGroup].CSSPropertySetBuffer.getPropertyGroupAsBuffer(attrGroup)
+				);
+		}
+	}, this);
 }
 
 LayoutNode.prototype.getLayoutAlgo = function(nodeName) {
@@ -281,13 +231,11 @@ LayoutNode.prototype.getLayoutAlgo = function(nodeName) {
 
 LayoutNode.prototype.getDisplayProp = function(nodeName) {
 	var valueOfDisplayProp = this.computedStyle.getPropAsString('display');
-//	console.log(valueOfDisplayProp);
 
 	if (!valueOfDisplayProp.length)
-		console.warn('LayoutNode ' + this.nodeName + ' : valueOfDisplayProp has a zero length. Seems the CSS initialValue hasn\'t been taken in account');
+		console.warn('LayoutNode ' + this.nodeName + ' : valueOfDisplayProp has a zero length. Seems the CSS initialValue hasn\'t been taken in account', this.computedStyle);
 	
 	if (valueOfDisplayProp === 'inline') {
-//		console.log(this._parent.layoutAlgo.algoName);
 		if (this._parent.layoutAlgo.algoName === 'flex') {
 			this.isFlexChild = true;
 			return 'inline-block';
@@ -337,7 +285,6 @@ LayoutNode.prototype.defaultToBrowserDefinedDisplayProp = function(nodeName) {	/
 
 
 var LinkedLayoutNode = function(sourceDOMNodeAsView, layoutParentNode, previousSiblingLayoutNode, isLastChild) {
-//	console.log('previousSiblingLayoutNode', previousSiblingLayoutNode);
 	this.isLastChild = isLastChild;
 	this.previousSibling = previousSiblingLayoutNode;
 	LayoutNode.call(this, sourceDOMNodeAsView, layoutParentNode);
@@ -353,8 +300,6 @@ LinkedLayoutNode.prototype.getRootOfLinkedChildren = function() {
 }
 
 LinkedLayoutNode.prototype.climbChildrenLinkedListAndCallbackLayoutAlgo = function(children, callbackName) {
-//	console.log('called climbChildrenLinkedListAndCallback', this.previousSibling);
-//	console.log(callbackName);
 	var children = children || [];
 	if (this.previousSibling) {
 		children.splice(0, 0, this.previousSibling);
@@ -363,8 +308,6 @@ LinkedLayoutNode.prototype.climbChildrenLinkedListAndCallbackLayoutAlgo = functi
 	else {
 		children.forEach(function(siblingNode) {
 			siblingNode.layoutAlgo[callbackName](siblingNode.dimensions);
-//			console.log('siblingNode computed dimensions', siblingNode.nodeName, siblingNode.dimensions);
-//			console.log('siblingNode computed dimensions', siblingNode.nodeName, siblingNode.offsets);
 		}, this);
 	}
 }
@@ -395,68 +338,13 @@ LayoutRoot.prototype = Object.create(LayoutNode.prototype);
 LayoutRoot.prototype.objectType = 'LayoutRoot';
 
 LayoutRoot.prototype.setViewportStyle = function(selectorMatches, masterStyleRegistry) {
-//	console.log('call to populateAllComputedStyle', this.nodeName);
+//	console.log(masterStyleRegistry);
 	selectorMatches.forEach(function(result, key) {
-//		console.log(masterStyleRegistry.getItem(result[1]).attrIFace.stdAttributesList);
 		this.populateAllComputedStyle(masterStyleRegistry.getItem(result[1]).attrIFace);
 	}, this);
 }
 
 
-
-
-
-
-
-
-
-
-
-
-//var DimensionsPair = function(initialValues) {
-//	this.objectType = 'DimensionsPair';
-//	this.inline = initialValues ? initialValues[0] : 0;
-//	this.block = initialValues ? initialValues[1] : 0;
-//}
-//DimensionsPair.prototype = {};
-//DimensionsPair.prototype.objectType = 'DimensionsPair';
-//
-//DimensionsPair.prototype.set = function(valuesPair) {
-//	this.inline = valuesPair[0];
-//	this.block = valuesPair[1];
-//}
-//DimensionsPair.prototype.add = function(valuesPair) {
-//	this.inline += valuesPair[0];
-//	this.block += valuesPair[1];
-//}
-//DimensionsPair.prototype.substract = function(valuesPair) {
-//	this.inline -= valuesPair[0];
-//	this.block -= valuesPair[1];
-//}
-////dimensionsPair.prototype.getInlineValue = function() {
-////	return this.inline;
-////}
-////dimensionsPair.prototype.getBlockValue = function() {
-////	return this.block;
-////}
-////dimensionsPair.prototype.setInlineValue = function(inline) {
-////	this.inline = inline;
-////}
-////dimensionsPair.prototype.setBlockValue = function(block) {
-////	this.block = block;
-////}
-//
-//
-//
-//var AvailableSpace = function(initialValues) {
-//	DimensionsPair.call(this, initialValues);
-//	this.objectType = 'AvailableSpace';
-//	this.childCount = 0;
-//	this.inlineOffset = initialValues ? initialValues[2] : 0;
-//	this.blockOffset = initialValues ? initialValues[3] : 0;
-//}
-//AvailableSpace.prototype = Object.create(DimensionsPair.prototype);
-//AvailableSpace.prototype.objectType = 'AvailableSpace';
 
 
 

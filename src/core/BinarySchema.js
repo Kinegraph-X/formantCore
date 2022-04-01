@@ -12,7 +12,7 @@ var BinarySlice = require('src/core/BinarySlice');
 
 var BinarySchemaFactory = function(name, propsList, sizes) {
 	
-	if (!BinarySchemaFactory.schemas.name) {
+	if (!BinarySchemaFactory.schemas[name]) {
 		var objectSize = 0;
 		propsList.forEach(function(propName, key) {
 			objectSize += sizes[key];
@@ -37,12 +37,12 @@ var BinarySchemaFactory = function(name, propsList, sizes) {
 			value : objectSize
 		});
 		
-		BinarySchemaFactory.schemas.name = schema;
+		BinarySchemaFactory.schemas[name] = schema;
 //		console.log(new schema(propsList, sizes));
 		return new schema(propsList, sizes);
 	}
 	else
-		return new BinarySchemaFactory.schemas.name(propsList, sizes);
+		return new BinarySchemaFactory.schemas[name](propsList, sizes);
 }
 
 BinarySchemaFactory.prototype = {};

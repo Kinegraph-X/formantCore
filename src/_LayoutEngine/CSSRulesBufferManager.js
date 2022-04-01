@@ -30,9 +30,8 @@ CSSRulesBufferManager.prototype.aggregateRules = function(naiveDOM, collectedSWr
 }
 
 CSSRulesBufferManager.prototype.getOptimizedSelectorFromSWrapper = function(sWrapper) {
-	
 	Object.values(sWrapper.rules).forEach(function(rule) {
-		this.CSSRulesBuffer.append(rule.styleIFace.compactedViewOnSelector);	
+		this.CSSRulesBuffer.append(rule.styleIFace.compactedViewOnSelectorsList);	
 	}, this);
 }
 
@@ -46,7 +45,7 @@ CSSRulesBufferManager.prototype.getOptimizedSelectorFromNode = function(node) {
 	}	
 	
 	Object.values(node.styleDataStructure.rules).forEach(function(rule) {
-		this.CSSRulesBuffer.append(rule.styleIFace.compactedViewOnSelector);
+		this.CSSRulesBuffer.append(rule.styleIFace.compactedViewOnSelectorsList);
 	}, this);
 }
 

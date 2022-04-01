@@ -17,7 +17,7 @@ var MemoryMapBuffer = function(itemSize, initialContent) {
 	this.branchlessLoop = this.getBranchlessLoop();
 	
 }
-MemoryMapBuffer.prototype = Object.create(Uint8Array.prototype);
+MemoryMapBuffer.prototype = {};
 MemoryMapBuffer.prototype.objectType = 'MemoryMapBuffer';
 
 MemoryMapBuffer.prototype.propertiesStaticArray= [];				// virtual

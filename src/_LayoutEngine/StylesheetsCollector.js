@@ -6,7 +6,7 @@ var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
 var AbstractStylesheet = require('src/editing/AbstractStylesheet');
-var AdvandcedAttributesList = require('src/editing/SplittedAttributes');
+var AdvancedAttributesList = require('src/editing/SplittedAttributes');
 
 // require CSS-parser...
 var parser = require('src/parsers/css-parser_forked');
@@ -37,21 +37,21 @@ StylesheetsCollector.prototype.objectType = 'StylesheetsCollector';
 StylesheetsCollector.prototype.getUsefulStylesheets = function() {
 	var collectedSWrappers = [];
 	for (var sheet of document.styleSheets) {
-		// filter sheets that have a -not null- href property
+		// sheets that have a -not null- href property are externaly loaded
 		if (sheet.href)
 			collectedSWrappers.push(this.expandToSWrapper(sheet));
 	}
 	return collectedSWrappers;
 }
 
-StylesheetsCollector.prototype.convertToRawCSSinJS = function(styleRule) {
+StylesheetsCollector.prototype.convertToCSSPropertySetBuffer = function(styleRule) {
 	if (!styleRule.style || !styleRule.style.cssText)
 		return {};
 		
 	// parse the rule and populate a raw style object
 	var ast = parser.parseAListOfDeclarations(styleRule.style.cssText);
 	
-	return AdvandcedAttributesList.fromAST(ast).getAllAttributes();		// was meant to be "raw", let's keep for now the helper functions on the "advanced" type (non-raw...)
+	return AdvancedAttributesList.fromAST(ast); //.getAllDefinedAttributes();		// was meant to be "raw", let's keep for now the helper functions on the "advanced" type (non-raw...)
 //	console.log(ast);
 }
 
@@ -61,14 +61,13 @@ StylesheetsCollector.prototype.compactToJSON = function(styleSheet) {
 
 StylesheetsCollector.prototype.expandToSWrapper = function(styleSheet) {
 	// get the rules as "native" obj and instantiate an AbstractStyleSheet
-	var rawStyle = [], tmpRawStyleObj, selector;
+	var rawStyle = [], tmpRawStyleObj;
 	for (var rule of styleSheet.cssRules) {
-		tmpRawStyleObj = this.convertToRawCSSinJS(rule) ||  {};
-		
+		tmpRawStyleObj = this.convertToCSSPropertySetBuffer(rule);
 		if (tmpRawStyleObj.selector = this.isolateSelector(rule))
 			rawStyle.push(tmpRawStyleObj);
 	}
-	
+//	console.log(rawStyle);
 	return new AbstractStylesheet(rawStyle, this.isolateFilename(styleSheet));
 }
 

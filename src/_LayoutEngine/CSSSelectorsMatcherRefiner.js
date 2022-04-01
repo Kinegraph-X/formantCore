@@ -3,7 +3,8 @@
  */
 
 var TypeManager = require('src/core/TypeManager');
-var CSSSelector = require('src/_LayoutEngine/CSSSelector');
+var CSSSelectorsList = require('src/editing/CSSSelectorsList');
+var MatchingAlgorithms = require('src/_LayoutEngine/MatchingAlgorithms');
 
 
 var CSSSelectorsMatcherRefiner = function() {
@@ -14,79 +15,86 @@ CSSSelectorsMatcherRefiner.prototype = {};
 CSSSelectorsMatcherRefiner.prototype.objectType = 'CSSSelectorsMatcherRefiner';
 
 // HACK: importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
-//CSSSelectorsMatcherRefiner.prototype.refineMatches = function(matchResult) {
 CSSSelectorsMatcherRefiner.prototype.refineMatches = function(matchResult, importedNaiveDOMRegistry, importedMasterStyleRegistry) {
 	return matchResult.results.filter(function(match) {
-		return this.validateMatch(
-				match[0],											// match[0] is a node UID
-//				TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
+		localDebugLog('INITIAL CALL');
+		return (this.fastValidateMatch(
+				match,
 				importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
 				importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
 			)
-				// NOTA : this is obsolete
-//				&& this.fillDefaultStyles(
-//					match[0],											// match[0] is a node UID
-////					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
-//					importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
-//					importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
-//				)
+			|| this.validateMatch(
+				match,
+				importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
+				importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
+				))
 				&& this.publishToBeComputedStyle(
 					match[0],											// match[0] is a node UID
-//					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
 					importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
 					importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
-				);
-//				&& this.appendStyleToComputedStyle(
-//					match[0],											// match[0] is a node UID
-////					TypeManager.masterStyleRegistry.getItem(match[1]),	// match[1] is a selectorBuffer's UID
-//					importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
-//					importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
-//				);
-		
+					);
 	}, this);
 }
 
-CSSSelectorsMatcherRefiner.prototype.validateMatch = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
-//	var view = TypeManager.naiveDOMRegistry.getItem(viewUID);
+CSSSelectorsMatcherRefiner.prototype.fastValidateMatch = function(match, refToStyle, importedNaiveDOMRegistry) {
+	var DHL = 1;
+	if (refToStyle.selectorsList.length === 1 && refToStyle.selectorsList[0].components.length === 1) {
+		var viewUID = match[0];
+		var view = importedNaiveDOMRegistry.getItem(viewUID);
+		localDebugLog(DHLstr(DHL) + 'OPTIMIZATION', view.nodeName, refToStyle.selectorsList[0].components[0].value);
+		return MatchingAlgorithms.BaseClass.prototype.matchOnTypeAndValue(view, refToStyle.selectorsList[0].components, 0, DHL);
+	}
+	return false;
+}
+
+CSSSelectorsMatcherRefiner.prototype.validateMatch = function(match, refToStyle, importedNaiveDOMRegistry, DHL) {
+	var DHL = 1;
+	
+	var viewUID = match[0];
 	var view = importedNaiveDOMRegistry.getItem(viewUID);
 	
-	if (refToStyle.selector.components.length === 1) {
-		return true;
-	}
-	else if (refToStyle.selector.components.length) {
-		return this.isActualMatch(refToStyle.selector.components, refToStyle.selector.components.length - 1, view);
-	}
+	var hasMatched = false;
+	refToStyle.selectorsList.forEach(function(selector, key) {
+		localDebugLog(DHLstr(DHL) + 'CASE: Various Selectors or Various Components');
+		hasMatched = this.matchOnComponents(match, view, selector.components, DHL);
+	}, this);
+	return hasMatched;
 }
 
-CSSSelectorsMatcherRefiner.prototype.isActualMatch = function(componentsList, index, view) {
-	switch(componentsList[index].relation) {
-		case CSSSelector.prototype.relationConstants.descendant :
-			if (view._parentNode && index >= 0 && !this.isActualMatch(componentsList, --index, view._parentNode))
-				return false;
-			break;
-		
-		default:
-			return true;
-	}
-	return true;
+CSSSelectorsMatcherRefiner.prototype.matchOnComponents = function(match, view, componentsList, DHL) {
+	var hasMatched = false;
+	
+	if (MatchingAlgorithms.BaseClass.prototype.branchOnRelation(match, view, componentsList, componentsList.length - 1, DHL))
+		hasMatched = true;
+	
+	return hasMatched;
 }
 
-/**
- * 
- * @param String viewUID : The UID stored on the view type we defined in our naiveDOM experiment
- * @param sWrapper refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
- */
-// NOTA : this is obsolete
-//CSSSelectorsMatcherRefiner.prototype.fillDefaultStyles = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
-//	var view = importedNaiveDOMRegistry.getItem(viewUID);
-////	console.log(view.nodeName)//, refToStyle);
-//	
-//	// Default "display" style
-//	if (typeof refToStyle.attrIFace.locallyEffectiveAttributesList.display === 'undefined')
-//		refToStyle.attrIFace.locallyEffectiveAttributesList.display = 'inline-block';
-//	
-//	return true;
-//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**
  * 
@@ -94,9 +102,13 @@ CSSSelectorsMatcherRefiner.prototype.isActualMatch = function(componentsList, in
  * @param sWrapper refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
  */
 CSSSelectorsMatcherRefiner.prototype.publishToBeComputedStyle = function(viewUID, refToStyle) {
-//	console.log(refToStyle);
-	TypeManager.pendingStyleRegistry.setItem(viewUID, refToStyle);
-
+	// TODO: should test for the existence of the key, an create/update an array
+	var pendingStyles;
+	if ((pendingStyles = TypeManager.pendingStyleRegistry.getItem(viewUID)))
+		pendingStyles.push(refToStyle);
+	else
+		TypeManager.pendingStyleRegistry.setItem(viewUID, [refToStyle]);
+//	console.log('publishToBeComputedStyle', viewUID, TypeManager.pendingStyleRegistry.getItem(viewUID));
 	return true;
 }
 
@@ -112,34 +124,17 @@ CSSSelectorsMatcherRefiner.prototype.publishToBeComputedStyle = function(viewUID
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-/**
- * 
- * @param String viewUID : The UID stored on the view type we defined in our naiveDOM experiment
- * @param sWrapper refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
- */
-CSSSelectorsMatcherRefiner.prototype.appendStyleToComputedStyle = function(viewUID, refToStyle, importedNaiveDOMRegistry) {
-	var view = importedNaiveDOMRegistry.getItem(viewUID);
-	
-	// T_ODO: (this method is no more in use, so "done" and obsolete) improve the case where we don't have yet a computedStyle object (defaulted to null in the ctor)
-	view.computedStyle = view.computedStyle
-		? refToStyle.copyAndMergeWithStyle(view.computedStyle)
-		: refToStyle.copyAndMergeWithStyle(refToStyle);
-	
-//	console.log(view.computedStyle);
-	return true;
+var DHLstr = function(DHL) {
+	var ret = '';
+	for (var i = 0, l = DHL; i < l; i++) {
+		ret += '	';
+	}
+	return ret;
 }
 
+var localDebugLog = function(str) {
+//	console.log(str);
+}
 
 
 module.exports = CSSSelectorsMatcherRefiner;

@@ -1,10 +1,14 @@
 /**
- * @store propertyCache
+ * store propertyCache
  * 
  */
 
 var unkownTypesCount = 0;
 
+/**
+ * @constructor ObjectCache
+ * 
+ */
 var ObjectCache = function(name) {
 	this.name = name;
 	this.cache = {};
