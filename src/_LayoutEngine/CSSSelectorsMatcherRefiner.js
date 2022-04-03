@@ -13,21 +13,18 @@ var CSSSelectorsMatcherRefiner = function() {
 }
 CSSSelectorsMatcherRefiner.prototype = {};
 CSSSelectorsMatcherRefiner.prototype.objectType = 'CSSSelectorsMatcherRefiner';
+CSSSelectorsMatcherRefiner.prototype.DHLstr = CSSSelectorsList.prototype.DHLstr;
+CSSSelectorsMatcherRefiner.prototype.localDebugLog = CSSSelectorsList.prototype.localDebugLog;
 
 // HACK: importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
 CSSSelectorsMatcherRefiner.prototype.refineMatches = function(matchResult, importedNaiveDOMRegistry, importedMasterStyleRegistry) {
 	return matchResult.results.filter(function(match) {
-		localDebugLog('INITIAL CALL');
-		return (this.fastValidateMatch(
+		this.localDebugLog('INITIAL CALL');
+		return this.fastValidateMatch(
 				match,
 				importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
 				importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
 			)
-			|| this.validateMatch(
-				match,
-				importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
-				importedNaiveDOMRegistry							// importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
-				))
 				&& this.publishToBeComputedStyle(
 					match[0],											// match[0] is a node UID
 					importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
@@ -41,10 +38,21 @@ CSSSelectorsMatcherRefiner.prototype.fastValidateMatch = function(match, refToSt
 	if (refToStyle.selectorsList.length === 1 && refToStyle.selectorsList[0].components.length === 1) {
 		var viewUID = match[0];
 		var view = importedNaiveDOMRegistry.getItem(viewUID);
-		localDebugLog(DHLstr(DHL) + 'OPTIMIZATION', view.nodeName, refToStyle.selectorsList[0].components[0].value);
-		return MatchingAlgorithms.BaseClass.prototype.matchOnTypeAndValue(view, refToStyle.selectorsList[0].components, 0, DHL);
+		this.localDebugLog(this.DHLstr(DHL) + 'OPTIMIZATION', view.nodeName, refToStyle.selectorsList[0].components[0].value);
+		return MatchingAlgorithms.BaseClass.prototype.isMatch(
+				view,
+				refToStyle.selectorsList[0].components,
+				0,
+				DHL
+			);
 	}
-	return false;
+	else
+		return this.validateMatch(
+				match,
+				refToStyle,
+				importedNaiveDOMRegistry,
+				DHL
+			)
 }
 
 CSSSelectorsMatcherRefiner.prototype.validateMatch = function(match, refToStyle, importedNaiveDOMRegistry, DHL) {
@@ -55,7 +63,7 @@ CSSSelectorsMatcherRefiner.prototype.validateMatch = function(match, refToStyle,
 	
 	var hasMatched = false;
 	refToStyle.selectorsList.forEach(function(selector, key) {
-		localDebugLog(DHLstr(DHL) + 'CASE: Various Selectors or Various Components');
+		this.localDebugLog(this.DHLstr(DHL) + 'CASE: Various Selectors or Various Components');
 		hasMatched = this.matchOnComponents(match, view, selector.components, DHL);
 	}, this);
 	return hasMatched;
@@ -64,7 +72,7 @@ CSSSelectorsMatcherRefiner.prototype.validateMatch = function(match, refToStyle,
 CSSSelectorsMatcherRefiner.prototype.matchOnComponents = function(match, view, componentsList, DHL) {
 	var hasMatched = false;
 	
-	if (MatchingAlgorithms.BaseClass.prototype.branchOnRelation(match, view, componentsList, componentsList.length - 1, DHL))
+	if (MatchingAlgorithms.BaseClass.prototype.branchOnRelation(view, componentsList, componentsList.length - 1, DHL))
 		hasMatched = true;
 	
 	return hasMatched;
@@ -123,18 +131,6 @@ CSSSelectorsMatcherRefiner.prototype.publishToBeComputedStyle = function(viewUID
 
 
 
-
-var DHLstr = function(DHL) {
-	var ret = '';
-	for (var i = 0, l = DHL; i < l; i++) {
-		ret += '	';
-	}
-	return ret;
-}
-
-var localDebugLog = function(str) {
-//	console.log(str);
-}
 
 
 module.exports = CSSSelectorsMatcherRefiner;

@@ -30,7 +30,7 @@ var NaiveDOMNode = function(viewWrapper, view, hierarchicalDepth, hostNode, host
 	
 	this.nodeName = view ? masterNode.nodeName.toLowerCase() : null;
 	this.nodeId = view ? masterNode.id : null;
-	this.classNames = view ? masterNode.classList.values() : null;
+	this.classNames = view ? Object.values(masterNode.classList) : null;
 	if (view) {
 		this.attributes = new CoreTypes.ListOfPairs(masterNode.attributes);
 //		console.log(masterNode.textContent);
