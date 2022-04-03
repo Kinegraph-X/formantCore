@@ -367,7 +367,7 @@ MatchOnIsFirstChild.prototype = Object.create(MatchingAlgorithms.prototype);
 MatchOnIsFirstChild.prototype.objectType = 'MatchOnIsFirstChildMatchingAlgo';
 
 MatchOnIsFirstChild.prototype.matchOnComponent = function(view, componentsList, index, DHL) {
-	this.localDebugLog(this.DHLstr(DHL) + 'CASE: Match on component:', '| nodeName is', view.nodeName, '| selector is : NthChildOdd');
+	this.localDebugLog(this.DHLstr(DHL) + 'CASE: Match on component:', '| nodeName is', view.nodeName, '| selector is : firstChild');
 	
 	var isFirst = false,
 		children = this.getDescendingNodes(this.getNextAscendingNode(view, ++DHL));
@@ -390,7 +390,7 @@ MatchOnIsLastChild.prototype = Object.create(MatchingAlgorithms.prototype);
 MatchOnIsLastChild.prototype.objectType = 'MatchOnIsLastChildMatchingAlgo';
 
 MatchOnIsLastChild.prototype.matchOnComponent = function(view, componentsList, index, DHL) {
-	this.localDebugLog(this.DHLstr(DHL) + 'CASE: Match on component:', '| nodeName is', view.nodeName, '| selector is : NthChildOdd');
+	this.localDebugLog(this.DHLstr(DHL) + 'CASE: Match on component:', '| nodeName is', view.nodeName, '| selector is : lastChild');
 	
 	var isLast = false,
 		children = this.getDescendingNodes(this.getNextAscendingNode(view, ++DHL));
