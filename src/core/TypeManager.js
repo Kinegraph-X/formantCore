@@ -819,10 +819,21 @@ var pendingStyleRegistry = new PropertyCache('pendingStyleRegistry');
  */
 var naiveDOMRegistry = new PropertyCache('naiveDOMRegistry');
 
+/**
+ * @typedStore {StoredNodeFromNaiveDOM} {UID : nodeUID}
+ */
+var layoutNodesRegistry = new PropertyCache('layoutNodesRegistry');
+
+/**
+ * @typedStore {StoredNodeFromNaiveDOM} {UID : nodeUID}
+ */
+var rasterShapesRegistry = new PropertyCache('rasterShapesRegistry');
+
 console.log(hostsDefinitionsCacheRegistry);
 console.log(listsDefinitionsCacheRegistry);
 //console.log(naiveDOMRegistry);
 console.log(masterStyleRegistry);
+console.log(rasterShapesRegistry);
 //console.log(permanentProvidersRegistry);
 
 //console.log(viewsRegistry);
@@ -853,6 +864,8 @@ Object.assign(exportedObjects, {
 	naiveDOMRegistry : naiveDOMRegistry,							// Object PropertyCache
 	masterStyleRegistry : masterStyleRegistry,						// Object PropertyCache
 	pendingStyleRegistry : pendingStyleRegistry,					// Object PropertyCache
+	rasterShapesRegistry : rasterShapesRegistry,					// Object PropertyCache
+	layoutNodesRegistry :layoutNodesRegistry,						// Object PropertyCache
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegistry : nodesRegistry,
 	viewsRegistry : viewsRegistry,

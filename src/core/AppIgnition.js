@@ -275,7 +275,7 @@ Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 			if (!component.view)
 				return;
 			
-			// TMP Hack: call artificial "hook" on LazySlottedCompoundComponent althopugh it's not a "ComponentWithHooks"
+			// TMP Hack: call artificial "hook" on LazySlottedCompoundComponent although it's not a "ComponentWithHooks"
 			// (see LazySlottedCompoundComponent & ColorSamplerSetComponent)
 			if (component instanceof Component.ComponentWithHooks || component instanceof coreComponents.LazySlottedCompoundComponent)
 				component.registerEvents();

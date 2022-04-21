@@ -36,6 +36,7 @@ SpecialDependencyInjector.prototype.getNaiveDOMTree = function () {
 			_parentNode : parentNode,
 			isShadowHost : component.view.currentViewAPI ? component.view.currentViewAPI.isShadowHost : false,
 			name : Object.getPrototypeOf(component).objectType.slice(0),
+			textContent : TypeManager.caches.attributes.getItem(component._defUID).getObjectValueByKey('textContent') || '',
 			views : {},
 			children : [],
 			styleDataStructure : component.styleHook ? component.styleHook.s : null

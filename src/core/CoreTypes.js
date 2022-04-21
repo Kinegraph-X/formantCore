@@ -56,13 +56,15 @@ Pair.prototype = {};
 
 
 var ListOfPairs = function(pseudoNameValuePairsList) {
-	for (let i = 0, l = pseudoNameValuePairsList.length; i < l; i++) {
-		this.push(
-			new Pair(
-				pseudoNameValuePairsList[i].name,
-				pseudoNameValuePairsList[i].value
-			)
-		);
+	if (Array.isArray(pseudoNameValuePairsList)) {
+		for (let i = 0, l = pseudoNameValuePairsList.length; i < l; i++) {
+			this.push(
+				new Pair(
+					pseudoNameValuePairsList[i].name,
+					pseudoNameValuePairsList[i].value
+				)
+			);
+		}
 	}
 }
 ListOfPairs.prototype = Object.create(Array.prototype);
@@ -84,7 +86,6 @@ Object.defineProperty(ListOfPairs.prototype, 'objectType', {
 
 
 var DimensionsPair = function(initialValues) {
-	this.objectType = 'DimensionsPair';
 	this.inline = initialValues ? initialValues[0] : 0;
 	this.block = initialValues ? initialValues[1] : 0;
 }
@@ -94,14 +95,17 @@ DimensionsPair.prototype.objectType = 'DimensionsPair';
 DimensionsPair.prototype.set = function(valuesPair) {
 	this.inline = valuesPair[0];
 	this.block = valuesPair[1];
+	return this;
 }
 DimensionsPair.prototype.add = function(valuesPair) {
 	this.inline += valuesPair[0];
 	this.block += valuesPair[1];
+	return this;
 }
 DimensionsPair.prototype.substract = function(valuesPair) {
 	this.inline -= valuesPair[0];
 	this.block -= valuesPair[1];
+	return this;
 }
 //dimensionsPair.prototype.getInlineValue = function() {
 //	return this.inline;
@@ -120,14 +124,161 @@ DimensionsPair.prototype.substract = function(valuesPair) {
 
 var AvailableSpace = function(initialValues) {
 	DimensionsPair.call(this, initialValues);
-	this.objectType = 'AvailableSpace';
 	this.childCount = 0;
-	this.inlineOffset = initialValues ? initialValues[2] : 0;
-	this.blockOffset = initialValues ? initialValues[3] : 0;
+	this.inlineOffset = (initialValues && initialValues[2]) || 0;
+	this.blockOffset = (initialValues && initialValues[3]) || 0;
+	this.lastOffset = new DimensionsPair();
 }
 AvailableSpace.prototype = Object.create(DimensionsPair.prototype);
 AvailableSpace.prototype.objectType = 'AvailableSpace';
 
+
+
+
+
+
+
+
+
+
+var BoxDimensions = function(initialValues) {
+	this.inline = initialValues ? initialValues[0] : 0;
+	this.block = initialValues ? initialValues[1] : 0;
+	this.borderInline = initialValues ? initialValues[2] : 0;
+	this.borderBlock = initialValues ? initialValues[3] : 0;
+	this.outerInline = initialValues ? initialValues[4] : 0;
+	this.outerBlock = initialValues ? initialValues[5] : 0;
+}
+BoxDimensions.prototype = {};
+BoxDimensions.prototype.objectType = 'BoxDimensions';
+
+BoxDimensions.prototype.set = function(valuesSixt) {
+	this.inline = valuesSixt[0] || 0;
+	this.block = valuesSixt[1] || 0;
+	this.borderInline = valuesSixt[2] || 0;
+	this.borderBlock = valuesSixt[3] || 0;
+	this.outerInline = valuesSixt[4] || 0;
+	this.outerBlock = valuesSixt[5] || 0;
+	return this;
+}
+BoxDimensions.prototype.setInnerSize = function(valuesPair) {
+	this.inline = valuesPair[0] || 0;
+	this.block = valuesPair[1] || 0;
+	return this;
+}
+BoxDimensions.prototype.setBorderSize = function(valuesPair) {
+	this.borderInline = valuesPair[0] || 0;
+	this.borderBlock = valuesPair[1] || 0;
+	return this;
+}
+BoxDimensions.prototype.setOuterSize = function(valuesPair) {
+	this.outerInline = valuesPair[0] || 0;
+	this.outerBlock = valuesPair[1] || 0;
+	return this;
+}
+BoxDimensions.prototype.add = function(valuesSixt) {
+	this.inline += valuesSixt[0] || 0;
+	this.block += valuesSixt[1] || 0;
+	this.borderInline += valuesSixt[2] || 0;
+	this.borderBlock += valuesSixt[3] || 0;
+	this.outerInline += valuesSixt[4] || 0;
+	this.outerBlock += valuesSixt[5] || 0;
+	return this;
+}
+BoxDimensions.prototype.addToInnerSize = function(valuesPair) {
+	this.inline += valuesPair[0] || 0;
+	this.block += valuesPair[1] || 0;
+	return this;
+}
+BoxDimensions.prototype.addToBorderSize = function(valuesPair) {
+	this.borderInline += valuesPair[0] || 0;
+	this.borderBlock += valuesPair[1] || 0;
+	return this;
+}
+BoxDimensions.prototype.addToOuterSize = function(valuesPair) {
+	this.outerInline += valuesPair[0] || 0;
+	this.outerBlock += valuesPair[1] || 0;
+	return this;
+}
+BoxDimensions.prototype.substract = function(valuesSixt) {
+	this.inline -= valuesSixt[0] || 0;
+	this.block -= valuesSixt[1] || 0;
+	this.borderInline -= valuesSixt[2] || 0;
+	this.borderBlock -= valuesSixt[3] || 0;
+	this.outerInline -= valuesSixt[4] || 0;
+	this.outerBlock -= valuesSixt[5] || 0;
+	return this;
+}
+BoxDimensions.prototype.substractFromInnerSize = function(valuesPair) {
+	this.inline -= valuesPair[0] || 0;
+	this.block -= valuesPair[1] || 0;
+	return this;
+}
+BoxDimensions.prototype.substractFromBorderSize = function(valuesPair) {
+	this.borderInline -= valuesPair[0] || 0;
+	this.borderBlock -= valuesPair[1] || 0;
+	return this;
+}
+BoxDimensions.prototype.substractFromOuterSize = function(valuesPair) {
+	this.outerInline -= valuesPair[0] || 0;
+	this.outerBlock -= valuesPair[1] || 0;
+	return this;
+}
+
+
+
+
+
+
+
+
+
+var BoxOffsets = function(initialValues) {
+	this.inline = initialValues ? initialValues[0] : 0;
+	this.block = initialValues ? initialValues[1] : 0;
+	this.marginInline = initialValues ? initialValues[2] : 0;
+	this.marginBlock = initialValues ? initialValues[3] : 0;
+}
+BoxOffsets.prototype = {};
+BoxOffsets.prototype.objectType = 'BoxOffsets';
+
+BoxOffsets.prototype.set = function(valuesQuart) {
+	this.inline = valuesQuart[0] || 0;
+	this.block = valuesQuart[1] || 0;
+	this.borderInline = valuesQuart[2] || 0;
+	this.borderBlock = valuesQuart[3] || 0;
+	return this;
+}
+BoxOffsets.prototype.setMarginOffsets = function(valuesPair) {
+	this.marginInline = valuesPair[0] || 0;
+	this.marginBlock = valuesPair[1] || 0;
+	return this;
+}
+
+BoxOffsets.prototype.add = function(valuesQuart) {
+	this.inline += valuesQuart[0] || 0;
+	this.block += valuesQuart[1] || 0;
+	this.marginInline += valuesQuart[2] || 0;
+	this.marginBlock += valuesQuart[3] || 0;
+	return this;
+}
+BoxOffsets.prototype.addToMarginOffsets = function(valuesPair) {
+	this.marginInline += valuesPair[0] || 0;
+	this.marginBlock += valuesPair[1] || 0;
+	return this;
+}
+BoxOffsets.prototype.substract = function(valuesQuart) {
+	this.inline -= valuesQuart[0] || 0;
+	this.block -= valuesQuart[1] || 0;
+	this.marginInline -= valuesQuart[2] || 0;
+	this.marginBlock -= valuesQuart[3] || 0;
+	return this;
+}
+BoxOffsets.prototype.substractFromMarginOffsets = function(valuesPair) {
+	this.marginInline -= valuesPair[0] || 0;
+	this.marginBlock -= valuesPair[1] || 0;
+	return this;
+}
 
 
 
@@ -2273,6 +2424,8 @@ module.exports = {
 	Pair : Pair,
 	ListOfPairs : ListOfPairs,
 	DimensionsPair : DimensionsPair,
+	BoxDimensions : BoxDimensions,
+	BoxOffsets : BoxOffsets,
 	AvailableSpace : AvailableSpace,
 	EventEmitter : EventEmitter,
 	Command : Command,

@@ -72,7 +72,7 @@ CSSSelectorsMatcher.prototype.getOffsettedMatcher = function() {
 //					getStartingOffsetInString(
 //						bufferPointerPosition, testBuffer
 //					) + currentOffset)));
-//		console.log(testType, testValue, testBuffer[bufferPointerPosition + standardOffsetForHasPseudoClass], testBuffer);
+//		console.log(testType, testValue, String.fromCharCode(testBuffer[bufferPointerPosition + standardOffsetForSelector + currentOffset]));
 
 		return testType === testBuffer[bufferPointerPosition + standardOffsetForProofType]
 				&& getStartingOffsetInString(bufferPointerPosition, testBuffer) < testValue.length
@@ -107,7 +107,8 @@ CSSSelectorsMatcher.prototype.getSelfExitingMatcher = function(branches, matcher
 		return storeMatches(
 				branches[
 						shouldMatchOnPseudoClass(bufferPointerPosition, testBuffer)
-							|| +(currentOffset > -1
+							||
+							 +(currentOffset > -1
 								&& matcher(
 									testType,
 									testValue,
@@ -224,12 +225,12 @@ CSSSelectorsMatcher.prototype.getIteratorCallback = function() {
 
 CSSSelectorsMatcher.prototype.storeMatches = function(isMatch, matchedViewUID, bufferPointerPosition, matchedBuffer) {
 	var matchedPos = bufferPointerPosition + CSSSelectorsList.prototype.optimizedSelectorBufferSchema.bufferUID.start;
-	
+//	(isMatch && console.log('isMatch', matchedBuffer.slice(matchedPos, matchedPos + 2), GeneratorFor16bitsInt.numberFromInt(matchedBuffer.slice(matchedPos, matchedPos + 2))));
 //	(isMatch && console.log('isMatch', bufferPointerPosition, matchedViewUID, ((matchedBuffer[bufferPointerPosition + 7] << 8) | matchedBuffer[bufferPointerPosition + 6]).toString()));
 	isMatch
 		&& this.matches.addResult(
 				matchedViewUID,
-				GeneratorFor16bitsInt.numberFromInt(matchedBuffer.slice(matchedPos, matchedPos + 2)).toString()
+				GeneratorFor16bitsInt.numberFromInt(matchedBuffer.slice(matchedPos, matchedPos + 2)).toString(),
 			);
 }
 
@@ -254,12 +255,12 @@ MatcherResult.prototype.reset = function() {
 	this.results = [];
 }
 
-MatcherResult.prototype.addResult = function(testedValue, UID) {
-	this.results.push(this.newResult(testedValue, UID));
+MatcherResult.prototype.addResult = function(matchedViewUID, styleUID) {
+	this.results.push(this.newResult(matchedViewUID, styleUID));
 }
 
-MatcherResult.prototype.newResult = function(testedValue, UID) {
-	return [testedValue, UID];
+MatcherResult.prototype.newResult = function(matchedViewUID, styleUID) {
+	return [matchedViewUID, styleUID];
 }
 
 

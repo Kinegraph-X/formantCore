@@ -370,11 +370,13 @@ MatchOnIsFirstChild.prototype.matchOnComponent = function(view, componentsList, 
 	this.localDebugLog(this.DHLstr(DHL) + 'CASE: Match on component:', '| nodeName is', view.nodeName, '| selector is : firstChild');
 	
 	var isFirst = false,
-		children = this.getDescendingNodes(this.getNextAscendingNode(view, ++DHL));
+		parentView = this.getNextAscendingNode(view, ++DHL),
+		children = this.getDescendingNodes(parentView),
+		offset = parentView._viewWrapper.styleDataStructure ? 1 : 0;
 	
 	children.forEach(function(childView, key) {
 		if (childView === view) {
-			isFirst = key === 0
+			isFirst = (key + offset) === 0
 		}
 	}, this);
 
@@ -393,11 +395,13 @@ MatchOnIsLastChild.prototype.matchOnComponent = function(view, componentsList, i
 	this.localDebugLog(this.DHLstr(DHL) + 'CASE: Match on component:', '| nodeName is', view.nodeName, '| selector is : lastChild');
 	
 	var isLast = false,
-		children = this.getDescendingNodes(this.getNextAscendingNode(view, ++DHL));
+		parentView = this.getNextAscendingNode(view, ++DHL),
+		children = this.getDescendingNodes(parentView),
+		offset = parentView._viewWrapper.styleDataStructure ? 1 : 0;
 	
 	children.forEach(function(childView, key) {
 		if (childView === view) {
-			isLast = key === children.length - 1;
+			isLast = (key + offset) === children.length - 1;
 		}
 	}, this);
 
@@ -416,11 +420,13 @@ MatchOnIsNthChildOdd.prototype.matchOnComponent = function(view, componentsList,
 	this.localDebugLog(this.DHLstr(DHL) + 'CASE: Match on component:', '| nodeName is', view.nodeName, '| selector is : NthChildOdd');
 	
 	var isOdd = false,
-		children = this.getDescendingNodes(this.getNextAscendingNode(view, ++DHL));
+		parentView = this.getNextAscendingNode(view, ++DHL),
+		children = this.getDescendingNodes(parentView),
+		offset = parentView._viewWrapper.styleDataStructure ? 1 : 0;
 	
 	children.forEach(function(childView, key) {
 		if (childView === view) {
-			isOdd = key % 2 === 1
+			isOdd = (key + offset) % 2 === 1
 		}
 	}, this);
 
@@ -439,11 +445,13 @@ MatchOnIsNthChildEven.prototype.matchOnComponent = function(view, componentsList
 	this.localDebugLog(this.DHLstr(DHL) + 'CASE: Match on component:', '| nodeName is', view.nodeName, '| selector is : NthChildEven');
 	
 	var isEven = false,
-		children = this.getDescendingNodes(this.getNextAscendingNode(view, ++DHL));
+		parentView = this.getNextAscendingNode(view, ++DHL),
+		children = this.getDescendingNodes(parentView),
+		offset = parentView._viewWrapper.styleDataStructure ? 1 : 0;
 	
 	children.forEach(function(childView, key) {
 		if (childView === view) {
-			isEven = key % 2 === 0
+			isEven = (key + offset) % 2 === 0
 		}
 	}, this);
 
@@ -459,7 +467,38 @@ MatchOnIsNthChildANpB.prototype = Object.create(MatchingAlgorithms.prototype);
 MatchOnIsNthChildANpB.prototype.objectType = 'MatchOnIsNthChildANpBMatchingAlgo';
 
 MatchOnIsNthChildANpB.prototype.matchOnComponent = function(view, componentsList, index, DHL) {
+//	console.log(componentsList[index]);
+	var isMatch = false,
+		parentView = this.getNextAscendingNode(view, ++DHL),
+		children = this.getDescendingNodes(parentView);
+	var groupSize = componentsList[index].pseudoClassMicroSyntax[0],
+		offset = parentView._viewWrapper.styleDataStructure ? 1 : 0;
+		// nth-child count starts at 1
+	var stdOffset = 1;
 	
+	if (groupSize === 1)
+		return true;
+	else if (groupSize === 0) {
+		children.forEach(function(childView, key) {
+			if (childView === view)
+				isMatch = (stdOffset + key + offset - componentsList[index].pseudoClassMicroSyntax[1]) === 0;
+		}, this);
+	}
+	else {
+		children.forEach(function(childView, key) {
+			if (childView === view) {
+				if ((stdOffset + offset + key - componentsList[index].pseudoClassMicroSyntax[1]) % groupSize === 0)
+					isMatch = true;
+			}
+		}, this);
+	}
+	
+	if (isMatch)
+		this.localDebugLog(this.DHLstr(DHL) + 'MATCH:', view.nodeName, 'MATCHED ON', componentsList[index].pseudoClassMicroSyntax[0] + 'n+' + componentsList[index].pseudoClassMicroSyntax[1]);
+	else
+		this.localDebugLog(this.DHLstr(DHL) + 'MATCH:', view.nodeName, 'DIDN\'T MATCH ON', componentsList[index].pseudoClassMicroSyntax[0] + 'n+' + componentsList[index].pseudoClassMicroSyntax[1]);
+	
+	return isMatch;
 }
 
 

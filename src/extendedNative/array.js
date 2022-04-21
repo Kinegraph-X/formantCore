@@ -382,7 +382,26 @@ Object.defineProperty(ArrayBuffer.prototype, 'bufferToString', {
 	//		return str;
 		}
 //		console.log(Array.prototype.slice.call(tArray));
-		return String.fromCharCode(...tArray);
+		return String.fromCharCode(...Array.prototype.slice.call(tArray));
+	}
+});
+
+Object.defineProperty(Uint8Array.prototype, 'bufferToString', {
+	writable : false,
+	value : function (strLength) {
+		if (strLength) {
+			return String.fromCharCode(...Array.prototype.slice.call(this.slice(0, strLength)));
+		}
+		else {
+			var tArray = this;
+			for(var i = 0, l = this.byteLength; i < l; i++) {
+				if (this[i] === 0) {
+					tArray = this.slice(0, i);
+					break;
+				}
+			}
+			return String.fromCharCode(...Array.prototype.slice.call(tArray));
+		}
 	}
 });
 

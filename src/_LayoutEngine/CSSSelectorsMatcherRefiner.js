@@ -9,7 +9,7 @@ var MatchingAlgorithms = require('src/_LayoutEngine/MatchingAlgorithms');
 
 var CSSSelectorsMatcherRefiner = function() {
 	this.objectType = 'CSSSelectorsMatcherRefiner';
-	
+	TypeManager.pendingStyleRegistry.cache = {};
 }
 CSSSelectorsMatcherRefiner.prototype = {};
 CSSSelectorsMatcherRefiner.prototype.objectType = 'CSSSelectorsMatcherRefiner';
@@ -19,7 +19,7 @@ CSSSelectorsMatcherRefiner.prototype.localDebugLog = CSSSelectorsList.prototype.
 // HACK: importedNaiveDOMRegistry is needed when we get the naiveDOM from an outer IFrame
 CSSSelectorsMatcherRefiner.prototype.refineMatches = function(matchResult, importedNaiveDOMRegistry, importedMasterStyleRegistry) {
 	return matchResult.results.filter(function(match) {
-		this.localDebugLog('INITIAL CALL');
+		this.localDebugLog('INITIAL CALL', match[1], importedMasterStyleRegistry.getItem(match[1]).selectorsList[0].selectorStr);
 		return this.fastValidateMatch(
 				match,
 				importedMasterStyleRegistry.getItem(match[1]),		// importedMasterStyleRegistry is needed when we get the sWrappers from an outer IFrame
@@ -78,36 +78,10 @@ CSSSelectorsMatcherRefiner.prototype.matchOnComponents = function(match, view, c
 	return hasMatched;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * 
- * @param String viewUID : The UID stored on the view type we defined in our naiveDOM experiment
- * @param sWrapper refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
+ * @param {String} viewUID : The UID stored on the view type we defined in our naiveDOM experiment
+ * @param {StyleRule} refToStyle : The sWrapper instance we retrieved from the masterStyleRegistry (see CSSSelectorsMatcherRefiner.refineMatches)  
  */
 CSSSelectorsMatcherRefiner.prototype.publishToBeComputedStyle = function(viewUID, refToStyle) {
 	// TODO: should test for the existence of the key, an create/update an array
@@ -116,7 +90,7 @@ CSSSelectorsMatcherRefiner.prototype.publishToBeComputedStyle = function(viewUID
 		pendingStyles.push(refToStyle);
 	else
 		TypeManager.pendingStyleRegistry.setItem(viewUID, [refToStyle]);
-//	console.log('publishToBeComputedStyle', viewUID, TypeManager.pendingStyleRegistry.getItem(viewUID));
+//	console.log('publishToBeComputedStyle', viewUID, TypeManager.pendingStyleRegistry);
 	return true;
 }
 

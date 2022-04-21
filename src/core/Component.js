@@ -143,7 +143,9 @@ HierarchicalObject.prototype.removeChildAt = function(atIndex) {
  * 
  */
 HierarchicalObject.prototype.removeAllChildren = function() {
-	this.onRemoveChild();
+	this._children.forEach(function(child) {
+		this.onRemoveChild(child);
+	}, this);
 	this._children.length = 0;
 	return true;
 }
@@ -582,7 +584,7 @@ var AbstractComponent = function(definition, parentView, parent) {
 	this._defComposedUID = '';
 	
 	if (typeof this._defUID === 'undefined') {
-		console.warn('No UID found in definition: the hierarchical structure of the def might be wrong. eg: a group def has been defined and its type is not "CompoundComponent", etc. Returning...');
+		console.warn('No UID found in definition: the hierarchical structure of the def might be wrong. eg: a group def has been defined and its type is not "CompoundComponent", etc. Returning...', definition);
 		return;
 	}
 	
@@ -841,6 +843,24 @@ ComponentWithView.prototype.onRemoveChild = function(child) {
 		}
 //		this.view.subViewsHolder.subViews[1].getMasterNode().length = 0;
 //		this.view.getMasterNode().remove();
+	}
+	else if (child) {
+		if (child.view.subViewsHolder.subViews.length) {
+			child.view.subViewsHolder.subViews.forEach(function(subView, key) {
+				while (subView.getMasterNode().firstChild) {
+					subView.getMasterNode().removeChild(subView.getMasterNode().lastChild);
+				}
+			}, child);
+		}
+		child._children.forEach(function(childOfChild, key) {
+			childOfChild.view.getMasterNode().remove();
+		}, child);
+		if (child.view.subViewsHolder.memberViews.length) {
+			child.view.subViewsHolder.memberViews.forEach(function(member, key) {
+				member.getMasterNode().remove();
+			}, child);
+		}
+		child.view.getMasterNode().remove();
 	}
 	else if (child instanceof ComponentWithObservables){
 		// remove a child

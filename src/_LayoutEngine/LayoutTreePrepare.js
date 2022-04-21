@@ -12,8 +12,12 @@
 
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
+var UIDGenerator = require('src/core/UIDGenerator').UIDGenerator;
+var Style = require('src/editing/Style');
+
 var NaiveDOMNode = require('src/_LayoutEngine/NaiveDOMNode');
 var CSSSelectorsMatcher = require('src/_LayoutEngine/CSSSelectorsMatcher');
+var CSSPropertyBuffer = require('src/editing/CSSPropertyBuffer');
 var CSSPropertySetBuffer = require('src/editing/CSSPropertySetBuffer');
 var CSSPropertyDescriptors = require('src/editing/CSSPropertyDescriptors');
 
@@ -31,11 +35,16 @@ var FlexLayoutAlgo = require('src/_LayoutEngine/L_flexLayoutAlgo');
 var TextLayoutAlgo = require('src/_LayoutEngine/L_textLayoutAlgo');
 var NoLayoutAlgo = require('src/_LayoutEngine/L_noLayoutAlgo');
 
+var CanvasTypes = require('src/core/WebCanvasCoreTypes');
+
 
 var LayoutTreePrepare = function(naiveDOM, collectedSWrappers, importedMasterStyleRegistry) {
 	this.objectType = 'LayoutTreePrepare';
 	
 	this.masterStyleRegistry = importedMasterStyleRegistry;
+	TypeManager.layoutNodesRegistry.cache = {};
+	TypeManager.rasterShapesRegistry.cache = {};
+//	console.log('TypeManager.rasterShapesRegistry', TypeManager.rasterShapesRegistry);
 	
 	this.layoutTree = this.constructLayoutTree(naiveDOM, collectedSWrappers);
 }
@@ -43,9 +52,9 @@ LayoutTreePrepare.prototype = {};
 LayoutTreePrepare.prototype.objectType = 'LayoutTreePrepare';
 
 LayoutTreePrepare.prototype.constructLayoutTree = function(naiveDOM, collectedSWrappers) {
-	var layoutViewPort = new LayoutRoot(new CoreTypes.DimensionsPair(this.retrieveWindowInitialSize()));
+	var layoutViewPort = new LayoutRoot(this.retrieveWindowInitialSize());
 	// FIXME: We retrieve the style of the body tag, but we should retrieve ALL the cascade of styles from "body" to the ACTUAL container
-//	this.retrieveWindowStyle(layoutViewPort, naiveDOM, collectedSWrappers);
+	this.retrieveWindowStyle(layoutViewPort, naiveDOM, collectedSWrappers);
 	var layoutRoot = new LayoutNode(naiveDOM.views.memberViews[2], layoutViewPort);
 	return new LayoutTreeBuilder(naiveDOM, layoutRoot);
 }
@@ -53,11 +62,12 @@ LayoutTreePrepare.prototype.constructLayoutTree = function(naiveDOM, collectedSW
 LayoutTreePrepare.prototype.retrieveWindowInitialSize = function() {
 	// FIXME: the width of the body is, for now, the width of the styleSolverDebugView IFrame, not the styleSolverRenderView IFrame
 	var rootBoundingRect = document.body.getBoundingClientRect();
-	return [rootBoundingRect.width, rootBoundingRect.height];
+	return [parseInt(rootBoundingRect.width), parseInt(rootBoundingRect.height)];
 }
 
 LayoutTreePrepare.prototype.retrieveWindowStyle = function(layoutViewPort, naiveDOM, collectedSWrappers) {
-
+	// HACK: the style  solver shall reset the TypeManager.pendingStyleRegistry => cache it;
+	var cache = TypeManager.pendingStyleRegistry.cache;
 	var styleSolver = new ComputedStyleSolver(naiveDOM, collectedSWrappers);
 	styleSolver.CSSSelectorsMatcher.CSSRulesBuffer = styleSolver.CSSRulesBufferManager.CSSRulesBuffer;
 	
@@ -66,6 +76,12 @@ LayoutTreePrepare.prototype.retrieveWindowStyle = function(layoutViewPort, naive
 	styleSolver.CSSSelectorsMatcher.iterateOnRulesAndMatchSelector(3, 'body', naiveDOM.views.memberViews[2]._UID, 0, rulesBufferLength);
 	
 	layoutViewPort.setViewportStyle(styleSolver.CSSSelectorsMatcher.matches.results, this.masterStyleRegistry);
+	
+	TypeManager.pendingStyleRegistry.cache = cache;
+}
+
+LayoutTreePrepare.prototype.newFakeLayoutNode = function() {
+	return (new LayoutRoot([0, 0]));
 }
 
 
@@ -83,29 +99,36 @@ LayoutTreeBuilder.prototype.objectType = 'LayoutTreeBuilder';
 LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMNode, layoutParentNode) {
 	var currentLayoutNode = layoutParentNode, childLayoutNode, childDOMNodeAsAView, subChildLayoutNode, textContentKey, textNode;
 	
-	sourceDOMNode.children.forEach(function(childDOMNode) {
+	sourceDOMNode.children.forEach(function(childDOMNode, childIndex) {
 		var typeIdx = 0, currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
+//		console.log(currentViewType, childDOMNode.views.masterView.nodeName, childLayoutNode);
 		// when represented as naiveDOM, leaf-components have no children, they only hold views
 		while (currentViewType) {
 			// childDOMNode.views.masterView is ALWAYS flat
 			if (typeIdx === 0) {
+				
 				childDOMNodeAsAView = childDOMNode.views.masterView;
 //				childLayoutNode = new LayoutNode(childDOMNodeAsAView, layoutParentNode);
 				// TODO: optimization : textContent may be passed as an argument to the layoutNode Ctor
 				// TODO: optimization : the presence of a textContent may be identified by a less expensive mean
+				
 				if ((textContentKey = childDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false) {
-
+//					console.log(childDOMNodeAsAView.attributes[textContentKey].value);
 					textNode = new NaiveDOMNode();
+					textNode._UID = +Infinity;	// we must NOT match any style (UIDgenerator is out of sync, as UID were generated in another IFrame)
+					textNode.nodeName = 'textNode'
 					textNode.attributes.push(new CoreTypes.Pair(
 						'textContent',
 						childDOMNodeAsAView.attributes[textContentKey].value
 					));
 					childDOMNodeAsAView.attributes.splice(textContentKey, 1);
-					childLayoutNode = new LayoutNode(childDOMNodeAsAView, layoutParentNode);
-					new LayoutNode(textNode, childLayoutNode, true);
+					childLayoutNode = new LinkedLayoutNode(childDOMNodeAsAView, layoutParentNode, childLayoutNode, childIndex === sourceDOMNode.children.length - 1 ? true : false);
+					new LayoutNode(textNode, childLayoutNode);
 				}
 				else
-					childLayoutNode = new LayoutNode(childDOMNodeAsAView, layoutParentNode, true);
+//					childLayoutNode = new LayoutNode(childDOMNodeAsAView, layoutParentNode);
+					childLayoutNode = new LinkedLayoutNode(childDOMNodeAsAView, layoutParentNode, childLayoutNode, childIndex === sourceDOMNode.children.length - 1 ? true : false);
+//				console.log(currentViewType, childDOMNode.views.masterView.nodeName, childLayoutNode);
 			}
 			else {
 				subChildLayoutNode = undefined;
@@ -148,35 +171,109 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 
 
 var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode) {
-	this.objectType = 'LayoutNode';
 	this._parent = layoutParentNode;
 	this.nodeName = sourceDOMNodeAsView.nodeName;
 	
 	// TODO: optimization : textContent may be passed as an argument to the layoutNode Ctor
+	this.inputLength = sourceDOMNodeAsView.attributes.findObjectByValue('name', 'size') || this.defaultInputSize;
 	var textContent = sourceDOMNodeAsView.attributes.findObjectByValue('name', 'textContent');
 	this.textContent = textContent ? textContent.value : '';
 	this.isTextNode = this.textContent.length ? true : false;
 	
 	this.availableSpace = new CoreTypes.AvailableSpace();
 	this.computedStyle = new CSSPropertySetBuffer();
-	
-	var applicableStyles = this.queryStyleUpdate(sourceDOMNodeAsView);
 
 	this.populateInheritedStyle();
-	this.populateAllComputedStyle(applicableStyles);
+	this.populateAllComputedStyle(this.queryStyleUpdate(sourceDOMNodeAsView));
 	
-	this.dimensions = new CoreTypes.DimensionsPair();
-	this.offsets = new CoreTypes.DimensionsPair();
+	this.dimensions = new CoreTypes.BoxDimensions();
+	this.offsets = new CoreTypes.BoxOffsets();
 	
-	this.isFlexChild = false;
+	this.canvasShape = this.getCanvasShape();
+	
 	this.layoutAlgo = this.getLayoutAlgo(this.nodeName);
+	TypeManager.layoutNodesRegistry.setItem(UIDGenerator.newUID(), this);
 
-	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.dimensions);
-	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.offsets);
+//	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.dimensions);
+//	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.offsets);
 }
 LayoutNode.prototype = {};
 LayoutNode.prototype.objectType = 'LayoutNode';
 
+LayoutNode.prototype.getCanvasShape = function() {
+	var fillColor = this.computedStyle.getTokenTypeForPropAsConstant('backgroundColor') === CSSPropertyBuffer.prototype.TokenTypes.HashToken
+		// OPTIMIZATION: parseInt('0x' + )... can be replaced by a hash-prefixed hexa string
+		? parseInt('0x' + this.computedStyle.getPropAsString('backgroundColor').slice(1, 7))
+		// light-blue shall mean 'transparent' when debugging
+		: 0xAACCFF;
+	var fillAlpha = this.computedStyle.getTokenTypeForPropAsConstant('backgroundColor') === CSSPropertyBuffer.prototype.TokenTypes.IdentToken
+		? 0
+		: 1;
+	var lineColor = this.computedStyle.getTokenTypeForPropAsConstant('borderBlockStartColor') === CSSPropertyBuffer.prototype.TokenTypes.HashToken
+		? parseInt('0x' + this.computedStyle.getPropAsString('borderBlockStartColor').slice(1, 7))
+		// light-blue shall mean 'transparent' when debugging
+		: 0xAACCFF;
+	var borderWidth = this.computedStyle.getPropAsNumber('borderBlockStartWidth');
+//	console.error(this.computedStyle.getPropAsNumber('borderBlockStartWidth'));
+	
+	if (this.nodeName === 'textNode') {
+		var canvasShape = new CanvasTypes._text(
+			this.textContent,
+			new CanvasTypes.TextStyle({
+				fontFamily : this.computedStyle.getPropAsString('fontFamily'),
+				fontColor : this.computedStyle.getPropAsString('color'),
+				fontSize : this.computedStyle.getPropAsString('fontSize'),
+				fontWeight : this.computedStyle.getPropAsString('fontWeight'),
+				lineHeight : this.computedStyle.getPropAsNumber('lineHeight'), // 	/!\ NUMBER /!\
+				textAlign : this.computedStyle.getPropAsString('textAlign')
+			}),
+			new CanvasTypes.Position({x : this.offsets.inline, y : this.offsets.block})
+		);
+	}
+	else if (this.nodeName === 'input') {
+		var canvasShape = new CanvasTypes.InputShape(
+			new CanvasTypes.Position({x : this.offsets.inline, y : this.offsets.block}),
+			new CanvasTypes.Size({width : this.dimensions.inline, height : this.dimensions.block})
+		);
+	}
+	else {
+		var canvasShape = new CanvasTypes.NodeShape(
+			new CanvasTypes.Position({x : this.offsets.inline, y : this.offsets.block}),
+			new CanvasTypes.Size({width : this.dimensions.borderInline, height : this.dimensions.borderBlock}),
+			// FIXME: What to do when we want 4 different borders ?
+			new CanvasTypes.LineStyle({lineColor : lineColor, lineWidth : borderWidth}),
+			new CanvasTypes.FillStyle({fillColor : fillColor, fillAlpha : fillAlpha}),
+			null,
+			borderWidth
+		);
+	}
+	TypeManager.rasterShapesRegistry.setItem(UIDGenerator.newUID(), canvasShape);
+//	console.log('canvasShape', canvasShape);
+	return canvasShape;
+}
+
+LayoutNode.prototype.updateCanvasShapeOffsets = function() {
+	if (this.nodeName === 'textNode') {
+		this.canvasShape.position.x = parseInt(this.offsets.marginInline) + 1;
+		this.canvasShape.position.y = parseInt(this.offsets.marginBlock) + 1;
+	}
+	else {
+		this.canvasShape.position.x = parseInt(this.offsets.marginInline) + .5;
+		this.canvasShape.position.y = parseInt(this.offsets.marginBlock) + .5;
+	}
+	
+//	console.log('this.canvasShape.position', this.canvasShape.position);
+	this.canvasShape.reDraw();
+//	console.log(this.canvasShape, this.canvasShape.shape._geometry.graphicsData[0]);
+}
+
+LayoutNode.prototype.updateCanvasShapeDimensions = function() {
+//	console.log(this.nodeName, this.dimensions);//, this.canvasShape.shape._geometry && this.canvasShape.shape._geometry.graphicsData[0].shape);
+	this.canvasShape.size.width = parseInt(this.dimensions.borderInline);
+	this.canvasShape.size.height = parseInt(this.dimensions.borderBlock);
+	this.canvasShape.reDraw();
+//	console.log(this.canvasShape, this.canvasShape.shape._geometry.graphicsData[0]);
+}
 
 
 LayoutNode.prototype.queryStyleUpdate = function(sourceDOMNodeAsView) {
@@ -191,9 +288,9 @@ LayoutNode.prototype.publishRequestForStyleUpdate = function(viewUID) {
 	// => populate the TypeManager.pendingStyleRegistry with an array
 	// 		in CSSSelectorsMatcherRefiner.publishToBeComputedStyle
 	// => get it back here and iterate in LayoutNode.prototype.populateAllComputedStyle
-
+//	console.log(viewUID, TypeManager.pendingStyleRegistry);
 	var matchedStyles = TypeManager.pendingStyleRegistry.getItem(viewUID);
-	return matchedStyles ? matchedStyles : [new SplittedAttributes({})];
+	return matchedStyles ? matchedStyles : [new Style(null, 'dummy', {})];
 }
 
 LayoutNode.prototype.populateInheritedStyle = function() {
@@ -204,10 +301,12 @@ LayoutNode.prototype.populateInheritedStyle = function() {
 }
 
 LayoutNode.prototype.populateAllComputedStyle = function(matchedStyles) {
-	var attrIFace, orderedStyles = matchedStyles;
-	orderedStyles.forEach(function(style) {
+	matchedStyles.sort(this.sortBySpecificity);
+	var attrIFace;
+	matchedStyles.forEach(function(style) {
 		attrIFace = style.attrIFace;
 		for (var attrGroup in attrIFace) {
+//			console.log(this.nodeName, attrGroup, attrIFace[attrGroup].CSSPropertySetBuffer.getDefinedPropertiesFromGroupAsAttributesList(attrGroup));
 			this.computedStyle.overridePropertyGroupFromGroupBuffer(
 				attrGroup,
 				attrIFace[attrGroup].CSSPropertySetBuffer.getPropertyGroupAsBuffer(attrGroup)
@@ -220,11 +319,11 @@ LayoutNode.prototype.getLayoutAlgo = function(nodeName) {
 	var valueOfDisplayProp = this.isTextNode ? '' : this.getDisplayProp(nodeName);
 	
 	switch (valueOfDisplayProp) {
-		case 'inline' : return new InlineLayoutAlgo(this);
-		case 'block' : return new BlockLayoutAlgo(this);
-		case 'inline-block' : return new InlineBlockLayoutAlgo(this);
-		case 'flex' : return new FlexLayoutAlgo(this);
-		case 'none' : return new NoLayoutAlgo(this);
+		case this.displayPropsAsConstants.inline : return new InlineLayoutAlgo(this);
+		case this.displayPropsAsConstants.block : return new BlockLayoutAlgo(this);
+		case this.displayPropsAsConstants.inlineBlock : return new InlineBlockLayoutAlgo(this);
+		case this.displayPropsAsConstants.flex : return new FlexLayoutAlgo(this);
+		case this.displayPropsAsConstants.none : return new NoLayoutAlgo(this);
 		default : return this.isTextNode ? new TextLayoutAlgo(this, this.textContent) : new InlineLayoutAlgo(this);
 	}
 }
@@ -235,11 +334,9 @@ LayoutNode.prototype.getDisplayProp = function(nodeName) {
 	if (!valueOfDisplayProp.length)
 		console.warn('LayoutNode ' + this.nodeName + ' : valueOfDisplayProp has a zero length. Seems the CSS initialValue hasn\'t been taken in account', this.computedStyle);
 	
-	if (valueOfDisplayProp === 'inline') {
-		if (this._parent.layoutAlgo.algoName === 'flex') {
-			this.isFlexChild = true;
-			return 'inline-block';
-		}
+	if (valueOfDisplayProp === this.displayPropsAsConstants.inline) {
+		if (this._parent.layoutAlgo.algoName === this.displayPropsAsConstants.flex)
+			return this.displayPropsAsConstants.inlineBlock;
 		else 		// inline is the initialValue: style may not be explicitly defined -> apply here sort of a user-agent stylesheet for now
 			return this.defaultToBrowserDefinedDisplayProp(nodeName);
 	}
@@ -276,6 +373,37 @@ LayoutNode.prototype.defaultToBrowserDefinedDisplayProp = function(nodeName) {	/
 	}
 }
 
+LayoutNode.prototype.displayPropsAsConstants = {
+	inline : 'inline',
+	block : 'block',
+	inlineBlock : 'inline-block',
+	flex : 'flex',
+	none : 'none'
+}
+
+LayoutNode.prototype.defaultInputSize = 20;
+
+LayoutNode.prototype.sortBySpecificity = function(aValue, bValue) {
+	var realAValue, realBValue, aValueSpecificity = 0, bValueSpecificity = 0;
+	aValue.selectorsList.forEach(function(selector) {
+		if (selector.specificity > aValueSpecificity) {
+			aValueSpecificity = selector.specificity;
+			realAValue = selector;
+		}
+	});
+	bValue.selectorsList.forEach(function(selector) {
+		if (selector.specificity > bValueSpecificity) {
+			bValueSpecificity = selector.specificity
+			realBValue = selector;
+		}
+	});
+	return realAValue.specificity > realBValue.specificity
+		? 1
+		: (realAValue.specificity < realBValue.specificity
+			? -1
+			: 0)
+}
+
 
 
 
@@ -286,8 +414,13 @@ LayoutNode.prototype.defaultToBrowserDefinedDisplayProp = function(nodeName) {	/
 
 var LinkedLayoutNode = function(sourceDOMNodeAsView, layoutParentNode, previousSiblingLayoutNode, isLastChild) {
 	this.isLastChild = isLastChild;
+	this._parent = layoutParentNode;
 	this.previousSibling = previousSiblingLayoutNode;
+//	console.log('this._parent.nodeName', this._parent.nodeName, 'this._parent.availableSpace.childCount', this._parent.availableSpace.childCount);
+	this._parent.availableSpace.childCount++;
+	
 	LayoutNode.call(this, sourceDOMNodeAsView, layoutParentNode);
+	this.objectType = 'LinkedLayoutNode';
 }
 LinkedLayoutNode.prototype = Object.create(LayoutNode.prototype);
 LinkedLayoutNode.prototype.objectType = 'LinkedLayoutNode';
@@ -324,25 +457,32 @@ LinkedLayoutNode.prototype.climbChildrenLinkedListAndCallbackLayoutAlgo = functi
 
 
 
-var LayoutRoot = function(dimensionsPair) {
+var LayoutRoot = function(dimensionsPairAsArray) {
 	this.objectType = 'LayoutRoot';
 	this.nodeName = 'viewport';
-	
-	this.availableSpace = new CoreTypes.AvailableSpace();
+//	console.log(dimensionsPairAsArray);
+	this.availableSpace = dimensionsPairAsArray
+		? new CoreTypes.AvailableSpace(dimensionsPairAsArray)
+		: new CoreTypes.AvailableSpace();
 	this.computedStyle = new CSSPropertySetBuffer();
-	this.dimensions = dimensionsPair || new CoreTypes.DimensionsPair();
-	this.offsets = new CoreTypes.DimensionsPair();
+	this.dimensions = new CoreTypes.BoxDimensions(dimensionsPairAsArray) || new CoreTypes.BoxDimensions();
+	this.offsets = new CoreTypes.BoxOffsets();
 	this.layoutAlgo = new BaseLayoutAlgo(this);
+	
+//	this.canvasShape = this.getCanvasShape();
 }
 LayoutRoot.prototype = Object.create(LayoutNode.prototype);
 LayoutRoot.prototype.objectType = 'LayoutRoot';
 
 LayoutRoot.prototype.setViewportStyle = function(selectorMatches, masterStyleRegistry) {
-//	console.log(masterStyleRegistry);
 	selectorMatches.forEach(function(result, key) {
-		this.populateAllComputedStyle(masterStyleRegistry.getItem(result[1]).attrIFace);
+		this.populateAllComputedStyle([masterStyleRegistry.getItem(result[1])]);
 	}, this);
 }
+
+LayoutRoot.prototype.updateCanvasShapeOffsets = function() {}		// noOp() needed
+
+LayoutRoot.prototype.updateCanvasShapeDimensions = function() {}	// noOp() needed
 
 
 

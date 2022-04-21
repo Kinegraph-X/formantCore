@@ -7,25 +7,26 @@ var CanvasTypes = {
 	defaultLineWidth: 1,
 	defaultLineColor: 0x777777,
 	defaultLineAlpha: 1,
+	defaultLineAlignement : 1,
+	defaultLineDash : 0,
 	itemBgColor: 0xFFFFFF,
 	itemBorderColor: 0xDADADA,
-	defaultBorderWidth: 1,
-	defaultFontSize: '24px',
+	defaultBorderWidth: 0,
+	defaultBorderRadius: 0,
+	defaultFontSize: '14px',
 	defaultFontFamily: 'Arial Narrow',
 	defaultFontWeight: '400',
 	defaultFontColor: 0x000000,
 	defaultFontAlign: 'left',
-	defaultLineHeight: 29,
+	defaultLineHeight: 25,
 	defaultSubflow: 'neutral',
 	defaultHandleHeight: 57,
 	defaultHandleWidth: 7,
-	defaultSplineWidth: 4,
 	defaultBigSplineWidth: 12,
 	defaultSplineColor: 0xDDDDDD,
 	defaultSplineDash: [
 
 	],
-	defaultSplineAlpha: .64,
 	defaultTensionOffset: 22,
 	variableAlpha: 1,
 	defaultColors: {
@@ -34,9 +35,9 @@ var CanvasTypes = {
 		"special": 0x000000
 	},
 	graphStartingPoint: { x: 0, y: 0 },
+	defaultLineHeight: 25,
 	defaultBoxWidth: 64,
 	defaultBoxHeight: 64,
-	defaultBorderRadius: 2,
 	defaultH_Interval: 84,
 	defaultV_Interval: 12
 };
@@ -51,82 +52,121 @@ var CanvasTypes = {
 
 
 CanvasTypes.LineStyle = function(obj) {
+	this.lineWidth = this.default_lineWidth;
+	this.lineColor = this.default_lineColor;
+	this.lineAlpha = this.default_lineAlpha;
+	this.lineDash = this.default_lineDash;
 	if (Object.prototype.toString.call(obj) === '[object Object]')
 		Object.assign(this, obj);
 }
 
-Object.defineProperty(CanvasTypes.prototype, 'lineWidth', {
+Object.defineProperty(CanvasTypes.LineStyle.prototype, 'default_lineWidth', {
 	value: CanvasTypes.defaultLineWidth
 });
-Object.defineProperty(CanvasTypes.prototype, 'color', {
+Object.defineProperty(CanvasTypes.LineStyle.prototype, 'default_lineColor', {
 	value: CanvasTypes.itemBorderColor
 });
-Object.defineProperty(CanvasTypes.prototype, 'lineAlpha', {
-	value: CanvasTypes.defaultSplineAlpha
+Object.defineProperty(CanvasTypes.LineStyle.prototype, 'default_lineAlpha', {
+	value: CanvasTypes.defaultLineAlpha
 });
-Object.defineProperty(CanvasTypes.prototype, 'lineDash', {
-	value: CanvasTypes.defaultSplineDash
+Object.defineProperty(CanvasTypes.LineStyle.prototype, 'default_lineAlignement', {
+	value: CanvasTypes.defaultLineAlignement
+});
+Object.defineProperty(CanvasTypes.LineStyle.prototype, 'default_lineDash', {
+	value: CanvasTypes.defaultLineDash
 });
 
 CanvasTypes.FillStyle = function(obj) {
+	this.fillColor = this.default_fillColor;
+//	if (obj && isNaN(obj.fillColor))
+//		console.error('this.fillColor_pre', this.fillColor, obj);
+	this.fillAlpha = this.default_fillAlpha;
 	if (Object.prototype.toString.call(obj) === '[object Object]')
 		Object.assign(this, obj);
+//	console.log('this.fillColor_post', this.fillColor);
 }
-Object.defineProperty(CanvasTypes.prototype, 'fillColor', {
+Object.defineProperty(CanvasTypes.FillStyle.prototype, 'default_fillColor', {
 	value: CanvasTypes.itemBgColor
 });
-Object.defineProperty(CanvasTypes.prototype, 'fillAlpha', {
+Object.defineProperty(CanvasTypes.FillStyle.prototype, 'default_fillAlpha', {
 	value: CanvasTypes.variableAlpha
 });
 
-CanvasTypes.textStyle = function(obj) {
+CanvasTypes.TextStyle = function(obj) {
+	this.fontFamily = this.default_fontFamily;
+	this.fontColor = this.default_fontColor;
+	this.fontSize = this.default_fontSize;
+	this.fontWeight = this.default_fontWeight;
+	this.textAlign = this.default_textAlign;
 	if (Object.prototype.toString.call(obj) === '[object Object]')
 		Object.assign(this, obj);
-
-	if (this.fontSize !== CanvasTypes.options.defaultFontSize)
+	
+	// FIXME: this.fontSize.slice(0, 2) was right once upon a time, but we shall get something better from the calling code now...
+	if (this.fontSize !== CanvasTypes.defaultFontSize)
 		this.lineHeight = Number(this.fontSize.slice(0, 2)) + 5;
 	else
-		this.lineHeight = CanvasTypes.options.defaultFontSize;
+		this.lineHeight = CanvasTypes.defaultFontSize;
 }
-Object.defineProperty(CanvasTypes.prototype, 'fontFamily', {
+Object.defineProperty(CanvasTypes.TextStyle.prototype, 'default_fontFamily', {
 	value: CanvasTypes.defaultFontFamily
 });
-Object.defineProperty(CanvasTypes.prototype, 'fontColor', {
+Object.defineProperty(CanvasTypes.TextStyle.prototype, 'default_fontColor', {
 	value: CanvasTypes.defaultFontColor
 });
-Object.defineProperty(CanvasTypes.prototype, 'fontSize', {
+Object.defineProperty(CanvasTypes.TextStyle.prototype, 'default_fontSize', {
 	value: CanvasTypes.defaultFontSize
 });
-Object.defineProperty(CanvasTypes.prototype, 'fontWeight', {
+Object.defineProperty(CanvasTypes.TextStyle.prototype, 'default_fontWeight', {
 	value: CanvasTypes.defaultFontWeight
 });
-Object.defineProperty(CanvasTypes.prototype, 'textAlign', {
+Object.defineProperty(CanvasTypes.TextStyle.prototype, 'default_textAlign', {
 	value: CanvasTypes.defaultFontAlign
 });
-Object.defineProperty(CanvasTypes.prototype, 'lineHeight', {
+Object.defineProperty(CanvasTypes.TextStyle.prototype, 'default_lineHeight', {
 	value: CanvasTypes.defaultLineHeight
 });
 
 CanvasTypes.Position = function(obj) {
+	this.x = this.default_x;
+	this.y = this.default_y;
 	if (Object.prototype.toString.call(obj) === '[object Object]')
 		Object.assign(this, obj);
 }
-Object.defineProperty(CanvasTypes.prototype, 'x', {
+Object.defineProperty(CanvasTypes.Position.prototype, 'default_x', {
 	value: 0
 });
-Object.defineProperty(CanvasTypes.prototype, 'y', {
+Object.defineProperty(CanvasTypes.Position.prototype, 'default_y', {
 	value: 0
 });
 
 CanvasTypes.Size = function(obj) {
+	this.width = this.default_width;
+	this.height = this.default_height;
 	if (Object.prototype.toString.call(obj) === '[object Object]')
 		Object.assign(this, obj);
 }
-Object.defineProperty(CanvasTypes.prototype, 'width', {
+Object.defineProperty(CanvasTypes.Size.prototype, 'default_width', {
 	value: CanvasTypes.defaultBoxWidth
 });
-Object.defineProperty(CanvasTypes.prototype, 'height', {
+Object.defineProperty(CanvasTypes.Size.prototype, 'default_height', {
 	value: CanvasTypes.defaultBoxHeight
+});
+
+CanvasTypes.Rotation = function(obj) {
+	this.x = 0;
+	this.y = 0;
+	this.z = 0;
+	if (Object.prototype.toString.call(obj) === '[object Object]')
+		Object.assign(this, obj);
+}
+Object.defineProperty(CanvasTypes.Size.prototype, 'default_x', {
+	value: CanvasTypes.defaultRotationX
+});
+Object.defineProperty(CanvasTypes.Size.prototype, 'default_y', {
+	value: CanvasTypes.defaultRotationY
+});
+Object.defineProperty(CanvasTypes.Size.prototype, 'default_z', {
+	value: CanvasTypes.defaultRotationZ
 });
 
 
@@ -159,19 +199,21 @@ CanvasTypes._baseShape = function(lineStyle, fillStyle) {
 	this.lineWidth = lineStyle.lineWidth;
 	this.lineColor = lineStyle.lineColor;
 	this.lineAlpha = lineStyle.lineAlpha;
+	this.lineAlignement = lineStyle.lineAlignement;
 	this.lineDash = lineStyle.lineDash;
 	this.fillColor = fillStyle.fillColor;
 	this.fillAlpha = fillStyle.fillAlpha;
+	
 
 	this._shape = new PIXI.Graphics();
 	this.draw();
 }
 
 CanvasTypes._baseShape.prototype.draw = function() {
-	this._shape.lineStyle(this.lineWidth, this.lineColor, this.lineAlpha, this.lineDash);
+	this._shape.lineStyle(this.lineWidth, this.lineColor, this.lineAlpha, this.lineAlignement, null, this.lineDash);
 }
 
-CanvasTypes._baseShape.prototype.clear = function() {
+CanvasTypes._baseShape.prototype.reDraw = function() {
 	this._shape.clear();
 	this.draw();
 }
@@ -182,12 +224,12 @@ CanvasTypes._baseShape.prototype.clear = function() {
  */
 CanvasTypes._baseRect = function(size, lineStyle, fillStyle) {
 	CanvasTypes._baseShape.call(this, lineStyle, fillStyle);
-	size = size || new CanvasTypes.Size();
-	this.width = size.width;
-	this.height = size.height;
+	this.size = size || new CanvasTypes.Size();
+//	this.width = size.width;
+//	this.height = size.height;
 }
 
-CanvasTypes._baseShape.prototype = Object.create(CanvasTypes._baseShape.prototype);
+CanvasTypes._baseRect.prototype = Object.create(CanvasTypes._baseShape.prototype);
 
 
 
@@ -256,37 +298,50 @@ CanvasTypes._baseSprite.prototype.generateNew = function(texture) {
 CanvasTypes._text = function(textContent, textStyle, position, rotation) {
 	textStyle = textStyle || new CanvasTypes.TextStyle();
 
-	this._text;
+	this.shape;
 	this.text = textContent || '';
-
-	this.fontFamily = textStyle.fontFamily || CanvasTypes.options.defaultFontFamily;
-	this.fontColor = textStyle.textColor || CanvasTypes.options.defaultFontColor;
-	this.fontSize = textStyle.fontSize || CanvasTypes.options.defaultFontSize;
-	this.fontWeight = textStyle.fontWeight || CanvasTypes.options.defaultFontWeight;
-	this.textAlign = textStyle.textAlign || CanvasTypes.options.defaultFontAlign;
-	this.lineHeight = textStyle.lineHeight || Number(font[1].slice(0, 2)) + 5;
-
+		
+	this.size = new CanvasTypes.Size();
 	this.position = position || new CanvasTypes.Position();
 	this.rotation = rotation || new CanvasTypes.Rotation();
+
+	this.fontFamily = textStyle.fontFamily || CanvasTypes.defaultFontFamily;
+	this.fontColor = textStyle.fontColor || CanvasTypes.defaultFontColor;
+	this.fontSize = textStyle.fontSize || CanvasTypes.defaultFontSize;
+	this.fontWeight = textStyle.fontWeight || CanvasTypes.defaultFontWeight;
+	this.textAlign = textStyle.textAlign || CanvasTypes.defaultFontAlign;
+	this.lineHeight = textStyle.lineHeight || CanvasTypes.defaultLineHeight; // 	/!\ NUMBER /!\
+	this.textBaseline = textStyle.textBaseline || 'alphabetic';
+	this.whiteSpace = textStyle.whiteSpace || 'pre';
+	this.wordWrap = textStyle.wordWrap || 'true';
+	this.wordWrapWidth = this.size.width;
 
 	this.draw();
 }
 
 CanvasTypes._text.prototype.draw = function() {
 
-	this._text = new PIXI.Text(this.text, {
-		font: this.fontWeight + ' ' + this.fontSize + ' ' + this.fontFamily,
+	this.shape = new PIXI.Text(this.text, {
+		fontFamily: this.fontFamily,
+		fontSize : this.fontSize,
+		fontWeight : this.fontWeight,
 		fill: this.fontColor,
 		align: this.textAlign,
-		lineHeight: this.lineHeight
+		lineHeight : this.lineHeight,
+		textBaseline : this.textBaseline,
+		whiteSpace : this.whiteSpace,
+		wordWrap : this.wordWrap,
+		wordWrapWidth : this.size.width
 	}
 	);
-	this._text.position = this.position
-	this._text.rotation = this.rotation
-	this._text.scale = { x: .5, y: .5 };
+	
+	this.shape.position = this.position;
+//	this.shape._transform.rotation = this.rotation.z;
+//	this.shape.scale = { x: .5, y: .5 };
 }
 
 CanvasTypes._text.prototype.reDraw = function() {
+	this.shape.destroy();
 	this.draw();
 }
 
@@ -315,7 +370,7 @@ CanvasTypes._text.prototype.reDraw = function() {
  * @param color {number}
  */
 CanvasTypes._splineShape = function(lineWidth, color, lineAlpha, lineDash) {
-	this._baseShape = new CanvasTypes._baseShape([lineWidth, color, (typeof lineAlpha !== 'undefined' ? lineAlpha : CanvasTypes.options.defaultSplineAlpha), lineDash]);
+	this._baseShape = new CanvasTypes._baseShape([lineWidth, color, (typeof lineAlpha !== 'undefined' ? lineAlpha : CanvasTypes.defaultSplineAlpha), lineDash]);
 	this._baseShape._shape.__type = 'splineLink';
 };
 
@@ -333,13 +388,18 @@ CanvasTypes._splineShape = function(lineWidth, color, lineAlpha, lineDash) {
 
 
 
-
+/** 
+ * @constructor @abstract AbstractNode
+ * @param {CanvasType.Position} position 
+ * @param {CanvasType.LineStyle} lineStyle 
+ * @param {CanvasType.FillStyle} fillStyle 
+ */
 CanvasTypes.AbstractNode = function(position, lineStyle, fillStyle) {
 	this.lineStyle = lineStyle || new CanvasTypes.LineStyle();
 	this.fillStyle = fillStyle || new CanvasTypes.FillStyle();
 	this.position = position || new CanvasTypes.Position();
 
-	this._baseShape = new CanvasTypes._baseShape(position, this.lineStyle, this.fillStyle);
+	this._baseShape = new CanvasTypes._baseShape(this.position, this.lineStyle, this.fillStyle);
 	this.shape = this._baseShape._shape;
 	this.shape.__type = 'AbstractNode';
 }
@@ -350,7 +410,7 @@ CanvasTypes.AbstractNode.prototype.draw = function() {		// Pure Virtual
 };
 
 CanvasTypes.AbstractNode.prototype.reDraw = function() {	// Defaulted Virtual
-	this._baseShape.clear();
+	this.shape.clear();
 	this.draw();
 }
 
@@ -362,24 +422,37 @@ CanvasTypes.AbstractNode.prototype.reDraw = function() {	// Defaulted Virtual
 
 CanvasTypes.AbstractBox = function(position, size, lineStyle, fillStyle, borderRadius, borderWidth) {
 	CanvasTypes.AbstractNode.call(this, position, lineStyle, fillStyle);
-
+	
+	this.size =  new CanvasTypes.Size({
+		width: size ? size.width : CanvasTypes.defaultBoxWidth,
+		height: size ? size.height : CanvasTypes.defaultBoxHeight
+	});
 	this.borderRadius = borderRadius || CanvasTypes.defaultBorderRadius;
 	this.borderWidth = borderWidth || CanvasTypes.defaultBorderWidth;
-	this._baseShape = new CanvasTypes._baseRect(size, lineStyle, fillStyle);
+	
+	this._baseShape = new CanvasTypes._baseRect(this.size, this.lineStyle, this.fillStyle);
 	this.shape = this._baseShape._shape;
 	this.shape.__type = 'AbstractBox';
 
-	this.width = this.shape.width;
-	this.height = this.shape.height;
-
-	//	this.draw();
+	// this.draw();
 }
 CanvasTypes.AbstractBox.prototype = Object.create(CanvasTypes.AbstractNode.prototype);
 
 CanvasTypes.AbstractBox.prototype.draw = function() {
-	this._baseShape._shape.beginFill(this._baseShape.fillColor, 1);
-	this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.width - this.borderWidth, this.height - this.borderWidth, this.borderRadius);
+	this._baseShape._shape.beginFill(this.fillStyle.fillColor, this.fillStyle.fillAlpha);
+	this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.size.width - this.borderWidth, this.size.height - this.borderWidth, this.borderRadius);
 	this._baseShape._shape.endFill();
+	
+	// lineStyle (width, color, alpha, alignment, native) 
+	if (this.borderWidth) {
+		this._baseShape._shape.lineStyle(this.lineStyle.lineWidth, this.lineStyle.lineColor, this.lineStyle.lineAlpha, this.lineStyle.lineAlignement, null, this.lineStyle.lineDash);
+		
+		this._baseShape._shape.moveTo(this.position.x, this.position.y);
+		this._baseShape._shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y);
+		this._baseShape._shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y + this.size.height - this.borderWidth);
+		this._baseShape._shape.lineTo(this.position.x, this.position.y + this.size.height - this.borderWidth);
+		this._baseShape._shape.lineTo(this.position.x, this.position.y);
+	}
 };
 
 
@@ -400,7 +473,7 @@ CanvasTypes.AbstractRidgeBorderBox.prototype.draw = function() {
 	var tensionFactor = this.borderRadius * .075;
 	var tensionFactorComplement = this.borderRadius * .025;
 	var halvedBorderWidth = Math.max(1, this.borderWidth / 2);
-	var this.borderRadius = this.width / 2;
+	this.borderRadius = this.width / 2;
 	var yStart = Math.floor((this.borderWidth - 0.001) / 2);
 	var offsetedHalfWidth = this.width / 2 - halvedBorderWidth;
 	var offsetedHalfHeight = this.height / 2 - halvedBorderWidth;
@@ -409,7 +482,7 @@ CanvasTypes.AbstractRidgeBorderBox.prototype.draw = function() {
 	this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.width - this.borderWidth, this.height - this.borderWidth, this.borderRadius);
 	this._baseShape._shape.endFill();
 
-	this.shape.lineStyle(this._baseShape.lineWidth, this._baseShape.lineColor, 1, this._baseShape.lineDash);
+	this.shape.lineStyle(this._baseShape.lineWidth, this._baseShape.lineColor, this.lineStyle.lineAlpha, this.lineStyle.lineAlignement, null, this.lineStyle.lineDash);
 	this.shape.moveTo(this.borderRadius, yStart);
 
 	this.shape.lineTo(this.width - this.borderRadius, yStart);
@@ -492,30 +565,18 @@ CanvasTypes.NodeHandle.prototype = Object.create(CanvasTypes.AbstractDisc.protot
 
 CanvasTypes.NodeShapeDefaults = {
 	width: 113,
-	borderWidth: 1,
+	height: 113,
+	borderWidth: 0,
 	fillColor: 0xFFFFFF,
-	borderColor: 0xAAAAAA,
-	borderRadius: 12
+	fillAlpha : 1,
+	borderColor: 0xAAAAAA00,
+	borderRadius: 0
 };
 
 
-CanvasTypes.NodeShape = function(position) {
-	var size = new CanvasTypes.Size({
-		width: CanvasTypes.NodeShapeDefaults.width,
-		height: CanvasTypes.NodeShapeDefaults.width
-	});
-	var fillStyle = new CanvasTypes.FillStyle({
-		fillColor: CanvasTypes.NodeShapeDefaults.fillColor
-	});
-	var lineStyle = new CanvasTypes.LineStyle({
-		lineWidth: CanvasTypes.NodeShapeDefaults.borderWidth,
-		lineColor: CanvasTypes.NodeShapeDefaults.borderColor
-	});
-
-	this.borderRadius = CanvasTypes.NodeShapeDefaults.borderRadius;
-	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, this.borderRadius);
-
-	//	this.draw();
+CanvasTypes.NodeShape = function(position, size, lineStyle, fillStyle, borderRadius, borderWidth) {
+	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, borderRadius, borderWidth);
+	this.draw();
 }
 CanvasTypes.NodeShape.prototype = Object.create(CanvasTypes.AbstractBox.prototype);
 
@@ -536,11 +597,8 @@ CanvasTypes.InputShapeDefaults = {
 	borderRadius: 3
 };
 
-CanvasTypes.InputShape = function(position) {
-	var size = new CanvasTypes.Size({
-		width: CanvasTypes.InputShapeDefaults.width,
-		height: CanvasTypes.InputShapeDefaults.height
-	});
+CanvasTypes.InputShape = function(position, size) {
+
 	var fillStyle = new CanvasTypes.FillStyle({
 		fillColor: CanvasTypes.InputShapeDefaults.fillColor
 	});
@@ -549,17 +607,28 @@ CanvasTypes.InputShape = function(position) {
 		lineColor: CanvasTypes.InputShapeDefaults.borderColor
 	});
 
-	this.borderRadius = CanvasTypes.InputShapeDefaults.borderRadius;
-	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, this.borderRadius);
+	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, CanvasTypes.InputShapeDefaults.borderRadius, CanvasTypes.InputShapeDefaults.borderWidth);
 
-	//	this.draw();
+	this.draw();
 }
 CanvasTypes.InputShape.prototype = Object.create(CanvasTypes.AbstractBox.prototype);
 
 CanvasTypes.InputShape.prototype.draw = function() {
-	this.shape.fillStyle(this.fillStyle.color, this.fillStyle.alpha);
-	this.shape.lineStyle(this.lineStyle.color, this.lineStyle.width, this.lineStyle.alpha);
-	this.shape.lineTo(
+	// lineStyle (width, color, alpha, alignment, native) 
+	this._baseShape._shape.beginFill(this.fillStyle.fillColor, this.fillStyle.fillAlpha);
+	this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.size.width - this.borderWidth, this.size.height - this.borderWidth, this.borderRadius);
+	this._baseShape._shape.endFill();
+	
+	if (this.borderWidth) {
+		this.shape.lineStyle(this.lineStyle.lineWidth, this.lineStyle.lineColor, this.lineStyle.lineAlpha, this.lineAlignement, null, this.lineStyle.lineDash);
+		
+		this.shape.moveTo(this.position.x, this.position.y);
+		this.shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y);
+		this.shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y + this.size.height - this.borderWidth);
+		this.shape.lineTo(this.position.x, this.position.y + this.size.height - this.borderWidth);
+		this.shape.lineTo(this.position.x, this.position.y);
+	}
+//	this.shape.lineTo(
 		//		[
 		//		new Vector(this.position.x + size * 0.39363, this.position.y + size * 0.79),
 		//		new Vector(this.position.x + size * 0.16, this.position.y + size * 0.5549),
@@ -569,8 +638,7 @@ CanvasTypes.InputShape.prototype.draw = function() {
 		//		new Vector(this.position.x + size * 0.84, this.position.y + size * 0.34085),
 		//		new Vector(this.position.x + size * 0.39363, this.position.y + size * 0.79)
 		//		]
-	);
-	this.ctx.fill();
+//	);
 }
 
 // tree = parseTree(node)
@@ -690,5 +758,4 @@ CanvasTypes.InputShape.prototype.draw = function() {
 
 
 
-modules.exports = CanvasTypes;
-
+module.exports = CanvasTypes;
