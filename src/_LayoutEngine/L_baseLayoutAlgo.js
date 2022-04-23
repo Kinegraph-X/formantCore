@@ -5,7 +5,7 @@
  */
 
 
-//var TypeManager = require('src/core/TypeManager');
+var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var TextSizeGetter = require('src/core/TextSizeGetter');
 var textSizeGetter = new TextSizeGetter();
@@ -20,6 +20,18 @@ var BaseLayoutAlgo = function(layoutNode) {
 	this.algoName = '';
 	this.layoutNode = layoutNode;
 	this.availableSpace = this.layoutNode.availableSpace;
+	// EXPLICIT DIMENSIONS
+	this.hasExplicitWidth = this.getHasExplicitWidth();
+	this.hasExplicitHeight = this.getHasExplicitHeight();
+	// IS FLEX CHILD
+	this.isFlexChild = false;
+	this.isIndirectFlexChild = false;
+	this.shouldGrow = this.getShouldGrow();
+	this.shouldShrink = this.getShouldShrink();
+	// PSEUDO-VIRTUAL FUNCTIONS
+	this.setFlexDimensions = function() {};
+	this.setParentDimensions = function() {};
+	this.updateParentDimensions = function() {};
 }
 
 BaseLayoutAlgo.prototype = {};
@@ -63,6 +75,11 @@ BaseLayoutAlgo.prototype.incrementBlockAvailableSpace = function(amountToAdd) {
 	this.availableSpace.block += amountToSubstract;
 }
 
+BaseLayoutAlgo.prototype.resetAvailableSpaceLastOffsets = function() {
+	this.availableSpace.lastOffset.inline = this.availableSpace.inline;
+	this.availableSpace.lastOffset.block = this.availableSpace.block;
+}
+
 BaseLayoutAlgo.prototype.setAvailableSpaceOffsets = function(inlineOffset, blockOffset) {
 	this.availableSpace.inlineOffset = inlineOffset;
 	this.availableSpace.blockOffset = blockOffset;
@@ -100,9 +117,29 @@ BaseLayoutAlgo.prototype.setParentDimensions = function(dimensions) {}		// virtu
 
 BaseLayoutAlgo.prototype.updateParentDimensions = function(dimensions) {}	// virtual
 
-BaseLayoutAlgo.prototype.getInlineDimension = function() {}					// virtual
+BaseLayoutAlgo.prototype.getHasExplicitWidth = function() {
+	return !this.layoutNode.computedStyle.getIsInitialValueAsBool('width');
+}
 
-BaseLayoutAlgo.prototype.getBlockDimension = function() {}					// virtual
+BaseLayoutAlgo.prototype.getHasExplicitHeight = function() {
+	return !this.layoutNode.computedStyle.getIsInitialValueAsBool('height');
+}
+
+BaseLayoutAlgo.prototype.getInlineDimension = function() {
+	return this.layoutNode.computedStyle.bufferedValueToNumber('width');
+}
+
+BaseLayoutAlgo.prototype.getBlockDimension = function() {
+	return this.layoutNode.computedStyle.bufferedValueToNumber('height');
+}
+
+BaseLayoutAlgo.prototype.getShouldGrow = function() {
+	return !!this.layoutNode.computedStyle.bufferedValueToNumber('flexGrow');
+}
+
+BaseLayoutAlgo.prototype.getShouldShrink = function() {
+	return !!this.layoutNode.computedStyle.bufferedValueToNumber('flexShrink');
+}
 
 BaseLayoutAlgo.prototype.getSummedInlineMargins = function() {
 	return this.layoutNode.computedStyle.bufferedValueToNumber('marginInlineStart') + this.layoutNode.computedStyle.bufferedValueToNumber('marginInlineEnd');

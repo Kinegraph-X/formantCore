@@ -5,7 +5,7 @@
  */
 
 
-//var TypeManager = require('src/core/TypeManager');
+var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var BaseLayoutAlgo = require('src/_LayoutEngine/L_baseLayoutAlgo');
 
@@ -21,6 +21,10 @@ var InlineLayoutAlgo = function(layoutNode, textContent) {
 	BaseLayoutAlgo.call(this, layoutNode);
 	this.objectType = 'InlineLayoutAlgo';
 	this.algoName = 'inline';
+	
+	if (this.layoutNode._parent.layoutAlgo.isFlexChild || this.layoutNode._parent.layoutAlgo.isIndirectFlexChild)
+		this.isIndirectFlexChild = true;
+	
 	this.localDebugLog('InlineLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
 	
 	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inline)
@@ -40,8 +44,11 @@ var InlineLayoutAlgo = function(layoutNode, textContent) {
 	}
 	
 	this.setSelfDimensions(this.layoutNode.dimensions);
-	this.setSelfOffsets();
+	this.setSelfOffsets(this.layoutNode.dimensions);
 	this.setParentDimensions(this.layoutNode.dimensions);
+	
+	if (this.isIndirectFlexChild)
+		TypeManager.layoutCallbackRegistry.setItem(this.layoutNode._UID, this.layoutNode);
 	
 //	console.log(this.layoutNode.nodeName, 'block layout algo : this.availableSpace', this.availableSpace);
 //	console.log(this.layoutNode.nodeName, 'block layout algo : this.layoutNode.dimensions', this.layoutNode.dimensions);
@@ -64,6 +71,7 @@ InlineLayoutAlgo.prototype.setSelfOffsets = function() {
 	this.layoutNode.offsets.block =  this.layoutNode._parent.offsets.marginBlock + this.layoutNode._parent.availableSpace.blockOffset;
 	this.layoutNode.offsets.marginInline =  this.layoutNode.offsets.inline;
 	this.layoutNode.offsets.marginBlock =  this.layoutNode.offsets.block;
+	
 	this.layoutNode.updateCanvasShapeOffsets();
 }
 
@@ -108,8 +116,9 @@ InlineLayoutAlgo.prototype.setParentDimensions = function(dimensions) {
 		this.layoutNode._parent.dimensions.borderInline += dimensions.borderInline;
 		this.layoutNode._parent.dimensions.outerInline += dimensions.outerInline;
 		this.layoutNode._parent.availableSpace.inline = 0;
-		this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
 	}
+	
+	this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
 	
 	if (this.layoutNode._parent.availableSpace.block < dimensions.outerBlock) {
 		var summedParentBlockMargins = this.layoutNode._parent.layoutAlgo.getSummedBlockMargins();
@@ -147,6 +156,7 @@ InlineLayoutAlgo.prototype.updateBlockParentDimensions = function(dimensions, DH
 		this.layoutNode._parent.availableSpace.inline = 0;
 	}
 	
+	// FIXME: we shall increment way too many times if we have more than one textNode inside
 	this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
 	
 	if (this.layoutNode._parent.availableSpace.block < dimensions.outerBlock) {

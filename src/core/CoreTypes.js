@@ -125,6 +125,8 @@ DimensionsPair.prototype.substract = function(valuesPair) {
 var AvailableSpace = function(initialValues) {
 	DimensionsPair.call(this, initialValues);
 	this.childCount = 0;
+	this.shouldGrowChildCount = 0;
+	this.shouldShrinkChildCount = 0;
 	this.inlineOffset = (initialValues && initialValues[2]) || 0;
 	this.blockOffset = (initialValues && initialValues[3]) || 0;
 	this.lastOffset = new DimensionsPair();

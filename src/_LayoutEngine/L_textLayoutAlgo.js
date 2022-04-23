@@ -21,11 +21,18 @@ var TextLayoutAlgo = function(layoutNode, textContent) {
 	BaseLayoutAlgo.call(this, layoutNode);
 	this.objectType = 'TextLayoutAlgo';
 	this.algoName = 'inline';
+	
+	if (this.layoutNode._parent.layoutAlgo.isFlexChild || this.layoutNode._parent.layoutAlgo.isIndirectFlexChild)
+		this.isIndirectFlexChild = true;
+	
 	this.localDebugLog('TextLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
 	
 	this.setSelfDimensions(this.layoutNode.dimensions, textContent);
-	this.setSelfOffsets();
+	this.setSelfOffsets(this.layoutNode.dimensions);
 	this.setParentDimensions(this.layoutNode.dimensions);
+	
+	if (this.isIndirectFlexChild)
+		TypeManager.layoutCallbackRegistry.setItem(this.layoutNode._UID, this.layoutNode);
 	
 //	console.log(this.layoutNode.nodeName, 'text layout algo : this.availableSpace', this.availableSpace);
 //	console.log(this.layoutNode.nodeName, 'text layout algo : this.layoutNode.dimensions', this.layoutNode.dimensions);
@@ -39,11 +46,12 @@ TextLayoutAlgo.prototype.objectType = 'TextLayoutAlgo';
  * @method setSelfOffsets
  * 
  */
-TextLayoutAlgo.prototype.setSelfOffsets = function() {
+TextLayoutAlgo.prototype.setSelfOffsets = function(dimensions) {
 	this.layoutNode.offsets.inline =  this.layoutNode._parent.offsets.marginInline + this.layoutNode._parent.availableSpace.inlineOffset;
 	this.layoutNode.offsets.block =  this.layoutNode._parent.offsets.marginBlock + this.layoutNode._parent.availableSpace.blockOffset;
 	this.layoutNode.offsets.marginInline =  this.layoutNode.offsets.inline;
 	this.layoutNode.offsets.marginBlock =  this.layoutNode.offsets.block;
+	
 	this.layoutNode.updateCanvasShapeOffsets();
 }
 

@@ -44,6 +44,7 @@ var LayoutTreePrepare = function(naiveDOM, collectedSWrappers, importedMasterSty
 	this.masterStyleRegistry = importedMasterStyleRegistry;
 	TypeManager.layoutNodesRegistry.cache = {};
 	TypeManager.rasterShapesRegistry.cache = {};
+	TypeManager.layoutCallbackRegistry.cache = {};
 //	console.log('TypeManager.rasterShapesRegistry', TypeManager.rasterShapesRegistry);
 	
 	this.layoutTree = this.constructLayoutTree(naiveDOM, collectedSWrappers);
@@ -171,6 +172,9 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 
 
 var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode) {
+	this._UID = UIDGenerator.newUID();
+	TypeManager.layoutNodesRegistry.setItem(this._UID, this);
+	
 	this._parent = layoutParentNode;
 	this.nodeName = sourceDOMNodeAsView.nodeName;
 	
@@ -192,7 +196,6 @@ var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode) {
 	this.canvasShape = this.getCanvasShape();
 	
 	this.layoutAlgo = this.getLayoutAlgo(this.nodeName);
-	TypeManager.layoutNodesRegistry.setItem(UIDGenerator.newUID(), this);
 
 //	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.dimensions);
 //	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.offsets);
@@ -261,14 +264,14 @@ LayoutNode.prototype.updateCanvasShapeOffsets = function() {
 		this.canvasShape.position.x = parseInt(this.offsets.marginInline) + .5;
 		this.canvasShape.position.y = parseInt(this.offsets.marginBlock) + .5;
 	}
-	
+//	console.log(this.nodeName, 'this.offsets', this.offsets);
 //	console.log('this.canvasShape.position', this.canvasShape.position);
 	this.canvasShape.reDraw();
 //	console.log(this.canvasShape, this.canvasShape.shape._geometry.graphicsData[0]);
 }
 
 LayoutNode.prototype.updateCanvasShapeDimensions = function() {
-//	console.log(this.nodeName, this.dimensions);//, this.canvasShape.shape._geometry && this.canvasShape.shape._geometry.graphicsData[0].shape);
+//	console.error('updateCanvasShapeDimensions', this.nodeName, this.dimensions);//, this.canvasShape.shape._geometry && this.canvasShape.shape._geometry.graphicsData[0].shape);
 	this.canvasShape.size.width = parseInt(this.dimensions.borderInline);
 	this.canvasShape.size.height = parseInt(this.dimensions.borderBlock);
 	this.canvasShape.reDraw();
@@ -334,10 +337,17 @@ LayoutNode.prototype.getDisplayProp = function(nodeName) {
 	if (!valueOfDisplayProp.length)
 		console.warn('LayoutNode ' + this.nodeName + ' : valueOfDisplayProp has a zero length. Seems the CSS initialValue hasn\'t been taken in account', this.computedStyle);
 	
+//	if (this._parent.layoutAlgo.algoName === this.displayPropsAsConstants.flex
+//			&& this._parent.layoutAlgo.flexDirection === this.flexDirectionsAsConstants.row)
+//		console.log(this.nodeName, this._parent.nodeName, this._parent.layoutAlgo.flexDirection);
+	
 	if (valueOfDisplayProp === this.displayPropsAsConstants.inline) {
-		if (this._parent.layoutAlgo.algoName === this.displayPropsAsConstants.flex)
+//		console.log(this.nodeName, 'valueOfDisplayProp', valueOfDisplayProp);
+		if (this._parent.layoutAlgo.algoName === this.displayPropsAsConstants.flex
+			&& this._parent.layoutAlgo.flexDirection === this.flexDirectionsAsConstants.row)
 			return this.displayPropsAsConstants.inlineBlock;
-		else 		// inline is the initialValue: style may not be explicitly defined -> apply here sort of a user-agent stylesheet for now
+		else
+		 	// inline is the initialValue: style may not be explicitly defined -> apply here sort of a user-agent stylesheet for now
 			return this.defaultToBrowserDefinedDisplayProp(nodeName);
 	}
 	else
@@ -379,6 +389,10 @@ LayoutNode.prototype.displayPropsAsConstants = {
 	inlineBlock : 'inline-block',
 	flex : 'flex',
 	none : 'none'
+}
+LayoutNode.prototype.flexDirectionsAsConstants = {
+	row : 'row',
+	column : 'column'
 }
 
 LayoutNode.prototype.defaultInputSize = 20;

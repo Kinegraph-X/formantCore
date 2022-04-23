@@ -5,7 +5,7 @@
  */
 
 
-//var TypeManager = require('src/core/TypeManager');
+var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var BaseLayoutAlgo = require('src/_LayoutEngine/L_baseLayoutAlgo');
 
@@ -19,13 +19,19 @@ var FlexLayoutAlgo = function(layoutNode) {
 	this.objectType = 'FlexLayoutAlgo';
 	this.algoName = 'flex';
 	
+	if (this.layoutNode._parent.layoutAlgo.isFlexChild || this.layoutNode._parent.layoutAlgo.isIndirectFlexChild)
+		this.isIndirectFlexChild = true;
+	
+	this.localDebugLog('FlexLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
+	
 	this.flexDirection = this.layoutNode.computedStyle.bufferedValueToString('flexDirection');
 	
 	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inline)
 		console.warn('Layout forbidden structure: Found a block-flow element inside an inline-flow element.')
 	
-	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
+	if ((this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
 			&& this.layoutNode._parent.layoutAlgo.flexDirection === this.flexDirectionsAsConstants.row)
+			|| this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock)
 		this.updateParentDimensions = this.updateFlexParentDimensions;
 	else if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
 			|| this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.block)
@@ -48,8 +54,14 @@ var FlexLayoutAlgo = function(layoutNode) {
 	this.setSelfDimensions(this.layoutNode.dimensions);
 	this.setAvailableSpace(this.layoutNode.dimensions);
 	
+	this.resetInlineAvailableSpaceOffset();
+	this.resetBlockAvailableSpaceOffset();
+	
 	this.setSelfOffsets();
 	this.setParentDimensions(this.layoutNode.dimensions);
+	
+	if (this.isIndirectFlexChild)
+		TypeManager.layoutCallbackRegistry.setItem(this.layoutNode._UID, this.layoutNode);
 	
 //	console.log(this.layoutNode.nodeName, 'flex layout algo : this.availableSpace', this.availableSpace);
 //	console.log(this.layoutNode.nodeName, 'flex layout algo : this.layoutNode.dimensions', this.layoutNode.dimensions);
@@ -72,6 +84,7 @@ FlexLayoutAlgo.prototype.setSelfOffsets = function(dimensions) {
 	this.layoutNode.offsets.marginInline =  this.layoutNode.offsets.inline + this.layoutNode.computedStyle.bufferedValueToNumber('marginInlineStart');
 	this.layoutNode.offsets.marginBlock =  this.layoutNode.offsets.block + this.layoutNode.computedStyle.bufferedValueToNumber('marginBlockStart');
 	this.layoutNode._parent.layoutAlgo.resetAvailableSpace(this.layoutNode._parent.dimensions);
+	
 	this.layoutNode.updateCanvasShapeOffsets();
 }
 
@@ -87,16 +100,13 @@ FlexLayoutAlgo.prototype.setSelfDimensions = function(dimensions) {
 	this.localDebugLog(this.DHLstr(DHL), 'flex set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.inline_pre', this.layoutNode.dimensions.inline);
 	this.localDebugLog(this.DHLstr(DHL), 'flex set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.flex_pre', this.layoutNode.dimensions.block);
 	
-	var explicitWidth = this.getInlineDimension();
-	dimensions.inline = explicitWidth === null
-		? (this.layoutNode._parent && (this.layoutNode._parent.availableSpace.inline - summedInlineBorders - summedInlineMargins))
-			|| dimensions.inline - summedInlineMargins
-		: explicitWidth;
+	dimensions.inline = !this.hasExplicitWidth
+		? this.layoutNode._parent.availableSpace.inline - summedInlineBorders - summedInlineMargins
+		: this.getInlineDimension();
+	dimensions.block = !this.hasExplicitHeight ? 0 : this.getBlockDimension();
 	
-	var explicitHeight = this.getBlockDimension();
-	dimensions.block = explicitHeight;
 	if (this.layoutNode.computedStyle.bufferedValueToString('boxSizing') === 'content-box') {
-		if (explicitWidth)
+		if (this.hasExplicitWidth)
 			dimensions.add([summedInlinePaddings, summedBlockPaddings, summedInlinePaddings, summedBlockPaddings, summedInlinePaddings, summedBlockPaddings]);
 		else
 			dimensions.add([0, summedBlockPaddings, 0, summedBlockPaddings, 0, summedBlockPaddings]);
@@ -106,7 +116,7 @@ FlexLayoutAlgo.prototype.setSelfDimensions = function(dimensions) {
 	dimensions.setOuterSize([dimensions.borderInline, dimensions.borderBlock]);
 	dimensions.addToOuterSize([summedInlineMargins, summedBlockMargins]);
 	
-	if (explicitWidth !== null)
+	if (this.hasExplicitWidth)
 		this.layoutNode._parent.layoutAlgo.decrementInlineAvailableSpace(this.layoutNode.dimensions.outerInline);
 	
 	this.localDebugLog(this.DHLstr(DHL), 'flex set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.inline_post', this.layoutNode.dimensions.inline);
@@ -186,13 +196,13 @@ FlexLayoutAlgo.prototype.updateFlexParentDimensions = function(dimensions, DHL) 
 	this.layoutNode._parent.layoutAlgo.updateParentDimensions(this.layoutNode._parent.dimensions, ++DHL);
 }
 
-FlexLayoutAlgo.prototype.getInlineDimension = function() {
-	return (!this.layoutNode.computedStyle.getIsInitialValueAsBool('width') && this.layoutNode.computedStyle.bufferedValueToNumber('width')) || null;
-}
-
-FlexLayoutAlgo.prototype.getBlockDimension = function() {
-	return this.layoutNode.computedStyle.bufferedValueToNumber('height');
-}
+//FlexLayoutAlgo.prototype.getInlineDimension = function() {
+//	return (!this.layoutNode.computedStyle.getIsInitialValueAsBool('width') && this.layoutNode.computedStyle.bufferedValueToNumber('width')) || null;
+//}
+//
+//FlexLayoutAlgo.prototype.getBlockDimension = function() {
+//	return this.layoutNode.computedStyle.bufferedValueToNumber('height');
+//}
 
 
 

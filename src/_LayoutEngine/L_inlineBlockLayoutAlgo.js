@@ -5,7 +5,7 @@
  */
 
 
-//var TypeManager = require('src/core/TypeManager');
+var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var BaseLayoutAlgo = require('src/_LayoutEngine/L_baseLayoutAlgo');
 
@@ -18,14 +18,28 @@ var InlineBlockLayoutAlgo = function(layoutNode) {
 	BaseLayoutAlgo.call(this, layoutNode);
 	this.objectType = 'InlineBlockLayoutAlgo';
 	this.algoName = 'inline-block';
+	this.localDebugLog('InlineBlockLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
 	
-	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
-			&& this.layoutNode._parent.layoutAlgo.flexDirection === this.flexDirectionsAsConstants.row) {
+	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex)
+		this.isFlexChild = true;
+	if (this.layoutNode._parent.layoutAlgo.isFlexChild || this.layoutNode._parent.layoutAlgo.isIndirectFlexChild)
+		this.isIndirectFlexChild = true;
+		
+	if (this.shouldGrow)
+		this.layoutNode._parent.availableSpace.shouldGrowChildCount++;
+	if (this.shouldShrink)
+		this.layoutNode._parent.availableSpace.shouldShrinkChildCount++;
+	
+//	console.log(this.layoutNode._parent.layoutAlgo.algoName);
+
+	if ((this.isFlexChild
+			&& this.layoutNode._parent.layoutAlgo.flexDirection === this.flexDirectionsAsConstants.row)
+			|| this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock) {
 		this.setFlexDimensions = this.setFlexRowDimensions;
 		this.setParentDimensions = this.setFlexRowParentDimensions;
 		this.updateParentDimensions = this.updateFlexParentDimensions;
 	}
-	else if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
+	else if (this.isFlexChild
 			|| this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.block) {
 		this.setFlexDimensions = this.setFlexColumnDimensions;
 		this.setParentDimensions = this.setFlexColumnParentDimensions;
@@ -34,14 +48,25 @@ var InlineBlockLayoutAlgo = function(layoutNode) {
 	
 	// NEW FORMATTING CONTEXT
 	// (https://www.w3.org/TR/2011/REC-CSS2-20110607/visuren.html#normal-flow)
-	if (this.layoutNode.previousSibling && this.layoutNode.previousSibling.layoutAlgo.algoName === this.layoutAlgosAsConstants.block) {
-		this.layoutNode._parent.availableSpace.lastOffset.block = this.layoutNode._parent.availableSpace.blockOffset;
-		this.layoutNode._parent.layoutAlgo.resetAvailableSpace(this.layoutNode._parent.dimensions);
+	if (this.layoutNode.previousSibling) {
+		if (this.layoutNode.previousSibling.layoutAlgo.algoName === this.layoutAlgosAsConstants.block) {
+			this.layoutNode._parent.availableSpace.lastOffset.block = this.layoutNode._parent.availableSpace.blockOffset;
+			this.layoutNode._parent.layoutAlgo.resetAvailableSpace(this.layoutNode._parent.dimensions);
+		}
+		else if (this.layoutNode.previousSibling.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock) {
+			this.layoutNode._parent.layoutAlgo.resetBlockAvailableSpaceOffset();
+//			this.layoutNode._parent.availableSpace.lastOffset.block = this.layoutNode._parent.availableSpace.blockOffset;
+		}
 	}
 	
 	this.setSelfDimensions(this.layoutNode.dimensions);
-	this.setSelfOffsets();
+	this.setAvailableSpace(this.layoutNode.dimensions);
+	
+	this.setSelfOffsets(this.layoutNode.dimensions);
 	this.setParentDimensions(this.layoutNode.dimensions);
+	
+	if (this.isIndirectFlexChild)
+		TypeManager.layoutCallbackRegistry.setItem(this.layoutNode._UID, this.layoutNode);
 
 //	console.log(this.layoutNode.nodeName, 'inline-block layout algo : this.availableSpace', this.availableSpace);
 //	console.log(this.layoutNode.nodeName, 'inline-block layout algo : this.layoutNode.dimensions', this.layoutNode.dimensions);
@@ -62,20 +87,11 @@ InlineBlockLayoutAlgo.prototype.getUpToDateRemainingAvailableSpace = function() 
 
 InlineBlockLayoutAlgo.prototype.setSelfOffsets = function(dimensions) {
 	// this.layoutNode.dimensions is actualy computed but _parent.AvailableSpace is not computed yet
-	
-//	console.log('remainingAvailableSpace', remainingAvailableSpace);
-//	console.log('this.layoutNode._parent.layoutAlgo.algoName', this.layoutNode._parent.layoutAlgo.algoName);
-//	console.log('this.layoutNode.computedStyle.bufferedValueToString("flexDirection")', this.layoutNode.computedStyle.bufferedValueToString('flexDirection'));
+
 	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
 			&& this.layoutNode._parent.layoutAlgo.flexDirection === 'row') {
-//		console.log(this.layoutNode._parent.nodeName, this.layoutNode._parent.computedStyle.bufferedValueToString('justifyContent'));
 		if (this.layoutNode._parent.computedStyle.bufferedValueToString('justifyContent') === 'space-evenly') {
 			this.layoutNode._parent.layoutAlgo.resetInlineAvailableSpaceOffset();
-//			console.log(this.layoutNode._parent.availableSpace.inlineOffset, remainingAvailableSpace.inline, this.layoutNode._parent.availableSpace.childCount);
-//			this.layoutNode.offsets.inline = this.layoutNode._parent.availableSpace.inlineOffset + remainingAvailableSpace.inline / (this.layoutNode._parent.availableSpace.childCount + 1);
-//			this.layoutNode._parent.availableSpace.inlineOffset = this.layoutNode.offsets.inline + this.layoutNode.dimensions.inline;
-			
-//			this.setEvenlySpacedOffsets(dimensions);
 			
 			if (this.layoutNode.isLastChild) {
 				this.layoutNode.climbChildrenLinkedListAndCallbackLayoutAlgo(null, 'setEvenlySpacedOffsets');
@@ -83,17 +99,13 @@ InlineBlockLayoutAlgo.prototype.setSelfOffsets = function(dimensions) {
 				// as the linked list mechanism doesn't allow calling the layout algo
 				// (we're still in the Ctor of the layout algo, it isn't yet asigned to a property of the layoutNode)
 				this.setEvenlySpacedOffsets(dimensions);
-			}
-			
-//			console.log('this.layoutNode._parent.availableSpace.inlineOffset', this.layoutNode._parent.availableSpace.inlineOffset);
-//			console.log('this.layoutNode.offsets.inline', this.layoutNode.offsets.inline); 
+			} 
 		}
 		else {
 			this.layoutNode.offsets.inline = this.layoutNode._parent.availableSpace.inlineOffset + this.layoutNode._parent.offsets.marginInline + this.getInlineOffsetforAutoMargins();
 			this.layoutNode.offsets.block = this.layoutNode._parent.availableSpace.blockOffset + this.layoutNode._parent.offsets.marginBlock + this.getBlockOffsetforAutoMargins();
 			this.layoutNode.offsets.marginInline =  this.layoutNode.offsets.inline + this.layoutNode.computedStyle.bufferedValueToNumber('marginInlineStart');
 			this.layoutNode.offsets.marginBlock =  this.layoutNode.offsets.block + this.layoutNode.computedStyle.bufferedValueToNumber('marginBlockStart');
-//			console.log(this.layoutNode.offsets);
 		}
 	}
 	else if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
@@ -131,14 +143,8 @@ InlineBlockLayoutAlgo.prototype.setSelfDimensions = function(dimensions) {
 	this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.inline_pre', this.layoutNode.dimensions.inline);
 	this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.block_pre', this.layoutNode.dimensions.block);
 	
-	var explicitWidth = this.getInlineDimension();
-	dimensions.inline = explicitWidth === null
-		? (this.layoutNode._parent && (this.layoutNode._parent.availableSpace.inline - summedInlineBorders - summedInlineMargins))
-			|| dimensions.inline - summedInlineMargins
-		: explicitWidth;
-	
-	var explicitHeight = this.getBlockDimension();
-	dimensions.block = explicitHeight;
+	dimensions.inline = !this.hasExplicitWidth ? 0 : this.getInlineDimension();
+	dimensions.block = !this.hasExplicitHeight ? 0 : this.getBlockDimension();
 	
 	// NORMAL DIMENSIONS
 	var summedInlinePaddings = this.getSummedInlinePaddings();
@@ -147,7 +153,7 @@ InlineBlockLayoutAlgo.prototype.setSelfDimensions = function(dimensions) {
 	var summedBlockMargins = this.getSummedBlockMargins();
 	
 	if (this.layoutNode.computedStyle.bufferedValueToString('boxSizing') === 'content-box') {
-		if (explicitWidth)
+		if (this.hasExplicitWidth)
 			dimensions.add([summedInlinePaddings, summedBlockPaddings, summedInlinePaddings, summedBlockPaddings, summedInlinePaddings, summedBlockPaddings]);
 		else
 			dimensions.add([0, summedBlockPaddings, 0, summedBlockPaddings, 0, summedBlockPaddings]);
@@ -157,17 +163,19 @@ InlineBlockLayoutAlgo.prototype.setSelfDimensions = function(dimensions) {
 	dimensions.setOuterSize([dimensions.borderInline, dimensions.borderBlock]);
 	dimensions.addToOuterSize([summedInlineMargins, summedBlockMargins]);
 		
-	if (explicitWidth !== null)
+	if (this.hasExplicitWidth)
 		this.layoutNode._parent.layoutAlgo.decrementInlineAvailableSpace(this.layoutNode.dimensions.outerInline);
 	
 	// FLEX DIMENSIONS
-	if (dimensions.inline === 0 && this.layoutNode.computedStyle.bufferedValueToNumber('flexGrow') > 0) {
-		this.setFlexDimensions(DHL);
-		return;
-	}
-	else if (dimensions.block === 0 && this.layoutNode.computedStyle.bufferedValueToNumber('flexGrow') > 0) {
-		this.setFlexDimensions(DHL);
-		return;
+	if (this.isFlexChild && this.layoutNode.isLastChild) {
+//		if (!dimensions.inline) {
+			this.setFlexDimensions(DHL);
+			return;
+//		}
+//		else if (!dimensions.block) {
+//			this.setFlexDimensions(DHL);
+//			return;
+//		}
 	}
 	
 	this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.inline_post', this.layoutNode.dimensions.inline);
@@ -177,39 +185,131 @@ InlineBlockLayoutAlgo.prototype.setSelfDimensions = function(dimensions) {
 }
 
 InlineBlockLayoutAlgo.prototype.setFlexRowDimensions = function(DHL) {
-	if (this.layoutNode.isLastChild) {
-		this.layoutNode._parent.layoutAlgo.resetInlineAvailableSpaceOffset();
-		this.layoutNode.climbChildrenLinkedListAndCallbackLayoutAlgo(null, 'effectiveSetFlexRowDimensions');
-		this.effectiveSetFlexRowDimensions(DHL);
+
+	this.layoutNode._parent.layoutAlgo.resetInlineAvailableSpaceOffset();
+//	this.layoutNode._parent.layoutAlgo.resetAvailableSpaceLastOffsets();
+
+//	this.restrictFlexRowAvailableSpace();
+	this.layoutNode.climbChildrenLinkedListAndCallbackLayoutAlgo(null, 'effectiveSetFlexRowDimensions');
+	
+	var summedBlockMargins;
+	var summedParentBlockBorders;
+	var summedParentOfParentInlinePaddings;
+	var currentNode, currentParent, parentInlineDimensions;
+	
+	for (var itemUID in TypeManager.layoutCallbackRegistry.cache) {
+		currentNode = TypeManager.layoutNodesRegistry.cache[itemUID];
+		
+		if (currentParent !== currentNode._parent) {
+			currentParent = currentNode._parent
+
+			if (currentParent._parent.layoutAlgo.isFlexChild
+				&& currentParent.layoutAlgo.algoName === this.layoutAlgosAsConstants.block) {
+				summedParentOfParentInlinePaddings = currentParent._parent.layoutAlgo.getSummedInlinePaddings();
+				parentInlineDimensions = currentParent._parent.dimensions.inline - summedParentOfParentInlinePaddings;
+				
+				if (currentParent.dimensions.inline < parentInlineDimensions) {
+					summedParentBlockBorders = currentParent.layoutAlgo.getSummedBlockBorders();
+					summedBlockMargins = currentNode.layoutAlgo.getSummedBlockMargins();
+					
+					currentParent.dimensions.inline =  parentInlineDimensions - summedParentBlockBorders;
+					currentParent.dimensions.borderInline =  parentInlineDimensions;
+					currentParent.dimensions.outerInline =  parentInlineDimensions + summedBlockMargins;
+					currentParent.updateCanvasShapeDimensions();
+				}
+			}
+			currentParent.layoutAlgo.setAvailableSpace(currentParent.dimensions);
+		}
+		
+		// The main task: SET OFFSETS
+		currentNode.layoutAlgo.setSelfOffsets(currentNode.dimensions);
+		
+		// & UPDATE block PARENT blockOFFSET
+		if (currentParent.layoutAlgo.algoName === this.layoutAlgosAsConstants.block)
+			currentParent.layoutAlgo.availableSpace.blockOffset += currentNode.dimensions.outerBlock;
+		// & UPDATE inline-block PARENT inlineOFFSET
+		if (currentParent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock)
+			currentParent.layoutAlgo.availableSpace.inlineOffset += currentNode.dimensions.outerBlock;
 	}
+	
+	// The last task: effectiveSetFlexRowDimensions ONE LAST TIME, for the current inlineBlock node
+	this.effectiveSetFlexRowDimensions(DHL);
 }
 
 InlineBlockLayoutAlgo.prototype.setFlexColumnDimensions = function(DHL) {
-	if (this.layoutNode.isLastChild) {
-		this.layoutNode._parent.layoutAlgo.resetBlockAvailableSpaceOffset();
-		this.layoutNode.climbChildrenLinkedListAndCallbackLayoutAlgo(null, 'effectiveSetFlexColumnDimensions');
-		this.effectiveSetFlexColumnDimensions(DHL);
+	this.layoutNode._parent.layoutAlgo.resetBlockAvailableSpaceOffset();
+//	this.layoutNode._parent.layoutAlgo.resetAvailableSpaceLastOffsets();
+
+//	this.restrictFlexColumnAvailableSpace();
+	this.layoutNode.climbChildrenLinkedListAndCallbackLayoutAlgo(null, 'effectiveSetFlexColumnDimensions');
+	this.effectiveSetFlexColumnDimensions(DHL);
+}
+
+InlineBlockLayoutAlgo.prototype.restrictFlexRowAvailableSpace = function(DHL) {
+	if (this.layoutNode.previousSibling
+		&& this.layoutNode.previousSibling.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock) {
+		
+		var currentNode = this.layoutNode;
+		currentNode.layoutAlgo = new BaseLayoutAlgo(this.layoutNode);
+		currentNode.layoutAlgo.shouldGrow = this.shouldGrow;
+		while(true) {
+//			console.log('currentNode.layoutAlgo.shouldGrow', currentNode.nodeName, currentNode.layoutAlgo.shouldGrow, currentNode.computedStyle.bufferedValueToNumber('flexGrow'));
+			if (!currentNode.layoutAlgo.shouldGrow)
+				currentNode._parent.availableSpace.inline -= currentNode.dimensions.outerInline;
+			
+			currentNode = currentNode.previousSibling;
+			if (!currentNode || !currentNode.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock)
+				break;
+		}
+	}
+}
+
+InlineBlockLayoutAlgo.prototype.restrictFlexColumnAvailableSpace = function(DHL) {
+	if (this.layoutNode.previousSibling
+		&& this.layoutNode.previousSibling.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock) {
+		
+		var currentNode = this.layoutNode;
+		currentNode.layoutAlgo = new BaseLayoutAlgo(this.layoutNode);
+		currentNode.layoutAlgo.shouldGrow = this.shouldGrow;
+		while(true) {
+			if (!currentNode.shouldGrow)
+				this.layoutNode._parent.availableSpace.block -= currentNode.dimensions.outerblock;
+			currentNode = currentNode.previousSibling;
+			if (!currentNode || !currentNode.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock)
+				break;
+		}
 	}
 }
 
 InlineBlockLayoutAlgo.prototype.effectiveSetFlexRowDimensions = function(DHL) {
-	var summedInlinePaddings = this.getSummedInlinePaddings();
-	var summedBlockPaddings = this.getSummedBlockPaddings();
+	// FIXME: FlexGrow-n- size depends on the size of the "dimensionned" children
+	// 
+	// => ie. flexChildren which have larger dimensionned children
+	// weigh more in the computation of each relative flexGrow-n- size.
+	// The supplementary "allocated" size to each flexChild at the same level should be the same
+	var dimensions = this.layoutNode.dimensions;
+	
+	if (!this.layoutNode._parent.availableSpace.shouldGrowChildCount
+		|| !(this.layoutNode.computedStyle.bufferedValueToNumber('flexGrow') > 0)) {
+		this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.inline_post', this.layoutNode.dimensions.inline);
+		this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.block_post', this.layoutNode.dimensions.block);
+		this.layoutNode.updateCanvasShapeDimensions();
+		
+		this.setSelfOffsets(dimensions);
+		if (!this.layoutNode.isLastChild) {
+			this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
+			this.layoutNode._parent.availableSpace.lastOffset.inline = this.layoutNode._parent.availableSpace.inlineOffset;
+		}
+		return;
+	}
+	
 	var summedInlineBorders = this.getSummedInlineBorders();
-	var summedBlockBorders = this.getSummedBlockBorders();
 	var summedInlineMargins = this.getSummedInlineMargins();
-	var summedBlockMargins = this.getSummedBlockMargins();
-	
-	var dimensions = this.layoutNode.dimensions; 
-	dimensions.outerBlock = this.getBlockDimension() + summedBlockBorders + summedBlockMargins;
-	dimensions.outerInline = this.layoutNode._parent.availableSpace.inline / this.layoutNode._parent.availableSpace.childCount;
-	dimensions.setBorderSize([dimensions.outerInline, dimensions.outerBlock]);
-	dimensions.substractFromBorderSize([summedInlineMargins, summedBlockMargins]);
-	dimensions.setInnerSize([dimensions.borderInline, dimensions.borderBlock])
-	dimensions.substractFromInnerSize([summedInlineBorders, summedBlockBorders]);
-	
-	if (this.layoutNode.computedStyle.bufferedValueToString('boxSizing') === 'content-box')
-		dimensions.substract([0, summedBlockPaddings, 0, summedBlockPaddings, 0, summedBlockPaddings]);
+	// FIXME: floats are NOT handled by our CSSPropertyBuffer type, and flexGrow may be float
+	// For now, it acts like if we had parseInt the number
+	dimensions.outerInline += this.layoutNode.computedStyle.bufferedValueToNumber('flexGrow') * (this.layoutNode._parent.availableSpace.inline / this.layoutNode._parent.availableSpace.shouldGrowChildCount);
+	dimensions.borderInline = dimensions.outerInline - summedInlineMargins;
+	dimensions.inline = dimensions.borderInline - summedInlineBorders
 	
 	this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.inline_post', this.layoutNode.dimensions.inline);
 	this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.block_post', this.layoutNode.dimensions.block);
@@ -223,23 +323,26 @@ InlineBlockLayoutAlgo.prototype.effectiveSetFlexRowDimensions = function(DHL) {
 }
 
 InlineBlockLayoutAlgo.prototype.effectiveSetFlexColumnDimensions = function(DHL) {
-	var summedInlinePaddings = this.getSummedInlinePaddings();
-	var summedBlockPaddings = this.getSummedBlockPaddings();
-	var summedInlineBorders = this.getSummedInlineBorders();
+	var dimensions = this.layoutNode.dimensions; 
+	if (this.hasExplicitHeight || !(this.layoutNode.computedStyle.bufferedValueToNumber('flexGrow') > 0)) {
+		this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.inline_post', this.layoutNode.dimensions.inline);
+		this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.block_post', this.layoutNode.dimensions.block);
+		this.layoutNode.updateCanvasShapeDimensions();
+		
+		this.setSelfOffsets(dimensions);
+		if (!this.layoutNode.isLastChild) {
+			this.layoutNode._parent.availableSpace.blockOffset += dimensions.outerBlock;
+			this.layoutNode._parent.availableSpace.lastOffset.block = this.layoutNode._parent.availableSpace.blockOffset;
+		}
+		return;
+	}
+	
 	var summedBlockBorders = this.getSummedBlockBorders();
-	var summedInlineMargins = this.getSummedInlineMargins();
 	var summedBlockMargins = this.getSummedBlockMargins();
-	
-	var dimensions = this.layoutNode.dimensions;
-	dimensions.outerInline = this.getInlineDimension() + summedInlineBorders + summedInlineMargins;
-	dimensions.outerBlock = this.layoutNode._parent.availableSpace.block / this.layoutNode._parent.availableSpace.childCount;
-	dimensions.setBorderSize([dimensions.outerInline, dimensions.outerBlock]);
-	dimensions.substractFromBorderSize([summedInlineMargins, summedBlockMargins]);
-	dimensions.setInnerSize([dimensions.borderInline, dimensions.borderBlock])
-	dimensions.substractFromInnerSize([summedInlineBorders, summedBlockBorders]);
-	
-	if (this.layoutNode.computedStyle.bufferedValueToString('boxSizing') === 'content-box')
-		dimensions.substract([summedInlinePaddings, 0, summedInlinePaddings, 0, summedInlinePaddings, 0]);
+
+	dimensions.outerBlock = this.layoutNode.computedStyle.bufferedValueToNumber('flexGrow') * this.layoutNode._parent.availableSpace.block / this.layoutNode._parent.availableSpace.childCount;
+	dimensions.borderBlock = dimensions.outerBlock - summedBlockMargins;
+	dimensions.block = dimensions.borderBlock - summedBlockBorders
 	
 	this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.inline_post', this.layoutNode.dimensions.inline);
 	this.localDebugLog(this.DHLstr(DHL), 'inline-block set dimensions', this.layoutNode.nodeName, 'this.layoutNode.dimensions.block_post', this.layoutNode.dimensions.block);
@@ -252,42 +355,18 @@ InlineBlockLayoutAlgo.prototype.effectiveSetFlexColumnDimensions = function(DHL)
 	}
 }
 
-InlineBlockLayoutAlgo.prototype.resetParentAvailableSpace = function() {
-	
-}
-
-//InlineBlockLayoutAlgo.prototype.updateParentAvailableSpace = function(dimensions) {
-//	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
-//			&& this.layoutNode._parent.layoutAlgo.flexDirection === this.flexDirectionsAsConstants.row) {
-//		this.layoutNode._parent.layoutAlgo.availableSpace.inline -= dimensions.inline;
-//	}
-//	else if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
-//			|| this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.block) {
-//		this.layoutNode._parent.layoutAlgo.availableSpace.block -= dimensions.block;
-//	}
-//	else {
-//		this.layoutNode._parent.layoutAlgo.availableSpace.inline -= dimensions.inline;
-//	}
-//}
-
 InlineBlockLayoutAlgo.prototype.setFlexRowParentDimensions = function(dimensions) {
 	var DHL = 0;
 	this.localDebugLog(this.DHLstr(DHL), 'inline-block increment parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.inline_pre', this.layoutNode._parent.dimensions.inline);
 	this.localDebugLog(this.DHLstr(DHL), 'inline-block increment parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.block_pre', this.layoutNode._parent.dimensions.block);
 	
-//	var summedParentInlineBorders = this.layoutNode._parent.layoutAlgo.getSummedInlineBorders();
 	var summedParentBlockBorders = this.layoutNode._parent.layoutAlgo.getSummedBlockBorders();
-//	var summedParentInlineMargins = this.layoutNode._parent.layoutAlgo.getSummedInlineMargins();
 	var summedParentBlockMargins = this.layoutNode._parent.layoutAlgo.getSummedBlockMargins();
 	
-//	if (this.layoutNode._parent.dimensions.inline < dimensions.outerInline) {
-//		var parentInlineDimensions = this.layoutNode._parent.availableSpace.inlineOffset + dimensions.outerInline + this.layoutNode._parent.computedStyle.bufferedValueToNumber('paddingInlineEnd') + this.layoutNode._parent.computedStyle.bufferedValueToNumber('borderInlineEndWidth');
-//		this.layoutNode._parent.dimensions.inline = parentInlineDimensions - summedParentInlineBorders;
-//		this.layoutNode._parent.dimensions.borderInline = parentInlineDimensions;
-//		this.layoutNode._parent.dimensions.outerInline = parentInlineDimensions + summedParentInlineMargins;
-		this.layoutNode._parent.availableSpace.lastOffset.inline = this.layoutNode._parent.availableSpace.inlineOffset;
-		this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
-//	}
+	this.layoutNode._parent.availableSpace.inline -= dimensions.outerInline;
+	this.layoutNode._parent.availableSpace.lastOffset.inline = this.layoutNode._parent.availableSpace.inlineOffset;
+	this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
+	
 	if (this.layoutNode._parent.dimensions.block < dimensions.outerBlock) {
 		var parentBlockDimensions = this.layoutNode._parent.availableSpace.blockOffset + dimensions.outerBlock + this.layoutNode._parent.computedStyle.bufferedValueToNumber('paddingBlockEnd') + this.layoutNode._parent.computedStyle.bufferedValueToNumber('borderBlockEndWidth');
 		this.layoutNode._parent.dimensions.block = parentBlockDimensions - summedParentBlockBorders;
@@ -325,6 +404,92 @@ InlineBlockLayoutAlgo.prototype.setFlexColumnParentDimensions = function(dimensi
 	
 	this.layoutNode._parent.updateCanvasShapeDimensions();
 	this.layoutNode._parent.layoutAlgo.updateParentDimensions(this.layoutNode._parent.dimensions, ++DHL);
+}
+
+InlineBlockLayoutAlgo.prototype.updateBlockParentDimensions = function(dimensions, DHL) {
+	this.localDebugLog(this.DHLstr(DHL), 'block update parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.inline_pre', this.layoutNode._parent.dimensions.inline);
+	this.localDebugLog(this.DHLstr(DHL), 'block update parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.block_pre', this.layoutNode._parent.dimensions.block);
+	
+	// A Block or a Flex parent may have never seen his inlineOffset updated
+	// as we didn't had yet non-zero dimensions : we're inline, and our inlineSize depends on our children
+	if (this.layoutNode.previousSibling
+		&& (this.layoutNode.previousSibling.layoutAlgo.algoName === this.layoutAlgosAsConstants.inline
+			|| this.layoutNode.previousSibling.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock)) {
+		var beforeCurrentNode = this.layoutNode, 
+			currentNode = this.layoutNode.previousSibling,
+			inlineOffset = this.layoutNode.dimensions.outerInline;
+		while(currentNode && currentNode.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock) {
+			inlineOffset += currentNode.dimensions.outerInline;
+			beforeCurrentNode = currentNode;
+			currentNode = currentNode.previousSibling;
+		}
+		if (currentNode && currentNode.layoutAlgo.algoName === this.layoutAlgosAsConstants.block)
+			inlineOffset += currentNode.dimensions.outerInline + currentNode.computedStyle.bufferedValueToNumber('paddingInlineStart') + currentNode.computedStyle.bufferedValueToNumber('borderInlineStart');
+		
+		
+		inlineOffset += beforeCurrentNode._parent.computedStyle.bufferedValueToNumber('paddingInlineStart') + beforeCurrentNode._parent.computedStyle.bufferedValueToNumber('borderInlineStart');
+		
+		this.layoutNode._parent.availableSpace.inline = this.layoutNode._parent.dimensions.borderInline - inlineOffset - this.layoutNode._parent.computedStyle.bufferedValueToNumber('paddingInlineEnd');
+		this.layoutNode._parent.availableSpace.inlineOffset = inlineOffset;
+		this.layoutNode._parent.availableSpace.lastOffset.inline = this.layoutNode._parent.availableSpace.inlineOffset;
+	}
+	else {
+		this.layoutNode._parent.availableSpace.inline -= dimensions.outerInline;
+		this.layoutNode._parent.availableSpace.inlineOffset = this.layoutNode.dimensions.outerInline + this.layoutNode._parent.computedStyle.bufferedValueToNumber('paddingInlineStart') + this.layoutNode._parent.computedStyle.bufferedValueToNumber('borderInlineStart');
+		this.layoutNode._parent.availableSpace.lastOffset.inline = this.layoutNode._parent.availableSpace.inlineOffset;
+	}
+	
+	
+	var parentBlockDimensions = this.layoutNode._parent.availableSpace.lastOffset.block + dimensions.outerBlock + this.layoutNode._parent.computedStyle.bufferedValueToNumber('paddingBlockEnd') + this.layoutNode._parent.computedStyle.bufferedValueToNumber('borderBlockEndWidth');
+	
+	if (this.layoutNode._parent.dimensions.block < parentBlockDimensions) {
+		var summedParentBlockBorders = this.layoutNode._parent.layoutAlgo.getSummedBlockBorders();
+		var summedParentBlockMargins = this.layoutNode._parent.layoutAlgo.getSummedBlockMargins();
+		this.layoutNode._parent.dimensions.block = parentBlockDimensions - summedParentBlockBorders;
+		this.layoutNode._parent.dimensions.borderBlock = parentBlockDimensions;
+		this.layoutNode._parent.dimensions.outerBlock = parentBlockDimensions + summedParentBlockMargins;
+		this.layoutNode._parent.availableSpace.block = 0;
+		this.layoutNode._parent.availableSpace.blockOffset = this.layoutNode._parent.availableSpace.lastOffset.block + dimensions.outerBlock;
+	}
+	
+	this.localDebugLog(this.DHLstr(DHL), 'block update parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.inline_post', this.layoutNode._parent.dimensions.inline);
+	this.localDebugLog(this.DHLstr(DHL), 'block update parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.block_post', this.layoutNode._parent.dimensions.block);
+	
+	this.layoutNode._parent.updateCanvasShapeDimensions();
+	this.layoutNode._parent.layoutAlgo.updateParentDimensions(this.layoutNode._parent.dimensions, ++DHL);
+}
+
+InlineBlockLayoutAlgo.prototype.updateFlexParentDimensions = function(dimensions, DHL) {
+	this.updateBlockParentDimensions(dimensions, DHL);
+	this.updateFlexSiblingsDimensions(dimensions, DHL);
+	
+}
+
+InlineBlockLayoutAlgo.prototype.updateFlexSiblingsDimensions = function(dimensions, DHL) {
+	if (this.layoutNode.previousSibling
+		&& this.layoutNode.previousSibling.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock) {
+		var summedParentBlockPaddings = this.layoutNode._parent.layoutAlgo.getSummedBlockPaddings();
+		var summedBlockBorders, summedBlockMargins;
+		
+		var currentNode = this.layoutNode;
+		while(currentNode && currentNode.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock) {
+			if (currentNode.computedStyle.getIsInitialValue('height')) {
+				summedBlockBorders = currentNode.layoutAlgo.getSummedBlockBorders();
+				summedBlockMargins = currentNode.layoutAlgo.getSummedBlockMargins();
+//				console.log(currentNode.nodeName, 'updateFlexSiblingsDimensions', this.layoutNode._parent.dimensions.block - summedParentBlockPaddings, currentNode.dimensions.outerBlock);
+				currentNode.dimensions.outerBlock = Math.max(currentNode._parent.dimensions.block - summedParentBlockPaddings, currentNode.dimensions.outerBlock);
+				currentNode.dimensions.borderBlock = currentNode.dimensions.outerBlock - summedBlockMargins;
+				currentNode.dimensions.block = currentNode.dimensions.borderBlock - summedBlockBorders;
+				
+				currentNode.layoutAlgo.setAvailableSpace(currentNode.dimensions);
+//				currentNode.layoutAlgo.resetAvailableSpaceLastOffsets();
+				
+				currentNode.updateCanvasShapeDimensions();
+			}
+			
+			currentNode = currentNode.previousSibling;
+		}
+	}
 }
 
 InlineBlockLayoutAlgo.prototype.updateParentDimensions = function(dimensions) {
@@ -374,49 +539,18 @@ InlineBlockLayoutAlgo.prototype.updateParentDimensions = function(dimensions) {
 	this.layoutNode._parent.layoutAlgo.updateParentDimensions(dimensions);
 }
 
-InlineBlockLayoutAlgo.prototype.getInlineDimension = function() {
-//	console.log(this.layoutNode.computedStyle.getPosForProp('width') * this.layoutNode.computedStyle.itemSize, this.layoutNode.computedStyle._buffer);
-//	console.log(this.layoutNode.computedStyle.bufferedValueToNumber('width'));
-	return this.layoutNode.computedStyle.bufferedValueToNumber('width');
-}
+//InlineBlockLayoutAlgo.prototype.getInlineDimension = function() {
+////	console.log(this.layoutNode.computedStyle.getPosForProp('width') * this.layoutNode.computedStyle.itemSize, this.layoutNode.computedStyle._buffer);
+////	console.log(this.layoutNode.computedStyle.bufferedValueToNumber('width'));
+//	return this.layoutNode.computedStyle.bufferedValueToNumber('width');
+//}
 
-InlineBlockLayoutAlgo.prototype.getBlockDimension = function() {
-//	console.log(this.layoutNode.computedStyle.bufferedValueToNumber('height'));
-	return this.layoutNode.computedStyle.bufferedValueToNumber('height');
-}
+//InlineBlockLayoutAlgo.prototype.getBlockDimension = function() {
+////	console.log(this.layoutNode.computedStyle.bufferedValueToNumber('height'));
+//	return this.layoutNode.computedStyle.bufferedValueToNumber('height');
+//}
 
-InlineBlockLayoutAlgo.prototype.getMargins = function() {
-	
-}
 
-InlineBlockLayoutAlgo.prototype.getInlineMargins = function() {
-	
-}
-
-InlineBlockLayoutAlgo.prototype.getSummedInlineMargins = function() {
-//	console.log(this.layoutNode.computedStyle.bufferedValueToNumber('marginLeft'));
-	return this.layoutNode.computedStyle.bufferedValueToNumber('marginInlineStart') + this.layoutNode.computedStyle.bufferedValueToNumber('marginInlineEnd');
-}
-
-InlineBlockLayoutAlgo.prototype.getBlockMargins = function() {
-	
-}
-
-InlineBlockLayoutAlgo.prototype.getSummedBlockMargins = function() {
-	return this.layoutNode.computedStyle.bufferedValueToNumber('marginBlockStart') + this.layoutNode.computedStyle.bufferedValueToNumber('marginBlockEnd');
-}
-
-InlineBlockLayoutAlgo.prototype.getPaddings = function() {
-	
-}
-
-InlineBlockLayoutAlgo.prototype.getSummedInlinePaddings = function() {
-		return this.layoutNode.computedStyle.bufferedValueToNumber('paddingInlineStart') + this.layoutNode.computedStyle.bufferedValueToNumber('paddingInlineEnd');
-}
-
-InlineBlockLayoutAlgo.prototype.getSummedBlockPaddings = function() {
-		return this.layoutNode.computedStyle.bufferedValueToNumber('paddingBlockStart') + this.layoutNode.computedStyle.bufferedValueToNumber('paddingBlockEnd');
-}
 
 
 

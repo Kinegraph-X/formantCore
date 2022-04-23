@@ -66,6 +66,7 @@ Ignition.prototype.instanciateDOM = function() {
 		effectiveViewAPI,
 		masterNode;
 
+//	console.log(attributesCache);
 	views.forEach(function(view, key) {
 		
 		attributes = attributesCache[view._defUID];
