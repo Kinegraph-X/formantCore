@@ -10,6 +10,7 @@ var CoreTypes = require('src/core/CoreTypes');
 var TextSizeGetter = require('src/core/TextSizeGetter');
 var textSizeGetter = new TextSizeGetter();
 
+var ComputedStyleGetter = require('src/_LayoutEngine/ComputedStyleGetter');
 
 
 /*
@@ -20,6 +21,9 @@ var BaseLayoutAlgo = function(layoutNode) {
 	this.algoName = '';
 	this.layoutNode = layoutNode;
 	this.availableSpace = this.layoutNode.availableSpace;
+	
+	ComputedStyleGetter.call(this);
+	
 	// EXPLICIT DIMENSIONS
 	this.hasExplicitWidth = this.getHasExplicitWidth();
 	this.hasExplicitHeight = this.getHasExplicitHeight();
@@ -263,15 +267,15 @@ BaseLayoutAlgo.prototype.DHLstr = function(DHL) {
 }
 
 BaseLayoutAlgo.prototype.localDebugLog = function() {
-//	var args = Array.prototype.slice.call(arguments);
-//	if (args[0] === '')
-//		args[0] = '--';
-//	args.splice(3, 0, 'color: #FF7F50;');
-//	args.splice(2, 0, 'color: #DEB887;');
-//	args.splice(1, 0, 'color: #00CED1;');
-//	args.splice(0, 0, '%s %c %s %c %s %c %s');
-////	console.log(args);
-//	console.log.apply(null, args);
+	var args = Array.prototype.slice.call(arguments);
+	if (args[0] === '')
+		args[0] = '--';
+	args.splice(3, 0, 'color: #FF7F50;');
+	args.splice(2, 0, 'color: #DEB887;');
+	args.splice(1, 0, 'color: #00CED1;');
+	args.splice(0, 0, '%s %c %s %c %s %c %s');
+//	console.log(args);
+	console.log.apply(null, args);
 }
 
 

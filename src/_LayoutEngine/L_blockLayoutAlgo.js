@@ -154,9 +154,10 @@ BlockLayoutAlgo.prototype.setBlockParentDimensions = function(dimensions) {
 		this.layoutNode._parent.dimensions.borderBlock = parentBlockDimensions;
 		this.layoutNode._parent.dimensions.outerBlock = parentBlockDimensions + summedParentBlockMargins
 		this.layoutNode._parent.availableSpace.block = 0;
-		this.layoutNode._parent.availableSpace.lastOffset.block = this.layoutNode._parent.availableSpace.blockOffset;
-		this.layoutNode._parent.availableSpace.blockOffset += dimensions.outerBlock;
 	}
+	
+	this.layoutNode._parent.availableSpace.lastOffset.block = this.layoutNode._parent.availableSpace.blockOffset;
+	this.layoutNode._parent.availableSpace.blockOffset += dimensions.outerBlock;
 	
 	this.localDebugLog(this.DHLstr(DHL), 'block increment parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.inline_post', this.layoutNode._parent.dimensions.inline);
 	this.localDebugLog(this.DHLstr(DHL), 'block increment parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.block_post', this.layoutNode._parent.dimensions.block);
@@ -255,7 +256,9 @@ BlockLayoutAlgo.prototype.updateInlineBlockParentDimensions = function(dimension
 		this.layoutNode._parent.availableSpace.inline = 0;
 	}
 	
-	this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
+//	if (this.layoutNode._parent._parent.computedStyle.bufferedValueToString('flexDirection') === this.flexDirectionsAsConstants.row)
+		this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
+//	else if (this.layoutNode._parent._parent.computedStyle.bufferedValueToNumber('flexDirection') === this.flexDirectionsAsConstants.column)
 	
 	var parentBlockDimensions = this.layoutNode._parent.availableSpace.lastOffset.block + dimensions.outerBlock + this.layoutNode._parent.computedStyle.bufferedValueToNumber('paddingBlockEnd') + this.layoutNode._parent.computedStyle.bufferedValueToNumber('borderBlockEndWidth');
 	

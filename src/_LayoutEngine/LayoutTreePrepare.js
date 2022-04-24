@@ -343,8 +343,7 @@ LayoutNode.prototype.getDisplayProp = function(nodeName) {
 	
 	if (valueOfDisplayProp === this.displayPropsAsConstants.inline) {
 //		console.log(this.nodeName, 'valueOfDisplayProp', valueOfDisplayProp);
-		if (this._parent.layoutAlgo.algoName === this.displayPropsAsConstants.flex
-			&& this._parent.layoutAlgo.flexDirection === this.flexDirectionsAsConstants.row)
+		if (this._parent.layoutAlgo.algoName === this.displayPropsAsConstants.flex)
 			return this.displayPropsAsConstants.inlineBlock;
 		else
 		 	// inline is the initialValue: style may not be explicitly defined -> apply here sort of a user-agent stylesheet for now
