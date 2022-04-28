@@ -12,6 +12,7 @@
 
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
+var LayoutTypes = require('src/_LayoutEngine/LayoutTypes');
 var UIDGenerator = require('src/core/UIDGenerator').UIDGenerator;
 var Style = require('src/editing/Style');
 
@@ -19,13 +20,16 @@ var NaiveDOMNode = require('src/_LayoutEngine/NaiveDOMNode');
 var CSSSelectorsMatcher = require('src/_LayoutEngine/CSSSelectorsMatcher');
 var CSSPropertyBuffer = require('src/editing/CSSPropertyBuffer');
 var CSSPropertySetBuffer = require('src/editing/CSSPropertySetBuffer');
-var CSSPropertyDescriptors = require('src/editing/CSSPropertyDescriptors');
+//var CSSPropertyDescriptors = require('src/editing/CSSPropertyDescriptors');
 
 var ComputedStyleSolver = require('src/_LayoutEngine/ComputedStyleSolver');
 
-var SplittedAttributes = require('src/editing/SplittedAttributes');
+//var SplittedAttributes = require('src/editing/SplittedAttributes');
 var StylePropertyEnhancer = require('src/editing/StylePropertyEnhancer');
-var stylePropertyConverter = new StylePropertyEnhancer();
+//var stylePropertyConverter = new StylePropertyEnhancer();
+
+var LayoutDimensionsBuffer = require('src/_LayoutEngine/LayoutDimensionsBuffer');
+var layoutDimensionsBuffer = new LayoutDimensionsBuffer();
 
 var BaseLayoutAlgo = require('src/_LayoutEngine/L_baseLayoutAlgo');
 var InlineLayoutAlgo = require('src/_LayoutEngine/L_inlineLayoutAlgo');
@@ -98,64 +102,79 @@ LayoutTreeBuilder.prototype = {};
 LayoutTreeBuilder.prototype.objectType = 'LayoutTreeBuilder';
 
 LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMNode, layoutParentNode) {
-	var currentLayoutNode = layoutParentNode, childLayoutNode, childDOMNodeAsAView, subChildLayoutNode, textContentKey, textNode;
+	var currentLayoutNode = layoutParentNode, childLayoutNode, childDOMNodeAsAView, subChildLayoutNode, textContentKey, textNode, fakeNode, isLastChild;
 	
 	sourceDOMNode.children.forEach(function(childDOMNode, childIndex) {
 		var typeIdx = 0, currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
-//		console.log(currentViewType, childDOMNode.views.masterView.nodeName, childLayoutNode);
+		isLastChild = childIndex === sourceDOMNode.children.length - 1 ? true : false;
+		
 		// when represented as naiveDOM, leaf-components have no children, they only hold views
 		while (currentViewType) {
 			// childDOMNode.views.masterView is ALWAYS flat
 			if (typeIdx === 0) {
-				
 				childDOMNodeAsAView = childDOMNode.views.masterView;
-//				childLayoutNode = new LayoutNode(childDOMNodeAsAView, layoutParentNode);
+				
 				// TODO: optimization : textContent may be passed as an argument to the layoutNode Ctor
 				// TODO: optimization : the presence of a textContent may be identified by a less expensive mean
-				
 				if ((textContentKey = childDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false) {
-//					console.log(childDOMNodeAsAView.attributes[textContentKey].value);
 					textNode = new NaiveDOMNode();
 					textNode._UID = +Infinity;	// we must NOT match any style (UIDgenerator is out of sync, as UID were generated in another IFrame)
-					textNode.nodeName = 'textNode'
+					textNode.nodeName = 'textNode';
 					textNode.attributes.push(new CoreTypes.Pair(
 						'textContent',
 						childDOMNodeAsAView.attributes[textContentKey].value
 					));
 					childDOMNodeAsAView.attributes.splice(textContentKey, 1);
-					childLayoutNode = new LinkedLayoutNode(childDOMNodeAsAView, layoutParentNode, childLayoutNode, childIndex === sourceDOMNode.children.length - 1 ? true : false);
+					childLayoutNode = new LinkedLayoutNode(childDOMNodeAsAView, layoutParentNode, childLayoutNode, false);
 					new LayoutNode(textNode, childLayoutNode);
 				}
-				else
-//					childLayoutNode = new LayoutNode(childDOMNodeAsAView, layoutParentNode);
-					childLayoutNode = new LinkedLayoutNode(childDOMNodeAsAView, layoutParentNode, childLayoutNode, childIndex === sourceDOMNode.children.length - 1 ? true : false);
-//				console.log(currentViewType, childDOMNode.views.masterView.nodeName, childLayoutNode);
+				else {
+					childLayoutNode = new LinkedLayoutNode(childDOMNodeAsAView, layoutParentNode, childLayoutNode, false);
+				};
 			}
 			else {
 				subChildLayoutNode = undefined;
 				childDOMNode.views[currentViewType].forEach(function(subChildDOMNodeAsAView, key) {
-						// TODO: optimization : the presence of a textContent may be identified by a less expensive mean
-						if ((textContentKey = subChildDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false) {
-							// FIXME: there should be as many textNodes as there are words => Fix that in the layout algo ?
-							textNode = new NaiveDOMNode();
-							textNode.attributes.push(new CoreTypes.Pair(
-								'textContent',
-								subChildDOMNodeAsAView.attributes[textContentKey].value
-							));
-							subChildDOMNodeAsAView.attributes.splice(textContentKey, 1);
-							subChildLayoutNode = new LinkedLayoutNode(subChildDOMNodeAsAView, childLayoutNode, subChildLayoutNode, key === childDOMNode.views[currentViewType].length - 1 ? true : false);
-							new LayoutNode(textNode, subChildLayoutNode);
+					isLastChild = key === childDOMNode.views[currentViewType].length - 1 ? true : false;
+					// TODO: optimization : the presence of a textContent may be identified by a less expensive mean
+					if ((textContentKey = subChildDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false) {
+						// FIXME: there should be as many textNodes as there are words => Fix that in the layout algo ?
+						textNode = new NaiveDOMNode();
+						textNode.attributes.push(new CoreTypes.Pair(
+							'textContent',
+							subChildDOMNodeAsAView.attributes[textContentKey].value
+						));
+						subChildDOMNodeAsAView.attributes.splice(textContentKey, 1);
+						subChildLayoutNode = new LinkedLayoutNode(subChildDOMNodeAsAView, childLayoutNode, subChildLayoutNode, isLastChild);
+						new LayoutNode(textNode, subChildLayoutNode);
+					}
+					else {
+						if (childLayoutNode.layoutAlgo.algoName === LayoutNode.prototype.displayPropsAsConstants.flex && isLastChild) {
+							fakeNode = new NaiveDOMNode();
+							fakeNode.nodeName = 'fakeNode';
+							
+							subChildLayoutNode = new LinkedLayoutNode(subChildDOMNodeAsAView, childLayoutNode, subChildLayoutNode, false);
+							new FlexEndLayoutNode(fakeNode, childLayoutNode, subChildLayoutNode, isLastChild);
 						}
 						else
-							subChildLayoutNode = new LinkedLayoutNode(subChildDOMNodeAsAView, childLayoutNode, subChildLayoutNode, key === childDOMNode.views[currentViewType].length - 1 ? true : false);
+							subChildLayoutNode = new LinkedLayoutNode(subChildDOMNodeAsAView, childLayoutNode, subChildLayoutNode, isLastChild);
+					}
 				}, this);
 			}
 			typeIdx++;
 			currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
 		}
+		
+		
 		currentLayoutNode = childLayoutNode;
 		
 		this.alternateFlatAndRecursiveBuild(childDOMNode, currentLayoutNode);
+		
+		if (layoutParentNode.layoutAlgo.algoName === LayoutNode.prototype.displayPropsAsConstants.flex && isLastChild) {
+			fakeNode = new NaiveDOMNode();
+			fakeNode.nodeName = 'fakeNode';
+			new FlexEndLayoutNode(fakeNode, layoutParentNode, childLayoutNode, isLastChild);
+		}
 		
 	}, this);
 	return currentLayoutNode;
@@ -184,16 +203,18 @@ var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode) {
 	this.textContent = textContent ? textContent.value : '';
 	this.isTextNode = this.textContent.length ? true : false;
 	
-	this.availableSpace = new CoreTypes.AvailableSpace();
+	this.availableSpace = new LayoutTypes.AvailableSpace();
 	this.computedStyle = new CSSPropertySetBuffer();
 
 	this.populateInheritedStyle();
 	this.populateAllComputedStyle(this.queryStyleUpdate(sourceDOMNodeAsView));
 	
-	this.dimensions = new CoreTypes.BoxDimensions();
-	this.offsets = new CoreTypes.BoxOffsets();
+	this.dimensions = new LayoutTypes.BoxDimensions();
+	this.cachedDimensions = new LayoutTypes.BoxDimensions();
+	this.offsets = new LayoutTypes.BoxOffsets();
 	
-	this.canvasShape = this.getCanvasShape();
+	this.canvasShape = null;
+//	this.canvasShape = this.getCanvasShape();
 	
 	this.layoutAlgo = this.getLayoutAlgo(this.nodeName);
 
@@ -257,12 +278,12 @@ LayoutNode.prototype.getCanvasShape = function() {
 
 LayoutNode.prototype.updateCanvasShapeOffsets = function() {
 	if (this.nodeName === 'textNode') {
-		this.canvasShape.position.x = parseInt(this.offsets.marginInline) + 1;
-		this.canvasShape.position.y = parseInt(this.offsets.marginBlock) + 1;
+		this.canvasShape.position.x = Math.round(this.offsets.marginInline) + 1;
+		this.canvasShape.position.y = Math.round(this.offsets.marginBlock) + 1;
 	}
 	else {
-		this.canvasShape.position.x = parseInt(this.offsets.marginInline) + .5;
-		this.canvasShape.position.y = parseInt(this.offsets.marginBlock) + .5;
+		this.canvasShape.position.x = Math.round(this.offsets.marginInline) + .5;
+		this.canvasShape.position.y = Math.round(this.offsets.marginBlock) + .5;
 	}
 //	console.log(this.nodeName, 'this.offsets', this.offsets);
 //	console.log('this.canvasShape.position', this.canvasShape.position);
@@ -272,8 +293,8 @@ LayoutNode.prototype.updateCanvasShapeOffsets = function() {
 
 LayoutNode.prototype.updateCanvasShapeDimensions = function() {
 //	console.error('updateCanvasShapeDimensions', this.nodeName, this.dimensions);//, this.canvasShape.shape._geometry && this.canvasShape.shape._geometry.graphicsData[0].shape);
-	this.canvasShape.size.width = parseInt(this.dimensions.borderInline);
-	this.canvasShape.size.height = parseInt(this.dimensions.borderBlock);
+	this.canvasShape.size.width = Math.round(this.dimensions.borderInline);
+	this.canvasShape.size.height = Math.round(this.dimensions.borderBlock);
 	this.canvasShape.reDraw();
 //	console.log(this.canvasShape, this.canvasShape.shape._geometry.graphicsData[0]);
 }
@@ -322,12 +343,12 @@ LayoutNode.prototype.getLayoutAlgo = function(nodeName) {
 	var valueOfDisplayProp = this.isTextNode ? '' : this.getDisplayProp(nodeName);
 	
 	switch (valueOfDisplayProp) {
-		case this.displayPropsAsConstants.inline : return new InlineLayoutAlgo(this);
-		case this.displayPropsAsConstants.block : return new BlockLayoutAlgo(this);
-		case this.displayPropsAsConstants.inlineBlock : return new InlineBlockLayoutAlgo(this);
-		case this.displayPropsAsConstants.flex : return new FlexLayoutAlgo(this);
-		case this.displayPropsAsConstants.none : return new NoLayoutAlgo(this);
-		default : return this.isTextNode ? new TextLayoutAlgo(this, this.textContent) : new InlineLayoutAlgo(this);
+		case this.displayPropsAsConstants.inline : return new InlineLayoutAlgo(this, layoutDimensionsBuffer);
+		case this.displayPropsAsConstants.block : return new BlockLayoutAlgo(this, layoutDimensionsBuffer);
+		case this.displayPropsAsConstants.inlineBlock : return new InlineBlockLayoutAlgo(this, layoutDimensionsBuffer);
+		case this.displayPropsAsConstants.flex : return new FlexLayoutAlgo(this, layoutDimensionsBuffer);
+		case this.displayPropsAsConstants.none : return new NoLayoutAlgo(this, layoutDimensionsBuffer);
+		default : return this.isTextNode ? new TextLayoutAlgo(this, this.textContent, layoutDimensionsBuffer) : new InlineLayoutAlgo(this, layoutDimensionsBuffer);
 	}
 }
 
@@ -342,8 +363,10 @@ LayoutNode.prototype.getDisplayProp = function(nodeName) {
 //		console.log(this.nodeName, this._parent.nodeName, this._parent.layoutAlgo.flexDirection);
 	
 	if (valueOfDisplayProp === this.displayPropsAsConstants.inline) {
-//		console.log(this.nodeName, 'valueOfDisplayProp', valueOfDisplayProp);
+//		|| (valueOfDisplayProp === this.displayPropsAsConstants.flex && this._parent.layoutAlgo.algoName === this.displayPropsAsConstants.flex)) {
+//		console.log(this.nodeName, 'valueOfDisplayProp', valueOfDisplayProp, this._parent.nodeName, this._parent.layoutAlgo.algoName);
 		if (this._parent.layoutAlgo.algoName === this.displayPropsAsConstants.flex)
+//			|| this._parent.layoutAlgo.algoName === this.displayPropsAsConstants.inlineBlock)
 			return this.displayPropsAsConstants.inlineBlock;
 		else
 		 	// inline is the initialValue: style may not be explicitly defined -> apply here sort of a user-agent stylesheet for now
@@ -470,17 +493,46 @@ LinkedLayoutNode.prototype.climbChildrenLinkedListAndCallbackLayoutAlgo = functi
 
 
 
+var FlexEndLayoutNode = function(sourceDOMNodeAsView, layoutParentNode, previousSiblingLayoutNode, isLastChild) {
+	this._UID = +Infinity;
+	
+	this.isLastChild = isLastChild;
+	this._parent = layoutParentNode;
+	this.previousSibling = previousSiblingLayoutNode;
+	
+	this.nodeName = sourceDOMNodeAsView.nodeName;
+	
+	this.availableSpace = new LayoutTypes.AvailableSpace();
+	this.computedStyle = new CSSPropertySetBuffer();
+	this.dimensions = new LayoutTypes.BoxDimensions();
+	this.offsets = new LayoutTypes.BoxOffsets();
+	
+	this.canvasShape = null;
+	this.layoutAlgo = new InlineBlockLayoutAlgo(this, layoutDimensionsBuffer);
+}
+FlexEndLayoutNode.prototype = Object.create(LinkedLayoutNode.prototype);
+FlexEndLayoutNode.prototype.objectType = 'FlexEndLayoutNode';
+
+
+
+
+
+
+
+
+
+
 var LayoutRoot = function(dimensionsPairAsArray) {
 	this.objectType = 'LayoutRoot';
 	this.nodeName = 'viewport';
 //	console.log(dimensionsPairAsArray);
 	this.availableSpace = dimensionsPairAsArray
-		? new CoreTypes.AvailableSpace(dimensionsPairAsArray)
-		: new CoreTypes.AvailableSpace();
+		? new LayoutTypes.AvailableSpace(dimensionsPairAsArray)
+		: new LayoutTypes.AvailableSpace();
 	this.computedStyle = new CSSPropertySetBuffer();
-	this.dimensions = new CoreTypes.BoxDimensions(dimensionsPairAsArray) || new CoreTypes.BoxDimensions();
-	this.offsets = new CoreTypes.BoxOffsets();
-	this.layoutAlgo = new BaseLayoutAlgo(this);
+	this.dimensions = new LayoutTypes.BoxDimensions(dimensionsPairAsArray) || new LayoutTypes.BoxDimensions();
+	this.offsets = new LayoutTypes.BoxOffsets();
+	this.layoutAlgo = new BaseLayoutAlgo(this, layoutDimensionsBuffer);
 	
 //	this.canvasShape = this.getCanvasShape();
 }

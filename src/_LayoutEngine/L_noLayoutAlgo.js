@@ -13,8 +13,8 @@ var BaseLayoutAlgo = require('src/_LayoutEngine/L_baseLayoutAlgo');
 /*
  * 
  */
-var NoLayoutAlgo = function(layoutNode) {
-	BaseLayoutAlgo.call(this, layoutNode);
+var NoLayoutAlgo = function(layoutNode, layoutDimensionsBuffer) {
+	BaseLayoutAlgo.call(this, layoutNode, layoutDimensionsBuffer);
 	this.objectType = 'NOLayoutAlgo';
 	this.algoName = 'none';
 	

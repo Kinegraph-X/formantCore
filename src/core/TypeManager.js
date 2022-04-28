@@ -10,6 +10,7 @@ var CachedTypes = require('src/core/CachedTypes');
 var stateMachineCache = new StateMachineCache('stateMachineCache');
 var exportedObjects = {};
 
+
 /**
  * @constructor ValueObject
  */
@@ -830,6 +831,11 @@ var layoutNodesRegistry = new PropertyCache('layoutNodesRegistry');
 var rasterShapesRegistry = new PropertyCache('rasterShapesRegistry');
 
 /**
+ * @typedStore {StoredFlexCtx} {UID : nodeUID}
+ */
+var flexCtxRegistry = new PropertyCache('flexCtxRegistry');
+
+/**
  * @typedStore {StoredLayoutNodeCallback} {UID : nodeUID}
  */
 var layoutCallbackRegistry = new PropertyCache('layoutCallbackRegistry');
@@ -842,6 +848,13 @@ console.log(rasterShapesRegistry);
 //console.log(permanentProvidersRegistry);
 
 //console.log(viewsRegistry);
+
+
+/**
+ * @typedStoreAsBuffer {StoredLayoutDimensions} {UID : nodeUID}
+ */
+ var layoutDimensionsRegistry;
+//var layoutDimensionsRegistry = new LayoutDimensionsBuffer();
 
 
 
@@ -871,7 +884,9 @@ Object.assign(exportedObjects, {
 	pendingStyleRegistry : pendingStyleRegistry,					// Object PropertyCache
 	rasterShapesRegistry : rasterShapesRegistry,					// Object PropertyCache
 	layoutNodesRegistry :layoutNodesRegistry,						// Object PropertyCache
+	flexCtxRegistry : flexCtxRegistry,								// Object PropertyCache
 	layoutCallbackRegistry : layoutCallbackRegistry,				// Object PropertyCache
+	layoutDimensionsRegistry : layoutDimensionsRegistry,			// Object LayoutDimensionsBuffer
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegistry : nodesRegistry,
 	viewsRegistry : viewsRegistry,

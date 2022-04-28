@@ -145,7 +145,6 @@ MatchingAlgorithms.prototype.branchOnRelation = function(view, componentsList, i
 	
 	if (componentsList[index].hasPseudoClassFlag) {
 		this.localDebugLog(this.DHLstr(++DHL) + 'CASE: Has a pseudo-class. Pseudo-class is', Object.keys(CSSSelectorsList.prototype.pseudoClassConstants)[componentsList[index].pseudoClassType]);
-//		console.log('componentsList[index].hasPseudoClassFlag', componentsList[index]);
 		switch (componentsList[index].pseudoClassType) {
 			case CSSSelectorsList.prototype.pseudoClassConstants.firstChild:
 				secondaryMatchingAlgo = new MatchOnIsFirstChild();
@@ -423,10 +422,12 @@ MatchOnIsNthChildOdd.prototype.matchOnComponent = function(view, componentsList,
 		parentView = this.getNextAscendingNode(view, ++DHL),
 		children = this.getDescendingNodes(parentView),
 		offset = parentView._viewWrapper.styleDataStructure ? 1 : 0;
+	// nth-child count starts at 1
+	var stdOffset = 1;
 	
 	children.forEach(function(childView, key) {
 		if (childView === view) {
-			isOdd = (key + offset) % 2 === 1
+			isOdd = (key + stdOffset + offset) % 2 === 1
 		}
 	}, this);
 
@@ -448,13 +449,15 @@ MatchOnIsNthChildEven.prototype.matchOnComponent = function(view, componentsList
 		parentView = this.getNextAscendingNode(view, ++DHL),
 		children = this.getDescendingNodes(parentView),
 		offset = parentView._viewWrapper.styleDataStructure ? 1 : 0;
+	// nth-child count starts at 1
+	var stdOffset = 1;
 	
 	children.forEach(function(childView, key) {
 		if (childView === view) {
-			isEven = (key + offset) % 2 === 0
+			isEven = (key + stdOffset + offset) % 2 === 0
 		}
 	}, this);
-
+	
 	return isEven;
 }
 
@@ -473,7 +476,7 @@ MatchOnIsNthChildANpB.prototype.matchOnComponent = function(view, componentsList
 		children = this.getDescendingNodes(parentView);
 	var groupSize = componentsList[index].pseudoClassMicroSyntax[0],
 		offset = parentView._viewWrapper.styleDataStructure ? 1 : 0;
-		// nth-child count starts at 1
+	// nth-child count starts at 1
 	var stdOffset = 1;
 	
 	if (groupSize === 1)
