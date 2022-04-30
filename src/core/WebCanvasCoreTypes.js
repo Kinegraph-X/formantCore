@@ -1,6 +1,8 @@
 /**
  * CoreTypes for Web Canvas
  */
+ 
+ var chroma = require('src/functionals/chroma');
 
 
 var CanvasTypes = {
@@ -640,6 +642,64 @@ CanvasTypes.InputShape.prototype.draw = function() {
 		//		]
 //	);
 }
+
+
+
+
+
+
+
+CanvasTypes.ButtonShapeDefaults = {
+	borderWidth: 1,
+	fillColor: 0xF5F5F5,
+	borderColor: 0xAFAFAF,
+	borderRadius: 3
+};
+
+CanvasTypes.ButtonShape = function(position, size) {
+
+	var fillStyle = new CanvasTypes.FillStyle({
+		fillColor: CanvasTypes.ButtonShapeDefaults.fillColor
+	});
+	var lineStyle = new CanvasTypes.LineStyle({
+		lineWidth: CanvasTypes.ButtonShapeDefaults.borderWidth,
+		lineColor: CanvasTypes.ButtonShapeDefaults.borderColor
+	});
+
+	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, CanvasTypes.ButtonShapeDefaults.borderRadius, CanvasTypes.ButtonShapeDefaults.borderWidth);
+
+	this.draw();
+}
+CanvasTypes.ButtonShape.prototype = Object.create(CanvasTypes.AbstractBox.prototype);
+
+CanvasTypes.ButtonShape.prototype.draw = function() {
+	// lineStyle (width, color, alpha, alignment, native) 
+	this._baseShape._shape.beginFill(this.fillStyle.fillColor, this.fillStyle.fillAlpha);
+	this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.size.width - this.borderWidth, this.size.height - this.borderWidth, this.borderRadius);
+	this._baseShape._shape.endFill();
+	
+	if (this.borderWidth) {
+		this.shape.lineStyle(this.lineStyle.lineWidth, chroma(this.lineStyle.lineColor).brighten(.5).num(), this.lineStyle.lineAlpha, this.lineAlignement, null, this.lineStyle.lineDash);
+		
+		this.shape.moveTo(this.position.x, this.position.y);
+		this.shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y);
+		this.shape.lineStyle(this.lineStyle.lineWidth, chroma(this.lineStyle.lineColor).darken(.9).num(), this.lineStyle.lineAlpha, this.lineAlignement, null, this.lineStyle.lineDash);
+		this.shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y + this.size.height - this.borderWidth);
+		this.shape.lineTo(this.position.x, this.position.y + this.size.height - this.borderWidth);
+		this.shape.lineStyle(this.lineStyle.lineWidth, chroma(this.lineStyle.lineColor).brighten(.5).num(), this.lineStyle.lineAlpha, this.lineAlignement, null, this.lineStyle.lineDash);
+		this.shape.lineTo(this.position.x, this.position.y);
+	}
+}
+
+
+
+
+
+
+
+
+
+
 
 // tree = parseTree(node)
 // stack = parseStackingContexts(tree);

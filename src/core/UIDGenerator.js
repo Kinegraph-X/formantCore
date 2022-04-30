@@ -36,6 +36,21 @@ GeneratorForDefs.prototype.newUID = function() {
 
 
 
+var GeneratorForLayoutNodes = function() {
+	this.nextUID = 0;
+}
+
+GeneratorForLayoutNodes.prototype.newUID = function() {
+	return (this.nextUID++).toString();
+}
+
+GeneratorForLayoutNodes.prototype.resetCursor = function() {
+	this.nextUID = 0;
+}
+
+
+
+
 var GeneratorFor16bitsInt = function() {
 	this.nextUID = 0;
 }
@@ -59,5 +74,6 @@ module.exports =  {
 	UIDGenerator : new Generator(),
 	StyleUIDGenerator : new GeneratorForStyles(),
 	DefUIDGenerator : new GeneratorForDefs(),
+	NodeUIDGenerator : new GeneratorForLayoutNodes(),
 	GeneratorFor16bitsInt : new GeneratorFor16bitsInt()
 }

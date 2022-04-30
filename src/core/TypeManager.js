@@ -838,7 +838,7 @@ var flexCtxRegistry = new PropertyCache('flexCtxRegistry');
 /**
  * @typedStore {StoredLayoutNodeCallback} {UID : nodeUID}
  */
-var layoutCallbackRegistry = new PropertyCache('layoutCallbackRegistry');
+var layoutCallbacksRegistry = new PropertyCache('layoutCallbacksRegistry');
 
 console.log(hostsDefinitionsCacheRegistry);
 console.log(listsDefinitionsCacheRegistry);
@@ -885,7 +885,7 @@ Object.assign(exportedObjects, {
 	rasterShapesRegistry : rasterShapesRegistry,					// Object PropertyCache
 	layoutNodesRegistry :layoutNodesRegistry,						// Object PropertyCache
 	flexCtxRegistry : flexCtxRegistry,								// Object PropertyCache
-	layoutCallbackRegistry : layoutCallbackRegistry,				// Object PropertyCache
+	layoutCallbacksRegistry : layoutCallbacksRegistry,				// Object PropertyCache
 	layoutDimensionsRegistry : layoutDimensionsRegistry,			// Object LayoutDimensionsBuffer
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegistry : nodesRegistry,

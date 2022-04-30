@@ -13,7 +13,7 @@
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var LayoutTypes = require('src/_LayoutEngine/LayoutTypes');
-var UIDGenerator = require('src/core/UIDGenerator').UIDGenerator;
+var UIDGenerator = require('src/core/UIDGenerator').NodeUIDGenerator;
 var Style = require('src/editing/Style');
 
 var NaiveDOMNode = require('src/_LayoutEngine/NaiveDOMNode');
@@ -44,24 +44,34 @@ var CanvasTypes = require('src/core/WebCanvasCoreTypes');
 
 var LayoutTreePrepare = function(naiveDOM, collectedSWrappers, importedMasterStyleRegistry) {
 	this.objectType = 'LayoutTreePrepare';
-	
 	this.masterStyleRegistry = importedMasterStyleRegistry;
+	
+	// FIXME: this may be more efficiently done at the end of the layout process
+	UIDGenerator.resetCursor();
 	TypeManager.layoutNodesRegistry.cache = {};
 	TypeManager.rasterShapesRegistry.cache = {};
-	TypeManager.layoutCallbackRegistry.cache = {};
-//	console.log('TypeManager.rasterShapesRegistry', TypeManager.rasterShapesRegistry);
+	TypeManager.layoutCallbacksRegistry.cache = {};
 	
 	this.layoutTree = this.constructLayoutTree(naiveDOM, collectedSWrappers);
+	
+	this.latelyExecuteLayout();
 }
 LayoutTreePrepare.prototype = {};
 LayoutTreePrepare.prototype.objectType = 'LayoutTreePrepare';
 
 LayoutTreePrepare.prototype.constructLayoutTree = function(naiveDOM, collectedSWrappers) {
-	var layoutViewPort = new LayoutRoot(this.retrieveWindowInitialSize());
+	var layoutViewport = new LayoutRoot(this.retrieveWindowInitialSize());
 	// FIXME: We retrieve the style of the body tag, but we should retrieve ALL the cascade of styles from "body" to the ACTUAL container
-	this.retrieveWindowStyle(layoutViewPort, naiveDOM, collectedSWrappers);
-	var layoutRoot = new LayoutNode(naiveDOM.views.memberViews[2], layoutViewPort);
+	this.retrieveWindowStyle(layoutViewport, naiveDOM, collectedSWrappers);
+	var layoutRoot = new LayoutNode(naiveDOM.views.memberViews[2], layoutViewport);
 	return new LayoutTreeBuilder(naiveDOM, layoutRoot);
+}
+
+LayoutTreePrepare.prototype.latelyExecuteLayout = function() {
+	var layoutNodes = Object.values(TypeManager.layoutNodesRegistry.cache);
+	layoutNodes.forEach(function(layoutNode) {
+		layoutNode.layoutAlgo.executeLayout();
+	}, this);
 }
 
 LayoutTreePrepare.prototype.retrieveWindowInitialSize = function() {
@@ -135,11 +145,14 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 			else {
 				subChildLayoutNode = undefined;
 				childDOMNode.views[currentViewType].forEach(function(subChildDOMNodeAsAView, key) {
+//					console.log('childDOMNodeAsAView', childDOMNodeAsAView.nodeName, childDOMNodeAsAView.attributes);
 					isLastChild = key === childDOMNode.views[currentViewType].length - 1 ? true : false;
 					// TODO: optimization : the presence of a textContent may be identified by a less expensive mean
 					if ((textContentKey = subChildDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false) {
 						// FIXME: there should be as many textNodes as there are words => Fix that in the layout algo ?
 						textNode = new NaiveDOMNode();
+						textNode._UID = +Infinity;	// we must NOT match any style (UIDgenerator is out of sync, as UID were generated in another IFrame)
+						textNode.nodeName = 'textNode';
 						textNode.attributes.push(new CoreTypes.Pair(
 							'textContent',
 							subChildDOMNodeAsAView.attributes[textContentKey].value
@@ -203,15 +216,14 @@ var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode) {
 	this.textContent = textContent ? textContent.value : '';
 	this.isTextNode = this.textContent.length ? true : false;
 	
-	this.availableSpace = new LayoutTypes.AvailableSpace();
 	this.computedStyle = new CSSPropertySetBuffer();
 
 	this.populateInheritedStyle();
 	this.populateAllComputedStyle(this.queryStyleUpdate(sourceDOMNodeAsView));
 	
-	this.dimensions = new LayoutTypes.BoxDimensions();
-	this.cachedDimensions = new LayoutTypes.BoxDimensions();
-	this.offsets = new LayoutTypes.BoxOffsets();
+//	this.availableSpace = new LayoutTypes.AvailableSpace();
+//	this.dimensions = new LayoutTypes.BoxDimensions();
+//	this.offsets = new LayoutTypes.BoxOffsets();
 	
 	this.canvasShape = null;
 //	this.canvasShape = this.getCanvasShape();
@@ -233,12 +245,15 @@ LayoutNode.prototype.getCanvasShape = function() {
 	var fillAlpha = this.computedStyle.getTokenTypeForPropAsConstant('backgroundColor') === CSSPropertyBuffer.prototype.TokenTypes.IdentToken
 		? 0
 		: 1;
+	
+	// FIXME: allow having a different border-style for each side of the box
 	var lineColor = this.computedStyle.getTokenTypeForPropAsConstant('borderBlockStartColor') === CSSPropertyBuffer.prototype.TokenTypes.HashToken
 		? parseInt('0x' + this.computedStyle.getPropAsString('borderBlockStartColor').slice(1, 7))
 		// light-blue shall mean 'transparent' when debugging
 		: 0xAACCFF;
+		
+	// FIXME: allow having a different border-style for each side of the box
 	var borderWidth = this.computedStyle.getPropAsNumber('borderBlockStartWidth');
-//	console.error(this.computedStyle.getPropAsNumber('borderBlockStartWidth'));
 	
 	if (this.nodeName === 'textNode') {
 		var canvasShape = new CanvasTypes._text(
@@ -248,22 +263,28 @@ LayoutNode.prototype.getCanvasShape = function() {
 				fontColor : this.computedStyle.getPropAsString('color'),
 				fontSize : this.computedStyle.getPropAsString('fontSize'),
 				fontWeight : this.computedStyle.getPropAsString('fontWeight'),
-				lineHeight : this.computedStyle.getPropAsNumber('lineHeight'), // 	/!\ NUMBER /!\
+				lineHeight : this.computedStyle.getPropAsNumber('lineHeight'), // 	/!\ getPropAsNumber /!\
 				textAlign : this.computedStyle.getPropAsString('textAlign')
 			}),
-			new CanvasTypes.Position({x : this.offsets.inline, y : this.offsets.block})
+			new CanvasTypes.Position({x : this.layoutAlgo.offsets.getInline(), y : this.layoutAlgo.offsets.getBlock()})
 		);
 	}
 	else if (this.nodeName === 'input') {
 		var canvasShape = new CanvasTypes.InputShape(
-			new CanvasTypes.Position({x : this.offsets.inline, y : this.offsets.block}),
-			new CanvasTypes.Size({width : this.dimensions.inline, height : this.dimensions.block})
+			new CanvasTypes.Position({x : this.layoutAlgo.offsets.getInline(), y : this.layoutAlgo.offsets.getBlock()}),
+			new CanvasTypes.Size({width : this.layoutAlgo.dimensions.getBorderInline(), height : this.layoutAlgo.dimensions.getBorderBlock()})
+		);
+	}
+	else if (this.nodeName === 'button') {
+		var canvasShape = new CanvasTypes.ButtonShape(
+			new CanvasTypes.Position({x : this.layoutAlgo.offsets.getInline(), y : this.layoutAlgo.offsets.getBlock()}),
+			new CanvasTypes.Size({width : this.layoutAlgo.dimensions.getBorderInline(), height : this.layoutAlgo.dimensions.getBorderBlock()})
 		);
 	}
 	else {
 		var canvasShape = new CanvasTypes.NodeShape(
-			new CanvasTypes.Position({x : this.offsets.inline, y : this.offsets.block}),
-			new CanvasTypes.Size({width : this.dimensions.borderInline, height : this.dimensions.borderBlock}),
+			new CanvasTypes.Position({x : this.layoutAlgo.offsets.getInline(), y : this.layoutAlgo.offsets.getBlock()}),
+			new CanvasTypes.Size({width : this.layoutAlgo.dimensions.getBorderInline(), height : this.layoutAlgo.dimensions.getBorderBlock()}),
 			// FIXME: What to do when we want 4 different borders ?
 			new CanvasTypes.LineStyle({lineColor : lineColor, lineWidth : borderWidth}),
 			new CanvasTypes.FillStyle({fillColor : fillColor, fillAlpha : fillAlpha}),
@@ -272,18 +293,18 @@ LayoutNode.prototype.getCanvasShape = function() {
 		);
 	}
 	TypeManager.rasterShapesRegistry.setItem(UIDGenerator.newUID(), canvasShape);
-//	console.log('canvasShape', canvasShape);
+	
 	return canvasShape;
 }
 
 LayoutNode.prototype.updateCanvasShapeOffsets = function() {
 	if (this.nodeName === 'textNode') {
-		this.canvasShape.position.x = Math.round(this.offsets.marginInline) + 1;
-		this.canvasShape.position.y = Math.round(this.offsets.marginBlock) + 1;
+		this.canvasShape.position.x = Math.round(this.layoutAlgo.offsets.getMarginInline()) + 1;
+		this.canvasShape.position.y = Math.round(this.layoutAlgo.offsets.getMarginBlock()) + 1;
 	}
 	else {
-		this.canvasShape.position.x = Math.round(this.offsets.marginInline) + .5;
-		this.canvasShape.position.y = Math.round(this.offsets.marginBlock) + .5;
+		this.canvasShape.position.x = Math.round(this.layoutAlgo.offsets.getMarginInline()) + .5;
+		this.canvasShape.position.y = Math.round(this.layoutAlgo.offsets.getMarginBlock()) + .5;
 	}
 //	console.log(this.nodeName, 'this.offsets', this.offsets);
 //	console.log('this.canvasShape.position', this.canvasShape.position);
@@ -293,8 +314,10 @@ LayoutNode.prototype.updateCanvasShapeOffsets = function() {
 
 LayoutNode.prototype.updateCanvasShapeDimensions = function() {
 //	console.error('updateCanvasShapeDimensions', this.nodeName, this.dimensions);//, this.canvasShape.shape._geometry && this.canvasShape.shape._geometry.graphicsData[0].shape);
-	this.canvasShape.size.width = Math.round(this.dimensions.borderInline);
-	this.canvasShape.size.height = Math.round(this.dimensions.borderBlock);
+//	this.canvasShape.size.width = Math.round(this.dimensions.borderInline);
+//	this.canvasShape.size.height = Math.round(this.dimensions.borderBlock);
+	this.canvasShape.size.width = Math.round(this.layoutAlgo.dimensions.getBorderInline());
+	this.canvasShape.size.height = Math.round(this.layoutAlgo.dimensions.getBorderBlock());
 	this.canvasShape.reDraw();
 //	console.log(this.canvasShape, this.canvasShape.shape._geometry.graphicsData[0]);
 }
@@ -452,10 +475,10 @@ var LinkedLayoutNode = function(sourceDOMNodeAsView, layoutParentNode, previousS
 	this.isLastChild = isLastChild;
 	this._parent = layoutParentNode;
 	this.previousSibling = previousSiblingLayoutNode;
-//	console.log('this._parent.nodeName', this._parent.nodeName, 'this._parent.availableSpace.childCount', this._parent.availableSpace.childCount);
-	this._parent.availableSpace.childCount++;
-	
 	LayoutNode.call(this, sourceDOMNodeAsView, layoutParentNode);
+	
+	this._parent.layoutAlgo.availableSpace.incrementChildCount();
+	
 	this.objectType = 'LinkedLayoutNode';
 }
 LinkedLayoutNode.prototype = Object.create(LayoutNode.prototype);
@@ -494,7 +517,8 @@ LinkedLayoutNode.prototype.climbChildrenLinkedListAndCallbackLayoutAlgo = functi
 
 
 var FlexEndLayoutNode = function(sourceDOMNodeAsView, layoutParentNode, previousSiblingLayoutNode, isLastChild) {
-	this._UID = +Infinity;
+	this._UID = UIDGenerator.newUID();
+	TypeManager.layoutNodesRegistry.setItem(this._UID, this);
 	
 	this.isLastChild = isLastChild;
 	this._parent = layoutParentNode;
@@ -502,10 +526,11 @@ var FlexEndLayoutNode = function(sourceDOMNodeAsView, layoutParentNode, previous
 	
 	this.nodeName = sourceDOMNodeAsView.nodeName;
 	
-	this.availableSpace = new LayoutTypes.AvailableSpace();
 	this.computedStyle = new CSSPropertySetBuffer();
-	this.dimensions = new LayoutTypes.BoxDimensions();
-	this.offsets = new LayoutTypes.BoxOffsets();
+	
+//	this.availableSpace = new LayoutTypes.AvailableSpace();
+//	this.dimensions = new LayoutTypes.BoxDimensions();
+//	this.offsets = new LayoutTypes.BoxOffsets();
 	
 	this.canvasShape = null;
 	this.layoutAlgo = new InlineBlockLayoutAlgo(this, layoutDimensionsBuffer);
@@ -523,16 +548,23 @@ FlexEndLayoutNode.prototype.objectType = 'FlexEndLayoutNode';
 
 
 var LayoutRoot = function(dimensionsPairAsArray) {
+	this._UID = UIDGenerator.newUID();
+//	TypeManager.layoutNodesRegistry.setItem(this._UID, this);
+	
 	this.objectType = 'LayoutRoot';
 	this.nodeName = 'viewport';
 //	console.log(dimensionsPairAsArray);
-	this.availableSpace = dimensionsPairAsArray
-		? new LayoutTypes.AvailableSpace(dimensionsPairAsArray)
-		: new LayoutTypes.AvailableSpace();
+//	this.availableSpace = dimensionsPairAsArray
+//		? new LayoutTypes.AvailableSpace(dimensionsPairAsArray)
+//		: new LayoutTypes.AvailableSpace();
+//	this.dimensions = new LayoutTypes.BoxDimensions(dimensionsPairAsArray) || new LayoutTypes.BoxDimensions();
+//	this.offsets = new LayoutTypes.BoxOffsets();
+
 	this.computedStyle = new CSSPropertySetBuffer();
-	this.dimensions = new LayoutTypes.BoxDimensions(dimensionsPairAsArray) || new LayoutTypes.BoxDimensions();
-	this.offsets = new LayoutTypes.BoxOffsets();
 	this.layoutAlgo = new BaseLayoutAlgo(this, layoutDimensionsBuffer);
+	
+	this.layoutAlgo.availableSpace.setInline(dimensionsPairAsArray[0]);
+	this.layoutAlgo.availableSpace.setBlock(dimensionsPairAsArray[1]);
 	
 //	this.canvasShape = this.getCanvasShape();
 }

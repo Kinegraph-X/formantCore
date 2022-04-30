@@ -21,7 +21,7 @@ var UIDGenerator = require('src/core/UIDGenerator').UIDGenerator;
  */
 var NaiveDOMNode = function(viewWrapper, view, hierarchicalDepth, hostNode, hostView, subNodesGroup) {
 	this.objectType = 'NaiveDOMNode';
-	
+//	console.log(view.currentViewAPI, view);
 	var masterNode = view ? view.getMasterNode() : null;
 //	console.log(masterNode);
 	this._viewWrapper = viewWrapper;
@@ -32,6 +32,7 @@ var NaiveDOMNode = function(viewWrapper, view, hierarchicalDepth, hostNode, host
 	this.nodeId = view ? masterNode.id : null;
 	this.classNames = view ? Object.values(masterNode.classList) : null;
 	if (view) {
+		var textContent;
 		this.attributes = new CoreTypes.ListOfPairs();//masterNode.attributes);
 //		console.log(masterNode.textContent);
 		if (viewWrapper.textContent.length)
@@ -39,6 +40,12 @@ var NaiveDOMNode = function(viewWrapper, view, hierarchicalDepth, hostNode, host
 				'textContent',
 				viewWrapper.textContent
 			));
+		else if ((textContent = TypeManager.caches.attributes.getItem(view._defUID).getObjectValueByKey('textContent'))) {
+			this.attributes.push(new CoreTypes.Pair(
+				'textContent',
+				textContent
+			));
+		}
 	}
 	else
 		this.attributes = new CoreTypes.ListOfPairs({});

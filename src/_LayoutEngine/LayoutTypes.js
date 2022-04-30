@@ -3,8 +3,15 @@
  */
  
 // var TypeManager = require('src/core/TypeManager');
- var CoreTypes = require('src/core/CoreTypes');
- 
+var CoreTypes = require('src/core/CoreTypes');
+
+var LayoutAvailableSpaceBuffer = require('src/_LayoutEngine/LayoutAvailableSpaceBuffer');
+var LayoutDimensionsBuffer = require('src/_LayoutEngine/LayoutDimensionsBuffer');
+var LayoutOffsetsBuffer = require('src/_LayoutEngine/LayoutOffsetsBuffer');
+
+var layoutAvailableSpaceBuffer = new LayoutAvailableSpaceBuffer();
+var layoutDimensionsBuffer = new LayoutDimensionsBuffer();
+var layoutOffsetsBuffer = new LayoutOffsetsBuffer();
  
  
 var LayoutTypes = {};
@@ -13,13 +20,17 @@ var LayoutTypes = {};
 
 var AvailableSpace = function(initialValues) {
 	CoreTypes.DimensionsPair.call(this, initialValues);
+
+	this.inlineOffset = (initialValues && initialValues[2]) || 0;
+	this.blockOffset = (initialValues && initialValues[3]) || 0;
+	this.lastInlineOffset = 0;
+	this.lastBlockOffset = 0;
+	this.tempInlineOffset = 0;
+	this.tempBlockOffset = 0;
+	
 	this.childCount = 0;
 	this.shouldGrowChildCount = 0;
 	this.shouldShrinkChildCount = 0;
-	this.inlineOffset = (initialValues && initialValues[2]) || 0;
-	this.blockOffset = (initialValues && initialValues[3]) || 0;
-	this.lastOffset = new CoreTypes.DimensionsPair();
-	this.tempOffset = new CoreTypes.DimensionsPair();
 }
 AvailableSpace.prototype = Object.create(CoreTypes.DimensionsPair.prototype);
 AvailableSpace.prototype.objectType = 'AvailableSpace';
@@ -212,5 +223,9 @@ LayoutTypes.AvailableSpace = AvailableSpace;
 LayoutTypes.BoxDimensions = BoxDimensions;
 LayoutTypes.BoxOffsets = BoxOffsets;
 LayoutTypes.FlexContext = FlexContext;
+
+LayoutTypes.layoutAvailableSpaceBuffer = layoutAvailableSpaceBuffer;
+LayoutTypes.layoutDimensionsBuffer = layoutDimensionsBuffer;
+LayoutTypes.layoutOffsetsBuffer = layoutOffsetsBuffer;
 
 module.exports = LayoutTypes;

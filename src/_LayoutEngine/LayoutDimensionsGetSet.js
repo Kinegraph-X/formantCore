@@ -4,7 +4,7 @@
 
 //var TypeManager = require('src/core/TypeManager');
 var LayoutTypes = require('src/_LayoutEngine/LayoutTypes');
-
+var dimensionsBuffer = LayoutTypes.layoutDimensionsBuffer;
 
 
 
@@ -16,9 +16,9 @@ var LayoutTypes = require('src/_LayoutEngine/LayoutTypes');
  * @param layoutNode {LayoutNode}
  * @param dimensionsBuffer {LayoutDimensionsBuffer}
  */
-var LayoutDimensionsGetSet = function(layoutNode, layoutAlgo, dimensionsBuffer) {
+var LayoutDimensionsGetSet = function(layoutNode, layoutAlgo) {
+	this.addValue(layoutNode._UID);
 	this.relatedUID = layoutNode._UID;
-	this.dimensionsBuffer = dimensionsBuffer;
 	
 	this.summedInlinePaddings = layoutAlgo.getSummedInlinePaddings();
 	this.summedBlockPaddings = layoutAlgo.getSummedBlockPaddings();
@@ -46,45 +46,78 @@ LayoutDimensionsGetSet.prototype.getAtPosForValue = function(valueName) {
 }
 
 /**
+ * @method addValue
+ */
+LayoutDimensionsGetSet.prototype.addValue = function(UID) {
+	dimensionsBuffer.addValue(UID);
+}
+
+/**
+ * @method getValues
+ */
+LayoutDimensionsGetSet.prototype.getValues = function() {
+	var ret = {};
+	dimensionsBuffer.getValues(this.relatedUID).forEach(function(value, key) {
+		ret[this.valuesList[key]] = value;
+	}, this);
+	return ret;
+}
+
+/**
+ * @method getValues
+ */
+LayoutDimensionsGetSet.prototype.setValues = function(values) {
+	// TODO: Benchmark id it's visibly faster to use the dimensionsBuffer.setValues method
+	// (Only used by textLayout until now, it should not be measurable)
+	for (var valueName in this.valuesPositions) {
+		dimensionsBuffer.setValueAtPos(
+			this.relatedUID,
+			this.valuesPositions[valueName],
+			values[this.valuesPositions[valueName]]
+		);
+	}
+}
+
+/**
  * @method getInline
  */
 LayoutDimensionsGetSet.prototype.getInline = function() {
-	return this.dimensionsBuffer.getValueAtPos(this.relatedUID, 0);
+	return dimensionsBuffer.getValueAtPos(this.relatedUID, 0);
 }
 
 /**
  * @method getBlock
  */
 LayoutDimensionsGetSet.prototype.getBlock = function() {
-	return this.dimensionsBuffer.getValueAtPos(this.relatedUID, 1);
+	return dimensionsBuffer.getValueAtPos(this.relatedUID, 1);
 }
 
 /**
  * @method getBorderInline
  */
 LayoutDimensionsGetSet.prototype.getBorderInline = function() {
-	return this.dimensionsBuffer.getValueAtPos(this.relatedUID, 2);
+	return dimensionsBuffer.getValueAtPos(this.relatedUID, 2);
 }
 
 /**
  * @method getBorderBlock
  */
 LayoutDimensionsGetSet.prototype.getBorderBlock = function() {
-	return this.dimensionsBuffer.getValueAtPos(this.relatedUID, 3);
+	return dimensionsBuffer.getValueAtPos(this.relatedUID, 3);
 }
 
 /**
  * @method getOuterInline
  */
 LayoutDimensionsGetSet.prototype.getOuterInline = function() {
-	return this.dimensionsBuffer.getValueAtPos(this.relatedUID, 4);
+	return dimensionsBuffer.getValueAtPos(this.relatedUID, 4);
 }
 
 /**
  * @method getOuterBlock
  */
 LayoutDimensionsGetSet.prototype.getOuterBlock = function() {
-	return this.dimensionsBuffer.getValueAtPos(this.relatedUID, 5);
+	return dimensionsBuffer.getValueAtPos(this.relatedUID, 5);
 }
 
 
@@ -96,42 +129,42 @@ LayoutDimensionsGetSet.prototype.getOuterBlock = function() {
  * @method setInline
  */
 LayoutDimensionsGetSet.prototype.setInline = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 0, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 0, value);
 }
 
 /**
  * @method setBlock
  */
 LayoutDimensionsGetSet.prototype.setBlock = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 1, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 1, value);
 }
 
 /**
  * @method setBorderInline
  */
 LayoutDimensionsGetSet.prototype.setBorderInline = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 2, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 2, value);
 }
 
 /**
  * @method setBorderBlock
  */
 LayoutDimensionsGetSet.prototype.setBorderBlock = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 3, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 3, value);
 }
 
 /**
  * @method setOuterInline
  */
 LayoutDimensionsGetSet.prototype.setOuterInline = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 4, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 4, value);
 }
 
 /**
  * @method setOuterBlock
  */
 LayoutDimensionsGetSet.prototype.setOuterBlock = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 5, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 5, value);
 }
 
 
@@ -143,58 +176,58 @@ LayoutDimensionsGetSet.prototype.setOuterBlock = function(value) {
  * @method setInline
  */
 LayoutDimensionsGetSet.prototype.setFromInline = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 0, value);
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 2, value + this.summedInlineBorders);
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 4, value + this.summedInlineBorders  + this.summedInlineMargins);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 0, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 2, value + this.summedInlineBorders);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 4, value + this.summedInlineBorders  + this.summedInlineMargins);
 }
 
 /**
  * @method setBlock
  */
 LayoutDimensionsGetSet.prototype.setFromBlock = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 1, value);
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 3, value + this.summedBlockBorders);
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 5, value + this.summedBlockBorders  + this.summedBlockMargins);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 1, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 3, value + this.summedBlockBorders);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 5, value + this.summedBlockBorders  + this.summedBlockMargins);
 }
 
 /**
  * @method setBorderInline
  */
 LayoutDimensionsGetSet.prototype.setFromBorderInline = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 2, value);
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 4, value + this.summedInlineMargins);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 2, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 4, value + this.summedInlineMargins);
 	
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 0, value - this.summedInlineBorders);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 0, value - this.summedInlineBorders);
 }
 
 /**
  * @method setBorderBlock
  */
 LayoutDimensionsGetSet.prototype.setFromBorderBlock = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 3, value);
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 5, value + this.summedBlockMargins);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 3, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 5, value + this.summedBlockMargins);
 	
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 1, value - this.summedBlockBorders);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 1, value - this.summedBlockBorders);
 }
 
 /**
  * @method setOuterInline
  */
 LayoutDimensionsGetSet.prototype.setFromOuterInline = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 4, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 4, value);
 	
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 2, value - this.summedInlineMargins);
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 0, value - this.summedInlineBorders - this.summedInlineMargins);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 2, value - this.summedInlineMargins);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 0, value - this.summedInlineBorders - this.summedInlineMargins);
 }
 
 /**
  * @method setOuterBlock
  */
 LayoutDimensionsGetSet.prototype.setFromOuterBlock = function(value) {
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 5, value);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 5, value);
 	
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 3, value - this.summedBlockMargins);
-	this.dimensionsBuffer.setValueAtPos(this.relatedUID, 1, value - this.summedBlockBorders - this.summedBlockMargins);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 3, value - this.summedBlockMargins);
+	dimensionsBuffer.setValueAtPos(this.relatedUID, 1, value - this.summedBlockBorders - this.summedBlockMargins);
 }
 
 

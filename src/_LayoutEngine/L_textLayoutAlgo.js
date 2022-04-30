@@ -22,8 +22,9 @@ var TextLayoutAlgo = function(layoutNode, textContent, layoutDimensionsBuffer) {
 	this.objectType = 'TextLayoutAlgo';
 	this.algoName = 'inline';
 	
+	this.setRefsToParents(layoutNode);
 	this.setFlexCtx(this, layoutNode._parent.layoutAlgo.flexCtx._UID);
-	
+	this.textContent = textContent;
 	this.localDebugLog('TextLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
 
 	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
@@ -32,13 +33,8 @@ var TextLayoutAlgo = function(layoutNode, textContent, layoutDimensionsBuffer) {
 	else
 		this.setParentDimensions = this.setInlineParentDimensions;
 	
-	this.setSelfDimensions(this.layoutNode.dimensions, textContent);
-	
-	this.setSelfOffsets(this.layoutNode.dimensions);
-	this.setParentDimensions(this.layoutNode.dimensions);
-	
 	if (this.isIndirectFlexChild) {
-		var layoutCallbackRegisryItem = TypeManager.layoutCallbackRegistry.getItem(this.flexCtx._UID);
+		var layoutCallbackRegisryItem = TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID);
 		layoutCallbackRegisryItem.subLevels.push(this.layoutNode);
 	}
 	
@@ -50,109 +46,20 @@ var TextLayoutAlgo = function(layoutNode, textContent, layoutDimensionsBuffer) {
 TextLayoutAlgo.prototype = Object.create(BaseLayoutAlgo.prototype);
 TextLayoutAlgo.prototype.objectType = 'TextLayoutAlgo';
 
+
+TextLayoutAlgo.prototype.executeLayout = function() {
+	this.setSelfDimensions();
+	this.setSelfOffsets(this.layoutNode.dimensions);
+	this.setParentDimensions();
+}
+
 /**
  * @method setSelfOffsets
  * 
  */
-TextLayoutAlgo.prototype.setSelfOffsets = function(dimensions) {
-	this.layoutNode.offsets.inline =  this.layoutNode._parent.offsets.marginInline + this.layoutNode._parent.availableSpace.inlineOffset;
-	this.layoutNode.offsets.block =  this.layoutNode._parent.offsets.marginBlock + this.layoutNode._parent.availableSpace.blockOffset;
-	this.layoutNode.offsets.marginInline =  this.layoutNode.offsets.inline;
-	this.layoutNode.offsets.marginBlock =  this.layoutNode.offsets.block;
-	
-//	this.layoutNode.updateCanvasShapeOffsets();
-}
-
-/**
- * @method setSelfDimensions
- * Updates the CoreTypes.DimensionsPair object we pass to it, with the size of the text retrieved in this.getSelfDimensions
- * @param {CoreTypes.DimensionsPair} dimensions
- * @param {String} textContent
- */
-TextLayoutAlgo.prototype.setSelfDimensions = function(dimensions, textContent) {
-//	var summedInlineBorders = this.getSummedInlineBorders();
-//	var summedBlockBorders = this.getSummedBlockBorders();
-//	var summedInlineMargins = this.getSummedInlineMargins();
-//	var summedBlockMargins = this.getSummedBlockMargins();
-	
-	dimensions.set(this.getSelfDimensions(textContent));
-	dimensions.setBorderSize([dimensions.inline, dimensions.block]);
-//	dimensions.addToBorderSize([summedInlineBorders, summedBlockBorders]);
-	dimensions.setOuterSize([dimensions.borderInline, dimensions.borderBlock]);
-//	dimensions.addToOuterSize([summedInlineMargins, summedBlockMargins]);
-	
-//	this.layoutNode.updateCanvasShapeDimensions();
-}
-
-/**
- * @method setParentDimensions
- * @param {CoreTypes.DimensionsPair} dimensions
- */
-TextLayoutAlgo.prototype.setInlineParentDimensions = function(dimensions) {
-	var DHL = 0;
-//	var summedParentInlinePaddings = this.layoutNode._parent.layoutAlgo.getSummedInlinePaddings();
-	var summedParentBlockPaddings = this.layoutNode._parent.layoutAlgo.getSummedBlockPaddings();
-	
-	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inline) {
-//		summedParentInlinePaddings = 0;
-		summedParentBlockPaddings = 0;
-		if (this.layoutNode._parent.availableSpace.inline < dimensions.outerInline) {
-			this.layoutNode._parent.dimensions.inline += dimensions.inline;
-			this.layoutNode._parent.dimensions.borderInline += dimensions.borderInline;
-			this.layoutNode._parent.dimensions.outerInline += dimensions.outerInline;
-			this.layoutNode._parent.availableSpace.inline = 0;
-			this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
-		}
-	}
-
-	var summedParentBlockMargins = this.cs.getParentSummedBlockMargins();
-	this.localDebugLog(this.DHLstr(DHL), 'text increment parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.block_pre', this.layoutNode._parent.dimensions.block);
-	
-	this.layoutNode._parent.dimensions.block = Math.max(this.layoutNode._parent.dimensions.block, dimensions.block + summedParentBlockPaddings);
-	this.layoutNode._parent.dimensions.borderBlock = Math.max(this.layoutNode._parent.dimensions.borderBlock, dimensions.borderBlock + summedParentBlockPaddings);
-	this.layoutNode._parent.dimensions.outerBlock = Math.max(this.layoutNode._parent.dimensions.outerBlock, dimensions.outerBlock + summedParentBlockPaddings + summedParentBlockMargins);
-	this.layoutNode._parent.availableSpace.block = 0;
-	
-	this.localDebugLog(this.DHLstr(DHL), 'text increment parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.block_post', this.layoutNode._parent.dimensions.block);
-	
-//	this.layoutNode._parent.updateCanvasShapeDimensions();
-	this.layoutNode._parent.layoutAlgo.updateParentDimensions(this.layoutNode._parent.dimensions, ++DHL);
-}
-
-/**
- * @method setParentDimensions
- * @param {CoreTypes.DimensionsPair} dimensions
- */
-TextLayoutAlgo.prototype.setBlockParentDimensions = function(dimensions) {
-	var DHL = 0;
-	var summedParentInlinePaddings = this.layoutNode._parent.layoutAlgo.getSummedInlinePaddings();
-	var summedParentBlockPaddings = this.layoutNode._parent.layoutAlgo.getSummedBlockPaddings();
-	
-	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inline) {
-		summedParentInlinePaddings = 0;
-		summedParentBlockPaddings = 0;
-		if (this.layoutNode._parent.availableSpace.inline < dimensions.outerInline) {
-			this.layoutNode._parent.dimensions.inline += dimensions.inline;
-			this.layoutNode._parent.dimensions.borderInline += dimensions.borderInline;
-			this.layoutNode._parent.dimensions.outerInline += dimensions.outerInline;
-			this.layoutNode._parent.availableSpace.inline = 0;
-			this.layoutNode._parent.availableSpace.inlineOffset += dimensions.outerInline;
-		}
-	}
-	
-	var summedParentBlockBorders = this.cs.getParentSummedBlockBorders();
-	var summedParentBlockMargins = this.cs.getParentSummedBlockMargins();
-	this.localDebugLog(this.DHLstr(DHL), 'text increment parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.block_pre', this.layoutNode._parent.dimensions.block);
-	
-	var parentBlockDimensions = this.layoutNode._parent.availableSpace.blockOffset + dimensions.outerBlock + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth();
-	this.layoutNode._parent.dimensions.block = parentBlockDimensions - summedParentBlockBorders;
-	this.layoutNode._parent.dimensions.borderBlock = parentBlockDimensions;
-	this.layoutNode._parent.dimensions.outerBlock = parentBlockDimensions + summedParentBlockMargins;
-	this.layoutNode._parent.availableSpace.block = 0;
-	this.localDebugLog(this.DHLstr(DHL), 'text increment parent', this.layoutNode.nodeName, this.layoutNode._parent.nodeName, 'this.layoutNode._parent.dimensions.block_post', this.layoutNode._parent.dimensions.block);
-		
-//	this.layoutNode._parent.updateCanvasShapeDimensions();
-	this.layoutNode._parent.layoutAlgo.updateParentDimensions(this.layoutNode._parent.dimensions, ++DHL);
+TextLayoutAlgo.prototype.setSelfOffsets = function() {
+	this.offsets.setFromInline(this.parentLayoutAlgo.offsets.getMarginInline() + this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.getInlineOffsetforAutoMargins());
+	this.offsets.setFromBlock(this.parentLayoutAlgo.offsets.getMarginBlock() + this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.getBlockOffsetforAutoMargins());
 }
 
 /**
@@ -166,6 +73,73 @@ TextLayoutAlgo.prototype.getSelfDimensions = function(textContent) {
 	
 	return [0, this.layoutNode.computedStyle.bufferedValueToNumber('lineHeight')];
 }
+
+/**
+ * @method setSelfDimensions
+ * Updates the global dimensionsBuffer object, with the size of the text retrieved in this.getSelfDimensions
+ * 
+ */
+TextLayoutAlgo.prototype.setSelfDimensions = function() {
+	var dimensions = this.getSelfDimensions(this.textContent);
+	this.dimensions.setFromInline(dimensions[0]);
+	this.dimensions.setFromBlock(dimensions[1]);
+}
+
+/**
+ * @method setParentDimensions
+ * @param {CoreTypes.DimensionsPair} dimensions
+ */
+TextLayoutAlgo.prototype.setInlineParentDimensions = function() {
+	this.parentDimensions.setFromBorderInline(
+		this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
+	);
+	this.parentDimensions.setFromBorderBlock(
+		Math.max(
+			this.parentLayoutAlgo.dimensions.getBlock(), 
+			this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		)
+	);
+	
+//	console.log(this.layoutNode.nodeName, this.parentNode.nodeName, this.parentLayoutAlgo.dimensions.getValues());
+	
+	this.parentLayoutAlgo.availableSpace.setInline(this.parentLayoutAlgo.dimensions.getBorderInline() - (this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline()) - this.cs.getParentPaddingInlineEnd() - this.cs.getParentBorderInlineEndWidth());
+	this.parentLayoutAlgo.availableSpace.setLastInlineOffset(this.parentLayoutAlgo.availableSpace.getInlineOffset());
+	this.parentLayoutAlgo.availableSpace.setInlineOffset(this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline());
+	
+	this.parentLayoutAlgo.availableSpace.setBlock(this.parentLayoutAlgo.dimensions.getBorderBlock() - (this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock()) - this.cs.getParentPaddingBlockEnd() - this.cs.getParentBorderBlockEndWidth());
+	this.parentLayoutAlgo.availableSpace.setLastBlockOffset(this.parentLayoutAlgo.availableSpace.getBlockOffset());
+	this.parentLayoutAlgo.availableSpace.setBlockOffset(this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock());
+
+	this.parentLayoutAlgo.updateParentDimensions();
+}
+
+/**
+ * @method setParentDimensions
+ * @param {CoreTypes.DimensionsPair} dimensions
+ */
+TextLayoutAlgo.prototype.setBlockParentDimensions = function() {
+	this.parentDimensions.setFromBorderInline(
+		this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
+	);
+	this.parentDimensions.setFromBorderBlock(
+		Math.max(
+			this.parentLayoutAlgo.dimensions.getBlock(), 
+			this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		)
+	);
+	
+	this.parentLayoutAlgo.availableSpace.setInline(this.parentLayoutAlgo.dimensions.getBorderInline() - (this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline()) - this.cs.getParentPaddingInlineEnd() - this.cs.getParentBorderInlineEndWidth());
+	this.parentLayoutAlgo.availableSpace.setLastInlineOffset(this.parentLayoutAlgo.availableSpace.getInlineOffset());
+	this.parentLayoutAlgo.availableSpace.setInlineOffset(this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline());
+	
+	this.parentLayoutAlgo.availableSpace.setBlock(this.parentLayoutAlgo.dimensions.getBorderBlock() - (this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock()) - this.cs.getParentPaddingBlockEnd() - this.cs.getParentBorderBlockEndWidth());
+	this.parentLayoutAlgo.availableSpace.setLastBlockOffset(this.parentLayoutAlgo.availableSpace.getBlockOffset());
+	this.parentLayoutAlgo.availableSpace.setBlockOffset(this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock());
+
+	this.parentLayoutAlgo.updateParentDimensions();
+}
+
+
 
 
 

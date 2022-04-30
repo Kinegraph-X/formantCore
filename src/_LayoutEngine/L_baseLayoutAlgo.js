@@ -7,27 +7,32 @@
 
 var TypeManager = require('src/core/TypeManager');
 var LayoutTypes = require('src/_LayoutEngine/LayoutTypes');
-var UIDGenerator = require('src/core/UIDGenerator').UIDGenerator;
+var UIDGenerator = require('src/core/UIDGenerator').NodeUIDGenerator;
 var TextSizeGetter = require('src/core/TextSizeGetter');
 var textSizeGetter = new TextSizeGetter();
 
 var ComputedStyleGetter = require('src/_LayoutEngine/ComputedStyleGetter');
+var LayoutAvailableSpaceGetSet = require('src/_LayoutEngine/LayoutAvailableSpaceGetSet');
 var LayoutDimensionsGetSet = require('src/_LayoutEngine/LayoutDimensionsGetSet');
+var LayoutOffsetsGetSet = require('src/_LayoutEngine/LayoutOffsetsGetSet');
 
 
 /*
  * 
  */
-var BaseLayoutAlgo = function(layoutNode, layoutDimensionsBuffer) {
+var BaseLayoutAlgo = function(layoutNode) {
 	this.objectType = 'BaseLayoutAlgo';
 	this.algoName = '';
 	this.layoutNode = layoutNode;
+	
 	this.availableSpace = this.layoutNode.availableSpace;
 	this.flexCtx = new LayoutTypes.FlexContext();
 	
 //	if (this.layoutNode._parent) {
 		this.cs = new ComputedStyleGetter(this);
-		this.dimensions = new LayoutDimensionsGetSet(layoutNode, this, layoutDimensionsBuffer);
+		this.availableSpace = new LayoutAvailableSpaceGetSet(layoutNode, this);
+		this.dimensions = new LayoutDimensionsGetSet(layoutNode, this);
+		this.offsets = new LayoutOffsetsGetSet(layoutNode, this);
 		
 		// EXPLICIT DIMENSIONS
 		this.hasExplicitWidth = this.getHasExplicitWidth();
@@ -47,6 +52,13 @@ var BaseLayoutAlgo = function(layoutNode, layoutDimensionsBuffer) {
 BaseLayoutAlgo.prototype = {};
 BaseLayoutAlgo.prototype.objectType = 'BaseLayoutAlgo';
 
+
+BaseLayoutAlgo.prototype.setRefsToParents = function(layoutNode) {
+	this.parentNode = layoutNode._parent;
+	this.parentLayoutAlgo = layoutNode._parent.layoutAlgo;
+	this.parentDimensions = layoutNode._parent.layoutAlgo.dimensions;
+}
+
 BaseLayoutAlgo.prototype.setFlexCtx = function(layoutAlgo, parentCtxUID) {
 	
 	if (layoutAlgo.layoutNode._parent.layoutAlgo.isFlexChild || layoutAlgo.layoutNode._parent.layoutAlgo.isIndirectFlexChild) {
@@ -58,6 +70,16 @@ BaseLayoutAlgo.prototype.setFlexCtx = function(layoutAlgo, parentCtxUID) {
 		this.isIndirectFlexChild = false;
 		this.flexCtx = layoutAlgo.layoutNode._parent.layoutAlgo.flexCtx;
 	}
+	
+	if (this.isIndirectFlexChild) {
+		var layoutCallbackRegisryItem;
+		if (this.algoName === this.layoutAlgosAsConstants.flex)
+			// CAUTION: Here is flexCtx._parent._UID assigned: only case where is indirect flexChild but is flexContext-host
+			layoutCallbackRegisryItem = TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._parent._UID);
+		else
+			layoutCallbackRegisryItem = TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID);
+		layoutCallbackRegisryItem.subLevels.push(this.layoutNode);
+	}
 		
 	if (layoutAlgo.algoName === this.layoutAlgosAsConstants.flex) {
 		var parentFlexContext = this.layoutNode._parent.layoutAlgo.flexCtx._UID ? this.layoutNode._parent.layoutAlgo.flexCtx : null;
@@ -67,11 +89,11 @@ BaseLayoutAlgo.prototype.setFlexCtx = function(layoutAlgo, parentCtxUID) {
 			parentFlexContext
 		);
 		TypeManager.flexCtxRegistry.setItem(this.flexCtx._UID, this.flexCtx);
-		TypeManager.layoutCallbackRegistry.setItem(this.flexCtx._UID, {
+		TypeManager.layoutCallbacksRegistry.setItem(this.flexCtx._UID, {
 			firstLevel : [],
 			subLevels : []
 		});
-		// TODO: reset all layoutCallbackRegistry when no parent flexCtx
+		// TODO: reset all layoutCallbacksRegistry when no parent flexCtx
 	}
 	
 	if (typeof parentCtxUID !== 'undefined' && parentCtxUID !== this.flexCtx._UID) {
@@ -80,73 +102,74 @@ BaseLayoutAlgo.prototype.setFlexCtx = function(layoutAlgo, parentCtxUID) {
 	}
 }
 
-BaseLayoutAlgo.prototype.setAvailableSpace = function(dimensions) {
-	var summedInlinePaddings = this.getSummedInlinePaddings();
-	var summedBlockPaddings = this.getSummedBlockPaddings();
-	this.availableSpace.inline = dimensions.inline - summedInlinePaddings;
-	this.availableSpace.block = dimensions.block - summedBlockPaddings;
-	this.availableSpace.inlineOffset = this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth();
-	this.availableSpace.blockOffset = this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth();
+
+BaseLayoutAlgo.prototype.setAvailableSpace = function() {
+	this.availableSpace.setInline(this.dimensions.getInline() - this.getSummedInlinePaddings());
+	this.availableSpace.setBlock(this.dimensions.getBlock() - this.getSummedBlockPaddings());
+	this.availableSpace.setInlineOffset(this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth());
+	this.availableSpace.setBlockOffset(this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth());
 }
 
-BaseLayoutAlgo.prototype.resetAvailableSpace = function(dimensions) {
-	var summedInlinePaddings = this.getSummedInlinePaddings();
-	var summedBlockPaddings = this.getSummedBlockPaddings();
-	this.availableSpace.inline = dimensions.inline - summedInlinePaddings;
-	this.availableSpace.block = dimensions.block - summedBlockPaddings;
-	this.availableSpace.inlineOffset = this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth();
-	this.availableSpace.blockOffset = this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth();
+BaseLayoutAlgo.prototype.resetAvailableSpace = function() {
+	this.setAvailableSpace();
 }
+
+
+BaseLayoutAlgo.prototype.resetInlineAvailableSpace = function() {
+	this.availableSpace.setInline(this.dimensions.getInline() - this.getSummedInlinePaddings());
+	this.availableSpace.setInlineOffset(this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth());
+}
+
+BaseLayoutAlgo.prototype.resetBlockAvailableSpace = function() {
+	this.availableSpace.setBlock(this.dimensions.getBlock() - this.getSummedBlockPaddings());
+	this.availableSpace.setBlockOffset(this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth());
+}
+
 
 BaseLayoutAlgo.prototype.decrementInlineAvailableSpace = function(amountToSubstract) {
-	this.availableSpace.inline -= amountToSubstract;
+	this.availableSpace.setInline(this.availableSpace.getInline() - amountToSubstract);
 }
 
 BaseLayoutAlgo.prototype.decrementBlockAvailableSpace = function(amountToSubstract) {
-	this.availableSpace.block -= amountToSubstract;
+	this.availableSpace.setBlock(this.availableSpace.getBlock() - amountToSubstract);
 }
 
 BaseLayoutAlgo.prototype.incrementInlineAvailableSpace = function(amountToAdd) {
-	this.availableSpace.inline += amountToSubstract;
+	this.availableSpace.setInline(this.availableSpace.getInline() + amountToAdd);
 }
 
 BaseLayoutAlgo.prototype.incrementBlockAvailableSpace = function(amountToAdd) {
-	this.availableSpace.block += amountToSubstract;
+	this.availableSpace.setBlock(this.availableSpace.getBlock() + amountToAdd);
 }
 
 BaseLayoutAlgo.prototype.resetAvailableSpaceLastOffsets = function() {
-	this.availableSpace.lastOffset.inline = this.availableSpace.inline;
-	this.availableSpace.lastOffset.block = this.availableSpace.block;
+	this.availableSpace.setLastInlineOffset(this.availableSpace.getInlineOffset());
+	this.availableSpace.setLastBlockOffset(this.availableSpace.getBlockOffset());
 }
 
 BaseLayoutAlgo.prototype.setAvailableSpaceOffsets = function(inlineOffset, blockOffset) {
-	this.availableSpace.inlineOffset = inlineOffset;
-	this.availableSpace.blockOffset = blockOffset;
-	this.availableSpace.lastOffset = new CoreTypes.DimensionsPair([inlineOffset, blockOffset]);
+	this.availableSpace.setInlineOffset(inlineOffset);
+	this.availableSpace.setBlockOffset(blockOffset);
+	this.availableSpace.setLastInlineOffset(inlineOffset);
+	this.availableSpace.setLastBlockOffset(blockOffset);
 }
 
 BaseLayoutAlgo.prototype.resetInlineAvailableSpaceOffset = function(value) {
-	if (value)
-		this.availableSpace.inlineOffset = value;
-	else
-		this.availableSpace.inlineOffset = this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth();
-	this.availableSpace.lastOffset.inline = this.availableSpace.inlineOffset;
+	this.availableSpace.setInlineOffset(this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth());
+	this.availableSpace.setLastInlineOffset(this.availableSpace.getInlineOffset());
 }
 
 BaseLayoutAlgo.prototype.resetBlockAvailableSpaceOffset = function(value) {
-	if (value)
-		this.availableSpace.blockOffset = value;
-	else
-		this.availableSpace.blockOffset = this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth();
-	this.availableSpace.lastOffset.block = this.availableSpace.blockOffset;
+	this.availableSpace.setBlockOffset(this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth());
+	this.availableSpace.setLastBlockOffset(this.availableSpace.getBlockOffset());
 }
 
 BaseLayoutAlgo.prototype.resetInlineAvailableSpaceTempOffset = function() {
-	this.availableSpace.tempOffset.inline = this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth();
+	this.availableSpace.setTempInlineOffset(this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth());
 }
 
 BaseLayoutAlgo.prototype.resetBlockAvailableSpaceTempOffset = function() {
-	this.availableSpace.tempOffset.block = this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth();
+	this.availableSpace.setTempBlockOffset(this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth());
 }
 
 BaseLayoutAlgo.prototype.setBlockAvailableSpace = function(amountToSubstract) {}
