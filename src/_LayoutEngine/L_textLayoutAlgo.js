@@ -7,6 +7,7 @@
 
 //var LayoutTypes = require('src/_LayoutEngine/LayoutTypes');
 var BaseLayoutAlgo = require('src/_LayoutEngine/L_baseLayoutAlgo');
+//var BaseIntermediateLayoutAlgo = require('src/_LayoutEngine/L_baseIntermediateLayoutAlgo');
 
 
 
@@ -17,15 +18,14 @@ var BaseLayoutAlgo = require('src/_LayoutEngine/L_baseLayoutAlgo');
  * @param {LayoutNode} layoutNode
  * @param {String} textContent
  */
-var TextLayoutAlgo = function(layoutNode, textContent, layoutDimensionsBuffer) {
-	BaseLayoutAlgo.call(this, layoutNode, layoutDimensionsBuffer);
+var TextLayoutAlgo = function(layoutNode, textContent) {
+	BaseLayoutAlgo.call(this, layoutNode);
 	this.objectType = 'TextLayoutAlgo';
 	this.algoName = 'inline';
 	
-	this.setRefsToParents(layoutNode);
 	this.setFlexCtx(this, layoutNode._parent.layoutAlgo.flexCtx._UID);
 	this.textContent = textContent;
-	this.localDebugLog('TextLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
+//	this.localDebugLog('TextLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
 
 	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
 			|| this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.block)
@@ -48,7 +48,7 @@ TextLayoutAlgo.prototype.objectType = 'TextLayoutAlgo';
 
 
 TextLayoutAlgo.prototype.executeLayout = function() {
-	this.setSelfDimensions();
+//	this.setSelfDimensions();
 	this.setSelfOffsets(this.layoutNode.dimensions);
 	this.setParentDimensions();
 }
@@ -58,18 +58,22 @@ TextLayoutAlgo.prototype.executeLayout = function() {
  * 
  */
 TextLayoutAlgo.prototype.setSelfOffsets = function() {
-	this.offsets.setFromInline(this.parentLayoutAlgo.offsets.getMarginInline() + this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.getInlineOffsetforAutoMargins());
-	this.offsets.setFromBlock(this.parentLayoutAlgo.offsets.getMarginBlock() + this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.getBlockOffsetforAutoMargins());
+	this.offsets.setFromInline(this.parentLayoutAlgo.offsets.getMarginInline() + this.parentLayoutAlgo.availableSpace.getInlineOffset());
+	this.offsets.setFromBlock(
+		this.parentLayoutAlgo.offsets.getMarginBlock()
+		+ this.parentLayoutAlgo.availableSpace.getBlockOffset()
+		+ (this.cs.getLineHeight() - this.cs.getFontSize() * 1.5)
+	);
 }
 
 /**
  * @method getSelfDimensions
  * @param {String} textContent
  */
-TextLayoutAlgo.prototype.getSelfDimensions = function(textContent) {
+TextLayoutAlgo.prototype.getSelfDimensions = function() {
 //	console.log(this.getTextDimensions(textContent), this.getAugmentedTextDimensions(textContent));
-	if (textContent.length)
-		return this.getAugmentedTextDimensions(textContent);
+	if (this.textContent.length)
+		return this.getAugmentedTextDimensions(this.textContent);
 	
 	return [0, this.layoutNode.computedStyle.bufferedValueToNumber('lineHeight')];
 }
@@ -80,7 +84,7 @@ TextLayoutAlgo.prototype.getSelfDimensions = function(textContent) {
  * 
  */
 TextLayoutAlgo.prototype.setSelfDimensions = function() {
-	var dimensions = this.getSelfDimensions(this.textContent);
+	var dimensions = this.getSelfDimensions();
 	this.dimensions.setFromInline(dimensions[0]);
 	this.dimensions.setFromBlock(dimensions[1]);
 }
@@ -99,8 +103,6 @@ TextLayoutAlgo.prototype.setInlineParentDimensions = function() {
 			this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
 		)
 	);
-	
-//	console.log(this.layoutNode.nodeName, this.parentNode.nodeName, this.parentLayoutAlgo.dimensions.getValues());
 	
 	this.parentLayoutAlgo.availableSpace.setInline(this.parentLayoutAlgo.dimensions.getBorderInline() - (this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline()) - this.cs.getParentPaddingInlineEnd() - this.cs.getParentBorderInlineEndWidth());
 	this.parentLayoutAlgo.availableSpace.setLastInlineOffset(this.parentLayoutAlgo.availableSpace.getInlineOffset());

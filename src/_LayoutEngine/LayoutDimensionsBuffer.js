@@ -29,6 +29,15 @@ LayoutDimensionsBuffer.prototype.bufferValuesCount = 6;
 LayoutDimensionsBuffer.prototype.defaultValuesCount = 1000;
 
 /**
+ * @method reset
+ * @param UID {String}
+ */
+LayoutDimensionsBuffer.prototype.reset = function() {
+	this._bufferIndex.fill(0);
+	(new Int32Array(this.arrayBuffer)).fill(0);
+}
+
+/**
  * @method getPosForItem
  * @param UID {String}
  */

@@ -11,11 +11,11 @@ var UIDGenerator = require('src/core/UIDGenerator').NodeUIDGenerator;
 var TextSizeGetter = require('src/core/TextSizeGetter');
 var textSizeGetter = new TextSizeGetter();
 
-var ComputedStyleGetter = require('src/_LayoutEngine/ComputedStyleGetter');
+var ComputedStyleGetter = require('src/_LayoutEngine/ComputedStyleFastGetter');
 var LayoutAvailableSpaceGetSet = require('src/_LayoutEngine/LayoutAvailableSpaceGetSet');
 var LayoutDimensionsGetSet = require('src/_LayoutEngine/LayoutDimensionsGetSet');
 var LayoutOffsetsGetSet = require('src/_LayoutEngine/LayoutOffsetsGetSet');
-
+var testArray = new DataView(new ArrayBuffer(8));
 
 /*
  * 
@@ -25,28 +25,8 @@ var BaseLayoutAlgo = function(layoutNode) {
 	this.algoName = '';
 	this.layoutNode = layoutNode;
 	
-	this.availableSpace = this.layoutNode.availableSpace;
 	this.flexCtx = new LayoutTypes.FlexContext();
 	
-//	if (this.layoutNode._parent) {
-		this.cs = new ComputedStyleGetter(this);
-		this.availableSpace = new LayoutAvailableSpaceGetSet(layoutNode, this);
-		this.dimensions = new LayoutDimensionsGetSet(layoutNode, this);
-		this.offsets = new LayoutOffsetsGetSet(layoutNode, this);
-		
-		// EXPLICIT DIMENSIONS
-		this.hasExplicitWidth = this.getHasExplicitWidth();
-		this.hasExplicitHeight = this.getHasExplicitHeight();
-		// IS FLEX CHILD
-		this.isFlexChild = false;
-		this.isIndirectFlexChild = false;
-		this.shouldGrow = this.getShouldGrow();
-		this.shouldShrink = this.getShouldShrink();
-		// PSEUDO-VIRTUAL FUNCTIONS
-		this.setFlexDimensions = function() {};
-		this.setParentDimensions = function() {};
-		this.updateParentDimensions = function() {};
-//	}
 }
 
 BaseLayoutAlgo.prototype = {};
@@ -70,16 +50,6 @@ BaseLayoutAlgo.prototype.setFlexCtx = function(layoutAlgo, parentCtxUID) {
 		this.isIndirectFlexChild = false;
 		this.flexCtx = layoutAlgo.layoutNode._parent.layoutAlgo.flexCtx;
 	}
-	
-	if (this.isIndirectFlexChild) {
-		var layoutCallbackRegisryItem;
-		if (this.algoName === this.layoutAlgosAsConstants.flex)
-			// CAUTION: Here is flexCtx._parent._UID assigned: only case where is indirect flexChild but is flexContext-host
-			layoutCallbackRegisryItem = TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._parent._UID);
-		else
-			layoutCallbackRegisryItem = TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID);
-		layoutCallbackRegisryItem.subLevels.push(this.layoutNode);
-	}
 		
 	if (layoutAlgo.algoName === this.layoutAlgosAsConstants.flex) {
 		var parentFlexContext = this.layoutNode._parent.layoutAlgo.flexCtx._UID ? this.layoutNode._parent.layoutAlgo.flexCtx : null;
@@ -94,6 +64,17 @@ BaseLayoutAlgo.prototype.setFlexCtx = function(layoutAlgo, parentCtxUID) {
 			subLevels : []
 		});
 		// TODO: reset all layoutCallbacksRegistry when no parent flexCtx
+	}
+	
+	if (this.isIndirectFlexChild) {
+		var layoutCallbackRegisryItem;
+		if (this.algoName === this.layoutAlgosAsConstants.flex) {
+			// CAUTION: Here is flexCtx._parent._UID assigned: only case where is indirect flexChild but is flexContext-host
+			layoutCallbackRegisryItem = TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._parent._UID);
+		}
+		else
+			layoutCallbackRegisryItem = TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID);
+		layoutCallbackRegisryItem.subLevels.push(this.layoutNode);
 	}
 	
 	if (typeof parentCtxUID !== 'undefined' && parentCtxUID !== this.flexCtx._UID) {
@@ -237,7 +218,7 @@ BaseLayoutAlgo.prototype.getSummedBlockBorders = function() {
 BaseLayoutAlgo.prototype.getInlineOffsetforAutoMargins = function() {
 	if (this.cs.getMarginInlineStartAsString() === this.keywordsAsConstants.auto
 		&& this.cs.getMarginInlineEndAsString() === this.keywordsAsConstants.auto) {
-		return this.layoutNode._parent.availableSpace.inline / 2;
+		return this.parentLayoutAlgo.availableSpace.getInline() / 2;
 	}
 	return 0;
 }
@@ -245,7 +226,7 @@ BaseLayoutAlgo.prototype.getInlineOffsetforAutoMargins = function() {
 BaseLayoutAlgo.prototype.getBlockOffsetforAutoMargins = function() {
 	if (this.cs.getMarginBlockStartAsString() === this.keywordsAsConstants.auto
 		&& this.cs.getMarginBlockEndAsString() === this.keywordsAsConstants.auto) {
-		return this.layoutNode._parent.availableSpace.block / 2;
+		return this.parentLayoutAlgo.availableSpace.getBlock() / 2;
 	}
 	return 0;
 }
@@ -277,7 +258,7 @@ BaseLayoutAlgo.prototype.getAugmentedTextDimensions = function(textContent) {
 			textContent,
 			this.getAugmentedFontStyle()
 		);
-	return [textSize[0], this.cs.getLineHeight()];
+	return [textSize[0] - textSize[0] / 21, this.cs.getLineHeight()];
 }
 
 /**
@@ -304,6 +285,16 @@ BaseLayoutAlgo.prototype.getAugmentedFontStyle = function() {
 		+ this.cs.getFontSizeUnitAsString()
 		+ ' '
 		+ this.cs.getFontFamily()
+}
+
+/**
+ * @method max
+ * 
+ */
+BaseLayoutAlgo.prototype.max = function(value1, value2) {
+	testArray.setInt32(0, value2);
+	testArray.setInt32(4, value1);
+	return testArray.getInt32(+(value1 > value2) * 4);
 }
 
 BaseLayoutAlgo.prototype.layoutAlgosAsConstants = {

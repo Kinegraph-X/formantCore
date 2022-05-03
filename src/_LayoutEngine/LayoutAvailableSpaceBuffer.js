@@ -20,13 +20,23 @@ var LayoutAvailableSpaceBuffer = function() {
 	this.itemSize = this.bufferValuesCount * this.valueSize;
 	this._bufferIndex = new Array(this.defaultValuesCount);
 	this._bufferIndex.fill(0);
-	this._buffer = new DataView(new ArrayBuffer(this.defaultValuesCount * this.itemSize));
+	this.arrayBuffer = new ArrayBuffer(this.defaultValuesCount * this.itemSize);
+	this._buffer = new DataView(this.arrayBuffer);
 }
 LayoutAvailableSpaceBuffer.prototype = {}
 LayoutAvailableSpaceBuffer.prototype.objectType = 'LayoutAvailableSpaceBuffer';
 LayoutAvailableSpaceBuffer.prototype.valueSize = 4;		// 4 * 8 = 32 bits Integers
 LayoutAvailableSpaceBuffer.prototype.bufferValuesCount = 11;
 LayoutAvailableSpaceBuffer.prototype.defaultValuesCount = 1000;
+
+/**
+ * @method reset
+ * @param UID {String}
+ */
+LayoutAvailableSpaceBuffer.prototype.reset = function() {
+	this._bufferIndex.fill(0);
+	(new Int32Array(this.arrayBuffer)).fill(0);
+}
 
 /**
  * @method getPosForItem

@@ -29,6 +29,15 @@ LayoutOffsetsBuffer.prototype.bufferValuesCount = 4;
 LayoutOffsetsBuffer.prototype.defaultValuesCount = 1000;
 
 /**
+ * @method reset
+ * @param UID {String}
+ */
+LayoutOffsetsBuffer.prototype.reset = function() {
+	this._bufferIndex.fill(0);
+	(new Int32Array(this.arrayBuffer)).fill(0);
+}
+
+/**
  * @method getPosForItem
  * @param UID {String}
  */

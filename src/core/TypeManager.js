@@ -826,6 +826,11 @@ var naiveDOMRegistry = new PropertyCache('naiveDOMRegistry');
 var layoutNodesRegistry = new PropertyCache('layoutNodesRegistry');
 
 /**
+ * @typedStore {StoredTextNode} {UID : nodeUID}
+ */
+var textNodesRegistry = new PropertyCache('textNodesRegistry');
+
+/**
  * @typedStore {StoredRasterShape} {UID : nodeUID}
  */
 var rasterShapesRegistry = new PropertyCache('rasterShapesRegistry');
@@ -884,6 +889,7 @@ Object.assign(exportedObjects, {
 	pendingStyleRegistry : pendingStyleRegistry,					// Object PropertyCache
 	rasterShapesRegistry : rasterShapesRegistry,					// Object PropertyCache
 	layoutNodesRegistry :layoutNodesRegistry,						// Object PropertyCache
+	textNodesRegistry : textNodesRegistry,							// Object PropertyCache
 	flexCtxRegistry : flexCtxRegistry,								// Object PropertyCache
 	layoutCallbacksRegistry : layoutCallbacksRegistry,				// Object PropertyCache
 	layoutDimensionsRegistry : layoutDimensionsRegistry,			// Object LayoutDimensionsBuffer

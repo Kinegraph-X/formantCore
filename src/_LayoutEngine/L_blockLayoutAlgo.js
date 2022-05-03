@@ -6,22 +6,21 @@
 
 
 var TypeManager = require('src/core/TypeManager');
-var BaseLayoutAlgo = require('src/_LayoutEngine/L_baseLayoutAlgo');
+var BaseIntermediateLayoutAlgo = require('src/_LayoutEngine/L_baseIntermediateLayoutAlgo');
 
 
 
 /*
  * 
  */
-var BlockLayoutAlgo = function(layoutNode, layoutDimensionsBuffer) {
-	BaseLayoutAlgo.call(this, layoutNode, layoutDimensionsBuffer);
+var BlockLayoutAlgo = function(layoutNode) {
+	BaseIntermediateLayoutAlgo.call(this, layoutNode);
 	this.objectType = 'BlockLayoutAlgo';
 	this.algoName = 'block';
 	
-	this.setRefsToParents(layoutNode);
 	this.setFlexCtx(this, layoutNode._parent.layoutAlgo.flexCtx._UID);
 	
-	this.localDebugLog('BlockLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
+//	this.localDebugLog('BlockLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
 	
 	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inline)
 		console.warn('Layout forbidden structure:', this.layoutNode._parent.nodeName, '>', this.layoutNode.nodeName, 'Found a block-flow element inside an inline-flow element.')
@@ -44,7 +43,7 @@ var BlockLayoutAlgo = function(layoutNode, layoutDimensionsBuffer) {
 
 }
 
-BlockLayoutAlgo.prototype = Object.create(BaseLayoutAlgo.prototype);
+BlockLayoutAlgo.prototype = Object.create(BaseIntermediateLayoutAlgo.prototype);
 BlockLayoutAlgo.prototype.objectType = 'BlockLayoutAlgo';
 
 BlockLayoutAlgo.prototype.executeLayout = function() {
@@ -58,10 +57,9 @@ BlockLayoutAlgo.prototype.executeLayout = function() {
 		}
 		// This is a new Block Formatting Context (https://www.w3.org/TR/2011/REC-CSS2-20110607/visuren.html#normal-flow)
 		this.parentLayoutAlgo.availableSpace.setBlockOffset(this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + maxBlockSize);
-		this.parentLayoutAlgo.resetInlineAvailableSpace();
 	}
 	
-	this.parentLayoutAlgo.resetInlineAvailableSpaceOffset();
+	this.parentLayoutAlgo.resetInlineAvailableSpace();
 	
 	this.parentLayoutAlgo.availableSpace.setLastInlineOffset(this.parentLayoutAlgo.availableSpace.getInlineOffset());
 	this.parentLayoutAlgo.availableSpace.setLastBlockOffset(this.parentLayoutAlgo.availableSpace.getBlockOffset());
@@ -78,24 +76,36 @@ BlockLayoutAlgo.prototype.setSelfOffsets = function() {
 }
 
 BlockLayoutAlgo.prototype.setSelfDimensions = function() {
-	if (this.hasExplicitWidth)
+	if (this.hasExplicitWidth) {
 		this.dimensions.setFromInline(this.getInlineDimension());
-	else
+		//  Before getOffsetsForAutorMargins()
+		this.parentLayoutAlgo.availableSpace.setInline(this.parentLayoutAlgo.availableSpace.getInline() - this.dimensions.getOuterInline());
+	}
+	else {
 		this.dimensions.setFromOuterInline(this.parentLayoutAlgo.availableSpace.getInline());
+		this.parentLayoutAlgo.availableSpace.setInline(0);
+	}
 	
-	this.dimensions.setFromBlock(!this.hasExplicitHeight ? 0 : this.getBlockDimension());
+	if (this.hasExplicitHeight) {
+		this.dimensions.setFromBlock(this.getBlockDimension());
+		this.parentLayoutAlgo.availableSpace.setBlock(this.parentLayoutAlgo.availableSpace.getBlock() - this.dimensions.getOuterBlock());
+	}
+	else {
+		this.dimensions.setFromBlock(0);
+		this.parentLayoutAlgo.availableSpace.setBlock(0);
+	}
 }
 
 BlockLayoutAlgo.prototype.setBlockParentDimensions = function() {
 	this.parentDimensions.setFromBorderInline(
 		Math.max(
-			this.parentLayoutAlgo.dimensions.getInline(),
+			this.parentLayoutAlgo.dimensions.getBorderInline(),
 			this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
 		)
 	);
 	this.parentDimensions.setFromBorderBlock(
 		Math.max(
-			this.parentLayoutAlgo.dimensions.getBlock(),
+			this.parentLayoutAlgo.dimensions.getBorderBlock(),
 			this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
 		)
 	);
@@ -112,18 +122,21 @@ BlockLayoutAlgo.prototype.setBlockParentDimensions = function() {
 BlockLayoutAlgo.prototype.updateBlockParentDimensions = function() {
 	this.parentDimensions.setFromBorderInline(
 		Math.max(
-			this.parentLayoutAlgo.dimensions.getInline(),
+			this.parentLayoutAlgo.dimensions.getBorderInline(),
 			this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
 		)
 	);
 	this.parentDimensions.setFromBorderBlock(
 		Math.max(
-			this.parentLayoutAlgo.dimensions.getBlock(),
+			this.parentLayoutAlgo.dimensions.getBorderBlock(),
 			this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
 		)
 	);
 	
+	this.parentLayoutAlgo.availableSpace.setInline(this.parentLayoutAlgo.dimensions.getBorderInline() - (this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline()) - this.cs.getParentPaddingInlineEnd() - this.cs.getParentBorderInlineEndWidth());
 	this.parentLayoutAlgo.availableSpace.setInlineOffset(this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline());
+	
+	this.parentLayoutAlgo.availableSpace.setBlock(this.parentLayoutAlgo.dimensions.getBorderBlock() - (this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock()) - this.cs.getParentPaddingBlockEnd() - this.cs.getParentBorderBlockEndWidth());
 	this.parentLayoutAlgo.availableSpace.setBlockOffset(this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock());
 	
 	this.parentLayoutAlgo.updateParentDimensions();
@@ -132,13 +145,13 @@ BlockLayoutAlgo.prototype.updateBlockParentDimensions = function() {
 BlockLayoutAlgo.prototype.updateInlineBlockParentDimensions = function() {
 	this.parentDimensions.setFromBorderInline(
 		Math.max(
-			this.parentLayoutAlgo.dimensions.getInline(),
+			this.parentLayoutAlgo.dimensions.getBorderInline(),
 			this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
 		)
 	);
 	this.parentDimensions.setFromBorderBlock(
 		Math.max(
-			this.parentLayoutAlgo.dimensions.getBlock(),
+			this.parentLayoutAlgo.dimensions.getBorderBlock(),
 			this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
 		)
 	);

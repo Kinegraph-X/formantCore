@@ -7,27 +7,26 @@
 
 var TypeManager = require('src/core/TypeManager');
 //var LayoutTypes = require('src/_LayoutEngine/LayoutTypes');
-var BaseLayoutAlgo = require('src/_LayoutEngine/L_baseLayoutAlgo');
+var BaseIntermediateLayoutAlgo = require('src/_LayoutEngine/L_baseIntermediateLayoutAlgo');
 
 
 
 /*
  * 
  */
-var InlineBlockLayoutAlgo = function(layoutNode, layoutDimensionsBuffer) {
-	BaseLayoutAlgo.call(this, layoutNode, layoutDimensionsBuffer);
+var InlineBlockLayoutAlgo = function(layoutNode) {
+	BaseIntermediateLayoutAlgo.call(this, layoutNode);
 	this.objectType = 'InlineBlockLayoutAlgo';
 	this.algoName = 'inline-block';
 	
-	this.localDebugLog('InlineBlockLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
+//	this.localDebugLog('InlineBlockLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
 	
-	this.setRefsToParents(layoutNode);
 	this.setFlexCtx(this, layoutNode._parent.layoutAlgo.flexCtx._UID);
 	
 	if (this.shouldGrow)
-		this.layoutNode._parent.availableSpace.shouldGrowChildCount++;
+		this.parentLayoutAlgo.availableSpace.setShouldGrowChildCount(this.parentLayoutAlgo.availableSpace.getShouldGrowChildCount() + 1);
 	if (this.shouldShrink)
-		this.layoutNode._parent.availableSpace.shouldShrinkChildCount++;
+		this.parentLayoutAlgo.availableSpace.setShouldShrinkChildCount(this.parentLayoutAlgo.availableSpace.getShouldShrinkChildCount() + 1);
 
 	if (this.isFlexChild
 			&& this.layoutNode._parent.layoutAlgo.flexDirection === this.flexDirectionsAsConstants.row) {
@@ -66,7 +65,7 @@ var InlineBlockLayoutAlgo = function(layoutNode, layoutDimensionsBuffer) {
 
 }
 
-InlineBlockLayoutAlgo.prototype = Object.create(BaseLayoutAlgo.prototype);
+InlineBlockLayoutAlgo.prototype = Object.create(BaseIntermediateLayoutAlgo.prototype);
 InlineBlockLayoutAlgo.prototype.objectType = 'InlineBlockLayoutAlgo';
 
 InlineBlockLayoutAlgo.prototype.executeLayout = function() {
@@ -151,19 +150,39 @@ InlineBlockLayoutAlgo.prototype.setSelfDimensions = function(dimensions) {
 		return;
 	}
 	
-	this.dimensions.setFromInline(!this.hasExplicitWidth ? 0 : this.getInlineDimension());
-	this.dimensions.setFromBlock(!this.hasExplicitHeight ? 0 : this.getBlockDimension());
+	if (this.hasExplicitWidth) {
+		this.dimensions.setFromInline(this.getInlineDimension());
+		//  Before getOffsetsForAutorMargins()
+		this.parentLayoutAlgo.availableSpace.setInline(this.parentLayoutAlgo.availableSpace.getInline() - this.dimensions.getOuterInline());
+	}
+	else {
+		this.dimensions.setFromInline(0);
+		this.parentLayoutAlgo.availableSpace.setInline(0);
+	}
+	
+	if (this.hasExplicitHeight) {
+		this.dimensions.setFromBlock(this.getBlockDimension());
+		this.parentLayoutAlgo.availableSpace.setBlock(this.parentLayoutAlgo.availableSpace.getBlock() - this.dimensions.getOuterBlock());
+	}
+	else {
+		this.dimensions.setFromBlock(0);
+		this.parentLayoutAlgo.availableSpace.setBlock(0);
+	}
 }
 
 InlineBlockLayoutAlgo.prototype.setFlexRowDimensions = function(DHL) {
-	
 	this.parentLayoutAlgo.resetInlineAvailableSpaceTempOffset();
 	this.parentLayoutAlgo.resetBlockAvailableSpaceTempOffset();
 	
 	this.layoutNode.climbChildrenLinkedListAndCallbackLayoutAlgo(null, 'effectiveSetFlexRowDimensions');
 	
+	this.recursiveSetFlexRowDimensions(this.flexCtx);
+}
+
+InlineBlockLayoutAlgo.prototype.recursiveSetFlexRowDimensions = function(flexCtx) {
+	
 	var currentParent, parentInlineDimensions;
-	TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID).subLevels.forEach(function(currentNode) {
+	TypeManager.layoutCallbacksRegistry.getItem(flexCtx._UID).subLevels.forEach(function(currentNode) {
 		if (currentParent !== currentNode._parent) {
 			currentParent = currentNode._parent;
 			
@@ -191,7 +210,7 @@ InlineBlockLayoutAlgo.prototype.setFlexRowDimensions = function(DHL) {
 	}, this);
 	
 	
-	var childCtxList = Object.values(this.flexCtx.childCtxList);
+	var childCtxList = Object.values(flexCtx.childCtxList);
 	if (childCtxList.length) {
 		childCtxList.forEach(function(childCtx) {
 			TypeManager.layoutCallbacksRegistry.getItem(childCtx._UID).firstLevel.forEach(function(currentNode) {
@@ -212,20 +231,32 @@ InlineBlockLayoutAlgo.prototype.setFlexRowDimensions = function(DHL) {
 						&& currentParent.layoutAlgo.cs.getFlexDirection() === this.flexDirectionsAsConstants.row))
 					currentParent.layoutAlgo.availableSpace.setInlineOffset(currentParent.layoutAlgo.availableSpace.getInlineOffset() + currentNode.layoutAlgo.dimensions.getOuterInline());
 			}, this);
+			
+			if (TypeManager.layoutCallbacksRegistry.getItem(childCtx._UID).subLevels.length
+				|| Object.values(childCtx.childCtxList).length)
+				this.recursiveSetFlexRowDimensions(childCtx);
 		}, this);
 	}
 	
-	if (!this.flexCtx._parent)
-		TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID).length = 0;
+	if (!flexCtx._parent) {
+		TypeManager.layoutCallbacksRegistry.getItem(flexCtx._UID).firstLevel.length = 0;
+		TypeManager.layoutCallbacksRegistry.getItem(flexCtx._UID).subLevels.length = 0;
+	}
 }
 
-InlineBlockLayoutAlgo.prototype.setFlexColumnDimensions = function(DHL) {
+InlineBlockLayoutAlgo.prototype.setFlexColumnDimensions = function() {
 	this.layoutNode._parent.layoutAlgo.resetBlockAvailableSpaceOffset();
 	
 	this.layoutNode.climbChildrenLinkedListAndCallbackLayoutAlgo(null, 'effectiveSetFlexColumnDimensions');
 	
+	this.recursiveSetFlexColumnDimensions(this.flexCtx);
+}
+
+InlineBlockLayoutAlgo.prototype.recursiveSetFlexColumnDimensions = function(flexCtx) {
+	
+	
 	var currentParent, parentInlineDimensions;
-	TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID).subLevels.forEach(function(currentNode) {
+	TypeManager.layoutCallbacksRegistry.getItem(flexCtx._UID).subLevels.forEach(function(currentNode) {
 		if (currentParent !== currentNode._parent) {
 			currentParent = currentNode._parent
 			
@@ -251,52 +282,88 @@ InlineBlockLayoutAlgo.prototype.setFlexColumnDimensions = function(DHL) {
 			currentParent.layoutAlgo.availableSpace.setInlineOffset(currentParent.layoutAlgo.availableSpace.getInlineOffset() + currentNode.layoutAlgo.dimensions.getOuterInline());
 	}, this);
 	
-	if (!this.flexCtx._parent)
-		TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID).length = 0;
+	var childCtxList = Object.values(flexCtx.childCtxList);
+	if (childCtxList.length) {
+		childCtxList.forEach(function(childCtx) {
+			TypeManager.layoutCallbacksRegistry.getItem(childCtx._UID).firstLevel.forEach(function(currentNode) {
+				if (currentParent !== currentNode._parent) {
+					currentParent = currentNode._parent;
+					currentParent.layoutAlgo.setAvailableSpace();
+				}
+				
+				// The main task: SET OFFSETS
+				currentNode.layoutAlgo.setSelfOffsets();
+				
+				// & UPDATE block PARENT blockOFFSET
+				if (currentParent.layoutAlgo.algoName === this.layoutAlgosAsConstants.block)
+					currentParent.layoutAlgo.availableSpace.setBlockOffset(currentParent.layoutAlgo.availableSpace.getBlockOffset() + currentNode.layoutAlgo.dimensions.getOuterBlock());
+				// & UPDATE inline-block PARENT inlineOFFSET
+				if (currentParent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inlineBlock
+					|| (currentParent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
+						&& currentParent.layoutAlgo.cs.getFlexDirection() === this.flexDirectionsAsConstants.row))
+					currentParent.layoutAlgo.availableSpace.setInlineOffset(currentParent.layoutAlgo.availableSpace.getInlineOffset() + currentNode.layoutAlgo.dimensions.getOuterInline());
+			}, this);
+			if (TypeManager.layoutCallbacksRegistry.getItem(childCtx._UID).subLevels.length
+				|| Object.values(childCtx.childCtxList).length)
+				this.recursiveSetFlexColumnDimensions(childCtx);
+		}, this);
+	}
+	
+	if (!flexCtx._parent) {
+		TypeManager.layoutCallbacksRegistry.getItem(flexCtx._UID).firstLevel.length = 0;
+		TypeManager.layoutCallbacksRegistry.getItem(flexCtx._UID).subLevels.length = 0;
+	}
+		
 }
 
-InlineBlockLayoutAlgo.prototype.effectiveSetFlexRowDimensions = function(DHL) {
+InlineBlockLayoutAlgo.prototype.effectiveSetFlexRowDimensions = function() {
 	if (!this.parentLayoutAlgo.availableSpace.getShouldGrowChildCount() || !(this.cs.getFlexGrow() > 0)) {
 		this.setSelfOffsetsFromTempOffsets();
-		this.parentLayoutAlgo.availableSpace.setInlineTempOffset(this.parentLayoutAlgo.availableSpace.getInlineTempOffset() + this.dimensions.getOuterInline());
+		this.parentLayoutAlgo.availableSpace.setTempInlineOffset(this.parentLayoutAlgo.availableSpace.getTempInlineOffset() + this.dimensions.getOuterInline());
 		return;
 	}
-
+	
 	// FIXME: floats are NOT handled by our CSSPropertyBuffer type, and flexGrow may be float
 	// For now, it acts like if we had parseInt the number
 	this.dimensions.setFromOuterInline(
-		dimensions.getFromOuterInline()
+		this.dimensions.getOuterInline()
 		 + this.cs.getFlexGrow() * (this.parentLayoutAlgo.availableSpace.getInline() / this.parentLayoutAlgo.availableSpace.getShouldGrowChildCount())
 	);
-
+	
 	this.setSelfOffsetsFromTempOffsets();
-	this.parentLayoutAlgo.availableSpace.setInlineTempOffset(this.parentLayoutAlgo.availableSpace.getInlineTempOffset() + this.dimensions.getOuterInline());
+	this.parentLayoutAlgo.availableSpace.setTempInlineOffset(this.parentLayoutAlgo.availableSpace.getTempInlineOffset() + this.dimensions.getOuterInline());
 }
 
 InlineBlockLayoutAlgo.prototype.effectiveSetFlexColumnDimensions = function(DHL) {
 	if (!this.parentLayoutAlgo.availableSpace.getShouldGrowChildCount() || !(this.cs.getFlexGrow() > 0)) {
 		this.setSelfOffsetsFromTempOffsets(dimensions);
-		this.parentLayoutAlgo.availableSpace.setBlockTempOffset(this.parentLayoutAlgo.availableSpace.getBlockTempOffset() + this.dimensions.getOuterBlock());
+		this.parentLayoutAlgo.availableSpace.setTempBlockOffset(this.parentLayoutAlgo.availableSpace.getTempBlockOffset() + this.dimensions.getOuterBlock());
 		return;
 	}
 	
 	// FIXME: floats are NOT handled by our CSSPropertyBuffer type, and flexGrow may be float
 	// For now, it acts like if we had parseInt the number
 	this.dimensions.setFromOuterBlock(
-		dimensions.getFromOuterBlock()
+		this.dimensions.getOuterBlock()
 		 + this.cs.getFlexGrow() * (this.parentLayoutAlgo.availableSpace.getBlock() / this.parentLayoutAlgo.availableSpace.getShouldGrowChildCount())
 	);
 	
 	this.setSelfOffsetsFromTempOffsets();
-	this.parentLayoutAlgo.availableSpace.setBlockTempOffset(this.parentLayoutAlgo.availableSpace.getBlockTempOffset() + this.dimensions.getOuterBlock());
+	this.parentLayoutAlgo.availableSpace.setTempBlockOffset(this.parentLayoutAlgo.availableSpace.getTempBlockOffset() + this.dimensions.getOuterBlock());
 }
 
 InlineBlockLayoutAlgo.prototype.setFlexRowParentDimensions = function(dimensions) {
 	this.parentDimensions.setFromBorderInline(
-		this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
+		Math.max(
+			this.parentLayoutAlgo.dimensions.getBorderInline(),
+			this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
+		)
 	);
 	this.parentDimensions.setFromBorderBlock(
-		this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		Math.max(
+			this.parentLayoutAlgo.dimensions.getBorderBlock(),
+			this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		)
 	);
 	
 	this.parentLayoutAlgo.availableSpace.setInline(this.parentLayoutAlgo.dimensions.getBorderInline() - (this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline()) - this.cs.getParentPaddingInlineEnd() - this.cs.getParentBorderInlineEndWidth());
@@ -328,14 +395,18 @@ InlineBlockLayoutAlgo.prototype.setFlexColumnParentDimensions = function(dimensi
 }
 
 InlineBlockLayoutAlgo.prototype.updateBlockParentDimensions = function() {
-	this.parentDimensions.setFromBorderInline(
-		this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
-	);
+//	this.parentDimensions.setFromBorderInline(
+//		this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
+//	);
 	this.parentDimensions.setFromBorderBlock(
-		this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		Math.max(
+			this.parentLayoutAlgo.dimensions.getBlock(),
+			this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		)
 	);
 	
 	this.parentLayoutAlgo.availableSpace.setBlock(this.parentLayoutAlgo.dimensions.getBorderBlock() - (this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock()) - this.cs.getParentPaddingBlockEnd() - this.cs.getParentBorderBlockEndWidth());
+	
 	this.parentLayoutAlgo.availableSpace.setInlineOffset(this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline());
 	this.parentLayoutAlgo.availableSpace.setBlockOffset(this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock());
 	
@@ -343,11 +414,14 @@ InlineBlockLayoutAlgo.prototype.updateBlockParentDimensions = function() {
 }
 
 InlineBlockLayoutAlgo.prototype.updateFlexRowParentDimensions = function(dimensions, DHL) {
-	this.parentDimensions.setFromBorderInline(
-		this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
-	);
+//	this.parentDimensions.setFromBorderInline(
+//		this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
+//	);
 	this.parentDimensions.setFromBorderBlock(
-		this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		Math.max(
+			this.parentLayoutAlgo.dimensions.getBlock(),
+			this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		)
 	);
 	
 	this.parentLayoutAlgo.availableSpace.setInline(this.parentLayoutAlgo.dimensions.getBorderInline() - (this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline()) - this.cs.getParentPaddingInlineEnd() - this.cs.getParentBorderInlineEndWidth());
@@ -361,7 +435,10 @@ InlineBlockLayoutAlgo.prototype.updateFlexRowParentDimensions = function(dimensi
 
 InlineBlockLayoutAlgo.prototype.updateFlexColumnParentDimensions = function(dimensions, DHL) {
 	this.parentDimensions.setFromBorderBlock(
-		this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		Math.max(
+			this.parentLayoutAlgo.dimensions.getBlock(),
+			this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
+		)
 	);
 	
 	this.parentLayoutAlgo.availableSpace.setBlock(this.parentLayoutAlgo.dimensions.getBorderBlock() - (this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock()) - this.cs.getParentPaddingBlockEnd() - this.cs.getParentBorderBlockEndWidth());
@@ -381,8 +458,8 @@ InlineBlockLayoutAlgo.prototype.updateFlexRowSiblingsDimensions = function(dimen
 		var currentNode = this.layoutNode,
 			currentLayoutAlgo = this;
 		while(true) {
-			if (currentLayoutAlgo.cs.getHeightIsInitialValue()) {
-				currentNode.layoutAlgo.dimensions.setFromOuterBlock(Math.max(currentNode._parent.layoutAlgo.dimensions.getOuterBlock() - summedParentBlockPaddings, currentNode.dimensions.outerBlock));
+			if (!currentLayoutAlgo.hasExplicitHeight) {
+				currentNode.layoutAlgo.dimensions.setFromOuterBlock(Math.max(currentNode._parent.layoutAlgo.dimensions.getBlock() - summedParentBlockPaddings, currentNode.layoutAlgo.dimensions.getOuterBlock()));
 				currentLayoutAlgo.setAvailableSpace();
 			}
 			
@@ -402,8 +479,8 @@ InlineBlockLayoutAlgo.prototype.updateFlexColumnSiblingsDimensions = function(di
 		var currentNode = this.layoutNode,
 			currentLayoutAlgo = this;
 		while(true) {
-			if (currentLayoutAlgo.cs.getWidthIsInitialValue()) {
-				currentNode.layoutAlgo.dimensions.setFromOuterInline(Math.max(currentNode._parent.layoutAlgo.dimensions.getOuterInline() - summedParentInlinePaddings, currentNode.dimensions.outerInline));
+			if (!currentLayoutAlgo.hasExplicitWidth) {
+				currentNode.layoutAlgo.dimensions.setFromOuterInline(Math.max(currentNode._parent.layoutAlgo.dimensions.getInline() - summedParentInlinePaddings, currentNode.layoutAlgo.dimensions.getOuterInline()));
 				currentLayoutAlgo.setAvailableSpace();
 			}
 			
