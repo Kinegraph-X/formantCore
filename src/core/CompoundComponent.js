@@ -298,6 +298,36 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 
 
 /**
+ * @constructor CompoundComponentWithHooks
+ */
+var CompoundComponentWithHooks = function(definition, parentView, parent, isChildOfRoot) {
+	CompoundComponent.call(this, definition, parentView, parent, isChildOfRoot);
+	this.objectType = 'CompoundComponentWithHooks';
+//	console.log(this);
+	this.viewExtend(definition);
+}
+var proto_proto = Object.create(Components.ComponentWithHooks.prototype);
+Object.assign(proto_proto, CompoundComponent.prototype);
+CompoundComponentWithHooks.prototype = Object.create(proto_proto);
+CompoundComponentWithHooks.prototype.objectType = 'CompoundComponentWithHooks';
+coreComponents.CompoundComponentWithHooks = CompoundComponentWithHooks;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
  * @constructor LazySlottedCompoundComponent
 */
 var createLazySlottedComponentDef = require('src/coreDefs/lazySlottedComponentDef');

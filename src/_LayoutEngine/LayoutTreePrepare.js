@@ -67,7 +67,7 @@ LayoutTreePrepare.prototype.constructLayoutTree = function(naiveDOM, collectedSW
 	var layoutRoot = new LayoutNode(naiveDOM.views.memberViews[2], layoutViewport);
 	return new LayoutTreeBuilder(naiveDOM, layoutRoot);
 }
-
+ 	
 LayoutTreePrepare.prototype.latelyExecuteLayout = function() {
 //	performance.mark('layoutComputeOnly');
 	

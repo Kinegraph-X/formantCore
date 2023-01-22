@@ -61,10 +61,12 @@ NodeResizeObserver.prototype.observe = function(node, cb) {
 	// 		=> emulate it...
 	// TODO: study that more carefully... (related to the layout being already resolved in the browser, etc.)
 	if (node.ownerDocument) {
+//		console.log(node);
 		var bBox = node.getBoundingClientRect();
+//		console.log(bBox);
 		var boundingBox = {
-			h : bBox.h,
-			w : bBox.w
+			h : bBox.height,
+			w : bBox.width
 		};
 		this.trigger(node.id, {boundingBox : boundingBox});
 	}
@@ -105,7 +107,7 @@ NodeResizeObserver.prototype.getSize = function(observerEntries) {
 			boundingBox.h = entry.contentRect.height; 
 			boundingBox.w = entry.contentRect.width;
 		}
-		
+//		console.log('boundingBox', boundingBox);
 		this.trigger(entry.target.id, {boundingBox : boundingBox});
 		
 	}, this);

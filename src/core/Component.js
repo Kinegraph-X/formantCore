@@ -607,7 +607,7 @@ AbstractComponent.prototype.createDefaultDef = function() {}			// virtual
  */
 AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	var defaultDef, defaultHostDef;
-	
+//	console.log(this.createDefaultDef());
 	if ((defaultDef = this.createDefaultDef())) {
 		this._defComposedUID = defaultDef.getHostDef().UID;
 		defaultHostDef = defaultDef.getHostDef();
@@ -779,7 +779,7 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView, p
  * @abstract
  */
 ComponentWithView.prototype.setContentFromValueOnView = function(value) {
-//	console.log(value)
+//	console.log('setContentFromValueOnView', value)
 	if (typeof value !== 'string' && isNaN(parseInt(value)))
 		return;
 	this.view.value = value.toString();		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
@@ -964,7 +964,9 @@ ComponentWithHooks.prototype.viewExtend = function(definition) {
 	this.basicLateViewExtend(definition);
 	if (this._asyncInitTasks)
 		this.lateAddChildren(definition);
-		
+	
+//	if (definition.getHostDef().targetSlotIndex !== null)
+//		console.log(this);
 	// Retry after having added more views
 	if (definition.getHostDef().targetSlotIndex !== null && this.view.targetSubView === null) {
 		this.view.getTargetSubView(definition.getHostDef());

@@ -116,7 +116,7 @@ Ignition.prototype.instanciateDOM = function() {
 				view.styleHook.s.shouldSerializeAll();
 				
 				// For style overrides and custom def objects.
-				// But take care to give an explicit ID, as the iframe is -no- shadow root
+				// But take care of giving an explicit ID, as the iframe is -no- shadow root
 				// 		=> and at this point of risk, we should as well target the parent element
 				// 		when appending the style Elem... It would be way more scopped...
 //				console.log(view.currentViewAPI.nodeName);

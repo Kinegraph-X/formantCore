@@ -307,7 +307,7 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 //			console.log(queriedOrQueryingObj);
 
 		var subscription = queriedOrQueryingObj._subscriptions[queriedOrQueryingObj._subscriptions.length - 1];
-		stateMachineCache.registerTransition(queriedOrQueryingObj._UID, queriedOrQueryingObj.objectType, this, queriedOrQueryingObj._parent._UID);
+//		stateMachineCache.registerTransition(queriedOrQueryingObj._UID, queriedOrQueryingObj.objectType, this, queriedOrQueryingObj._parent._UID);
 		
 //		console.warn(this.from, this.to, stream.subscriptions.length, stream._value, stream);
 		if (stream._value)
@@ -424,6 +424,7 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 	else {
 		this.UID = null								// overridden at function end
 		this.type = null,							// String
+		this.isCompound = false;					// Boolean
 		this.nodeName = null;						// String
 		this.isCustomElem = null;					// Boolean
 		this.templateNodeName = null;				// String
@@ -493,7 +494,7 @@ var ComponentListDefModel = function(obj, isSpecial) {
 	this.type = 'ComponentList';				// String
 	this.reflectOnModel = true;					// Boolean
 	this.augmentModel = false;					// Boolean
-	this.each = [];							// Array [unknown_type] (model to iterate on)
+	this.each = [];								// Array [unknown_type] (model to iterate on)
 	this.item = null;							// Object (an item of the model)
 	this.template = null;						// Object HierarchicalComponentDef
 	this.section = null;						// Number
@@ -541,7 +542,7 @@ ComponentDefCache.prototype.setUID = function(uniqueID, globalObj) {
 
 
 /**
- * @constructor ComponentDefModel
+ * @constructor createComponentDef
  * @factory
  */
 var createComponentDef = function(defObj, useCache, isSpecial) {
@@ -655,6 +656,56 @@ var setAcceptsProp = function(definition, accepts, title, onMember) {
 		)
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * @constructor createComponentDef
+ * @factory
+ */
+var createDef = function(defObj) {
+//	console.log(defObj);
+	// MASTER VIEW OF A COMPOUND COMPONENT
+	if ((defObj.type && defObj.type === 'CompoundComponent') || defObj.isCompound) {
+		return (new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
+	}
+	// VIEW DEF || MASTER VIEW OF A SIMPLE COMPONENT
+	else if (!defObj.host) {
+		if (defObj.n && !defObj.type) {
+			defObj.nodeName = defObj.n;
+			delete defObj.n;
+			return (new SingleLevelComponentDefModel(defObj));
+		}
+		else if ((defObj.nodeName && !defObj.type) || !defObj.isCompound) {
+			return (new SingleLevelComponentDefModel(defObj));
+		}
+	}
+	// COMPLETE COMPONENT
+	else if (defObj.host) {
+		return (new HierarchicalComponentDefModel(defObj, 'rootOnly'));
+	}
+}
+
+exportedObjects.createDef = createDef;
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -841,9 +892,10 @@ var rasterShapesRegistry = new PropertyCache('rasterShapesRegistry');
 var flexCtxRegistry = new PropertyCache('flexCtxRegistry');
 
 /**
- * @typedStore {StoredLayoutNodeCallback} {UID : nodeUID}
+ * @typedStore {StoredLayoutCallback} {UID : nodeUID}
  */
 var layoutCallbacksRegistry = new PropertyCache('layoutCallbacksRegistry');
+
 
 console.log(hostsDefinitionsCacheRegistry);
 console.log(listsDefinitionsCacheRegistry);
@@ -855,11 +907,6 @@ console.log(rasterShapesRegistry);
 //console.log(viewsRegistry);
 
 
-/**
- * @typedStoreAsBuffer {StoredLayoutDimensions} {UID : nodeUID}
- */
- var layoutDimensionsRegistry;
-//var layoutDimensionsRegistry = new LayoutDimensionsBuffer();
 
 
 
@@ -892,7 +939,6 @@ Object.assign(exportedObjects, {
 	textNodesRegistry : textNodesRegistry,							// Object PropertyCache
 	flexCtxRegistry : flexCtxRegistry,								// Object PropertyCache
 	layoutCallbacksRegistry : layoutCallbacksRegistry,				// Object PropertyCache
-	layoutDimensionsRegistry : layoutDimensionsRegistry,			// Object LayoutDimensionsBuffer
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegistry : nodesRegistry,
 	viewsRegistry : viewsRegistry,

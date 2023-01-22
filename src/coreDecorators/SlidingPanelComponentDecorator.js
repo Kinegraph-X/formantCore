@@ -11,15 +11,40 @@ var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 
 	var componentTypeAsADecorator = AppIgnition.componentTypes.SlidingPanel;
 
-	var decoratedType = function(definition, parentView, parent) {
-		this._hostedDefUID = definition.getHostDef().UID;
-		AppIgnition.componentTypes.AbstractComponent.prototype.mergeDefaultDefinition.call(componentClass.prototype, definition);
+	var decoratedType = function(componentTypeAsDecoratorDef, parentView, parent, hostedDefinition) {
+		this._hostedDefUID = null;
 		
-		// definition is now a unique concrete def decorated through the component's default def
-		SlidingPanelComponentDecorator.populateHostsDefinitionsCacheRegister(definition);
-		TypeManager.typedHostsRegistry.setItem(this._hostedDefUID, []);
+		// FIXME: MEGA-HACKY => we should think of a recursive strategy to find that info
+		// through a utility method in the core
+		this.isHostedCompAGroup = (Object.getPrototypeOf(Object.getPrototypeOf(componentClass.prototype)).extendsCore.match(/CompoundComponent/)
+			|| Object.getPrototypeOf(Object.getPrototypeOf(Object.getPrototypeOf(componentClass.prototype))).objectType.match(/CompoundComponent/))
+				? true
+				: false;
 		
-		componentTypeAsADecorator.call(this, definition, parentView, parent);
+		if (hostedDefinition) {
+			this._hostedDefUID = (hostedDefinition && hostedDefinition.getGroupHostDef()) ? hostedDefinition.getGroupHostDef().UID : hostedDefinition.getHostDef().UID;
+			// Hack to get a clone of the definition object (TODO: is it necessary for this definiton to be unique ?)
+			// mergeDefaultDefinition shall return a copy of the def (TODO: could we have used TypeManager.createDef() instead ?)
+			AppIgnition.componentTypes.AbstractComponent.prototype.mergeDefaultDefinition.call(
+				componentClass.prototype, 
+				hostedDefinition.getGroupHostDef() ? hostedDefinition.getHostDef() : hostedDefinition
+			);
+			// definition is now a unique concrete def decorated through the component's default def
+			// (TODO: why do we have to populate the caches beforehand ?
+			// => it is related to the time at which the "lateAddChild" hook shall be called,
+			// relatively to the "ignition sequence", but is it really ?)
+			SlidingPanelComponentDecorator.populateHostsDefinitionsCacheRegistry(hostedDefinition);
+			TypeManager.typedHostsRegistry.setItem(this._hostedDefUID, []);
+		}
+		
+		componentTypeAsADecorator.call(
+			this,
+			componentTypeAsDecoratorDef
+				? componentTypeAsDecoratorDef
+				: TypeManager.mockDef(),
+			parentView,
+			parent
+		);
 		
 		this.objectType = 'SlidingPanelHosting' + componentClass.prototype.objectType;
 	}
@@ -39,8 +64,14 @@ var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 	decoratedType.prototype._asyncInitTasks.push(new TypeManager.TaskDefinition({
 		type : 'lateAddChild',
 		task : function(definition) {
+			console.log('this.isHostedCompAGroup', this.isHostedCompAGroup);
 					new componentClass(
-						TypeManager.hostsDefinitionsCacheRegistry.getItem(this._hostedDefUID),
+						this._hostedDefUID
+							? TypeManager.hostsDefinitionsCacheRegistry.getItem(this._hostedDefUID)
+							: (this.isHostedCompAGroup
+								? TypeManager.mockGroupDef()
+								: TypeManager.mockDef()
+							),
 						this.view.subViewsHolder.memberViews[2],
 						this,
 						...args
@@ -55,8 +86,8 @@ var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 	
 }
 
-SlidingPanelComponentDecorator.populateHostsDefinitionsCacheRegister = function(definition) {
-	var hostDefinition = definition.getHostDef();
+SlidingPanelComponentDecorator.populateHostsDefinitionsCacheRegistry = function(definition) {
+	var hostDefinition = definition.getGroupHostDef() || definition.getHostDef();
 	
 	for (let prop in TypeManager.caches) {
 		TypeManager.caches[prop].setItem(hostDefinition.UID, hostDefinition[prop]);
