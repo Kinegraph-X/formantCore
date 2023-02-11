@@ -46,7 +46,7 @@ var classConstructor = (function() {
 		browserName,
 		knownIDs = {};
 	
-
+//	console.log(knownIDs);
 	var launch = function(customOptions) {
 		
 		debugMode = window.location && window.location.href.match(/[\?&]debug=(.+)&?/)

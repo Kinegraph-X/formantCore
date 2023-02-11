@@ -97,7 +97,7 @@ for (let type in componentTypes) {
  * @constructor CompoundComponent
  */
 var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) {
-//		console.log(definition);
+//	console.log(definition);
 	this._firstListUIDSeen = null;
 	var shouldExtend = false;
 	
@@ -128,21 +128,31 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 	// we call the "superior" ComponentWithView ctor on the def of solely the host (5 lines below)
 	// BUT beforehand, we reflect on "self" the "createDefaultDef" method defined on the prototype of the host, then it shall be called by the AbstractComponent ctor
 	// (from which we inherit).
-	// Exception, (shall) obviously (be) : if there is -no- createDefaultDef method on that Component which whant to be "host" on the throne of the "host"...
+	// Exception, obviously : if there is -no- createDefaultDef method on that Component which whant to be "host" on the throne of the "host"...
 	//
-	if (definition.getGroupHostDef().getType() && Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef) {
-		this.createDefaultDef = Components[definition.getGroupHostDef().getType()].prototype.createDefaultDef;
+	var type = definition.getGroupHostDef().getType();
+	if (type && type !== 'CompoundComponent' && Components[type].prototype.createDefaultDef) {
+//		console.error('Definition overridden', type,  Components[type]);
+		this.createDefaultDef = Components[type].prototype.createDefaultDef;
 	}
 	//	console.log(parent);
 	//	console.log(definition);
-
+//	console.log(definition.getHostDef());
 	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, parent, isChildOfRoot);  // feed with host def
 	this.objectType = 'CompoundComponent';
 
 	// extend last, so the event bubbling occurs always after the "explicitly defined in the host's def" callbacks
 	if (shouldExtend)
 		this.extendDefinition(definition);
-
+	
+	var defaultDef = this.createDefaultDef();
+	if (!defaultDef)
+		console.log(this);
+	if (defaultDef.subSections.length)
+		Array.prototype.push.apply(definition.subSections, defaultDef.subSections);
+	if (defaultDef.members.length)
+		Array.prototype.push.apply(definition.members, defaultDef.members);
+			
 	this.instanciateSubSections(definition);
 	this.instanciateMembers(definition);
 	this.instanciateLists(definition);
@@ -170,6 +180,10 @@ CompoundComponent.prototype.extendDefinition = function(definition) {
 CompoundComponent.prototype.instanciateSubSections = function(definition) {
 	var type, component;
 	definition.subSections.forEach(function(subSectionDef) {
+		if (!subSectionDef.getHostDef() && (subSectionDef.nodeName || subSectionDef.type)) {
+			console.warn('subSection "' + (subSectionDef.type || subSectionDef.nodeName) + '" of a CompoundComponent : Definition given is the definition of a view. It should be wrapped in a HierarchicalComponentDef');
+			return;
+		}
 		type = subSectionDef.getHostDef().getType() || (subSectionDef.getGroupHostDef() && subSectionDef.getGroupHostDef().getType());
 		//		console.log(type, type in Components);
 		if (type in Components && type !== 'CompoundComponent' && type !== 'FlexColumnComponent' && type !== 'FlexRowComponent' && type !== 'FlexGridComponent' && type !== 'HToolbarComponent') {
@@ -187,15 +201,21 @@ CompoundComponent.prototype.instanciateSubSections = function(definition) {
 }
 
 CompoundComponent.prototype.instanciateMembers = function(definition) {
-	//	console.log(typeof Components.ColorSamplerSetComponentAsClient);
+//	console.log(definition);
 	var type;
 	definition.members.forEach(function(memberDef) {
+		if (!memberDef.getHostDef() && (memberDef.nodeName || memberDef.type)) {
+			console.warn('Member "' + (memberDef.type || memberDef.nodeName) + '" of a CompoundComponent : Definition given is the definition of a view. It should be wrapped in a HierarchicalComponentDef');
+			return;
+		}
 		type = memberDef.getHostDef().getType() || (memberDef.getGroupHostDef() && memberDef.getGroupHostDef().getType());
 		//		if (type === 'ColorSamplerSetComponentAsClient')
 		//			console.log(type, type in Components, Components);
-
-		if (type in Components && type !== 'CompoundComponent')
+//		console.log(type);
+		if (type in Components && type !== 'CompoundComponent') {
+//			console.log(definition);
 			new Components[type](memberDef, this.view, this);
+		}
 		else if (memberDef.getGroupHostDef()) {
 			if (Components[type])
 				new Components[type](memberDef, this.view, this);
@@ -354,7 +374,7 @@ var LazySlottedCompoundComponent = function(definition, parentView, parent, alre
 	// Here, the initial def allows an undefined number of tabs
 	this.updateDefinitionBasedOnSlotsCount(stdDefinition);
 
-	CompoundComponent.call(this, stdDefinition, parentView, parent);
+	CompoundComponentWithHooks.call(this, stdDefinition, parentView, parent);
 
 	//	console.log('LazySlottedCompoundComponent - Ctor Rendering \n\n\n');
 	//	this.render(null, stdDefinition.lists[0].host);
@@ -374,12 +394,20 @@ var LazySlottedCompoundComponent = function(definition, parentView, parent, alre
 
 	this.slotsCache = new TypeManager.PropertyCache('LazySlottedCompoundComponentSlotsCache' + this._UID);
 }
-LazySlottedCompoundComponent.prototype = Object.create(CompoundComponent.prototype);
+LazySlottedCompoundComponent.prototype = Object.create(CompoundComponentWithHooks.prototype);
 LazySlottedCompoundComponent.prototype.objectType = 'LazySlottedCompoundComponent';
 coreComponents.LazySlottedCompoundComponent = LazySlottedCompoundComponent;
 
+LazySlottedCompoundComponent.prototype._asyncInitTasks = [];
+LazySlottedCompoundComponent.prototype._asyncInitTasks.push(new TypeManager.TaskDefinition({
+	type : 'asyncViewExtend',
+	task : function(definition) {
+		this.hackDOMAttributes();
+	}
+}));
+
 // TMP Hack: assign DOM attributes on pseudo-slots (though we should do that through reactivity, see "ColorSamplerSetComponent")
-LazySlottedCompoundComponent.prototype.registerEvents = function() {
+LazySlottedCompoundComponent.prototype.hackDOMAttributes = function() {
 	this._children.forEach(function(child, key) {
 		child.view.getMasterNode().streams = child.streams;
 		child.view.getMasterNode().setAttribute('slot-id', 'slot' + key.toString());

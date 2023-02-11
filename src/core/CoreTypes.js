@@ -158,7 +158,21 @@ EventEmitter.prototype.createEvents = function() {}				// virtual
  * @param {string} eventType
  */
 EventEmitter.prototype.createEvent = function(eventType) {
+	var self = this;
 	this._eventHandlers[eventType] = [];
+	if (!Object.getOwnPropertyDescriptor(this, 'on' + eventType)) {
+		var propDescriptor = {};
+		propDescriptor['on' + eventType] = {
+			set : function(callback) {
+				self.addEventListener(eventType, callback);
+			}
+		}
+		Object.defineProperties(this, propDescriptor);
+	}
+	else {
+		console.warn(this.objectType, ': this.createEvent has been called twice with the same eventType =>', eventType);
+	}
+	
 	this._one_eventHandlers[eventType] = [];
 	// identified event handlers are meant to be disposable
 	this._identified_eventHandlers[eventType] = [];
@@ -240,8 +254,10 @@ EventEmitter.prototype.clearEventListeners = function(eventType) {
  * @param {any} payload 
  */ 
 EventEmitter.prototype.trigger = function(eventType, payload, eventIdOrBubble, eventID) {
-	if (!this._eventHandlers[eventType] && this._one_eventHandlers[eventType] && this._identified_eventHandlers[eventType])
+	if (!this._eventHandlers[eventType] && !this._one_eventHandlers[eventType] && !this._identified_eventHandlers[eventType]) {
+		console.warn(this.objectType, 'Event : ' + eventType + ' triggered although it doesn\'t exist. Returning...');
 		return;
+	}
 	
 	var bubble = false;
 	if (typeof eventIdOrBubble === 'boolean')
@@ -332,7 +348,7 @@ Command.prototype.constructor = Command;
 
 Command.prototype.act = function() {
 	var self = this, canActResult, args = Array.prototype.slice.call(arguments);
-
+	
 	if (this.canAct === null) {
 		this.action.apply(null, args);
 		this.canActQuery = Promise.resolve();
@@ -381,7 +397,7 @@ var Stream = function(name, value, hostedInterface, transform, lazy) {
 	this.name = name;
 	this.lazy = typeof lazy !== 'undefined' ? lazy : false;
 	this.hostedInterface = hostedInterface;
-	this.transform = transform || undefined;
+	this.transform = transform || (value => value);
 	this.inverseTransform;
 	this.subscriptions = [];
 	
@@ -404,8 +420,9 @@ Object.defineProperty(Stream.prototype, 'value', {
 	},
 	
 	set : function(value) {
-		this.setAndUpdateConditional(value);
-		this.set(value);
+		var val = this.transform(value);
+		this.setAndUpdateConditional(val);
+		this.set(val);
 	}
 });
 
@@ -732,7 +749,7 @@ var LazyResettableColdStream = function(name, transform, value) {
 
 	this.forward = true;
 	this.name = name;
-	this.transform = transform || undefined;
+	this.transform = transform || (value => value);
 	this.inverseTransform;
 	this.subscriptions = [];
 	
@@ -758,7 +775,8 @@ Object.defineProperty(LazyResettableColdStream.prototype, 'value', {
 	},
 	
 	set : function(value) {
-		this.setAndUpdateConditional(value);
+		var val = this.transform(value);
+		this.setAndUpdateConditional(val);
 		this.forward = true;
 	}
 });
@@ -1539,7 +1557,7 @@ DOMViewAPI.prototype.setMasterNode = function(node) {
  * 
  */
 DOMViewAPI.prototype.getMasterNode = function() {
-	return this.hostElem || {};		// FIXME: TODO: remove the fallback (needed while we don't have any other ViewAPI...)
+	return this.hostElem;
 }
 
 /**
@@ -1663,6 +1681,10 @@ DOMViewAPI.prototype.setContentFromArray = function(contentAsArray) {
 	this.getWrappingNode().appendChild(this.getMultilineContent(contentAsArray));
 }
 
+DOMViewAPI.prototype.updateBGColor = function(color) {
+	this.getMasterNode().style.backgroundColor = color;
+}
+
 
 
 
@@ -1701,8 +1723,11 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	
 	this.objectType = 'ComponentView';
 	if (!def.nodeName) {
-		console.log('no nodeName', def);
+		console.log('no nodeName given to a componentView : returning...', def);
 		return;
+	}
+	else if (!parentView && def.nodeName !== 'app-root') {
+		console.warn('no parentView given to a componentView : nodeName is', def.nodeName, '& type is', def.type);
 	}
 		
 	this.currentViewAPI = new DOMViewAPI(def);
@@ -1735,11 +1760,13 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	}
 	
 	var hadParentView = this.parentView = parentView || null;
-	if (parentView && !isChildOfRoot)
+	if (parentView && !isChildOfRoot) {
 		this.parentView = this.getEffectiveParentView();
+//		console.log('hadParentView', parentView, this.parentView);
+	}
 		
 	if (hadParentView && !this.parentView)
-		console.warn('lost parentView: probable section number missing in definition obj');
+		console.warn('Lost parentView => probable section number missing in definition obj :', def.nodeName);
 }
 ComponentView.prototype = {};
 ComponentView.prototype.objectType = 'ComponentView';
@@ -1862,7 +1889,10 @@ ComponentView.prototype.appendAsTextNode = function(textContent) {
  * @needsGlobalRefactoring
  */
 ComponentView.prototype.addChildAt = function(childView, atIndex) {
+	this.subViewsHolder.addMemberView(childView);
+	childView.parentView = this;
 	this.addChildNodeFromViewAt(childView, atIndex);
+	
 }
 
 /**
@@ -1870,6 +1900,8 @@ ComponentView.prototype.addChildAt = function(childView, atIndex) {
  * @param {number} atIndex
  */
 ComponentView.prototype.addChildNodeFromViewAt = function(childView, atIndex) {
+	if (!childView.getMasterNode())		// check presence of masterNode, as we may be adding a childComponent before the view has been rendered
+		return;
 	this.callCurrentViewAPI('addChildNodeAt', childView.getMasterNode(), atIndex);
 }
 
@@ -1986,7 +2018,7 @@ ComponentSubViewsHolder.prototype.addMemberViewFromDef = function(definition) {
 
 ComponentSubViewsHolder.prototype.moveMemberViewFromTo = function(from, to, viewsRegistryIdx, offset) {
 	this.memberViews.splice(to, 0, this.memberViews.splice(from, 1)[0]);
-	if (offset && viewsRegistryIdx)
+	if (offset && typeof viewsRegistryIdx === 'number')
 		this.immediateAscendViewAFewStepsHelper(offset, viewsRegistryIdx);
 }
 

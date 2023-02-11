@@ -666,16 +666,22 @@ var setAcceptsProp = function(definition, accepts, title, onMember) {
 
 
 
-
+/**
+ * @typedef {(HierarchicalComponentDefModel|SingleLevelComponentDefModel)} ComponentDef
+ */
 
 /**
- * @constructor createComponentDef
+ * @constructor createDef
  * @factory
+ * @param {object} defObj 
+ * @return {ComponentDef}
  */
 var createDef = function(defObj) {
 //	console.log(defObj);
 	// MASTER VIEW OF A COMPOUND COMPONENT
 	if ((defObj.type && defObj.type === 'CompoundComponent') || defObj.isCompound) {
+//		if (defObj.nodeName === 'big-modalbox')
+//			console.log('big-modalbox host', new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
 		return (new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
 	}
 	// VIEW DEF || MASTER VIEW OF A SIMPLE COMPONENT
@@ -686,11 +692,16 @@ var createDef = function(defObj) {
 			return (new SingleLevelComponentDefModel(defObj));
 		}
 		else if ((defObj.nodeName && !defObj.type) || !defObj.isCompound) {
+//			console.log(new SingleLevelComponentDefModel(defObj));
 			return (new SingleLevelComponentDefModel(defObj));
 		}
 	}
 	// COMPLETE COMPONENT
 	else if (defObj.host) {
+//		if (!defObj.host.host)
+//			console.log(defObj);
+//		if (defObj.host.host && defObj.host.host.nodeName === 'big-modalbox')
+//			console.log('big-modalbox complete', new HierarchicalComponentDefModel(defObj, 'rootOnly'));
 		return (new HierarchicalComponentDefModel(defObj, 'rootOnly'));
 	}
 }

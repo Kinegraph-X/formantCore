@@ -9,6 +9,18 @@ var Components = require('src/core/Component');
 
 var ObservedHTTPRequest = require('src/core/ObservedHTTPRequest');
 
+/**
+ * An Endpoint may be instanciated on the fly, when a clientComponent subscibes to an endpoint,
+ * or priorily given via a list when instanciating the APIEndpointManager
+ * 
+ * TODO: it's ambiguuous to have the transformFunc passed as a parameter to the ctor
+ * as each endpointManager in the APIEndpointsmanager may want to handle the result differently,
+ * being sent differently formatted data.
+ * => FIXME: the tranformFunc should be passed when subscribing to an endpoint,
+ * and then passed independently to the HTTPObservableRequest
+ * (then, it is automaticallly passed to the lazyResettableStream it hosts) 
+ */
+
 var APIendpointsManager = function(name, APIurl, APIpath, transformFunc, endPointsArray) {
 	
 	this.name = name;
@@ -34,7 +46,7 @@ var APIendpointsManager = function(name, APIurl, APIpath, transformFunc, endPoin
 APIendpointsManager.prototype = Object.create(Object.prototype);
 APIendpointsManager.prototype.objectType = 'APIendpointsManager';
 
-APIendpointsManager.prototype.iterateOnEndPoints = function(endPointsArray, APIurl, APIpath, transformFunc) {
+APIendpointsManager.prototype.iterateOnEndPoints = function(endPointsArray, APIurl, APIpath) {
 	endPointsArray.forEach(function(endPoint, key) {
 		this.registerEndPoint(endPoint);
 	}, this);

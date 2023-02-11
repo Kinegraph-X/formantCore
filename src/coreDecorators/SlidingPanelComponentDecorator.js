@@ -16,8 +16,8 @@ var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 		
 		// FIXME: MEGA-HACKY => we should think of a recursive strategy to find that info
 		// through a utility method in the core
-		this.isHostedCompAGroup = (Object.getPrototypeOf(Object.getPrototypeOf(componentClass.prototype)).extendsCore.match(/CompoundComponent/)
-			|| Object.getPrototypeOf(Object.getPrototypeOf(Object.getPrototypeOf(componentClass.prototype))).objectType.match(/CompoundComponent/))
+		this.isHostedCompAGroup = (Object.getPrototypeOf(Object.getPrototypeOf(Object.getPrototypeOf(componentClass.prototype))).objectType.match(/CompoundComponent/)
+			|| (Object.getPrototypeOf(Object.getPrototypeOf(componentClass.prototype)).extendsCore && Object.getPrototypeOf(Object.getPrototypeOf(componentClass.prototype)).extendsCore.match(/CompoundComponent/)))
 				? true
 				: false;
 		
@@ -64,18 +64,18 @@ var SlidingPanelComponentDecorator = function(componentClass, ...args) {
 	decoratedType.prototype._asyncInitTasks.push(new TypeManager.TaskDefinition({
 		type : 'lateAddChild',
 		task : function(definition) {
-			console.log('this.isHostedCompAGroup', this.isHostedCompAGroup);
-					new componentClass(
-						this._hostedDefUID
-							? TypeManager.hostsDefinitionsCacheRegistry.getItem(this._hostedDefUID)
-							: (this.isHostedCompAGroup
-								? TypeManager.mockGroupDef()
-								: TypeManager.mockDef()
-							),
-						this.view.subViewsHolder.memberViews[2],
-						this,
-						...args
-					);
+//			console.log('this.isHostedCompAGroup', this.isHostedCompAGroup);
+			new componentClass(
+				this._hostedDefUID
+					? TypeManager.hostsDefinitionsCacheRegistry.getItem(this._hostedDefUID)
+					: (this.isHostedCompAGroup
+						? TypeManager.mockGroupDef()
+						: TypeManager.mockDef()
+					),
+				this.view.subViewsHolder.memberViews[2],
+				this,
+				...args
+			);
 		}
 	}));
 	

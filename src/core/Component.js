@@ -123,8 +123,9 @@ HierarchicalObject.prototype.removeChild = function(childKey) {
 	var removedChild;
 
 	this._children[childKey].isAttached = false;
-	this._children[childKey].view.getMasterNode().remove();
-	removedChild = this._children.splice(childKey, 1);
+	if (this._children[childKey].view.getMasterNode())
+		this._children[childKey].view.getMasterNode().remove();
+	removedChild = this._children.splice(childKey, 1)[0];
 	this.onRemoveChild(removedChild);
 	(childKey < this._children.length && this.generateKeys(childKey));
 	return removedChild;
@@ -609,16 +610,16 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	var defaultDef, defaultHostDef;
 //	console.log(this.createDefaultDef());
 	if ((defaultDef = this.createDefaultDef())) {
-		this._defComposedUID = defaultDef.getHostDef().UID;
-		defaultHostDef = defaultDef.getHostDef();
+		defaultHostDef = defaultDef.getGroupHostDef() ? defaultDef.getGroupHostDef() : defaultDef.getHostDef();
+		this._defComposedUID = defaultHostDef.UID;
 //		if (TypeManager.hostsDefinitionsCacheRegistry.getItem(this._defUID, this._defComposedUID))
 //			return;
 	}
 	else
 		this._defComposedUID = this._defUID;
 	
-	var hostDef = definition.getHostDef();
-	
+	var hostDef = definition.getHostDef();	// the CompoundComponent's ctor passes here only the received hostDef
+//	console.error(defaultHostDef, hostDef);
 //	console.log(hostDef.sWrapper === null, Object.getPrototypeOf(this).objectType, defaultHostDef);
 	if (defaultDef) {
 		TypeManager.propsAreArray.forEach(function(prop) {
@@ -638,14 +639,17 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		if (hostDef.command === null)
 			hostDef.command = defaultHostDef.command;
 		
+		
+		var defaultDefContainedSubSectionsViews = defaultDef.getGroupHostDef() ? defaultDef.getHostDef().subSections : defaultDef.subSections;
+		var defaultDefContainedMemberViews = defaultDef.getGroupHostDef() ? defaultDef.getHostDef().members : defaultDef.members;
 		// Brutal subSections & members override:
 		// => descendant views are easier to define in the Component's class
 		// 		and should not be different in the runtime immplementation
 		if (defaultDef.subSections.length)
-			Array.prototype.push.apply(definition.subSections, defaultDef.subSections);
+			Array.prototype.push.apply(definition.subSections, defaultDefContainedSubSectionsViews);
 		
 		if (defaultDef.members.length)
-			Array.prototype.push.apply(definition.members, defaultDef.members);
+			Array.prototype.push.apply(definition.members, defaultDefContainedMemberViews);
 	}
 	
 //	console.log(defaultDef, hostDef, hostDef.nodeName);
@@ -738,7 +742,10 @@ ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf, pa
  * @constructor ComponentWithView
  */
 var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) {
+//	console.log('ComponentWithView', parentView);
+//	console.log('isChildOfRoot', isChildOfRoot);
 	ComponentWithObservables.call(this, definition, parentView, parent);
+	
 	this.objectType = 'ComponentWithView';
 	
 	this.command = definition.getHostDef().command;
@@ -751,7 +758,7 @@ var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) 
 	}
 	else
 		console.warn('A ComponentWithView failed to instanciate a view.', 'The _defUID is ', definition.getHostDef().UID, 'The nodeName is ', definition.getHostDef().nodeName)
-	
+//	console.log('ComponentWithView', this.view);
 }
 ComponentWithView.prototype = Object.create(ComponentWithObservables.prototype);
 ComponentWithView.prototype.objectType = 'ComponentWithView';
@@ -844,7 +851,7 @@ ComponentWithView.prototype.onRemoveChild = function(child) {
 //		this.view.subViewsHolder.subViews[1].getMasterNode().length = 0;
 //		this.view.getMasterNode().remove();
 	}
-	else if (child) {
+	else if (child && child.view.getMasterNode()) {		// check presence of masterNode, as we may be removing a childComponent before the view has been rendered
 		if (child.view.subViewsHolder.subViews.length) {
 			child.view.subViewsHolder.subViews.forEach(function(subView, key) {
 				while (subView.getMasterNode().firstChild) {
@@ -876,8 +883,12 @@ ComponentWithView.prototype.onRemoveChild = function(child) {
  * @param {number} atIndex
  */
 ComponentWithView.prototype.onAddChild = function(child, atIndex) {
-	if (typeof atIndex !== 'undefined' && child.view.parentView)
-		child.view.parentView.addChildAt(child.view, atIndex);
+	if (typeof atIndex !== 'undefined') {
+		if (child.view.parentView)		// try to respect an eventually specifically assigned parentView
+			child.view.parentView.addChildAt(child.view, atIndex);
+		else							// else consider the parent view is the main view of the parent
+			child._parent.view.addChildAt(child.view, atIndex);
+	}
 }
 
 /**
@@ -1163,7 +1174,9 @@ CompositorComponent.prototype.extendFromCompositor = function(inheritingType, in
  * @constructor ComponentWithReactiveText
  */
 var ComponentWithReactiveText = function(definition, parentView, parent, isChildOfRoot) {
+//	console.log('ComponentWithReactiveText', parentView);
 	ComponentWithHooks.call(this, definition, parentView, parent, isChildOfRoot);
+//	console.log('ComponentWithReactiveText', this.view);
 	this.objectType = 'ComponentWithReactiveText';
 	this.eachMemberContentCache = [];
 	this.targetSubViewContentCache = [];

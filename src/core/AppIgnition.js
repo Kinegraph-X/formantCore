@@ -68,7 +68,11 @@ Ignition.prototype.instanciateDOM = function() {
 
 //	console.log(attributesCache);
 	views.forEach(function(view, key) {
-		
+//		if (!view._parent) {
+//			console.log('no_parent', view);
+//		}
+//		else
+//			console.log(view._parent.objectType, view.parentView);
 		attributes = attributesCache[view._defUID];
 //		if (!attributes)
 //			console.log(view);
@@ -105,7 +109,7 @@ Ignition.prototype.instanciateDOM = function() {
 		// Connect DOM objects 
 //		console.log(view._sWrapperUID);
 		if (view._sWrapperUID) {
-//			if (view._sWrapperUID === 'Automatic_CSS_ID_112')
+//			if (view._sWrapperUID === 'DevToolsStruct_Automatic_CSS_ID_25')
 //				console.log(view._sWrapperUID, appConstants.getUID(view._sWrapperUID));
 			if (Object.prototype.toString.call(appConstants.getUID(view._sWrapperUID)) === '[object Object]') {
 //				console.log(view);
@@ -129,7 +133,9 @@ Ignition.prototype.instanciateDOM = function() {
 				}
 				else
 					view.callCurrentViewAPI('getWrappingNode').append(view.styleHook.s.getStyleNode());
-//				console.log(view.styleHook.s.getStyleNode());
+				
+//				if (view._sWrapperUID === 'DevToolsStruct_Automatic_CSS_ID_25')
+//					console.log(view.callCurrentViewAPI('getWrappingNode'));
 //				console.log(view._sWrapperUID);
 //				console.log(view.styleHook.s);
 			}
@@ -142,8 +148,10 @@ Ignition.prototype.instanciateDOM = function() {
 ////			if (view.parentView._parent && view._parent)
 ////				console.log(view._parent.objectType, view.callCurrentViewAPI('getMasterNode'))
 //		}
-		if (view.parentView && view.parentView.callCurrentViewAPI('getWrappingNode'))
+
+		if (view.parentView && view.parentView.callCurrentViewAPI('getWrappingNode')) {
 			view.parentView.callCurrentViewAPI('getWrappingNode').append(view.callCurrentViewAPI('getMasterNode'));
+		}
 		
 		// This is quite risky, as for now rootView is instanciated first,
 		// but do we have any guarantee this will always be the case ?

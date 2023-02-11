@@ -30,9 +30,15 @@ var ClientComponentInterface = function(concreteInterface, definition) {
 	if (addStreamsToDefinition = this.shouldInjectReactOnSelf(def)) {
 //		console.log(addStreamToDefinition, concreteInterface);
 		// CAUTION: not tested what happens when rendered: stream overridden ?
+		
+		//  Keep following commented lines : Can't add the definition of the stream to the def,
+		// as it's needed in the subscription phase to the APIendpointManager
+		// (and the DOM rendering may not have happened yet)
 //		def.props.push(new TypeManager.propsModel(
 //			{serviceChannel : undefined}
 //		));
+		
+		// We have to explicitly define the stream on the component
 		this.streams.serviceChannel = new CoreTypes.Stream('serviceChannel');
 		addStreamsToDefinition.forEach(function(reactOnSelfDef) {
 			def.reactOnSelf.push(new TypeManager.reactOnSelfModel(reactOnSelfDef));
@@ -45,19 +51,36 @@ var ClientComponentInterface = function(concreteInterface, definition) {
 ClientComponentInterface.prototype = Object.create(Object.prototype);
 ClientComponentInterface.prototype.objectType = 'ClientComponentInterface';
 
+/**
+ * We assume for now that, although a ClientComponent may host an infinite number of typedSlots, 
+ * the typeSlot dedicated to handliing the response to the request through the "serviceChannel" 
+ * is the first one created (supposingly in the constructor of the ClientComponent).
+ * (see LazySlottedCompoundComponent, or TypedListComponent, which inherits from it)
+ */
+ClientComponentInterface.prototype.declareSotsAssociation = function(entryPoint, typedSlotIdx) {
+	this.slotsAssociation[entryPoint] = typedSlotIdx || 0;
+}
+
 ClientComponentInterface.prototype.subscribeToProvider = function(provider, entryPoint) {
 	var subscription = this.dataLink.subscribeToProvider(provider, entryPoint);
 	if (this.subscribeAtOriginOfTime)
 		subscription.setPointerToStart();
+	
+	if (!this.slotsAssociation[entryPoint])
+		this.declareSotsAssociation(entryPoint);
+	
+	return subscription;
 }
 
 ClientComponentInterface.prototype.subscribeToProviderAtOrigin = function(provider, entryPoint) {
 	var subscription = this.dataLink.subscribeToProvider(provider, entryPoint);
 	subscription.setPointerToStart();
+	return subscription;
 }
 
 ClientComponentInterface.prototype.subscribeToAllProviders = function(provider) {
 	var subscriptions = this.dataLink.subscribeToAllProviders(provider);
+	return subscriptions;
 }
 
 ClientComponentInterface.prototype.shouldInjectReactOnSelf = function(def) {

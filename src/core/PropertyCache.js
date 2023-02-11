@@ -96,7 +96,7 @@ RequestCache.prototype.getPromiseFromRequest = function(req) {
 				request : req,
 				promise : new Promise(function(resolve, reject) {
 					req.subscribe(function cachedSubDeletedAfterCachedPromiseResolve() {
-						console.log('subscription executed');
+//						console.log('subscription executed');
 						resolve();	// req.getResult()
 						
 						// TODO: Find a way to unsubscribe

@@ -18,6 +18,7 @@ APIConsumerInterface.prototype.subscribeToProvider = function(serverAPI, entryPo
 	var request;
 	if (typeof serverAPI.registerEndPoint === 'function') {
 //		console.log(entryPoint);
+//		this.slotsAssociation[entryPoint] = 0;
 		request = serverAPI.registerEndPoint(entryPoint);
 		this.host._subscriptions.push(request.subscribe(this.host));
 		return this.host._subscriptions[this.host._subscriptions.length - 1];
@@ -37,18 +38,31 @@ APIConsumerInterface.prototype.shouldInjectReactOnSelf = function(def) {
 				from : 'serviceChannel',
 				cbOnly : true,
 				subscribe : function(value) {
+//					console.log(this.typedSlots);
+//					console.log(this.slotsAssociation);
 //					console.log(value);
 //					console.log(this);
 					
-					var endPointName, endPointIndex;
+					// Immediatly break if we didn't receive an array from the API request
+					if (!Array.isArray(value.payload)) {
+						console.error(this.objectType, 'For consistancy reasons, clients are meant to instanciate lists, but value received was not an array. Returning...');
+						return;
+					}
+					// Immediatly break if we're not able to handle the response
+					// => another compnent MUST subscribe to this serviceChannel stream
+					if (!this.slotsAssociation
+						|| typeof this.slotsAssociation[endPointName] !== 'number'
+						|| typeof this.typedSlots === 'undefined'
+						|| !this.typedSlots.length)
+						return;
+					
+					// Proceed
+					var val, endPointName, endPointIndex;
 					if (value.endPointName) {
 						endPointName = value.endPointName;
-						value = value.payload; 
+						val = value.payload.slice(0); 
 					}
 					
-					if (this.slotsAssociation && typeof this.slotsAssociation[endPointName] !== 'number')
-						return;
-						
 					endPointIndex = (this.slotsAssociation && this.slotsAssociation[endPointName]) || 0;
 					this.typedSlots[endPointIndex].resetLength();
 					
@@ -70,33 +84,23 @@ APIConsumerInterface.prototype.shouldInjectReactOnSelf = function(def) {
 					
 
 					
-					
-//					console.log(endPointName, this, endPointIndex);
-					
-					if (Array.isArray(value)) {
-						// we got at least a set, but maybe a group of sets
-						if (Array.isArray(value[0])) {
-							// it's a group
-							if (value[0][0]._id) {
-								// we found the effective obj
-								var items = value.map(function(set) {
-									return this.typedSlots[endPointIndex].newItem(set);
-								}, this);
-								this.typedSlots[endPointIndex].pushApply(items);
-								
-//								console.log(this.typedSlots[endPointIndex]);
-//								debugger;
-							}
-						}
-						else {
-							// it's a doc without nested docs
-							this.typedSlots[endPointIndex].push(
-								this.typedSlots[endPointIndex].newItem(value)
-							);
+					// we got at least a set, but maybe a group of sets
+					if (Array.isArray(val[0])) {
+						// it's a group
+						if (val[0][0]._id) {
+							// we found the effective obj
+							var items = val.map(function(set) {
+								return this.typedSlots[endPointIndex].newItem(set);
+							}, this);
+							this.typedSlots[endPointIndex].pushApply(items);
 						}
 					}
-					else
-						console.warn(this.objectType, 'For consistancy reasons, clients are meant to instanciate lists, but value received was not an array');
+					else {
+						// it's a doc without nested docs
+						this.typedSlots[endPointIndex].push(
+							this.typedSlots[endPointIndex].newItem(val)
+						);
+					}
 				}
 			}];
 	}

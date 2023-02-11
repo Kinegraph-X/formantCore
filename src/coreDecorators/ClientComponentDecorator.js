@@ -18,7 +18,8 @@ var ClientComponentDecorator = function(componentType, concreteInterface) {
 		var inheritedType = ClientComponentInterface;
 		
 		var decoratedType = function(definition, parentView, parent) {
-			inheritingType.	apply(this, arguments);
+			this.slotsAssociation = {};
+			inheritingType.apply(this, arguments);
 			var objectType = this.objectType;
 			
 			inheritedType.call(this, concreteInterface, definition);
