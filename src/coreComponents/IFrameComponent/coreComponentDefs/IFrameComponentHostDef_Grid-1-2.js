@@ -19,7 +19,10 @@ var IFrameComponentDef = function(uniqueID, options, model) {
 	
 	
 	var moduleDef = TypeManager.createComponentDef({
-			nodeName : 'iframe'/**@CSSifyStyle componentStyle : IFrameComponentHost_Grid-1-2 */
+			nodeName : 'iframe',
+			attributes : [
+				{title : ''}	// IFrames must have a title ()https://dequeuniversity.com/rules/axe/4.4/frame-title?utm_source=lighthouse&utm_medium=devtools)
+			]/**@CSSifyStyle componentStyle : IFrameComponentHost_Grid-1-2 */
 		});
 	
 	return moduleDef;

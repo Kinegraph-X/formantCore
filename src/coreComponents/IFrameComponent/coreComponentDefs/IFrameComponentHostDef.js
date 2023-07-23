@@ -19,7 +19,10 @@ var IFrameComponentDef = function(uniqueID, options, model) {
 	
 	
 	var moduleDef = TypeManager.createComponentDef({
-			nodeName : 'iframe'/**@CSSifyStyle componentStyle : IFrameComponentHost */
+			nodeName : 'iframe',
+			attributes : [
+				{title : ''}	// IFrames must have a title ()https://dequeuniversity.com/rules/axe/4.4/frame-title?utm_source=lighthouse&utm_medium=devtools)
+			]/**@CSSifyStyle componentStyle : IFrameComponentHost */
 			
 			// Local App-Root can't be child of the IFrame Component, as it's instanciation
 			// occurs way later...

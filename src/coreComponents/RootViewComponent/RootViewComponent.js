@@ -18,23 +18,14 @@ RootViewComponent.prototype.objectType = 'RootViewComponent';
 RootViewComponent.prototype.extendsCore = 'CompoundComponent';
 RootViewComponent.prototype.render = function() {} 							// pure virtual (injected as a dependancy by AppIgnition)
 
-RootViewComponent.defaultDef = {
-	nodeName : 'app-root',
-	attributes : [],
-	states : [],
-	props : [],
-	reactOnParent : [],
-	reactOnSelf : []
-}
+
 
 RootViewComponent.prototype.createDefaultDef = function() {
-	return TypeManager.createComponentDef(
-		// RootView is a special case: as it is not meant to be instanciated outside of the AppIgniter,
-		// effective Component's Style isn't used here, but rather passed as an explicit def
-//			Object.assign(RootViewComponent.defaultDef, createRootViewComponentHostDef()),
-			RootViewComponent.defaultDef,
-			'RootViewComponentDefaultDef'
-		);
+	return TypeManager.createDef({
+			host : TypeManager.createDef({
+				nodeName : 'app-root'
+			})
+		});
 }
 
 RootViewComponent.prototype.getPanel = function(Idx) {

@@ -134,6 +134,11 @@ Ignition.prototype.instanciateDOM = function() {
 				else
 					view.callCurrentViewAPI('getWrappingNode').append(view.styleHook.s.getStyleNode());
 				
+//				if (view.currentViewAPI.nodeName === 'app-title')
+//					console.log(
+//						view.callCurrentViewAPI('getWrappingNode'),
+//						view.styleHook.s.getStyleNode()
+//					);
 //				if (view._sWrapperUID === 'DevToolsStruct_Automatic_CSS_ID_25')
 //					console.log(view.callCurrentViewAPI('getWrappingNode'));
 //				console.log(view._sWrapperUID);
@@ -355,6 +360,7 @@ Ignition.prototype.handleReflectionOnModel = function(reflectOnModel, augmentMod
 		}
 		else {
 			for (var prop in item) {
+//				console.log(prop, !this.streams[prop], this.streams[prop]);
 				if (!this.streams[prop])
 					continue;
 				item[prop] = this.streams[prop].reflect(prop, item);
@@ -491,6 +497,7 @@ var createRootViewComponentHostDef = require('src/coreComponents/RootViewCompone
 
 var RootView = function(igniterForChild, preparePage) {
 	var component;
+//	console.log(TypeManager.createComponentDef(createRootViewComponentHostDef()));
 	if (preparePage)
 		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().moduleDef));
 	else

@@ -1685,6 +1685,19 @@ DOMViewAPI.prototype.updateBGColor = function(color) {
 	this.getMasterNode().style.backgroundColor = color;
 }
 
+/**
+ * These methods are implemented as a reminder and a potentially needed fallback,
+ * but in most cases of hiding/showing, we should prefer the reactive states-based mechanism:
+ * states : [{hidden : 'hidden'}} will be automagically reflected on the DOM node
+ */
+DOMViewAPI.prototype.hide = function() {
+	this.getMasterNode().hidden = 'hidden';	
+}
+
+DOMViewAPI.prototype.show = function() {
+	this.getMasterNode().hidden = null;	
+}
+
 
 
 
@@ -1723,14 +1736,14 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	
 	this.objectType = 'ComponentView';
 	if (!def.nodeName) {
-		console.log('no nodeName given to a componentView : returning...', def);
+		console.error('no nodeName given to a componentView : returning...', def);
 		return;
 	}
 	else if (!parentView && def.nodeName !== 'app-root') {
 		console.warn('no parentView given to a componentView : nodeName is', def.nodeName, '& type is', def.type);
 	}
 		
-	this.currentViewAPI = new DOMViewAPI(def);
+	this.API = this.currentViewAPI = new DOMViewAPI(def);
 	this.section = def.section;
 	
 	if (!nodesRegistry.getItem(this._defUID))
@@ -1748,7 +1761,9 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 //			
 //		}
 		this.styleHook = new SWrapperInViewManipulator(this);
-	
+		
+		if (definition.getHostDef() && definition.getHostDef().type === 'Fieldset')
+			console.log(definition);
 		this.subViewsHolder;
 		if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length) {
 			this.subViewsHolder = new ComponentSubViewsHolder(definition, this);
@@ -1791,46 +1806,72 @@ ComponentView.prototype.getEffectiveParentView = function() {
 }
 
 ComponentView.prototype.getTargetSubView = function(def) {
-	this.targetSubView = (def.targetSlotIndex !== null && this.subViewsHolder.memberViews.length > def.targetSlotIndex) ? this.subViewsHolder.memberAt(def.targetSlotIndex) : null;	
+	this.targetSubView = (def.targetSlotIndex !== null && this.subViewsHolder.memberViews.length > def.targetSlotIndex)
+		? this.subViewsHolder.memberAt(def.targetSlotIndex)
+		: null;	
 }
 
 /**
  * 
- * @needsGlobalRefactoring (becomes "getWrappingNode")
+ * TODO: remove the this alias after having checked the historical code
+ * (this method has become "getWrappingNode")
  */
 ComponentView.prototype.getRoot = function() {
 	return this.getWrappingNode();
 }
 
 /**
- * 
+ * Shorthand method on the currentViewAPI
  */
 ComponentView.prototype.getMasterNode = function() {
 	return this.callCurrentViewAPI('getMasterNode');
 }
 
 /**
- * 
+ * Shorthand method on the currentViewAPI
  */
 ComponentView.prototype.getWrappingNode = function() {
 	return this.callCurrentViewAPI('getWrappingNode');
 }
 
+/**
+ * These shorthands methods are only useful when we explicitly need
+ * to update the -stylesheet- associated with a (shadowed, obviously) web-component
+ */
+ComponentView.prototype.hide = function() {
+	if (this.view.styleHook.s)
+		this.styleHook.s.updateRule({visibility : 'hidden'}, ':host')
+	else
+		this.currentViewAPI.hide();
+}
+ComponentView.prototype.show = function() {
+	if (this.view.styleHook.s)
+		this.styleHook.s.updateRule({visibility : 'visible'}, ':host')
+	else
+		this.currentViewAPI.show();
+}
+
 
 /**
- * @param {boolean} or {innerEvent} bool
- * might get direclty passed an event obj (inner framework event type)
+ * @param {boolean | innerEvent} boolOrEvent
+ * might be direclty passed an event obj (a "framework event-type")
  */
-ComponentView.prototype.setPresence = function(bool) {
-	if (typeof bool === 'object' && typeof bool.data !== 'undefined')
-		bool = bool.data;
+ComponentView.prototype.setPresence = function(boolOrEvent) {
+	var bool;
+	if (typeof boolOrEvent === 'object' && typeof boolOrEvent.data !== 'undefined')
+		bool = boolOrEvent.data;
+	else
+		bool = boolOrEvent;
 	this.callCurrentViewAPI('setPresence', bool);
 }
 
 /**
- * @param {boolean} bool
+ * @param {string} eventName
+ * @param {function} handler
+ * 
+ * TODO: remove the addEventListener alias after having checked the historical code
  */
-ComponentView.prototype.addEventListener = function(eventName, handler) {
+ComponentView.prototype.addEventListenerOnNode = ComponentView.prototype.addEventListener = function(eventName, handler) {
 	this.callCurrentViewAPI('addEventListener', eventName, handler);
 }
 

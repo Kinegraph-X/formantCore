@@ -24,6 +24,7 @@ Components.FlexColumnComponent = require('src/coreComponents/FlexColumnComponent
 Components.FlexRowComponent = require('src/coreComponents/FlexRowComponent/FlexRowComponent');
 Components.FlexGridComponent = require('src/coreComponents/FlexGridComponent/FlexGridComponent');
 Components.ComponentPickingInput = require('src/coreComponents/ComponentPickingInput/ComponentPickingInput');
+Components.RPCStackComponent = require('src/coreComponents/RPCStackComponent/RPCStackComponent');
 //var ChildBoxComponent = require('src/coreComponents/ChildBoxComponent/ChildBoxComponent');
 
 Components.SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator')
@@ -71,8 +72,9 @@ Components.VisualSetHostComponent = require('src/UI/Generics/VisualSetHostCompon
 
 Object.assign(Components, require(componentTypes.misc));
 delete componentTypes.misc;
-for (let type in componentTypes) {
 
+for (let type in componentTypes) {
+	
 	if (typeof componentTypes[type] === 'string')
 		Components[type] = require(componentTypes[type]);
 }
@@ -117,6 +119,9 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 		definition.getHostDef().subSections.push(null);
 	});
 
+//	if (definition.getGroupHostDef().type === 'FileSelector')
+//		console.error(def);
+
 	if (!definition.getGroupHostDef())
 		console.error('CompoundComponent was not given a groupDef', this);
 
@@ -146,12 +151,14 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 		this.extendDefinition(definition);
 	
 	var defaultDef = this.createDefaultDef();
-	if (!defaultDef)
-		console.log(this);
-	if (defaultDef.subSections.length)
-		Array.prototype.push.apply(definition.subSections, defaultDef.subSections);
-	if (defaultDef.members.length)
-		Array.prototype.push.apply(definition.members, defaultDef.members);
+	
+	// When instanciating a CompoundComponent directly from its ctor,  there is no defaultDef
+	if (defaultDef) {
+		if (defaultDef.subSections.length)
+			Array.prototype.push.apply(definition.subSections, defaultDef.subSections);
+		if (defaultDef.members.length)
+			Array.prototype.push.apply(definition.members, defaultDef.members);
+	}
 			
 	this.instanciateSubSections(definition);
 	this.instanciateMembers(definition);
@@ -333,7 +340,21 @@ CompoundComponentWithHooks.prototype.objectType = 'CompoundComponentWithHooks';
 coreComponents.CompoundComponentWithHooks = CompoundComponentWithHooks;
 
 
-
+/**
+ * @constructor CompoundComponentWithReactiveText
+ */
+var CompoundComponentWithReactiveText = function(definition, parentView, parent, isChildOfRoot) {
+	console.log(this);
+	CompoundComponent.call(this, definition, parentView, parent, isChildOfRoot);
+	this.objectType = 'CompoundComponentWithReactiveText';
+//	console.log(this);
+	this.viewExtend(definition);
+}
+var proto_proto = Object.create(Components.ComponentWithReactiveText.prototype);
+Object.assign(proto_proto, CompoundComponent.prototype);
+CompoundComponentWithReactiveText.prototype = Object.create(proto_proto);
+CompoundComponentWithReactiveText.prototype.objectType = 'CompoundComponentWithReactiveText';
+coreComponents.CompoundComponentWithReactiveText = CompoundComponentWithReactiveText;
 
 
 
@@ -393,21 +414,31 @@ var LazySlottedCompoundComponent = function(definition, parentView, parent, alre
 	this.createEvent('header_clicked');
 
 	this.slotsCache = new TypeManager.PropertyCache('LazySlottedCompoundComponentSlotsCache' + this._UID);
+	
+	// Exception : we want to call an async task, but the prototype of an abstract type CAN'T have a _asyncInitTasks property
+	// ONLY a concrete type may declare it on its prototype, cause if the property already exists,
+	// the prototype of the abstract type will be overridden with an asyncTasks-array coming from a concrete type.
+	// So : => We need to define the _asyncInitTasks in the constructor of the abstract type
+	// in a manner so it won't override the property defined on the prototype of the concrete type,
+	// and the prototype of the concrete type won't override a prop that doen't exist yet on the abstract type
+	// when defining the prototype.
+	if (!Array.isArray(this._asyncInitTasks))
+		this._asyncInitTasks = [];
+	this._asyncInitTasks.push(new TypeManager.TaskDefinition({
+		type : 'viewExtend',
+		task : function(definition) {
+			this.hackDOMAttributes();
+		}
+	}));
 }
 LazySlottedCompoundComponent.prototype = Object.create(CompoundComponentWithHooks.prototype);
 LazySlottedCompoundComponent.prototype.objectType = 'LazySlottedCompoundComponent';
 coreComponents.LazySlottedCompoundComponent = LazySlottedCompoundComponent;
 
-LazySlottedCompoundComponent.prototype._asyncInitTasks = [];
-LazySlottedCompoundComponent.prototype._asyncInitTasks.push(new TypeManager.TaskDefinition({
-	type : 'asyncViewExtend',
-	task : function(definition) {
-		this.hackDOMAttributes();
-	}
-}));
 
 // TMP Hack: assign DOM attributes on pseudo-slots (though we should do that through reactivity, see "ColorSamplerSetComponent")
 LazySlottedCompoundComponent.prototype.hackDOMAttributes = function() {
+	console.log('hackDOMAttributes');
 	this._children.forEach(function(child, key) {
 		child.view.getMasterNode().streams = child.streams;
 		child.view.getMasterNode().setAttribute('slot-id', 'slot' + key.toString());

@@ -23,7 +23,7 @@ var RootViewComponentDef = function(uniqueID, options, model) {
 
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
+//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the ctor
 			nodeName : 'app-root'/**@CSSifyStyle componentStyle : RootViewComponentHost */
 		}),
 		members : [
@@ -40,12 +40,12 @@ var RootViewComponentDef = function(uniqueID, options, model) {
 	
 	var minimalModuleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
+//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the ctor
 			nodeName : 'app-root'/**@CSSifyStyle componentStyle : RootViewComponentHost */
 		})
 	}, null, 'rootOnly');
 	
-//	console.log(moduleDef);
+//	console.error(minimalModuleDef);
 	
 	return {
 		moduleDef : moduleDef,

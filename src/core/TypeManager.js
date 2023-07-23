@@ -284,7 +284,7 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 			return;
 		}
 		else if (typeof stream === 'undefined') {
-			console.warn('no stream object passed for subscription', queriedOrQueryingObj, this.from, this.to);
+			console.error('no stream object passed for subscription', queriedOrQueryingObj, this.from, this.to);
 			return;
 		}
 		if (this.cbOnly) {

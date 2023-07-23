@@ -103,6 +103,7 @@ HierarchicalObject.prototype.pushChild = function(child) {
 	this.onAddChild(child);
 	return true;
 }
+HierarchicalObject.prototype.addChild = HierarchicalObject.prototype.pushChild;
 
 /**
  * @param {object} child : an instance of another object
@@ -619,7 +620,10 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		this._defComposedUID = this._defUID;
 	
 	var hostDef = definition.getHostDef();	// the CompoundComponent's ctor passes here only the received hostDef
-//	console.error(defaultHostDef, hostDef);
+	
+//	if (hostDef.type === 'TextInput')		
+//		console.error('TextInput', defaultHostDef, hostDef);
+		
 //	console.log(hostDef.sWrapper === null, Object.getPrototypeOf(this).objectType, defaultHostDef);
 	if (defaultDef) {
 		TypeManager.propsAreArray.forEach(function(prop) {
@@ -645,14 +649,15 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		// Brutal subSections & members override:
 		// => descendant views are easier to define in the Component's class
 		// 		and should not be different in the runtime immplementation
-		if (defaultDef.subSections.length)
+		if (defaultDefContainedSubSectionsViews.length)
 			Array.prototype.push.apply(definition.subSections, defaultDefContainedSubSectionsViews);
 		
-		if (defaultDef.members.length)
+		if (defaultDefContainedMemberViews.length)
 			Array.prototype.push.apply(definition.members, defaultDefContainedMemberViews);
 	}
 	
-//	console.log(defaultDef, hostDef, hostDef.nodeName);
+//	if (hostDef.type === 'TextInput')
+//		console.log(definition);
 }
 
 /**
@@ -998,7 +1003,8 @@ ComponentWithHooks.prototype.registerEvents = function() {
  * @hook
  */
 ComponentWithHooks.prototype.asyncViewExtend = function(definition) {
-	if (!this._asyncInitTasks)
+//	console.log('viewExtend', this.view, this._asyncInitTasks);
+
 	var asyncTask;
 	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
 		asyncTask = this._asyncInitTasks[i];
@@ -1012,6 +1018,8 @@ ComponentWithHooks.prototype.asyncViewExtend = function(definition) {
  * @hook
  */
 ComponentWithHooks.prototype.lateAddChildren = function(definition) {
+//	console.log('lateAddChildren', this.view, this._asyncInitTasks);
+
 	var asyncTask;
 	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
 		asyncTask = this._asyncInitTasks[i];
@@ -1144,7 +1152,7 @@ CompositorComponent.prototype.objectType = 'CompositorComponent';
 CompositorComponent.prototype.extendsCore = '';							// virtual
 CompositorComponent.prototype.extends = '';								// virtual
 
-CompositorComponent.prototype.Compositor = function() {};				// virtual
+//CompositorComponent.prototype.Compositor = function() {};				// virtual
 
 CompositorComponent.prototype.acquireCompositor = function() {};		// virtual
 
