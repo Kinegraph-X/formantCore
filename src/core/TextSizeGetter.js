@@ -8,7 +8,7 @@ var NodeResizeObserver = require('src/core/ResizeObserver');
 //var appConstants = require('src/appLauncher/appLauncher');
 
 
-var TextSizeGetter = function(fontStyle) {
+var TextSizeGetter = function() {
 	
 	if (typeof document === 'undefined' || typeof document.ownerDocument === 'undefined')
 		return;
