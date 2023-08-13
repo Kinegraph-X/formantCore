@@ -6,7 +6,13 @@
 function noOp() {}
 
 
+function falseCombinator() {
+	return false;
+}
 
+function zeroOrOneCombinator(value) {
+	return +(value >= 0) || 0;
+}
 
 
 
@@ -15,5 +21,7 @@ function noOp() {}
 
 
 module.exports = {
-	noOp : noOp
+	noOp : noOp,
+	falseCombinator : falseCombinator,
+	zeroOrOneCombinator : zeroOrOneCombinator
 }

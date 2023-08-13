@@ -5,6 +5,7 @@
 var TypeManager = require('src/core/TypeManager');
 var GeneratorFor16bitsInt = require('src/core/UIDGenerator').GeneratorFor16bitsInt;
 
+var _fStyleHepers = require('src/core/_functionalStyleHelpers');
 var BranchesAsArray = require('src/core/BranchesAsArray');
 var Style = require('src/editing/Style');
 
@@ -17,7 +18,7 @@ var CSSSelectorsMatcher = function() {
 	this.matches = new MatcherResult();
 	
 	var offsettedMatcher = this.getOffsettedMatcher();
-	var branches = new BranchesAsArray(
+	var branches = new BranchesAsArray.withFalseCombinator(
 			offsettedMatcher
 		);
 	this.optimizedMatcher = this.getSelfExitingMatcher(
@@ -58,23 +59,25 @@ CSSSelectorsMatcher.prototype.getOffsettedMatcher = function() {
 	// testBuffer is an Uint8Array: TODO: observe a consistent style and type it as MemoryBuffer
 	// 	(and then, we shall call testBuffer.get)
 	// NOTE: getNextCharToMatch is allowed to  return NaN
-	// 		=> we point to the buffer based on
+	// 		=> we point to the buffer based on the selector string, thecurrentOffset may lbe longer than the testValue
 	var getNextCharToMatch = function(testBuffer, bufferPointerPosition, currentOffset) {
 		return testBuffer[bufferPointerPosition + standardOffsetForSelector + currentOffset];
 	}
 	
 	return function providePossibleMatchCandidate(testType, testValue, bufferPointerPosition, testBuffer, currentOffset) {
-//		console.log(testType, testValue);
+//		console.log(getStartingOffsetInString(bufferPointerPosition, testBuffer), testValue.length);
+//		console.log(testType, testBuffer[bufferPointerPosition + standardOffsetForProofType]);
 //		(testType === testBuffer[bufferPointerPosition + standardOffsetForProofType]
-//			&& console.log(testType, testValue, bufferPointerPosition + standardOffsetForSelector + currentOffset, testBuffer, bufferPointerPosition, getStartingOffsetInString(
+//			&& console.log(testType, testValue, bufferPointerPosition + standardOffsetForSelector, currentOffset, testBuffer, bufferPointerPosition, getStartingOffsetInString(
 //						bufferPointerPosition, testBuffer
 //					), testValue.charCodeAt(
 //					getStartingOffsetInString(
 //						bufferPointerPosition, testBuffer
 //					) + currentOffset)));
-//		console.log(testType, testValue, String.fromCharCode(testBuffer[bufferPointerPosition + standardOffsetForSelector + currentOffset]));
+//		console.log(String.fromCharCode(testBuffer[bufferPointerPosition + standardOffsetForSelector + currentOffset]));
 
 		return testType === testBuffer[bufferPointerPosition + standardOffsetForProofType]
+				// fail fast if the selector is way too long (srating offset is already beyond the length of testValue)
 				&& getStartingOffsetInString(bufferPointerPosition, testBuffer) < testValue.length
 				&& getNextCharToMatch(
 						testBuffer,
@@ -104,30 +107,64 @@ CSSSelectorsMatcher.prototype.getSelfExitingMatcher = function(branches, matcher
 	return function(testType, testValue, viewUID, bufferPointerPosition, testBuffer, currentOffset) {
 //		console.log(testType, testValue, bufferPointerPosition, currentOffset, testBuffer);
 //		console.log(shouldMatchOnPseudoClass(bufferPointerPosition, testBuffer));
+
+		// matches on the last 2 chars of the chosen "proofing part", looping on the 0 index for proofing part whith only 1 char
 		return storeMatches(
-				branches[
-						shouldMatchOnPseudoClass(bufferPointerPosition, testBuffer)
-							||
-							 +(currentOffset > -1
-								&& matcher(
-									testType,
-									testValue,
-									bufferPointerPosition,
-									testBuffer,
-									currentOffset
-								)
+			branches[
+					shouldMatchOnPseudoClass(bufferPointerPosition, testBuffer)
+						||
+						 +(currentOffset > -1
+							&& matcher(
+								testType,
+								testValue,
+								bufferPointerPosition,
+								testBuffer,
+								currentOffset
 							)
+						)
 					](
 						testType,
 						testValue,
 						bufferPointerPosition,
 						testBuffer,
-						--currentOffset
+						Math.max(0, --currentOffset)
 					),
 				viewUID,
 				bufferPointerPosition,
 				testBuffer
 		);
+		
+		// always matches 3 chars when available, and looping on the 0 index when not enough chars in the proofing part
+//			branches[
+//				+(branches[
+//						shouldMatchOnPseudoClass(bufferPointerPosition, testBuffer)
+//							||
+//							 +(matcher(
+//									testType,
+//									testValue,
+//									bufferPointerPosition,
+//									testBuffer,
+//									currentOffset
+//								)
+//							)
+//					](
+//						testType,
+//						testValue,
+//						bufferPointerPosition,
+//						testBuffer,
+//						Math.max(0, --currentOffset)
+//					)
+//				)](
+//					testType,
+//					testValue,
+//					bufferPointerPosition,
+//					testBuffer,
+//					Math.max(0, --currentOffset)
+//				),
+//				viewUID,
+//				bufferPointerPosition,
+//				testBuffer
+//		);
 	}
 }
 
@@ -210,7 +247,9 @@ CSSSelectorsMatcher.prototype.iterateOnRulesAndMatchSelector = function(testType
 }
 
 CSSSelectorsMatcher.prototype.getIteratorCallback = function() {
+	
 	return function (testType, testValue, viewUID, testBuffer, bufferPointerPosition) {
+//		console.log(testBuffer[bufferPointerPosition + 1], testBuffer);
 		this.optimizedMatcher(
 			testType,
 			testValue,
@@ -227,6 +266,7 @@ CSSSelectorsMatcher.prototype.storeMatches = function(isMatch, matchedViewUID, b
 	var matchedPos = bufferPointerPosition + CSSSelectorsList.prototype.optimizedSelectorBufferSchema.bufferUID.start;
 //	(isMatch && console.log('isMatch', matchedBuffer.slice(matchedPos, matchedPos + 2), GeneratorFor16bitsInt.numberFromInt(matchedBuffer.slice(matchedPos, matchedPos + 2))));
 //	(isMatch && console.log('isMatch', bufferPointerPosition, matchedViewUID, ((matchedBuffer[bufferPointerPosition + 7] << 8) | matchedBuffer[bufferPointerPosition + 6]).toString()));
+//	console.log(isMatch);
 	isMatch
 		&& this.matches.addResult(
 				matchedViewUID,

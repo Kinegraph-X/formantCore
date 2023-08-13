@@ -56,11 +56,11 @@ var GeneratorFor16bitsInt = function() {
 }
 
 GeneratorFor16bitsInt.prototype.newUID = function() {
-	return [++this.nextUID & 0x00FF, this.nextUID >> 8] ;
+	return [++this.nextUID & 0x00FF, (this.nextUID & 0x0000FF00) >> 8] ;
 }
 
 GeneratorFor16bitsInt.prototype.intFromNumber = function(number) {
-	return [number & 0x00FF, number >> 8] ;
+	return [number & 0x00FF, (number & 0x0000FF00) >> 8] ;
 }
 
 GeneratorFor16bitsInt.prototype.numberFromInt = function(int16AsArray) {

@@ -23,6 +23,7 @@ CSSRulesBufferManager.prototype.rebuildCSSRulesBuffer = function(naiveDOM, colle
 
 CSSRulesBufferManager.prototype.aggregateRules = function(naiveDOM, collectedSWrappers) {
 	collectedSWrappers.forEach(function(sWrapper) {
+//		console.log('rebuildFromsWrapper', sWrapper);
 		this.getOptimizedSelectorFromSWrapper(sWrapper);
 	}, this);
 	this.CSSRulesBufferInitialLength = this.CSSRulesBuffer._byteLength;
@@ -31,6 +32,7 @@ CSSRulesBufferManager.prototype.aggregateRules = function(naiveDOM, collectedSWr
 
 CSSRulesBufferManager.prototype.getOptimizedSelectorFromSWrapper = function(sWrapper) {
 	Object.values(sWrapper.rules).forEach(function(rule) {
+//		console.log('ruleFromsWrapper', rule);
 		this.CSSRulesBuffer.append(rule.styleIFace.compactedViewOnSelectorsList);	
 	}, this);
 }

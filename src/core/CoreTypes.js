@@ -1596,6 +1596,21 @@ DOMViewAPI.prototype.getLowerIndexChildNode = function() {
 /**
  * 
  */
+DOMViewAPI.prototype.getTextContent = function() {
+	// It may seem weird to return all the texts ignoring the real HTMLElements
+	// Let'st try this for now...
+	
+	var realTextContent = '';
+	this.getWrappingNode().childNodes.forEach(function(elem) {
+		if (elem instanceof Text)
+			realTextContent += elem.wholeText;
+	});
+	return realTextContent;
+}
+
+/**
+ * 
+ */
 DOMViewAPI.prototype.setContentNoFail = function(value) {
 	if (this.isTextInput())
 		this.hostElem.value = value;
@@ -1621,8 +1636,7 @@ DOMViewAPI.prototype.setNodeContent = function(contentAsString) {
  * 
  */
 DOMViewAPI.prototype.appendTextNode = function(text) {
-	var elem = document.createElement('span');
-	elem.innerHTML = text;
+	var elem = document.createTextNode(text);
 	this.getWrappingNode().appendChild(elem);
 }
 
@@ -1873,6 +1887,13 @@ ComponentView.prototype.setPresence = function(boolOrEvent) {
  */
 ComponentView.prototype.addEventListenerOnNode = ComponentView.prototype.addEventListener = function(eventName, handler) {
 	this.callCurrentViewAPI('addEventListener', eventName, handler);
+}
+
+/**
+ * 
+ */
+ComponentView.prototype.getTextContent = function() {
+	return this.callCurrentViewAPI('getTextContent');
 }
 
 /**

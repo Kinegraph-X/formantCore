@@ -14,7 +14,7 @@ var coreComponents = CompoundComponent.coreComponents;
 
 var elementDecorator_OffsetProp = require('src/UI/_mixins/elementDecorator_Offset');
 
-console.log(TypeManager.caches);
+//console.log(TypeManager.caches);
 //console.log(TypeManager.dataStoreRegistry);
 
 
@@ -551,9 +551,7 @@ List.prototype.create = function(definition, parent) {
 }
 
 
-
-
-module.exports = {
+var App = {
 		componentTypes : componentTypes,
 		coreComponents : coreComponents,
 		RootView : RootView,
@@ -564,3 +562,5 @@ module.exports = {
 		List : List,
 		decorateComponentsThroughDefinitionsCache : IgnitionFromDef.prototype.decorateComponentsThroughDefinitionsCache
 }
+
+module.exports = App;

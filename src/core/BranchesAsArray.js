@@ -8,13 +8,22 @@ var _fStyleHepers = require('src/core/_functionalStyleHelpers');
 
 
 
-var BranchesAsArray = function(ifCallClause) {
+var BranchesAsArray = {};
+
+
+BranchesAsArray.withNoOpCombinator = function(ifCallClause) {
 	return [
 		_fStyleHepers.noOp,
 		ifCallClause
 	];
 }
-BranchesAsArray.prototype = {};
+BranchesAsArray.withFalseCombinator = function(ifCallClause) {
+	return [
+		_fStyleHepers.falseCombinator,
+		ifCallClause
+	];
+}
+
 
 
 

@@ -10,7 +10,6 @@ var availableSpaceBuffer = LayoutTypes.layoutAvailableSpaceBuffer;
 
 
 
-
 /**
  * @constructor LayoutAvailableSpaceGetSet
  * @param layoutNode {LayoutNode}

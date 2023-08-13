@@ -95,19 +95,26 @@ Object.defineProperty(CanvasTypes.FillStyle.prototype, 'default_fillAlpha', {
 });
 
 CanvasTypes.TextStyle = function(obj) {
+	if (obj.fontColor.length === 4)
+		obj.fontColor = '#' + obj.fontColor[1] + obj.fontColor[1] + obj.fontColor[2] + obj.fontColor[2] + obj.fontColor[3] + obj.fontColor[3];
+	
 	this.fontFamily = this.default_fontFamily;
 	this.fontColor = this.default_fontColor;
 	this.fontSize = this.default_fontSize;
 	this.fontWeight = this.default_fontWeight;
 	this.textAlign = this.default_textAlign;
-	if (Object.prototype.toString.call(obj) === '[object Object]')
+	if (Object.prototype.toString.call(obj) === '[object Object]') {
+//		console.log(obj.fontColor)
+		if (obj.fontColor.indexOf('#') === 0)
+			obj.fontColor = parseInt(obj.fontColor.slice(1), 16);
 		Object.assign(this, obj);
+	}
 	
 	// FIXME: this.fontSize.slice(0, 2) was right once upon a time, but we shall get something better from the calling code now...
-	if (this.fontSize !== CanvasTypes.defaultFontSize)
-		this.lineHeight = Number(this.fontSize.slice(0, 2)) + 5;
-	else
-		this.lineHeight = CanvasTypes.defaultFontSize;
+//	if (this.fontSize !== CanvasTypes.defaultFontSize)
+//		this.lineHeight = Number(this.fontSize.slice(0, 2)) + 5; // 	/!\ NUMBER /!\
+//	else
+//		this.lineHeight = Number(CanvasTypes.defaultFontSize.slice(0, 2)) + 5; // 	/!\ NUMBER /!\
 }
 Object.defineProperty(CanvasTypes.TextStyle.prototype, 'default_fontFamily', {
 	value: CanvasTypes.defaultFontFamily
@@ -336,7 +343,7 @@ CanvasTypes._text.prototype.draw = function() {
 		wordWrapWidth : this.size.width
 	}
 	);
-	
+//	console.log(this.position);
 	this.shape.position = this.position;
 //	this.shape._transform.rotation = this.rotation.z;
 //	this.shape.scale = { x: .5, y: .5 };
@@ -422,7 +429,8 @@ CanvasTypes.AbstractNode.prototype.reDraw = function() {	// Defaulted Virtual
 
 
 
-CanvasTypes.AbstractBox = function(position, size, lineStyle, fillStyle, borderRadius, borderWidth) {
+CanvasTypes.AbstractBox = function(position, size, lineStyle, fillStyle, borderRadius, borderWidth, debug) {
+	this.debug = debug;
 	CanvasTypes.AbstractNode.call(this, position, lineStyle, fillStyle);
 	
 	this.size =  new CanvasTypes.Size({
@@ -445,8 +453,17 @@ CanvasTypes.AbstractBox.prototype.draw = function() {
 	this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.size.width - this.borderWidth, this.size.height - this.borderWidth, this.borderRadius);
 	this._baseShape._shape.endFill();
 	
-	// lineStyle (width, color, alpha, alignment, native) 
-	if (this.borderWidth) {
+	if (this.debug) {
+		this._baseShape._shape.lineStyle(1, 0xFAFA44, this.lineStyle.lineAlpha, this.lineStyle.lineAlignement, null, this.lineStyle.lineDash);
+		
+		this._baseShape._shape.moveTo(this.position.x, this.position.y);
+		this._baseShape._shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y);
+		this._baseShape._shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y + this.size.height - this.borderWidth);
+		this._baseShape._shape.lineTo(this.position.x, this.position.y + this.size.height - this.borderWidth);
+		this._baseShape._shape.lineTo(this.position.x, this.position.y);
+	}
+	else if (this.borderWidth) {
+		// lineStyle (width, color, alpha, alignment, native) 
 		this._baseShape._shape.lineStyle(this.lineStyle.lineWidth, this.lineStyle.lineColor, this.lineStyle.lineAlpha, this.lineStyle.lineAlignement, null, this.lineStyle.lineDash);
 		
 		this._baseShape._shape.moveTo(this.position.x, this.position.y);
@@ -576,8 +593,8 @@ CanvasTypes.NodeShapeDefaults = {
 };
 
 
-CanvasTypes.NodeShape = function(position, size, lineStyle, fillStyle, borderRadius, borderWidth) {
-	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, borderRadius, borderWidth);
+CanvasTypes.NodeShape = function(position, size, lineStyle, fillStyle, borderRadius, borderWidth, debug) {
+	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, borderRadius, borderWidth, debug);
 	this.draw();
 }
 CanvasTypes.NodeShape.prototype = Object.create(CanvasTypes.AbstractBox.prototype);

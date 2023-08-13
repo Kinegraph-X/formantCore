@@ -50,10 +50,6 @@ ComputedStyleSolver.prototype.scaleCSSBuffer = function() {
 }
 
 
-ComputedStyleSolver.prototype.refineMatches = function() {
-	
-}
-
 
 
 

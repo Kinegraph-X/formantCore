@@ -26,7 +26,7 @@ var BaseLayoutAlgo = function(layoutNode) {
 	this.layoutNode = layoutNode;
 	
 	this.flexCtx = new LayoutTypes.FlexContext();
-	
+	this.textSizeHackFactor = 1.021;
 }
 
 BaseLayoutAlgo.prototype = {};
@@ -258,7 +258,7 @@ BaseLayoutAlgo.prototype.getAugmentedTextDimensions = function(textContent) {
 			textContent,
 			this.getAugmentedFontStyle()
 		);
-	return [textSize[0] - textSize[0] / 21, this.cs.getLineHeight()];
+	return [textSize[0] * 1.021, this.cs.getLineHeight()]; // - textSize[0] / 84
 }
 
 /**
@@ -281,11 +281,63 @@ BaseLayoutAlgo.prototype.getFontStyle = function() {
  * 
  */
 BaseLayoutAlgo.prototype.getAugmentedFontStyle = function() {
-	return (this.cs.getFontSize() + 1).toString()
+	return (this.cs.getFontSize()).toString()		//  + 1
 		+ this.cs.getFontSizeUnitAsString()
 		+ ' '
 		+ this.cs.getFontFamily()
 }
+
+/**
+ * @method getTextWidthCustom
+ * @param {String} textContent
+ */
+BaseLayoutAlgo.prototype.getTextWidthCustom = function(textContent) {
+	if (!textContent.length)
+		return 0;
+	
+	var fontSizeBuffer = TypeManager.fontSizeBuffersCache.cache[this.cs.getFontSize() + 'px ' + this.cs.getFontFamily()];
+	
+	var words = textContent.split(' ');
+	var wordSize = 0;
+	var totalSize = words.reduce(function(acc, word, key) {
+		wordSize = fontSizeBuffer.getWidthOfWord(word);
+		return key !== words.length - 1 ? fontSizeBuffer.getWidthOfSpace() + acc + wordSize : acc + wordSize;
+	}, 0)
+	
+	return totalSize * this.textSizeHackFactor;
+}
+
+/**
+ * @method getTextWidthCustom
+ * @param {String} textContent
+ */
+BaseLayoutAlgo.prototype.getBoundOfTextLine = function(textContent, maxWidth) {
+	var fontSizeBuffer = TypeManager.fontSizeBuffersCache.cache[this.cs.getFontSize() + 'px ' + this.cs.getFontFamily()];
+	var wordSize = 0, totalSize = 0, returnedSize = 0, i = 0;
+	
+	var words = textContent.split(' ');
+//	console.log(words, maxWidth);
+	var wordList = [];
+	
+	while (i < words.length) {
+		wordSize = fontSizeBuffer.getWidthOfWord(words[i]);
+		totalSize += i !== words.length - 1 ? fontSizeBuffer.getWidthOfSpace() + wordSize : wordSize
+		if (totalSize > maxWidth)
+			break;
+		wordList.push(words[i]);
+		returnedSize = totalSize;
+//		console.log(wordList);
+		i++;
+	}
+	
+	return [wordList.join(' '), returnedSize];
+}
+
+
+
+
+
+
 
 /**
  * @method max

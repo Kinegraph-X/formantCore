@@ -46,9 +46,15 @@ var NaiveDOMNode = function(viewWrapper, view, hierarchicalDepth, hostNode, host
 				textContent
 			));
 		}
+		else if ((textContent = view.getTextContent()) !== '') {
+			this.attributes.push(new CoreTypes.Pair(
+				'textContent',
+				textContent
+			));
+		}
 	}
 	else
-		this.attributes = new CoreTypes.ListOfPairs({});
+		this.attributes = new CoreTypes.ListOfPairs();
 	
 //	this.computedStyle = null;
 	

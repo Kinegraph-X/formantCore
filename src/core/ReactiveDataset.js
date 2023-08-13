@@ -255,9 +255,9 @@ Object.defineProperty(RecitalDataset.prototype, 'spliceOnPropInverse',  {
 
 Object.defineProperty(RecitalDataset.prototype, 'resetLength',  {
 	value : function() {
-		this.forEach(function(value) {
+		for (var i = this.length - 1; i >= 0; i--) {
 			this.trackedComponent.removeChildAt(this.trackedComponent._children.length - 1);
-		}, this);
+		};
 //		if (this.trackedComponent.removeAllChildren())
 		Array.prototype.splice.call(this, 0, this.length);
 	}

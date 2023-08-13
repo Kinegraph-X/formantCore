@@ -47,22 +47,29 @@ MatchingAlgorithms.prototype.matchOnTypeAndValue = function(view, type, value, D
 					var componentClassesAsArray = value.sort(),
 						cIndex = 0;
 						loggedValue = componentClassesAsArray.join(', ');
-					viewClassesAsArray.forEach(function(viewClass) {
+						
+					componentClassesAsArray.forEach(function(classFromComponent) {
 						// if the selected class matches on a component's classPart, test the next part on the next class of the view
-						if ((result = viewClass === componentClassesAsArray[cIndex])) {
+						if ((result = (classFromComponent === viewClassesAsArray[cIndex]))) {
+//							console.log(classFromComponent, viewClassesAsArray[cIndex]);
 							resultNbr++;
 							cIndex++;
 						}
 						// else if the selected class doesn't match, try the next class defined for that view before incrementing the counter
-						else if (cIndex !== componentClassesAsArray.length - 1)
+						else if (cIndex !== viewClassesAsArray.length - 1)
 							return;
 					}, this);
+//					if (value.indexOf('keyword') !== -1)
+//						console.log(resultNbr, value.length, componentClassesAsArray, viewClassesAsArray);
 					if (resultNbr === value.length)
 						result = true;
 				}
 				// Selector is Single
 				else
 					result = viewClassesAsArray.indexOf(value) !== -1;
+					
+//				if (result === true)
+//					console.log(loggedValue, componentClassesAsArray.join(', '));
 			}
 			if (result)
 				this.localDebugLog(this.DHLstr(DHL) + 'MATCH:', view.classNames.join(', '), 'MATCHED ON', loggedValue);
@@ -116,7 +123,7 @@ MatchingAlgorithms.prototype.isMatch = function(view, componentsList, index, DHL
 	}
 	else
 		hasMatched = this.matchOnTypeAndValue(view, componentsList[index].type, componentsList[index].value, DHL)
-		
+//	console.log('hasMatched', hasMatched);
 	return hasMatched;
 }
 

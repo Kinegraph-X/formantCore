@@ -405,6 +405,25 @@ Object.defineProperty(Uint8Array.prototype, 'bufferToString', {
 	}
 });
 
+Object.defineProperty(Uint8Array.prototype, 'bufferToPartialString', {
+	writable : false,
+	value : function (startIdx, strLength) {
+		if (strLength) {
+			return String.fromCharCode(...Array.prototype.slice.call(this.slice(startIdx, startIdx + strLength)));
+		}
+		else {
+			var tArray = this;
+			for(var i = startIdx, l = this.byteLength; i < l; i++) {
+				if (this[i] === 0) {
+					tArray = this.slice(startIdx, i);
+					break;
+				}
+			}
+			return String.fromCharCode(...Array.prototype.slice.call(tArray));
+		}
+	}
+});
+
 
 
 
@@ -491,7 +510,7 @@ Array.mergeSort = function(arr,l, r, mergeFunction){
         return;
     }
     var m =l+ parseInt((r-l)/2);
-    Array.mergeSort(arr,l,m);
-    Array.mergeSort(arr,m+1,r);
-    mergeFunction(arr,l,m,r);
+    mergeSort(arr,l,m);
+    mergeSort(arr,m+1,r);
+    merge(arr,l,m,r);
 }

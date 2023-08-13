@@ -17,7 +17,8 @@ var TextSizeGetter = function(fontStyle) {
 	this.initCb;
 	this.textWidthCanvas = document.createElement("canvas");
 	this.textWidthCanvasCtx = this.textWidthCanvas.getContext('2d');
-	this.fontStyle = '';
+	this.fontStyle = fontStyle;
+	this.textWidthCanvasCtx.font = this.fontStyle;
 	this.lineHeight = 0;
 
 	this.objectType = 'TextSizeGetter';

@@ -878,6 +878,11 @@ var masterStyleRegistry = new PropertyCache('masterStyleRegistry');
 var pendingStyleRegistry = new PropertyCache('pendingStyleRegistry');
 
 /**
+ * @typedStore {StoredStyleIFace} {UID : UID_OfTheViewIdentifiedAsNeedingUpdate}
+ */
+var UApendingStyleRegistry = new PropertyCache('UApendingStyleRegistry');
+
+/**
  * @typedStore {StoredNodeFromNaiveDOM} {UID : nodeUID}
  */
 var naiveDOMRegistry = new PropertyCache('naiveDOMRegistry');
@@ -906,6 +911,11 @@ var flexCtxRegistry = new PropertyCache('flexCtxRegistry');
  * @typedStore {StoredLayoutCallback} {UID : nodeUID}
  */
 var layoutCallbacksRegistry = new PropertyCache('layoutCallbacksRegistry');
+
+/**
+ * @typedStore {FontSizeCache} {UID : nodeUID}
+ */
+var fontSizeBuffersCache = new PropertyCache('fontSizeBuffersCache');
 
 
 console.log(hostsDefinitionsCacheRegistry);
@@ -944,12 +954,14 @@ Object.assign(exportedObjects, {
 	typedHostsRegistry : typedHostsRegistry,						// Object PropertyCache {defUID : [Components]}
 	naiveDOMRegistry : naiveDOMRegistry,							// Object PropertyCache
 	masterStyleRegistry : masterStyleRegistry,						// Object PropertyCache
+	UApendingStyleRegistry : UApendingStyleRegistry,					// Object PropertyCache
 	pendingStyleRegistry : pendingStyleRegistry,					// Object PropertyCache
 	rasterShapesRegistry : rasterShapesRegistry,					// Object PropertyCache
 	layoutNodesRegistry :layoutNodesRegistry,						// Object PropertyCache
 	textNodesRegistry : textNodesRegistry,							// Object PropertyCache
 	flexCtxRegistry : flexCtxRegistry,								// Object PropertyCache
 	layoutCallbacksRegistry : layoutCallbacksRegistry,				// Object PropertyCache
+	fontSizeBuffersCache : fontSizeBuffersCache,									// Object PropertyCache
 	caches : caches,												// Object {prop : PropertyCache}
 	nodesRegistry : nodesRegistry,
 	viewsRegistry : viewsRegistry,

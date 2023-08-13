@@ -123,7 +123,7 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 //		console.error(def);
 
 	if (!definition.getGroupHostDef())
-		console.error('CompoundComponent was not given a groupDef', this);
+		console.error('CompoundComponent was not given a groupDef', this, definition);
 
 	if (!TypeManager.hostsDefinitionsCacheRegistry.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
 		shouldExtend = true;

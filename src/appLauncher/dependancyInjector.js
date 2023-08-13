@@ -7,7 +7,9 @@ var cSet = require('src/core/ComponentSet');
 var Components = require('src/core/Component');
 var App = require('src/core/AppIgnition');
 
-var allowAgnosticRendering = true;
+// FIXME: we MUST get that value from the app context
+// 		AND be able to define on which component type we want to inject the "magic" prototype extension
+var isLayoutEngineON = true;
 
 
 /**
@@ -39,10 +41,10 @@ App.componentTypes.SlidingPanel.prototype.render = function(DOMNodeId) {
 	new App.DelayedDecoration(DOMNodeId, this);
 };
 
-if (allowAgnosticRendering) {
+if (isLayoutEngineON) {
 	var SpecialDependencyInjector = require('src/_LayoutEngine/SpecialDependencyInjector');
 	// TODO: Object.assign is the ugliest and riskiest way to create a mixin.
-	// 		=> if it's "injection", please inject via some existing & tested decoration principle
+	// 		=> if it's "injection", please inject via some "in framework" existing & tested decoration principle
 	App.componentTypes.HierarchicalObject.prototype = Object.assign(App.componentTypes.HierarchicalObject.prototype, SpecialDependencyInjector.prototype);
 }
 

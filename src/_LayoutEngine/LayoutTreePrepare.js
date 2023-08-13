@@ -8,7 +8,20 @@
  * 2) We're seeing the layout node being strongly encapsulated as a requirement,
  * 		i.e. not being referenced on any object created at an earlier stage
  * 		(this is runtime-optimization related)   
+ * 
+ * TODO :
+ * 		- stacking context
+ * 		- so on, z-index
+ * 		- CSS has: pseudo-class
+ * 		
+ * 		- CSSMatcherRefiner : match on unequal nomber of compound selectors (seems we only have to invert the loop on viewClassesAsArray by componentClassesAsArray) 
+ * 			(eg. node has 3 classes, and selector only 2)
+ * 
+ * 
+ * 		- "lineFeed" layoutNode to handle justified text
+ * 
  */
+
 
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
@@ -16,6 +29,7 @@ var CoreTypes = require('src/core/CoreTypes');
 var LayoutTypes = require('src/_LayoutEngine/LayoutTypes');
 
 var UIDGenerator = require('src/core/UIDGenerator').NodeUIDGenerator;
+var nodeUIDGenerator = require('src/core/UIDGenerator').NodeUIDGenerator;
 var Style = require('src/editing/Style');
 
 var NaiveDOMNode = require('src/_LayoutEngine/NaiveDOMNode');
@@ -25,6 +39,8 @@ var CSSPropertySetBuffer = require('src/editing/CSSPropertySetBuffer');
 //var CSSPropertyDescriptors = require('src/editing/CSSPropertyDescriptors');
 
 var ComputedStyleSolver = require('src/_LayoutEngine/ComputedStyleSolver');
+var UAStylesheet = require('src/_LayoutEngine/UAStylesheet_minimalist.js');
+var SyntaxHighlightingStylesheet = require('src/_LayoutEngine/SyntaxHighlightingStylesheet');
 
 //var SplittedAttributes = require('src/editing/SplittedAttributes');
 var StylePropertyEnhancer = require('src/editing/StylePropertyEnhancer');
@@ -46,40 +62,55 @@ var LayoutAvailableSpaceGetSet = require('src/_LayoutEngine/LayoutAvailableSpace
 var LayoutDimensionsGetSet = require('src/_LayoutEngine/LayoutDimensionsGetSet');
 var LayoutOffsetsGetSet = require('src/_LayoutEngine/LayoutOffsetsGetSet');
 
-var CanvasTypes = require('src/core/WebCanvasCoreTypes');
+var CanvasTypes = require('src/_LayoutEngine/WebCanvasCoreTypes');
 
 
-var LayoutTreePrepare = function(naiveDOM, collectedSWrappers, importedMasterStyleRegistry, viewportDimensions) {
+var LayoutTreePrepare = function(naiveDOM, collectedSWrappers, importedMasterStyleRegistry, viewportDimensions, naiveDOMRegistry) {
 	this.objectType = 'LayoutTreePrepare';
 	this.masterStyleRegistry = importedMasterStyleRegistry;
 	
-	this.layoutTree = this.constructLayoutTree(naiveDOM, collectedSWrappers, viewportDimensions);
+	var UIDs = Object.keys(naiveDOMRegistry.cache);
+	this.lastUIDSeenInPreviousPage = UIDs[UIDs.length - 1];
+	
+	this.layoutTreeBuilder = this.constructLayoutTree(naiveDOM, collectedSWrappers, viewportDimensions);
 	
 	this.latelyExecuteLayout();
+	
+	var firstIndex = Object.keys(TypeManager.layoutNodesRegistry.cache)[0];
+	this.finalViewportHeight = TypeManager.layoutNodesRegistry.cache[firstIndex].layoutAlgo.dimensions.getOuterBlock();
 }
 LayoutTreePrepare.prototype = {};
 LayoutTreePrepare.prototype.objectType = 'LayoutTreePrepare';
 
 LayoutTreePrepare.prototype.constructLayoutTree = function(naiveDOM, collectedSWrappers, viewportDimensions) {
 	var layoutViewport = new LayoutRoot(this.retrieveWindowInitialSize(viewportDimensions));
-	// FIXME: We retrieve the style of the body tag, but we should retrieve ALL the cascade of styles from "body" to the ACTUAL container
+	// FIXME: We retrieve the style of the body tag, but we should retrieve ALL the cascade of styles from "body"
+	// to the ACTUAL container ==> SEEMS DONE
 	this.retrieveWindowStyle(layoutViewport, naiveDOM, collectedSWrappers);
-	var layoutRoot = new LayoutNode(naiveDOM.views.memberViews[2], layoutViewport);
-	return new LayoutTreeBuilder(naiveDOM, layoutRoot);
+//	var layoutRoot = new LayoutNode(naiveDOM.views.memberViews[2], layoutViewport);
+
+//	console.log('viewport instanciated', layoutViewport.layoutAlgo.availableSpace.getValues());
+	
+	var layoutTree = new LayoutTreeBuilder(naiveDOM, layoutViewport);
+	
+//	console.log('layoutTree instanciated', layoutViewport.layoutAlgo.availableSpace.getInline());
+	
+	return layoutTree;
 }
  	
 LayoutTreePrepare.prototype.latelyExecuteLayout = function() {
 //	performance.mark('layoutComputeOnly');
 	
-	var textNodes = Object.values(TypeManager.textNodesRegistry.cache);
-	textNodes.forEach(function(layoutNode) {
-		layoutNode.layoutAlgo.setSelfDimensions();
-	}, this);
 	
 	var layoutNodes = Object.values(TypeManager.layoutNodesRegistry.cache);
 	layoutNodes.forEach(function(layoutNode) {
 		layoutNode.layoutAlgo.executeLayout();
 	}, this);
+	
+//	var textNodes = Object.values(TypeManager.textNodesRegistry.cache);
+//	textNodes.forEach(function(layoutNode) {
+//		layoutNode.layoutAlgo.setSelfDimensions();
+//	}, this);
 //	performance.measure('layout_compute_only', 'layoutComputeOnly');
 //	console.log('benchmark for layout_compute_only',  performance.getEntriesByName('layout_compute_only')[performance.getEntriesByName('layout_compute_only').length - 1].duration, 'ms');
 }
@@ -91,6 +122,7 @@ LayoutTreePrepare.prototype.finallyCleanLayoutTree = function() {
 	TypeManager.layoutNodesRegistry.cache = {};
 	TypeManager.rasterShapesRegistry.cache = {};
 	TypeManager.layoutCallbacksRegistry.cache = {};
+	TypeManager.pendingStyleRegistry.cache = {};
 	
 	LayoutTypes.layoutAvailableSpaceBuffer.reset();
 	LayoutTypes.layoutDimensionsBuffer.reset();
@@ -109,6 +141,8 @@ LayoutTreePrepare.prototype.retrieveWindowStyle = function(layoutViewPort, naive
 	var styleSolver = new ComputedStyleSolver(naiveDOM, collectedSWrappers);
 	styleSolver.CSSSelectorsMatcher.CSSRulesBuffer = styleSolver.CSSRulesBufferManager.CSSRulesBuffer;
 	
+//	console.log(naiveDOM.views.memberViews[2]);
+
 	// FIXME: we should not have to test the "body" selector against the whole style-rules buffer
 	var rulesBufferLength = styleSolver.CSSSelectorsMatcher.CSSRulesBuffer._buffer.byteLength;
 	styleSolver.CSSSelectorsMatcher.iterateOnRulesAndMatchSelector(3, 'body', naiveDOM.views.memberViews[2]._UID, 0, rulesBufferLength);
@@ -118,9 +152,9 @@ LayoutTreePrepare.prototype.retrieveWindowStyle = function(layoutViewPort, naive
 	TypeManager.pendingStyleRegistry.cache = cache;
 }
 
-LayoutTreePrepare.prototype.newFakeLayoutNode = function() {
-	return (new LayoutRoot([0, 0]));
-}
+//LayoutTreePrepare.prototype.newFakeLayoutNode = function() {
+//	return (new LayoutRoot([0, 0]));
+//}
 
 
 
@@ -137,6 +171,9 @@ LayoutTreeBuilder.prototype.objectType = 'LayoutTreeBuilder';
 LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMNode, layoutParentNode) {
 	var currentLayoutNode = layoutParentNode, childLayoutNode, childDOMNodeAsAView, subChildLayoutNode, textContentKey, textNode, fakeNode, isLastChild;
 	
+//	if (sourceDOMNode.views.masterView.nodeName === 'code')
+//		console.log(sourceDOMNode);
+	
 	sourceDOMNode.children.forEach(function(childDOMNode, childIndex) {
 		var typeIdx = 0, currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
 		isLastChild = childIndex === sourceDOMNode.children.length - 1 ? true : false;
@@ -147,14 +184,15 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 			if (typeIdx === 0) {
 				childDOMNodeAsAView = childDOMNode.views.masterView;
 				// TODO: optimization : the presence of a textContent may be identified by a less expensive mean
-				if ((textContentKey = childDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false) {
+				if ((textContentKey = childDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false
+						&& childDOMNodeAsAView.attributes[textContentKey].value.length) {
 					textNode = new NaiveDOMNode();
-					textNode._UID = +Infinity;	// we must NOT match any style (UIDgenerator is out of sync, as UID were generated in another IFrame)
+					textNode._UID = +Infinity;	// we must NOT apply any style (UIDgenerator is out of sync, as UID were generated in another IFrame)
 					textNode.nodeName = 'textNode';
 					
 					childLayoutNode = new LinkedLayoutNode(childDOMNodeAsAView, layoutParentNode, childLayoutNode, false);
 					// TODO: A textNode cannot have a populated computedStyle
-					// => Bypass csGetter
+					// => remove the fake implementation of the csGetter in TextNode
 					new TextNode(textNode, childLayoutNode, childDOMNodeAsAView.attributes[textContentKey].value);
 				}
 				else {
@@ -166,15 +204,16 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 				childDOMNode.views[currentViewType].forEach(function(subChildDOMNodeAsAView, key) {
 					isLastChild = key === childDOMNode.views[currentViewType].length - 1 ? true : false;
 					// TODO: optimization : the presence of a textContent may be identified by a less expensive mean
-					if ((textContentKey = subChildDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false) {
+					if ((textContentKey = subChildDOMNodeAsAView.attributes.indexOfObjectByValue('name', 'textContent')) !== false
+						&& subChildLayoutNode.attributes[textContentKey].value.length) {
 						// FIXME: there should be as many textNodes as there are words => Fix that in the layout algo ?
 						textNode = new NaiveDOMNode();
-						textNode._UID = +Infinity;	// we must NOT match any style (UIDgenerator is out of sync, as UID were generated in another IFrame)
+						textNode._UID = +Infinity;	// we must NOT apply any style (UIDgenerator is out of sync, as UID were generated in another IFrame)
 						textNode.nodeName = 'textNode';
 						
 						subChildLayoutNode = new LinkedLayoutNode(subChildDOMNodeAsAView, childLayoutNode, subChildLayoutNode, isLastChild);
 						// TODO: A textNode cannot have a populated computedStyle
-						// => Bypass csGetter
+						// => remove the fake implementation of the csGetter in TextNode
 						new TextNode(textNode, subChildLayoutNode, subChildDOMNodeAsAView.attributes[textContentKey].value);
 					}
 					else {
@@ -193,7 +232,6 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 			typeIdx++;
 			currentViewType = CSSSelectorsMatcher.prototype.viewTypes[typeIdx];
 		}
-		
 		
 		currentLayoutNode = childLayoutNode;
 		
@@ -218,9 +256,16 @@ LayoutTreeBuilder.prototype.alternateFlatAndRecursiveBuild = function(sourceDOMN
 
 
 
-
+/**
+ * @constructor LayoutNode
+ * @param {NaiveDomNode} sourceDOMNodeAsView
+ * @param {LayoutNode} layoutParentNode
+ * @param {String} textContent;
+ */
 var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode, textContent) {
+//	console.log(sourceDOMNodeAsView._UID);
 	this._UID = UIDGenerator.newUID();
+//	console.log(this._UID);
 	TypeManager.layoutNodesRegistry.setItem(this._UID, this);
 	
 	this._parent = layoutParentNode;
@@ -231,14 +276,16 @@ var LayoutNode = function(sourceDOMNodeAsView, layoutParentNode, textContent) {
 	this.isTextNode = false;
 	
 	this.computedStyle = new CSSPropertySetBuffer();
-
+	
+	this.matchOnMagicalUAStylesheet(sourceDOMNodeAsView);
 	this.populateInheritedStyle();
 	this.populateAllComputedStyle(this.queryStyleUpdate(sourceDOMNodeAsView));
 	
 	this.canvasShape = null;
 	
 	this.layoutAlgo = this.getLayoutAlgo(this.nodeName);
-
+	
+//	console.log(this.layoutAlgo.parentLayoutAlgo.availableSpace.getInline());
 //	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.dimensions);
 //	console.log(this.nodeName, this._parent.nodeName, this.layoutAlgo.algoName, this.offsets);
 }
@@ -266,7 +313,7 @@ LayoutNode.prototype.getCanvasShape = function() {
 	
 	if (this.nodeName === 'textNode') {
 		var canvasShape = new CanvasTypes._text(
-			this.textContent,
+			this.textContent.replace(' ', String.fromCharCode(160)),	// inconsistant bug in PIXI when content has a leading space
 			new CanvasTypes.TextStyle({
 				fontFamily : this.computedStyle.getPropAsString('fontFamily'),
 				fontColor : this.computedStyle.getPropAsString('color'),
@@ -298,7 +345,7 @@ LayoutNode.prototype.getCanvasShape = function() {
 			new CanvasTypes.LineStyle({lineColor : lineColor, lineWidth : borderWidth}),
 			new CanvasTypes.FillStyle({fillColor : fillColor, fillAlpha : fillAlpha}),
 			null,
-			borderWidth
+			borderWidth//, 'debug'
 		);
 	}
 	TypeManager.rasterShapesRegistry.setItem(UIDGenerator.newUID(), canvasShape);
@@ -308,8 +355,8 @@ LayoutNode.prototype.getCanvasShape = function() {
 
 LayoutNode.prototype.updateCanvasShapeOffsets = function() {
 	if (this.nodeName === 'textNode') {
-		this.canvasShape.position.x = Math.round(this.layoutAlgo.offsets.getMarginInline()) + 1;
-		this.canvasShape.position.y = Math.round(this.layoutAlgo.offsets.getMarginBlock()) + 1;
+		this.canvasShape.position.x = Math.round(this.layoutAlgo.offsets.getMarginInline());
+		this.canvasShape.position.y = Math.round(this.layoutAlgo.offsets.getMarginBlock());
 	}
 	else {
 		this.canvasShape.position.x = Math.round(this.layoutAlgo.offsets.getMarginInline()) + .5;
@@ -336,11 +383,63 @@ LayoutNode.prototype.publishRequestForStyleUpdate = function(viewUID) {
 	// 		in CSSSelectorsMatcherRefiner.publishToBeComputedStyle
 	// => get it back here and iterate in LayoutNode.prototype.populateAllComputedStyle
 //	console.log(viewUID, TypeManager.pendingStyleRegistry);
+//	console.log(Object.keys(TypeManager.pendingStyleRegistry.cache).join(', '));
+//	console.log(TypeManager.pendingStyleRegistry.cache);
 	var matchedStyles = TypeManager.pendingStyleRegistry.getItem(viewUID);
+//	console.log(this.nodeName, matchedStyles);
 	return matchedStyles ? matchedStyles : [];		// new Style(null, 'dummy', {})
 }
 
+LayoutNode.prototype.matchOnMagicalUAStylesheet = function(naiveDOMNodeAsView) {
+//	var fakeUID = UIDGenerator.newUID() + this.lastUIDSeenInPreviousPage,
+	var fakeUID = '65635', 
+//	var fakeUID = (65535 - parseInt(nodeUIDGenerator.newUID())).toString(),		// max 16bits Integer - n => we hope it can't conflict with any generated UID
+		UAStylesFakeNaiveDOM = {
+			children : [
+				{
+					styleRefstartIdx : 0,
+					styleRefLength : 0,
+					_UID : fakeUID,
+					_parentNode : null,
+					isShadowHost : false,
+					name : '',
+					textContent : '',
+					views : {
+						masterView : naiveDOMNodeAsView,
+						subSections : [],
+						memberViews : []
+					},
+					children : [],
+					styleDataStructure : null
+				}
+			]
+		};
+	var UAStylesheetSolver = new ComputedStyleSolver(UAStylesFakeNaiveDOM, [UAStylesheet, SyntaxHighlightingStylesheet]);
+	UAStylesheetSolver.CSSSelectorsMatcher.traverseDOMAndMatchSelectors(
+		UAStylesFakeNaiveDOM,
+		UAStylesheetSolver.CSSRulesBuffer
+	);
+	
+	var results = UAStylesheetSolver.CSSSelectorsMatcherRefiner.refineMatches(
+		UAStylesheetSolver.CSSSelectorsMatcher.matches,
+		{
+			data : {
+				[naiveDOMNodeAsView._UID] : naiveDOMNodeAsView
+			},
+			getItem : function() {
+				return this.data[naiveDOMNodeAsView._UID]
+			}
+		},
+		TypeManager.masterStyleRegistry//,
+//		'isUAMatcher'
+	);
+	
+//	if (this.nodeName === 'span' && naiveDOMNodeAsView.classNames.indexOf('keyword') !== -1)
+//		console.log('keyword', UAStylesheetSolver.CSSSelectorsMatcher.matches, results);
+}
+
 LayoutNode.prototype.populateInheritedStyle = function() {
+//	console.log('inherited', this.nodeName);
 	this.computedStyle.overridePropertyGroupFromGroupBuffer(
 		'inheritedAttributes',
 		this._parent.computedStyle.getPropertyGroupAsBuffer('inheritedAttributes')
@@ -348,9 +447,15 @@ LayoutNode.prototype.populateInheritedStyle = function() {
 }
 
 LayoutNode.prototype.populateAllComputedStyle = function(matchedStyles) {
+	var pFound  = false;
+//	if (this.nodeName === 'p') {
+//		pFound  = true;
+//		console.log(this.nodeName);
+//	}
 	matchedStyles.sort(this.sortBySpecificity);
 	var attrIFace;
 	matchedStyles.forEach(function(style) {
+//		console.log(style);
 		attrIFace = style.attrIFace;
 		for (var attrGroup in attrIFace) {
 			this.computedStyle.overridePropertyGroupFromGroupBuffer(
@@ -363,7 +468,7 @@ LayoutNode.prototype.populateAllComputedStyle = function(matchedStyles) {
 
 LayoutNode.prototype.getLayoutAlgo = function(nodeName) {
 	var valueOfDisplayProp = this.isTextNode ? '' : this.getDisplayProp(nodeName);
-	
+//	console.log(valueOfDisplayProp);
 	switch (valueOfDisplayProp) {
 		case this.displayPropsAsConstants.inline : return new InlineLayoutAlgo(this);
 		case this.displayPropsAsConstants.block : return new BlockLayoutAlgo(this);
@@ -395,6 +500,7 @@ LayoutNode.prototype.defaultToBrowserDefinedDisplayProp = function(nodeName) {	/
 	
 	switch (nodeName) {
 		case 'body' :
+		case 'root-node' :
 		case 'div' : 
 		case 'h1' : 
 		case 'h2' : 
@@ -409,12 +515,15 @@ LayoutNode.prototype.defaultToBrowserDefinedDisplayProp = function(nodeName) {	/
 		case 'form' :
 		case 'table' :  
 		case 'header' : 
-		case 'footer' : 
+		case 'footer' :
+		case 'pre' :
+		case 'code' :						// CODE tags as display:'block' is currently a hack to allow custom rendering of pre tags without supporting line-feeds
 		case 'section' : return 'block';
 		case 'span' :
 		case 'a' : 
 		case 'label' :
 		case 'input' :
+		case 'em' :
 		case 'img' : return 'inline';
 		default : return 'inline';
 	}
@@ -470,7 +579,6 @@ var LinkedLayoutNode = function(sourceDOMNodeAsView, layoutParentNode, previousS
 	LayoutNode.call(this, sourceDOMNodeAsView, layoutParentNode, null);
 	
 	this._parent.layoutAlgo.availableSpace.incrementChildCount();
-	
 	this.objectType = 'LinkedLayoutNode';
 }
 LinkedLayoutNode.prototype = Object.create(LayoutNode.prototype);
@@ -549,11 +657,14 @@ var TextNode = function(sourceDOMNodeAsView, layoutParentNode, textContent) {
 	this.computedStyle = new CSSPropertySetBuffer();
 
 	this.populateInheritedStyle();
-	this.populateAllComputedStyle(this.queryStyleUpdate(sourceDOMNodeAsView));
+//	this.populateAllComputedStyle(this.queryStyleUpdate(sourceDOMNodeAsView));
 	
 	this.canvasShape = null;
 	
 	this.layoutAlgo = new TextLayoutAlgo(this, this.textContent);
+	// HACK: Standard LayoutAlgo inherit from BaseIntermediateLayoutAlgo
+	// For some reason, we didn't do the same fo text nodes.
+	// So we have to hadle manually the end of the constructor
 	this.layoutAlgo.setRefsToParents(this);
 	this.layoutAlgo.cs = new ComputedStyleSimpleGetter(this.layoutAlgo);
 	this.layoutAlgo.dimensions = new LayoutDimensionsSimpleGetSet(this, this.layoutAlgo);
@@ -606,19 +717,27 @@ var LayoutRoot = function(dimensionsPairAsArray) {
 	this.layoutAlgo.availableSpace = new LayoutAvailableSpaceGetSet(this, this.layoutAlgo);
 	this.layoutAlgo.dimensions = new LayoutDimensionsGetSet(this, this.layoutAlgo);
 	this.layoutAlgo.offsets = new LayoutOffsetsGetSet(this, this.layoutAlgo);
-	
+
 	this.layoutAlgo.availableSpace.setInline(dimensionsPairAsArray[0]);
 	this.layoutAlgo.availableSpace.setBlock(dimensionsPairAsArray[1]);
 	
 	this.layoutAlgo.dimensions.setFromInline(dimensionsPairAsArray[0]);
 	this.layoutAlgo.dimensions.setFromBlock(dimensionsPairAsArray[1]);
+	
 }
 LayoutRoot.prototype = Object.create(LayoutNode.prototype);
 LayoutRoot.prototype.objectType = 'LayoutRoot';
 
 LayoutRoot.prototype.setViewportStyle = function(selectorMatches, masterStyleRegistry) {
+	var style, attrIFace;
 	selectorMatches.forEach(function(result, key) {
-		this.populateAllComputedStyle([masterStyleRegistry.getItem(result[1])]);
+		style = masterStyleRegistry.getItem(result[1]);
+		attrIFace = style.attrIFace;
+		this.computedStyle.overridePropertyGroupFromGroupBuffer(
+			'inheritedAttributes',
+			attrIFace['inheritedAttributes'].CSSPropertySetBuffer.getPropertyGroupAsBuffer('inheritedAttributes')
+		);
+//		this.populateAllComputedStyle([masterStyleRegistry.getItem(result[1])]);
 	}, this);
 }
 

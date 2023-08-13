@@ -138,7 +138,7 @@ HierarchicalObject.prototype.removeChild = function(childKey) {
 HierarchicalObject.prototype.removeChildAt = function(atIndex) {
 	var removedChild = this._children.splice(atIndex, 1);
 	this.generateKeys(atIndex);
-	this.onRemoveChild(removedChild);
+	this.onRemoveChild(removedChild[0]);
 }
 
 /**
@@ -610,7 +610,7 @@ AbstractComponent.prototype.createDefaultDef = function() {}			// virtual
 AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	var defaultDef, defaultHostDef;
 //	console.log(this.createDefaultDef());
-	if ((defaultDef = this.createDefaultDef())) {
+	if ((defaultDef = this.createDefaultDef(definition))) {
 		defaultHostDef = defaultDef.getGroupHostDef() ? defaultDef.getGroupHostDef() : defaultDef.getHostDef();
 		this._defComposedUID = defaultHostDef.UID;
 //		if (TypeManager.hostsDefinitionsCacheRegistry.getItem(this._defUID, this._defComposedUID))
@@ -806,8 +806,16 @@ ComponentWithView.prototype.setContentFromValueOnMemberView = function(value, me
 
 /**
  * @abstract
+ * @needsRefactoring Here only for ascendant compatibility
  */
 ComponentWithView.prototype.appendContentFromValueOnView = function(value) {
+	this.appendTextFromValueOnView(value);
+};
+
+/**
+ * @abstract
+ */
+ComponentWithView.prototype.appendTextFromValueOnView = function(value) {
 	if (typeof value !== 'string' && isNaN(parseInt(value)))
 		return;
 	this.view.appendText(value.toString());		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
@@ -962,7 +970,7 @@ ComponentWithHooks.prototype = Object.assign(Object.create(ComponentWithView.pro
 	basicEarlyViewExtend : function() {},					// virtual
 	asyncViewExtend : function() {},						// virtual
 	basicLateViewExtend : function() {},					// virtual
-	lastAddChildren : function() {},							// virtual
+	lastAddChildren : function() {},						// virtual
 	beforeRegisterEvents : function() {},			// virtual
 	registerClickEvents : function() {},			// virtual
 	registerLearnEvents : function() {},			// virtual
