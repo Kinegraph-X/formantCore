@@ -27,6 +27,7 @@ var BaseLayoutAlgo = function(layoutNode) {
 	
 	this.flexCtx = new LayoutTypes.FlexContext();
 	this.textSizeHackFactor = 1.021;
+	this.wordListCache = [];
 }
 
 BaseLayoutAlgo.prototype = {};
@@ -317,20 +318,20 @@ BaseLayoutAlgo.prototype.getBoundOfTextLine = function(textContent, maxWidth) {
 	
 	var words = textContent.split(' ');
 //	console.log(words, maxWidth);
-	var wordList = [];
+	this.wordListCache.length = 0;
 	
 	while (i < words.length) {
 		wordSize = fontSizeBuffer.getWidthOfWord(words[i]);
 		totalSize += i !== words.length - 1 ? fontSizeBuffer.getWidthOfSpace() + wordSize : wordSize
 		if (totalSize > maxWidth)
 			break;
-		wordList.push(words[i]);
+		this.wordListCache.push(words[i]);
 		returnedSize = totalSize;
 //		console.log(wordList);
 		i++;
 	}
 	
-	return [wordList.join(' '), returnedSize];
+	return [this.wordListCache.join(' '), returnedSize];
 }
 
 
