@@ -12,7 +12,7 @@ var LayoutOffsetsBuffer = require('src/_LayoutEngine/LayoutOffsetsBuffer');
 var layoutAvailableSpaceBuffer = new LayoutAvailableSpaceBuffer();
 var layoutDimensionsBuffer = new LayoutDimensionsBuffer();
 var layoutOffsetsBuffer = new LayoutOffsetsBuffer();
- 
+var wordListCache = [];
  
 var LayoutTypes = {};
 
@@ -227,5 +227,7 @@ LayoutTypes.FlexContext = FlexContext;
 LayoutTypes.layoutAvailableSpaceBuffer = layoutAvailableSpaceBuffer;
 LayoutTypes.layoutDimensionsBuffer = layoutDimensionsBuffer;
 LayoutTypes.layoutOffsetsBuffer = layoutOffsetsBuffer;
+
+LayoutTypes.wordListCache = wordListCache;
 
 module.exports = LayoutTypes;

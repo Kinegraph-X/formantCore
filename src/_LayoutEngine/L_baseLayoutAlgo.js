@@ -15,7 +15,9 @@ var ComputedStyleGetter = require('src/_LayoutEngine/ComputedStyleFastGetter');
 var LayoutAvailableSpaceGetSet = require('src/_LayoutEngine/LayoutAvailableSpaceGetSet');
 var LayoutDimensionsGetSet = require('src/_LayoutEngine/LayoutDimensionsGetSet');
 var LayoutOffsetsGetSet = require('src/_LayoutEngine/LayoutOffsetsGetSet');
-var testArray = new DataView(new ArrayBuffer(8));
+var bufferForFastMax = new DataView(new ArrayBuffer(8));
+
+var wordListCache = LayoutTypes.wordListCache;
 
 /*
  * 
@@ -318,20 +320,20 @@ BaseLayoutAlgo.prototype.getBoundOfTextLine = function(textContent, maxWidth) {
 	
 	var words = textContent.split(' ');
 //	console.log(words, maxWidth);
-	this.wordListCache.length = 0;
+	wordListCache.length = 0;
 	
 	while (i < words.length) {
 		wordSize = fontSizeBuffer.getWidthOfWord(words[i]);
 		totalSize += i !== words.length - 1 ? fontSizeBuffer.getWidthOfSpace() + wordSize : wordSize
 		if (totalSize > maxWidth)
 			break;
-		this.wordListCache.push(words[i]);
+		wordListCache.push(words[i]);
 		returnedSize = totalSize;
 //		console.log(wordList);
 		i++;
 	}
 	
-	return [this.wordListCache.join(' '), returnedSize];
+	return [wordListCache.join(' '), returnedSize];
 }
 
 
@@ -345,9 +347,9 @@ BaseLayoutAlgo.prototype.getBoundOfTextLine = function(textContent, maxWidth) {
  * 
  */
 BaseLayoutAlgo.prototype.max = function(value1, value2) {
-	testArray.setInt32(0, value2);
-	testArray.setInt32(4, value1);
-	return testArray.getInt32(+(value1 > value2) * 4);
+	bufferForFastMax.setInt32(0, value2);
+	bufferForFastMax.setInt32(4, value1);
+	return bufferForFastMax.getInt32(+(value1 > value2) * 4);
 }
 
 BaseLayoutAlgo.prototype.layoutAlgosAsConstants = {
