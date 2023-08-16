@@ -3,7 +3,7 @@ https://prismjs.com/download.html#themes=prism-tomorrow&languages=markup+clike+j
 
 // ^(([.,\w-\s]+(,\s)?)+)\s\{	=>	{\Rselector : '\1',
 
-var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
+var CreateStyle = require('src/core/GenericStyleConstructor');
 
 module.exports = CreateStyle([
 	{

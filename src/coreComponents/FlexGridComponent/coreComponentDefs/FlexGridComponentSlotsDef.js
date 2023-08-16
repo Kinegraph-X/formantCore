@@ -7,7 +7,7 @@
  * @CSSifyTheme themeName : basic-light
  */
 var TypeManager = require('src/core/TypeManager');
-var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
+var CreateStyle = require('src/core/GenericStyleConstructor');
 
 
 var FlexGridComponentSlotsDef = function(uniqueID, options, model) {

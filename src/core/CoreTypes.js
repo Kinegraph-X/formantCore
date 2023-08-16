@@ -699,8 +699,6 @@ Object.defineProperty(Subscription.prototype, 'execute', {
 				return;
 //			console.log('val', this._stream.name, val);
 			
-			if (this.subscriber._stream.name === 'active')
-				console.log('stream active', value);
 			if (this.subscriber.obj !== null && this.subscriber.prop !== null)
 				this.subscriber.obj[this.subscriber.prop] = val;
 			// second case shall only be reached if no prop is given : on a "reflected" subscription by a child component

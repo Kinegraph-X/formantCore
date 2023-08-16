@@ -586,7 +586,7 @@ var AbstractComponent = function(definition, parentView, parent) {
 	this._defComposedUID = '';
 	
 	if (typeof this._defUID === 'undefined') {
-		console.error('No UID found in definition: the hierarchical structure of the def might be wrong. eg: a group def has been defined and its type is not "CompoundComponent", etc. Returning...', definition);
+		console.warn('No UID found in definition: the hierarchical structure of the def might be wrong. eg: a group def has been defined and its type is not "CompoundComponent", etc. Returning...', definition);
 		return;
 	}
 	

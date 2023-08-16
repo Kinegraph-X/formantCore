@@ -8,7 +8,7 @@
  * 
  */
 var TypeManager = require('src/core/TypeManager');
-var CreateStyle = require('src/UI/generics/GenericStyleConstructor');
+var CreateStyle = require('src/core/GenericStyleConstructor');
 
 
 var FlexColumnComponentDef = function(uniqueID, options, model) {
