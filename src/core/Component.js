@@ -8,7 +8,7 @@ var ElementDecorator = require('src/UI/_mixins/elementDecorator_HSD');
 
 var Logger = require('src/Error&Log/Logger');
 
-var Geometry = require('src/tools/Geometry');
+//var Geometry = require('src/tools/Geometry');
 
 
 /**
@@ -586,7 +586,7 @@ var AbstractComponent = function(definition, parentView, parent) {
 	this._defComposedUID = '';
 	
 	if (typeof this._defUID === 'undefined') {
-		console.warn('No UID found in definition: the hierarchical structure of the def might be wrong. eg: a group def has been defined and its type is not "CompoundComponent", etc. Returning...', definition);
+		console.error('No UID found in definition: the hierarchical structure of the def might be wrong. eg: a group def has been defined and its type is not "CompoundComponent", etc. Returning...', definition);
 		return;
 	}
 	
@@ -595,6 +595,7 @@ var AbstractComponent = function(definition, parentView, parent) {
 		this.populateStores(definition);
 	this.createEvent('update');
 	
+//	console.log(definition.getHostDef().UID, definition.getHostDef().nodeName, definition)
 	TypeManager.typedHostsRegistry.getItem(this._defUID).push(this);
 }
 AbstractComponent.prototype = Object.create(AsyncActivableObject.prototype);
@@ -621,6 +622,7 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	
 	var hostDef = definition.getHostDef();	// the CompoundComponent's ctor passes here only the received hostDef
 	
+//	console.log(definition.getHostDef().UID, definition.getHostDef().nodeName, defaultDef)
 //	if (hostDef.type === 'TextInput')		
 //		console.error('TextInput', defaultHostDef, hostDef);
 		
@@ -629,7 +631,7 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		TypeManager.propsAreArray.forEach(function(prop) {
 //			if(!defaultHostDef[prop])
 //				console.log(prop, defaultHostDef);
-			if(defaultHostDef[prop].length)
+//			if(defaultHostDef[prop].length)
 				Array.prototype.push.apply(hostDef[prop], defaultHostDef[prop]);
 		});
 		TypeManager.propsArePrimitives.forEach(function(prop) {
@@ -666,6 +668,7 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 AbstractComponent.prototype.populateStores = function(definition) {
 	this.mergeDefaultDefinition(definition);
 	var hostDefinition = definition.getHostDef();
+//	console.log('populateStores')
 //	console.log(hostDefinition);
 	
 	var title;
@@ -1293,7 +1296,7 @@ ComponentStrokeAware.prototype.createEvents = function() {
  * @abstract
  */
 ComponentStrokeAware.prototype.registerKeyboardEvents = function(e) {
-	var self = this, input = this.view.subViewsHolder.memberViews[1];
+	var self = this, input = this.view.subViewsHolder.memberViews[1] || this.view;
 //	console.warn('ComponentStrokeAware :', 'where is "input"');
 	
 	// Stroke event listener 
@@ -1302,7 +1305,7 @@ ComponentStrokeAware.prototype.registerKeyboardEvents = function(e) {
 //		var allowed = [189, 190, 191]; // corresponds to **. , -**
 //		allowed.indexOf(e.keyCode) >= 0 && 
  
-	    if (e.keyCode >= 32 && (e.keyCode < 48 || e.keyCode > 57) && e.keyCode <= 191)
+	    if (e.keyCode === 13 || e.keyCode === 27  || (e.keyCode >= 32 && (e.keyCode < 48 || e.keyCode > 57) && e.keyCode <= 191))
 	        self.trigger('stroke', e);
 	});
 }

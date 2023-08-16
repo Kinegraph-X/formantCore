@@ -63,6 +63,8 @@ Ignition.prototype.instanciateDOM = function() {
 		nodes = TypeManager.nodesRegistry.cache,
 		attributesCache = TypeManager.caches.attributes.cache,
 		attributes,
+		alreadyCloned = false,
+		cloneMother,
 		effectiveViewAPI,
 		masterNode;
 
@@ -87,13 +89,16 @@ Ignition.prototype.instanciateDOM = function() {
 			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
 //			console.log(nodes[view._defUID].cloneMother);
 //			console.log(nodes[view._defUID]);
+
+			alreadyCloned = false;
+			cloneMother = nodes[view._defUID].cloneMother;
 			attributes.forEach(function(attrObject) {
 				if (attrObject.getName().indexOf('aria') === 0)
-					nodes[view._defUID].cloneMother.setAria(attrObject.getName(), attrObject.getValue());
+					cloneMother.setAria(attrObject.getName(), attrObject.getValue());
 				else
-					nodes[view._defUID].cloneMother[attrObject.getName()] = attrObject.getValue();
+					cloneMother[attrObject.getName()] = attrObject.getValue();
 			});
-			view.callCurrentViewAPI('setMasterNode', nodes[view._defUID].cloneMother.cloneNode(true));
+			view.callCurrentViewAPI('setMasterNode', cloneMother.cloneNode(true));
 			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_OffsetProp);
 		}
 		
@@ -153,6 +158,8 @@ Ignition.prototype.instanciateDOM = function() {
 ////			if (view.parentView._parent && view._parent)
 ////				console.log(view._parent.objectType, view.callCurrentViewAPI('getMasterNode'))
 //		}
+		if(view.parentView && typeof view.parentView.callCurrentViewAPI === 'undefined')
+			console.log(view);
 
 		if (view.parentView && view.parentView.callCurrentViewAPI('getWrappingNode')) {
 			view.parentView.callCurrentViewAPI('getWrappingNode').append(view.callCurrentViewAPI('getMasterNode'));
@@ -203,21 +210,25 @@ Ignition.prototype.handleReactivityAndEvents = function(listDef) {
 		bindingHandler = subscriptionType + 'Binding';
 		
 		for (let defUID in typedComponentRegister) {
+//			console.log(defUID, typedComponentRegister[defUID].length);
 			reactivityQueries = TypeManager.caches[subscriptionType].cache[defUID];
 			
 			typedComponentRegister[defUID].forEach(function(component) {
-				if (listDef && (component._children.length >= 3 || reactivityQueries.length > 3)) {	//typedComponentRegister[defUID].listItemMembersCount
-//					console.log(reactivityQueries, component);
-					return;
-				}
+				// DEBUG HACK: to stop the infinite recursion we had in the DesignSystemManager
+//				if (listDef && (component._children.length >= 3 || reactivityQueries.length > 3)) {	//typedComponentRegister[defUID].listItemMembersCount
+////					console.log(reactivityQueries, component);
+//					return;
+//				}
 				
 				if (!reactivityQueries.length)
 					return;
 
-				if (component._parent)
+				if (component._parent && subscriptionType === 'reactOnParent')
 					component[bindingHandler](reactivityQueries, component._parent, subscriptionType);
-				else if (subscriptionType === 'reactOnSelf')
+				else if (subscriptionType === 'reactOnSelf') {
+//					console.log(bindingHandler, reactivityQueries, component._parent, subscriptionType)
 					component[bindingHandler](reactivityQueries, component._parent, subscriptionType);
+				}
 			});
 		}
 		

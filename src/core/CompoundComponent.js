@@ -152,7 +152,7 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 	
 	var defaultDef = this.createDefaultDef();
 	
-	// When instanciating a CompoundComponent directly from its ctor,  there is no defaultDef
+	// When instanciating a CompoundComponent directly from its ctor,  there is no defaultDef : don't try to merge
 	if (defaultDef) {
 		if (defaultDef.subSections.length)
 			Array.prototype.push.apply(definition.subSections, defaultDef.subSections);
@@ -168,6 +168,10 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 CompoundComponent.prototype = Object.create(Components.ComponentWithView.prototype);
 CompoundComponent.prototype.objectType = 'CompoundComponent';
 coreComponents.CompoundComponent = CompoundComponent;
+
+//CompoundComponent.prototype.createDefaultDef = function() {
+//	return TypeManager.mockDef();
+//}
 
 CompoundComponent.prototype.extendDefinition = function(definition) {
 	// Special case : events of type "update" shall have the ability to bubble from CompoundComponent to CompoundComponent

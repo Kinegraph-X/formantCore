@@ -39,7 +39,19 @@ Object.defineProperty(Object.prototype, 'toDebugString', {
 });
 
 
-
+!function(Object, getPropertyDescriptor){
+  // (C) WebReflection - Mit Style License
+  if (!(getPropertyDescriptor in Object)) {
+    var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+    Object[getPropertyDescriptor] = function getPropertyDescriptor(o, name) {
+      var proto = o, descriptor;
+      while (proto && !(
+        descriptor = getOwnPropertyDescriptor(proto, name))
+      ) proto = proto.__proto__;
+      return descriptor;
+    };
+  }
+}(Object, "getPropertyDescriptor");
 
 
 

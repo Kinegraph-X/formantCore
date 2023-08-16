@@ -7,7 +7,7 @@ var TypeManager = require('src/core/TypeManager');
 //var CoreTypes = require('src/core/CoreTypes');
 
 var textSizeGetter = appConstants.textSizeGetter;
-var ScalesUtilities = require('src/tools/ScalesUtilities');
+//var ScalesUtilities = require('src/tools/ScalesUtilities');
 
 
 var SWrapperInViewManipulator = function(hostView) {

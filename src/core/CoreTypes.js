@@ -420,7 +420,9 @@ Object.defineProperty(Stream.prototype, 'value', {
 	},
 	
 	set : function(value) {
+//		console.log(value);
 		var val = this.transform(value);
+//		console.log(this.name, val);
 		this.setAndUpdateConditional(val);
 		this.set(val);
 	}
@@ -436,6 +438,8 @@ Stream.prototype.get = function() {
 }
 
 Stream.prototype.set = function(value) {
+//	if (this.name === 'className')
+//		console.log(this.forward, this.hostedInterface, value);
 	if (this.forward && this.hostedInterface) {
 		this.forward = false;
 		this.hostedInterface.setProp(this.name, value);
@@ -513,7 +517,7 @@ Stream.prototype.react = function(prop, reflectedHost) {
  *		lazy "sets" the reflectedHost (no infinite recursion, but no change propagation neither on the host) and triggers the given event when the local stream updates
  */ 
 Stream.prototype.reflect = function(prop, reflectedHost, transform, inverseTransform, event) {
-	this._value = reflectedHost[prop] ? reflectedHost[prop] : this._value;
+	this._value = reflectedHost[prop];// ? reflectedHost[prop] : this._value;
 	
 	if (transform && this.transform)
 		console.warn('Bad transform assignment : this.transform already exists');
@@ -695,7 +699,8 @@ Object.defineProperty(Subscription.prototype, 'execute', {
 				return;
 //			console.log('val', this._stream.name, val);
 			
-//			console.log('subscriber', this.subscriber);
+			if (this.subscriber._stream.name === 'active')
+				console.log('stream active', value);
 			if (this.subscriber.obj !== null && this.subscriber.prop !== null)
 				this.subscriber.obj[this.subscriber.prop] = val;
 			// second case shall only be reached if no prop is given : on a "reflected" subscription by a child component
@@ -1529,7 +1534,9 @@ DOMViewAPI.prototype.constructor = DOMViewAPI;
 
 DOMViewAPI.hostedInterface = {
 	setProp : function(propName, value) {
+//		console.log(propName, value, this.hostElem);
 		this.hostElem[propName] = value;
+//		console.log(this.hostElem[propName]);
 	},
 	getProp : function(propName, value) {
 		return this.hostElem[propName];
@@ -1616,6 +1623,16 @@ DOMViewAPI.prototype.setContentNoFail = function(value) {
 		this.hostElem.value = value;
 	else
 		this.setNodeContent(value);
+}
+
+/**
+ * 
+ */
+DOMViewAPI.prototype.getContentNoFail = function(value) {
+	if (this.isTextInput())
+		return this.hostElem.value;
+	else
+		return this.getTextContent(); 
 }
 
 /**
@@ -1902,6 +1919,9 @@ ComponentView.prototype.getTextContent = function() {
  * @needsGlobalRefactoring
  */
 Object.defineProperty(ComponentView.prototype, 'value', { 		// ComponentWithReactiveText.prototype.populateSelf makes good use of that
+	get : function() {
+		return this.callCurrentViewAPI('getContentNoFail');
+	},
 	set : function(value) {
 		this.callCurrentViewAPI('setContentNoFail', value);
 	}
