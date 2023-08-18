@@ -1,9 +1,11 @@
 
-#Formant: Fast & Efficient Frontend Framework
+Formant: Fast & Efficient Frontend Framework
+============================================
 
 Welcome to Formant – the JavaScript framework designed for instant display, and easy frontend development. We developed it to say goodbye to sluggish apps and tangled code. It's still experimental, but give a try to the demos, you'll be surprised.
 
-##Advantages at a Glance
+Advantages at a Glance
+----------------------
 
 ⚡ Speed: Fast rendering and responsiveness. Our first feedback were just : "Oh it's fast!".
 
@@ -19,11 +21,13 @@ Welcome to Formant – the JavaScript framework designed for instant display, an
 
 🎮 Experimental Raster Engine: Unlock creative potential with an innovative and cross-platform approach to rendering.
 
-##Tailored for Specialized Apps
+Tailored for Specialized Apps
+-----------------------------
 
 Formant is perfect for apps that demand instant updates. Think lengthy tables, data-rich visualizations, and captivating graphics. From data dashboards to real-time analytics – Formant plays its role as a reliable platform, and relieves you from fearing bottlenecks.
 
-## Try out our demos
+Try out our demos
+-----------------
 
 [The Raster Renderer](http://rasterrenderer.kinegraphx.com)
 
@@ -33,7 +37,8 @@ Formant is perfect for apps that demand instant updates. Think lengthy tables, d
 
 [Markdown Convertes](http://markdown.kinegraphx.com)
 
-##Get Started
+Get Started
+-----------
 
 There will be soon a bit of documentation, for you to take part in our attempt at reuniting the best of all worlds in web development.
 
