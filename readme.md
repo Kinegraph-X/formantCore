@@ -19,7 +19,7 @@ Advantages at a Glance
 
 🚀 No Transpilation Needed: Dive straight into coding. You are fully responsible of the code you run, you can read it, and it's optimized "at writing time".
 
-🎮 Experimental Raster Engine: Unlock creative potential with an innovative and cross-platform approach to rendering.
+🎮 DOM & Experimental Raster Engine: Unlock creative potential with an innovative and cross-platform approach to rendering.
 
 Tailored for Specialized Apps
 -----------------------------
