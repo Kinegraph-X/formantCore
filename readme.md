@@ -11,7 +11,7 @@ Advantages at a Glance
 
 ⏩ Batched DOM Rendering: The rendering embraces the browser's async capabilities. Smooth and efficient. No VDOM cumbersomness.
 
-📦 Clean Separation: Model, view, controller and styles, all separated, all Javascript – No separation of languages, but just organized coding. No HTML in the code of the controler, no variables spread all around the code of the view.
+📦 Clean Separation: Model, view, controller and styles, all separated, all Javascript – No Esperanto-code, but just organized coding. No HTML in the code of the controler, no variables spread all around the code of the view.
 
 🎨 Stylesheet API: An embedded API fills the browser's stylesheet API gaps, giving you more design control. And as it's become a standard, scoped-CSS on demand with an automated instanciation as shadow-DOM, web-component-based to be reachable from outside the code, CSSOM-ready support.
 
