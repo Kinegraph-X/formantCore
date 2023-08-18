@@ -6,6 +6,14 @@ https://prismjs.com/download.html#themes=prism-tomorrow&languages=markup+clike+j
 var CreateStyle = require('src/core/GenericStyleConstructor');
 
 module.exports = CreateStyle([
+//	{
+//		selector : 'a',
+//		color : '#5577EE'
+//	},
+//	{
+//		selector : 'a:visited',
+//		color : '#5577AA'
+//	},
 	{
 		selector : 'pre.code',
 		background: '#2d2d2d',

@@ -129,15 +129,14 @@ var customElems;
 	}
 	
 	ElementFactory.prototype.propGetterSetter = function(prop) {
+			
 		var desc = (Object.getOwnPropertyDescriptor(this, prop) || Object.getPropertyDescriptor(this, prop));
-//		console.log(desc);
-		if (typeof desc !== 'undefined' && desc.configurable) {
+		if (typeof desc !== 'undefined' && desc.configurable && desc.get) {
 			desc.get = function() {
 					return this.hasAttribute(prop) ? (this.getTypedValue ? this.getTypedValue(this.getAttribute(prop)) : ElementFactory.prototype.getTypedValue.call(this, this.getAttribute(prop))) : null;
 				};
 			desc.set = function(value) {
 					// We're setting an attribute:  don't if the propName is camelCase 
-					
 					// For litteral values, Updating the Stream is handled by onAttributeChangeCallback
 					if (prop !== 'content' && prop.toLowerCase() === prop && typeof value !== 'undefined' && typeof value !== 'object' && !Array.isArray(value)) {
 						if (this.streams[prop].value !== value && this.nodeName.indexOf('-') === -1) {
@@ -156,7 +155,7 @@ var customElems;
 					}
 				};
 		}
-		else if (typeof desc === 'undefined')
+		else {
 			Object.defineProperty(this, prop, {
 				get : function() {
 					return this.hasAttribute(prop) ? (this.getTypedValue ? this.getTypedValue(this.getAttribute(prop)) : ElementFactory.prototype.getTypedValue.call(this, this.getAttribute(prop))) : null;
@@ -174,6 +173,7 @@ var customElems;
 						// 		- we're reflecting the attr on the prop through the stream (marginal case of someone absolutely wanting to mutate the obj targetting the attr)
 						// the stream won't update twice though : forward is set to false
 						this.setAttribute(prop, value);
+						
 					}
 					else {
 						if (this.streams[prop].value !== value)
@@ -182,6 +182,7 @@ var customElems;
 					}
 				}
 			});
+		}
 	}
 	
 	ElementFactory.prototype.getTypedValue = function(attrValue) {

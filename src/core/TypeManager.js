@@ -676,6 +676,39 @@ var setAcceptsProp = function(definition, accepts, title, onMember) {
  * @param {object} defObj 
  * @return {ComponentDef}
  */
+//var createDef = function(defObj) {
+////	console.log(defObj);
+//	// MASTER VIEW OF A COMPOUND COMPONENT
+//	if ((defObj.type && defObj.type === 'CompoundComponent') || defObj.isCompound) {
+////		if (defObj.nodeName === 'big-modalbox')
+////			console.log('big-modalbox host', new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
+//		return (new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
+//	}
+//	// COMPLETE COMPONENT (without host shorthand)
+//	else if (defObj.type) {
+//		return (new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
+//	}
+//	// COMPLETE COMPONENT (host given)
+//	else if (defObj.host) {
+////		if (!defObj.host.host)
+////			console.log(defObj);
+////		if (defObj.host.host && defObj.host.host.nodeName === 'big-modalbox')
+////			console.log('big-modalbox complete', new HierarchicalComponentDefModel(defObj, 'rootOnly'));
+//		return (new HierarchicalComponentDefModel(defObj, 'rootOnly'));
+//	}
+//	// VIEW DEF || HOST or VIEW OF A SIMPLE COMPONENT
+//	else if (!defObj.host) {
+//		if (defObj.n && !defObj.type) {
+//			defObj.nodeName = defObj.n;
+//			delete defObj.n;
+//			return (new SingleLevelComponentDefModel(defObj));
+//		}
+//		else if ((defObj.nodeName && !defObj.type) || !defObj.isCompound) {
+////			console.log(new SingleLevelComponentDefModel(defObj));
+//			return (new SingleLevelComponentDefModel(defObj));
+//		}
+//	}
+//}
 var createDef = function(defObj) {
 //	console.log(defObj);
 	// MASTER VIEW OF A COMPOUND COMPONENT
@@ -684,7 +717,7 @@ var createDef = function(defObj) {
 //			console.log('big-modalbox host', new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
 		return (new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
 	}
-	// VIEW DEF || MASTER VIEW OF A SIMPLE COMPONENT
+	// VIEW DEF || HOST or VIEW OF A SIMPLE COMPONENT
 	else if (!defObj.host) {
 		if (defObj.n && !defObj.type) {
 			defObj.nodeName = defObj.n;

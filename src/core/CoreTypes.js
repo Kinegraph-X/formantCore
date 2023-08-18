@@ -1532,7 +1532,6 @@ DOMViewAPI.prototype.constructor = DOMViewAPI;
 
 DOMViewAPI.hostedInterface = {
 	setProp : function(propName, value) {
-//		console.log(propName, value, this.hostElem);
 		this.hostElem[propName] = value;
 //		console.log(this.hostElem[propName]);
 	},
@@ -1589,7 +1588,7 @@ DOMViewAPI.prototype.getTextInputValue = function() {
 /**
  * 
  */
-DOMViewAPI.prototype.getLowerIndexChildNode = function() {
+DOMViewAPI.prototype.getLowerIndexChildNode = function(atIndex) {
 	try {
 		return this.getWrappingNode().children[atIndex - 1];
 	}
@@ -1661,7 +1660,7 @@ DOMViewAPI.prototype.appendTextNode = function(text) {
  */
 DOMViewAPI.prototype.addChildNodeAt = function(childNode, atIndex) {
 	var lowerIndexChild;
-	if (lowerIndexChild = this.getLowerIndexChildNode(atIndex))
+	if ((lowerIndexChild = this.getLowerIndexChildNode(atIndex)))
 		lowerIndexChild.insertAdjacentElement('afterend', childNode);
 	else
 		this.getWrappingNode().appendChild(childNode);

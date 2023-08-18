@@ -4,7 +4,7 @@
  */
 
 var appConstants = require('src/appLauncher/appLauncher');
-var ElementCreator = require('src/UI/generics/GenericElementConstructor');
+var ElementCreator = require('src/core/GenericElementConstructor');
 var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Component = require('src/core/Component');
@@ -431,11 +431,11 @@ Ignition.prototype.getWrappingComponentOutsideAppScope = function(selector) {
 /**
  * @constructor IgnitionFromDef
  */
-var IgnitionFromDef = function(definition, containerIdOrContainerNode) {
+var IgnitionFromDef = function(definition, parentView, parent) {
 	
 	var type = definition.getHostDef().getType() || (definition.getGroupHostDef() && definition.getGroupHostDef().getType());
 	if (type in componentTypes) {
-		var mainComponent = new componentTypes[type](definition, containerIdOrContainerNode);
+		var mainComponent = new componentTypes[type](definition, parentView, parent);
 		this.decorateComponentsThroughDefinitionsCache();
 //		document.querySelector('#' + containerIdOrContainerNode).appendChild(mainComponent.view.getMasterNode());
 		return mainComponent;
@@ -478,6 +478,9 @@ IgnitionToExtensible.prototype.objectType = 'IgnitionToExtensible';
 
 /**
  * @constructor DelayedInit
+ * @param {String} containerId : A DOM selector, can be body or an id selector without the #
+ * @param {Component} component : the root component to be injected in the DOM
+ * @param {HierarchicalDefinition} componentListHostDef : an optional definition for a list of components to be instanciaded /!\ RESEVERD for the Dataset Type
  */
 var DelayedDecoration = function(containerId, component, componentListHostDef) {
 	

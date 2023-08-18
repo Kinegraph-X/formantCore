@@ -3,7 +3,7 @@
  */
 
 //var TypeManager = require('src/core/TypeManager');
-//var ElementFactory = require('src/UI/generics/GenericElementConstructor');
+//var ElementFactory = require('src/core/GenericElementConstructor');
 
 logLevelQuery = window.location.href.match(/(log_level=)(\d+)/); 					// Max log_level = 8 
 window.logLevel = Array.isArray(logLevelQuery) ? logLevelQuery[2] : undefined;

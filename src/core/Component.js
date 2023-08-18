@@ -127,7 +127,7 @@ HierarchicalObject.prototype.removeChild = function(childKey) {
 	if (this._children[childKey].view.getMasterNode())
 		this._children[childKey].view.getMasterNode().remove();
 	removedChild = this._children.splice(childKey, 1)[0];
-	this.onRemoveChild(removedChild);
+//	this.onRemoveChild(removedChild);
 	(childKey < this._children.length && this.generateKeys(childKey));
 	return removedChild;
 }
@@ -899,6 +899,7 @@ ComponentWithView.prototype.onRemoveChild = function(child) {
  * @param {number} atIndex
  */
 ComponentWithView.prototype.onAddChild = function(child, atIndex) {
+	
 	if (typeof atIndex !== 'undefined') {
 		if (child.view.parentView)		// try to respect an eventually specifically assigned parentView
 			child.view.parentView.addChildAt(child.view, atIndex);
