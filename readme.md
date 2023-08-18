@@ -7,7 +7,7 @@ Welcome to Formant – the JavaScript framework designed for instant display, an
 Advantages at a Glance
 ----------------------
 
-⚡ Speed: Fast rendering and responsiveness. Our first feedback were just : "Oh it's fast!".
+⚡ Speed: Fast rendering and responsiveness. Our first feedbacks were just : "Oh it's fast!".
 
 ⏩ Asynchronous DOM Rendering: The rendering embraces the browser's async capabilities. Smooth and efficient. No VDOM cumbersomness.
 
