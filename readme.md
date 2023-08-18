@@ -9,7 +9,7 @@ Advantages at a Glance
 
 ⚡ Speed: Fast rendering and responsiveness. Our first feedbacks were just : "Oh it's fast!".
 
-⏩ Asynchronous DOM Rendering: The rendering embraces the browser's async capabilities. Smooth and efficient. No VDOM cumbersomness.
+⏩ Batched DOM Rendering: The rendering embraces the browser's async capabilities. Smooth and efficient. No VDOM cumbersomness.
 
 📦 Clean Separation: Model, view, controller and styles, all separated, all Javascript – No separation of languages, but just organized coding. No HTML in the code of the controler, no variables spread all around the code of the view.
 
