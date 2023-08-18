@@ -1,5 +1,5 @@
 
-Formant: Fast & Efficient Frontend Framework
+Sonata: Fast & Efficient Frontend Framework (aka. Formant)
 ============================================
 
 Welcome to Formant – the JavaScript framework designed for instant display, and easy frontend development. We developed it to say goodbye to sluggish apps and tangled code. It's still experimental, but just give a try to the demos, you'll be surprised.
