@@ -19,7 +19,7 @@ if (typeof Object.getOwnPropertyDescriptor(String.prototype, 'escapeRegExp') ===
 	var Obj = require('src/extendedNative/object');
 	var Regex = require('src/extendedNative/regexp');
 }
-var Validate = require('src/UI/integrated_fork/Validate');
+var Validate = require('src/integrated_libs_&_forks/Validate');
 var Hamster = require('src/integrated_libs_&_forks/Hamster');
 //var MasterTimer = require('src/timers/MasterTimer');
 var NodeResizeObserver = require('src/core/ResizeObserver');
