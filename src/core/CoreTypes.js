@@ -16,7 +16,7 @@ var idGenerator = TypeManager.UIDGenerator;
 var nodesRegistry = TypeManager.nodesRegistry;
 var viewsRegistry = TypeManager.viewsRegistry;
 
-var JSkeyboardMap = require('src/events/JSkeyboardMap');
+var JSkeyboardMap = require('src/events/JSKeyboardMap');
 
 
 
