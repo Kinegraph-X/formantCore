@@ -1,3 +1,7 @@
+/*
+ * NOT USED ANYMORE: kept for archive purpose
+ */
+
 /**
  * @Singletons : Core factories
  */
@@ -285,7 +289,7 @@ var Factory = (function() {
 	
 	
 	/**
-	 * @param {string} moduleName
+	 * @param {Number} moduleKey
 	 */
 	CoreModule.prototype.removeModule = function(moduleKey) {
 		if (!this.modules.length)
@@ -300,7 +304,7 @@ var Factory = (function() {
 	}
 	
 	/**
-	 * @param {string} moduleName
+	 * @param {Number} idx
 	 */
 	CoreModule.prototype.getModule = function(idx) {
 		if (!this.modules.length)
