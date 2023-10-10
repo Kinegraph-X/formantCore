@@ -39,6 +39,13 @@ Try out our demos
 
 [MP4 Parser](http://mp4parser.kinegraphx.com)
 
+Other links
+-----------
+
+[Landing page Formant](http://kinegraphx.com/)
+
+[Portfolio E_B_U_n19](http://sylvainbreil.kinegraphx.com/)
+
 Get Started
 -----------
 
