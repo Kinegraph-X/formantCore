@@ -65,7 +65,8 @@ BlockLayoutAlgo.prototype.executeLayout = function() {
 	
 	this.parentLayoutAlgo.availableSpace.setLastInlineOffset(this.parentLayoutAlgo.availableSpace.getInlineOffset());
 	this.parentLayoutAlgo.availableSpace.setLastBlockOffset(this.parentLayoutAlgo.availableSpace.getBlockOffset());
-
+	
+//	console.log('blockLayoutAlgo execute Layout', this.layoutNode.nodeName, this.parentLayoutAlgo.availableSpace.getBlockOffset())
 	this.setSelfDimensions();
 	this.setAvailableSpace();
 	this.setSelfOffsets();
@@ -121,13 +122,19 @@ BlockLayoutAlgo.prototype.setBlockParentDimensions = function() {
 			this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
 		)
 	);
-//	console.log(this.parentLayoutAlgo.layoutNode.nodeName, this.parentDimensions.getOuterBlock());
+//	if (this.layoutNode.nodeName === 'li')
+//		console.log('li setBlockParentDimensions', this.parentLayoutAlgo.layoutNode.nodeName, this.parentDimensions.getOuterInline());
 	
 	this.parentLayoutAlgo.availableSpace.setLastInlineOffset(this.parentLayoutAlgo.availableSpace.getInlineOffset());
 	this.parentLayoutAlgo.availableSpace.setInlineOffset(this.parentLayoutAlgo.availableSpace.getInlineOffset() + this.dimensions.getOuterInline());
 	
 	this.parentLayoutAlgo.availableSpace.setLastBlockOffset(this.parentLayoutAlgo.availableSpace.getBlockOffset());
 	this.parentLayoutAlgo.availableSpace.setBlockOffset(this.parentLayoutAlgo.availableSpace.getBlockOffset() + this.dimensions.getOuterBlock());
+	
+//	if (this.isLastChild) {
+//		console.log('blockLayoutAlgo updateBlockParentDimensions', this.layoutNode.nodeName, this.layoutNode.textContent);
+//		this.layoutNode.climbChildrenLinkedListAndCallbackLayoutAlgo(null, 'handleEffectiveAlignItems');
+//	 }
 	
 	this.parentLayoutAlgo.updateParentDimensions();
 }
@@ -139,7 +146,6 @@ BlockLayoutAlgo.prototype.updateBlockParentDimensions = function() {
 			this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline() + this.cs.getParentPaddingInlineEnd() + this.cs.getParentBorderInlineEndWidth()
 		)
 	);
-//	console.log(this.dimensions.getOuterBlock());
 	this.parentDimensions.setFromBorderBlock(
 		Math.max(
 			this.parentLayoutAlgo.dimensions.getBorderBlock(),
@@ -147,6 +153,8 @@ BlockLayoutAlgo.prototype.updateBlockParentDimensions = function() {
 		)
 	);
 //	console.log(this.parentLayoutAlgo.layoutNode.nodeName, this.parentDimensions.getOuterBlock());
+
+//	console.log('blockLayoutAlgo updateBlockParentDimensions', this.layoutNode.nodeName, this.parentLayoutAlgo.layoutNode.nodeName, this.dimensions.getOuterBlock());
 	
 	this.parentLayoutAlgo.availableSpace.setInline(this.parentLayoutAlgo.dimensions.getBorderInline() - (this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline()) - this.cs.getParentPaddingInlineEnd() - this.cs.getParentBorderInlineEndWidth());
 	this.parentLayoutAlgo.availableSpace.setInlineOffset(this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline());
@@ -154,6 +162,7 @@ BlockLayoutAlgo.prototype.updateBlockParentDimensions = function() {
 	this.parentLayoutAlgo.availableSpace.setBlock(this.parentLayoutAlgo.dimensions.getBorderBlock() - (this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock()) - this.cs.getParentPaddingBlockEnd() - this.cs.getParentBorderBlockEndWidth());
 	this.parentLayoutAlgo.availableSpace.setBlockOffset(this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock());
 	
+//	console.log(this.parentLayoutAlgo.layoutNode.nodeName, this.parentLayoutAlgo.availableSpace.getBlockOffset());
 	this.parentLayoutAlgo.updateParentDimensions();
 }
 
@@ -171,15 +180,12 @@ BlockLayoutAlgo.prototype.updateInlineBlockParentDimensions = function() {
 		)
 	);
 	
+//	console.log('blockUpdateInlineBlockParentDimensions', this.layoutNode.nodeName, this.dimensions.getOuterBlock());
 	this.parentLayoutAlgo.availableSpace.setInlineOffset(this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline());
 	this.parentLayoutAlgo.availableSpace.setBlockOffset(this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock());
 	
 	this.parentLayoutAlgo.updateParentDimensions();
 }
-
-
-
-
 
 
 

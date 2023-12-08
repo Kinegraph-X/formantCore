@@ -82,7 +82,7 @@ var classConstructor = (function() {
 		// Mobile
 		if (/iPad/i.test(UA) || /iPhone/i.test(UA)) {
 			var webkit = /WebKit/i.test(UA);
-			if (iOS && webkit && !/CriOS/i.test(UA))
+			if (webkit && !/CriOS/i.test(UA))
 				return 'IOSsafari';
 		}
 		// Desktop

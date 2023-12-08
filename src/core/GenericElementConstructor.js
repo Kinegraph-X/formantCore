@@ -49,10 +49,8 @@ var customElems;
 		if (!customElements.get(nodeName)) {
 //			console.log('CustomElement ' + nodeName + ' shall be defined');
 			this.defineCustomElem(nodeName, states);
-			return document.createElement(nodeName);
 		}
-		else
-			return document.createElement(nodeName);
+		return document.createElement(nodeName);
 	}
 	
 	ElementFactory.prototype.defineCustomElem = function(nodeName, componentStates) {
@@ -99,7 +97,7 @@ var customElems;
 				if (this.streams[attrName] && this.streams[attrName].get() !== newVal)
 					this.streams[attrName].value = this.getTypedValue(newVal);
 					
-				//Hack hidden behavior not inherited by custom elements
+				//Hack hidden behavior not inherited by custom elements (may be related to the presence of an explicit "diplay" in the CSS)
 				if (attrName === 'hidden') {
 					if (this.getTypedValue(newVal) === true)
 						this.style.visibility = 'hidden';
@@ -129,31 +127,33 @@ var customElems;
 	}
 	
 	ElementFactory.prototype.propGetterSetter = function(prop) {
-			
+		// FIXME: Big code duplication. Multi-test the override of native DOM getter-setters, and refactor
 		var desc = (Object.getOwnPropertyDescriptor(this, prop) || Object.getPropertyDescriptor(this, prop));
-		if (typeof desc !== 'undefined' && desc.configurable && desc.get) {
-			desc.get = function() {
-					return this.hasAttribute(prop) ? (this.getTypedValue ? this.getTypedValue(this.getAttribute(prop)) : ElementFactory.prototype.getTypedValue.call(this, this.getAttribute(prop))) : null;
-				};
-			desc.set = function(value) {
-					// We're setting an attribute:  don't if the propName is camelCase 
-					// For litteral values, Updating the Stream is handled by onAttributeChangeCallback
-					if (prop !== 'content' && prop.toLowerCase() === prop && typeof value !== 'undefined' && typeof value !== 'object' && !Array.isArray(value)) {
-						if (this.streams[prop].value !== value && this.nodeName.indexOf('-') === -1) {
-							// special case for non-custom elements : attributeChange doesn't trigger the stream update
-							this.streams[prop].value = value;
+		if (typeof desc !== 'undefined') {
+			if (desc.configurable && desc.get) {
+				desc.get = function() {
+						return this.hasAttribute(prop) ? (this.getTypedValue ? this.getTypedValue(this.getAttribute(prop)) : ElementFactory.prototype.getTypedValue.call(this, this.getAttribute(prop))) : null;
+					};
+				desc.set = function(value) {
+						// We're setting an attribute:  don't if the propName is camelCase 
+						// For litteral values, Updating the Stream is handled by onAttributeChangeCallback
+						if (prop !== 'content' && prop.toLowerCase() === prop && typeof value !== 'undefined' && typeof value !== 'object' && !Array.isArray(value)) {
+							if (this.streams[prop].value !== value && this.nodeName.indexOf('-') === -1) {
+								// special case for non-custom elements : attributeChange doesn't trigger the stream update
+								this.streams[prop].value = value;
+							}
+							// case of double update on the attr can't be avoided when :
+							// 		- we're reflecting the attr on the prop through the stream (marginal case of someone absolutely wanting to mutate the obj targetting the attr)
+							// the stream won't update twice though : forward is set to false
+							this.setAttribute(prop, value);
 						}
-						// case of double update on the attr can't be avoided when :
-						// 		- we're reflecting the attr on the prop through the stream (marginal case of someone absolutely wanting to mutate the obj targetting the attr)
-						// the stream won't update twice though : forward is set to false
-						this.setAttribute(prop, value);
-					}
-					else {
-						if (this.streams[prop].value !== value)
-							this.streams[prop].value = value;
-						((value === null || value === undefined) && this.removeAttribute(prop));
-					}
-				};
+						else {
+							if (this.streams[prop].value !== value)
+								this.streams[prop].value = value;
+							((value === null || value === undefined) && this.removeAttribute(prop));
+						}
+					};
+			}
 		}
 		else {
 			Object.defineProperty(this, prop, {

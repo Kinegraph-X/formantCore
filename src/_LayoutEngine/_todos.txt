@@ -1,0 +1,2 @@
+- getInlineOffsetforAutoMargins() in getSelfOffsets() won't work : it is contradictory with the setInlineOffset() in the OffsetBufferGetSet Class
+- instanciating child-views in layout tree prepare doesn't work when there are nos subSections

@@ -212,7 +212,6 @@ FlexContext.prototype.objectType = 'FlexContext';
 
 
 
-console.log(layoutAvailableSpaceBuffer);
 
 
 

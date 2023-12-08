@@ -828,17 +828,17 @@ LazyResettableColdStream.prototype.update = function() {
 }
 
 LazyResettableColdStream.prototype.lazyUpdate = function() {
-	if (typeof this.transform === 'function') {
-		try {
-			// try/catch as the transform function is likely to always be outside of our scope
-			this._value = this.transform(this._value);
-			this._previousValues.splice(this._previousValues.length - 1, 1, this._value);
-		}
-		catch(e) {
-			console.log('Exception thrown while the transform function was executing on self data: ', e, this._value);
-			return;
-		}
-	}
+//	if (typeof this.transform === 'function') {
+//		try {
+//			// try/catch as the transform function is likely to always be outside of our scope
+//			this._value = this.transform(this._value);
+//			this._previousValues.splice(this._previousValues.length - 1, 1, this._value);
+//		}
+//		catch(e) {
+//			console.log('Exception thrown while the transform function was executing on self data: ', e, this._value);
+//			return;
+//		}
+//	}
 	this.update();
 	this.dirty = false;
 }
@@ -1753,13 +1753,14 @@ DOMViewAPI.prototype.show = function() {
  */
 var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	var def = definition.getHostDef() || definition;
-//	console.log(def);
+//	if (definition.getHostDef() && definition.getHostDef().nodeName === 'smart-select')
+//		console.log(def);
 	this._defUID = def.UID;
 	this.isCustomElem = def.isCustomElem;
 	this._sWrapperUID = def.sWrapper ? def.sWrapper.getName() : null;
 	// TODO: styleHook.s refers to the AbstractStylesheet => change that, it's not at all explicit
 	this.styleHook;
-//	console.log(def.sOverride);
+//	console.log(def);
 	this.sOverride = def.sOverride;
 	
 	this.objectType = 'ComponentView';
@@ -1790,8 +1791,8 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 //		}
 		this.styleHook = new SWrapperInViewManipulator(this);
 		
-		if (definition.getHostDef() && definition.getHostDef().type === 'Fieldset')
-			console.log(definition);
+//		if (definition.getHostDef() && definition.getHostDef().type === 'Fieldset')
+//			console.log(definition);
 		this.subViewsHolder;
 		if ((definition.subSections.length && definition.subSections[0] !== null) || definition.members.length) {
 			this.subViewsHolder = new ComponentSubViewsHolder(definition, this);

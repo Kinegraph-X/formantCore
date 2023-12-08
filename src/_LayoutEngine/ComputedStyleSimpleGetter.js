@@ -24,10 +24,10 @@ ComputedStyleSimpleGetter.prototype.objectType = 'ComputedStyleSimpleGetter';
  */
 ComputedStyleSimpleGetter.prototype.getPaddingFunctions = function(layoutAlgo) {
 	
-	var parentPaddingBlockStart = layoutAlgo.layoutNode._parent.computedStyle.bufferedValueToNumber(CSSProps.paddingBlockStart.prototype.propName);
-	var parentPaddingInlineEnd = layoutAlgo.layoutNode._parent.computedStyle.bufferedValueToNumber(CSSProps.paddingInlineEnd.prototype.propName);
-	var parentPaddingBlockEnd = layoutAlgo.layoutNode._parent.computedStyle.bufferedValueToNumber(CSSProps.paddingBlockEnd.prototype.propName);
-	var parentPaddingInlineStart = layoutAlgo.layoutNode._parent.computedStyle.bufferedValueToNumber(CSSProps.paddingInlineStart.prototype.propName);
+	var parentPaddingBlockStart = layoutAlgo.layoutNode._parent.computedStyle.fastBufferedValueToNumber(CSSProps.paddingBlockStart.prototype.propName);
+	var parentPaddingInlineEnd = layoutAlgo.layoutNode._parent.computedStyle.fastBufferedValueToNumber(CSSProps.paddingInlineEnd.prototype.propName);
+	var parentPaddingBlockEnd = layoutAlgo.layoutNode._parent.computedStyle.fastBufferedValueToNumber(CSSProps.paddingBlockEnd.prototype.propName);
+	var parentPaddingInlineStart = layoutAlgo.layoutNode._parent.computedStyle.fastBufferedValueToNumber(CSSProps.paddingInlineStart.prototype.propName);
 	
 	var parentSummedInlinePaddings = parentPaddingInlineStart + parentPaddingInlineEnd;
 	var parentSummedBlockPaddings = parentPaddingBlockStart + parentPaddingBlockEnd;
@@ -63,10 +63,10 @@ ComputedStyleSimpleGetter.prototype.getPaddingFunctions = function(layoutAlgo) {
  */
 ComputedStyleSimpleGetter.prototype.getBorderFunctions = function(layoutAlgo) {
 	
-	var parentBorderBlockStartWidth = layoutAlgo.layoutNode._parent.computedStyle.bufferedValueToNumber(CSSProps.borderBlockStartWidth.prototype.propName);
-	var parentBorderInlineEndWidth = layoutAlgo.layoutNode._parent.computedStyle.bufferedValueToNumber(CSSProps.borderInlineEndWidth.prototype.propName);
-	var parentBorderBlockEndWidth = layoutAlgo.layoutNode._parent.computedStyle.bufferedValueToNumber(CSSProps.borderBlockEndWidth.prototype.propName);
-	var parentBorderInlineStartWidth = layoutAlgo.layoutNode._parent.computedStyle.bufferedValueToNumber(CSSProps.borderInlineStartWidth.prototype.propName);
+	var parentBorderBlockStartWidth = layoutAlgo.layoutNode._parent.computedStyle.fastBufferedValueToNumber(CSSProps.borderBlockStartWidth.prototype.propName);
+	var parentBorderInlineEndWidth = layoutAlgo.layoutNode._parent.computedStyle.fastBufferedValueToNumber(CSSProps.borderInlineEndWidth.prototype.propName);
+	var parentBorderBlockEndWidth = layoutAlgo.layoutNode._parent.computedStyle.fastBufferedValueToNumber(CSSProps.borderBlockEndWidth.prototype.propName);
+	var parentBorderInlineStartWidth = layoutAlgo.layoutNode._parent.computedStyle.fastBufferedValueToNumber(CSSProps.borderInlineStartWidth.prototype.propName);
 	
 	var parentSummedInlineBorders = parentBorderInlineStartWidth + parentBorderInlineEndWidth;
 	var parentSummedBlockBorders = parentBorderBlockStartWidth + parentBorderBlockEndWidth;
@@ -103,9 +103,9 @@ ComputedStyleSimpleGetter.prototype.getBorderFunctions = function(layoutAlgo) {
  * @method getFontFunctions
  */
 ComputedStyleSimpleGetter.prototype.getFontFunctions = function(layoutAlgo) {
-	var fontSize = layoutAlgo.layoutNode.computedStyle.bufferedValueToNumber(CSSProps.fontSize.prototype.propName);
+	var fontSize = layoutAlgo.layoutNode.computedStyle.fastBufferedValueToNumber(CSSProps.fontSize.prototype.propName);
 	var fontFamily = layoutAlgo.layoutNode.computedStyle.bufferedValueToString(CSSProps.fontFamily.prototype.propName);
-	var lineHeight = layoutAlgo.layoutNode.computedStyle.bufferedValueToNumber(CSSProps.lineHeight.prototype.propName);
+	var lineHeight = layoutAlgo.layoutNode.computedStyle.fastBufferedValueToNumber(CSSProps.lineHeight.prototype.propName);
 	
 	// Single Values
 	this.getFontSize = function() {

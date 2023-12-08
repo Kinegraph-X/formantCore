@@ -28,8 +28,8 @@ var BaseLayoutAlgo = function(layoutNode) {
 	this.layoutNode = layoutNode;
 	
 	this.flexCtx = new LayoutTypes.FlexContext();
-	this.textSizeHackFactor = 1.021;
-	this.wordListCache = [];
+	this.textSizeHackFactor = 1.121; // 1.181;
+ 	this.wordListCache = [];
 }
 
 BaseLayoutAlgo.prototype = {};
@@ -53,6 +53,8 @@ BaseLayoutAlgo.prototype.setFlexCtx = function(layoutAlgo, parentCtxUID) {
 		this.isIndirectFlexChild = false;
 		this.flexCtx = layoutAlgo.layoutNode._parent.layoutAlgo.flexCtx;
 	}
+	
+//	console.log(layoutAlgo.layoutNode.nodeName, layoutAlgo.layoutNode._UID, this.isIndirectFlexChild, this.flexCtx._UID);
 		
 	if (layoutAlgo.algoName === this.layoutAlgosAsConstants.flex) {
 		var parentFlexContext = this.layoutNode._parent.layoutAlgo.flexCtx._UID ? this.layoutNode._parent.layoutAlgo.flexCtx : null;
@@ -69,7 +71,11 @@ BaseLayoutAlgo.prototype.setFlexCtx = function(layoutAlgo, parentCtxUID) {
 		// TODO: reset all layoutCallbacksRegistry when no parent flexCtx
 	}
 	
-	if (this.isIndirectFlexChild) {
+	// We even push the flex-end nodes, as we need them to recursively call
+	// the horizontal traversal and on-children propagation
+	// when a parent node's position changes
+	//  && this.layoutNode.objectType !== this.layoutNodesAsConstants.FlexEndLayoutNode
+	if (this.isIndirectFlexChild && this.layoutNode.objectType !== this.layoutNodesAsConstants.FlexEndLayoutNode) {
 		var layoutCallbackRegisryItem;
 		if (this.algoName === this.layoutAlgosAsConstants.flex) {
 			// CAUTION: Here is flexCtx._parent._UID assigned: only case where is indirect flexChild but is flexContext-host
@@ -77,7 +83,10 @@ BaseLayoutAlgo.prototype.setFlexCtx = function(layoutAlgo, parentCtxUID) {
 		}
 		else
 			layoutCallbackRegisryItem = TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID);
+			
+//		console.log(layoutAlgo.layoutNode.nodeName, layoutAlgo.layoutNode._UID, this.flexCtx._UID);
 		layoutCallbackRegisryItem.subLevels.push(this.layoutNode);
+//		console.log(layoutCallbackRegisryItem.subLevels);
 	}
 	
 	if (typeof parentCtxUID !== 'undefined' && parentCtxUID !== this.flexCtx._UID) {
@@ -92,6 +101,12 @@ BaseLayoutAlgo.prototype.setAvailableSpace = function() {
 	this.availableSpace.setBlock(this.dimensions.getBlock() - this.getSummedBlockPaddings());
 	this.availableSpace.setInlineOffset(this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth());
 	this.availableSpace.setBlockOffset(this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth());
+	this.availableSpace.setFlexEndInlineOffset(this.dimensions.getBorderInline() - (this.cs.getPaddingInlineStart() + this.cs.getBorderInlineEndWidth()));
+	this.availableSpace.setFlexEndBlockOffset(this.dimensions.getBorderBlock() - (this.cs.getPaddingBlockStart() + this.cs.getBorderBlockEndWidth()));
+	this.availableSpace.setLastInlineOffset(this.availableSpace.getInlineOffset());
+	this.availableSpace.setLastBlockOffset(this.availableSpace.getBlockOffset());
+	this.availableSpace.setFlexEndLastInlineOffset(this.availableSpace.getFlexEndInlineOffset());
+	this.availableSpace.setFlexEndLastBlockOffset(this.availableSpace.getFlexEndBlockOffset());
 }
 
 BaseLayoutAlgo.prototype.resetAvailableSpace = function() {
@@ -102,11 +117,17 @@ BaseLayoutAlgo.prototype.resetAvailableSpace = function() {
 BaseLayoutAlgo.prototype.resetInlineAvailableSpace = function() {
 	this.availableSpace.setInline(this.dimensions.getInline() - this.getSummedInlinePaddings());
 	this.availableSpace.setInlineOffset(this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth());
+	this.availableSpace.setLastInlineOffset(this.availableSpace.getInlineOffset());
+	this.availableSpace.setFlexEndInlineOffset(this.dimensions.getBorderInline() - (this.cs.getPaddingInlineStart() + this.cs.getBorderInlineEndWidth()));
+	this.availableSpace.setFlexEndLastInlineOffset(this.availableSpace.getFlexEndInlineOffset());
 }
 
 BaseLayoutAlgo.prototype.resetBlockAvailableSpace = function() {
 	this.availableSpace.setBlock(this.dimensions.getBlock() - this.getSummedBlockPaddings());
 	this.availableSpace.setBlockOffset(this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth());
+	this.availableSpace.setLastBlockOffset(this.availableSpace.getBlockOffset());
+	this.availableSpace.setFlexEndBlockOffset(this.dimensions.getBorderBlock() - (this.cs.getPaddingBlockStart() + this.cs.getBorderBlockEndWidth()));
+	this.availableSpace.setFlexEndLastBlockOffset(this.availableSpace.getFlexEndBlockOffset());
 }
 
 
@@ -131,20 +152,52 @@ BaseLayoutAlgo.prototype.resetAvailableSpaceLastOffsets = function() {
 	this.availableSpace.setLastBlockOffset(this.availableSpace.getBlockOffset());
 }
 
+BaseLayoutAlgo.prototype.resetAvailableSpaceOffsets = function() {
+	this.availableSpace.setInlineOffset(this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth());
+	this.availableSpace.setLastInlineOffset(this.availableSpace.getInlineOffset());
+	this.availableSpace.setFlexEndInlineOffset(this.dimensions.getBorderInline() - (this.cs.getPaddingInlineStart() + this.cs.getBorderInlineEndWidth()));
+	this.availableSpace.setFlexEndLastInlineOffset(this.availableSpace.getFlexEndInlineOffset());
+	this.availableSpace.setBlockOffset(this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth());
+	this.availableSpace.setLastBlockOffset(this.availableSpace.getBlockOffset());
+	this.availableSpace.setFlexEndBlockOffset(this.dimensions.getBorderBlock() - (this.cs.getPaddingBlockStart() + this.cs.getBorderBlockEndWidth()));
+	this.availableSpace.setFlexEndLastBlockOffset(this.availableSpace.getFlexEndBlockOffset());
+	
+	this.resetAvailableSpaceLastOffsets();
+}
+
 BaseLayoutAlgo.prototype.setAvailableSpaceOffsets = function(inlineOffset, blockOffset) {
 	this.availableSpace.setInlineOffset(inlineOffset);
+//	this.availableSpace.setLastInlineOffset(inlineOffset);
 	this.availableSpace.setBlockOffset(blockOffset);
+//	this.availableSpace.setLastBlockOffset(blockOffset);
+	// We don't set flexEnd offsets here, as it seems unreliable
 	this.availableSpace.setLastInlineOffset(inlineOffset);
 	this.availableSpace.setLastBlockOffset(blockOffset);
 }
 
-BaseLayoutAlgo.prototype.resetInlineAvailableSpaceOffset = function(value) {
+BaseLayoutAlgo.prototype.setInlineAvailableSpaceOffset = function(value) {
+	this.availableSpace.setInlineOffset(value);
+//	this.availableSpace.setLastInlineOffset(value);
+	// We don't set flexEnd offsets here, as it seems unreliable
+	this.availableSpace.setLastInlineOffset(value);
+}
+
+BaseLayoutAlgo.prototype.setBlockAvailableSpaceOffset = function(value) {
+	this.availableSpace.setBlockOffset(value);
+//	this.availableSpace.setLastBlockOffset(value);
+	// We don't set flexEnd offsets here, as it seems unreliable
+	this.availableSpace.setLastBlockOffset(value);
+}
+
+BaseLayoutAlgo.prototype.resetInlineAvailableSpaceOffset = function() {
 	this.availableSpace.setInlineOffset(this.cs.getPaddingInlineStart() + this.cs.getBorderInlineStartWidth());
+	this.availableSpace.setFlexEndInlineOffset(this.dimensions.getBorderInline() - (this.cs.getPaddingInlineStart() + this.cs.getBorderInlineEndWidth()));
 	this.availableSpace.setLastInlineOffset(this.availableSpace.getInlineOffset());
 }
 
-BaseLayoutAlgo.prototype.resetBlockAvailableSpaceOffset = function(value) {
+BaseLayoutAlgo.prototype.resetBlockAvailableSpaceOffset = function() {
 	this.availableSpace.setBlockOffset(this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth());
+	this.availableSpace.setFlexEndBlockOffset(this.dimensions.getBorderBlock() - (this.cs.getPaddingBlockStart() + this.cs.getBorderBlockEndWidth()));
 	this.availableSpace.setLastBlockOffset(this.availableSpace.getBlockOffset());
 }
 
@@ -156,19 +209,17 @@ BaseLayoutAlgo.prototype.resetBlockAvailableSpaceTempOffset = function() {
 	this.availableSpace.setTempBlockOffset(this.cs.getPaddingBlockStart() + this.cs.getBorderBlockStartWidth());
 }
 
-BaseLayoutAlgo.prototype.setBlockAvailableSpace = function(amountToSubstract) {}
+BaseLayoutAlgo.prototype.setOffsets = function() {console.warn(virtualFunctionCall, 'setOffsets')}						// virtual
 
-BaseLayoutAlgo.prototype.setOffsets = function() {}							// virtual
+BaseLayoutAlgo.prototype.getDimensions = function() {console.warn(virtualFunctionCall, 'getDimensions')}				// virtual
 
-BaseLayoutAlgo.prototype.getDimensions = function() {}						// virtual
+BaseLayoutAlgo.prototype.setSelfDimensions = function() {console.warn(virtualFunctionCall, 'setSelfDimensions')}		// virtual
 
-BaseLayoutAlgo.prototype.setSelfDimensions = function(dimensions) {}		// virtual
+BaseLayoutAlgo.prototype.updateParentAvailableSpace = function() {console.warn(virtualFunctionCall, 'updateParentAvailableSpace')}	// virtual
 
-BaseLayoutAlgo.prototype.updateParentAvailableSpace = function(dimensions) {}	// virtual
+BaseLayoutAlgo.prototype.setParentDimensions = function() {console.warn(virtualFunctionCall, 'setParentDimensions')}	// virtual
 
-BaseLayoutAlgo.prototype.setParentDimensions = function(dimensions) {}		// virtual
-
-BaseLayoutAlgo.prototype.updateParentDimensions = function(dimensions) {}	// virtual
+BaseLayoutAlgo.prototype.updateParentDimensions = function() {console.warn(virtualFunctionCall, 'updateParentDimensions (no problem if seen only once, root node has no parent)')}	// virtual
 
 BaseLayoutAlgo.prototype.getHasExplicitWidth = function() {
 	return !this.cs.getWidthIsInitialValue();
@@ -315,24 +366,30 @@ BaseLayoutAlgo.prototype.getTextWidthCustom = function(textContent) {
  * @param {String} textContent
  */
 BaseLayoutAlgo.prototype.getBoundOfTextLine = function(textContent, maxWidth) {
+//	console.error(maxWidth);
 	var fontSizeBuffer = TypeManager.fontSizeBuffersCache.cache[this.cs.getFontSize() + 'px ' + this.cs.getFontFamily()];
+	var widthOfSpace = fontSizeBuffer.getWidthOfSpace();
 	var wordSize = 0, totalSize = 0, returnedSize = 0, i = 0;
 	
 	var words = textContent.split(' ');
-//	console.log(words, maxWidth);
 	wordListCache.length = 0;
 	
 	while (i < words.length) {
 		wordSize = fontSizeBuffer.getWidthOfWord(words[i]);
-		totalSize += i !== words.length - 1 ? fontSizeBuffer.getWidthOfSpace() + wordSize : wordSize
-		if (totalSize > maxWidth)
+		totalSize += i !== words.length - 1 ? wordSize + widthOfSpace : wordSize
+		if (totalSize - widthOfSpace > maxWidth) {
+			// The first word is bigger than the available space => allow overflow
+			if (i === 0)
+				wordListCache.push(words[i]);
+			returnedSize -= widthOfSpace;
 			break;
+		}
 		wordListCache.push(words[i]);
 		returnedSize = totalSize;
-//		console.log(wordList);
 		i++;
 	}
 	
+//	console.log(wordListCache.join(' '), returnedSize)
 	return [wordListCache.join(' '), returnedSize];
 }
 
@@ -352,18 +409,30 @@ BaseLayoutAlgo.prototype.max = function(value1, value2) {
 	return bufferForFastMax.getInt32(+(value1 > value2) * 4);
 }
 
+BaseLayoutAlgo.prototype.layoutNodesAsConstants = {
+	LayoutNode : 'LayoutNode',
+	LinkedLayoutNode : 'LinkedLayoutNode',
+	FlexEndLayoutNode : 'FlexEndLayoutNode',
+	TextNode : 'TextNode',
+	SubTextNode : 'SubTextNode',
+	LayoutRoot : 'LayoutRoot'
+}
+
 BaseLayoutAlgo.prototype.layoutAlgosAsConstants = {
 	inline : 'inline',
 	block : 'block',
 	inlineBlock : 'inline-block',
 	flex : 'flex',
 	text : 'text',
+	subText : 'subText',
 	none : 'none'
 }
 
 BaseLayoutAlgo.prototype.flexDirectionsAsConstants = {
 	row : 'row',
-	column : 'column'
+	rowReverse : 'row-reverse',
+	column : 'column',
+	columnReverse : 'column-reverse'
 }
 
 BaseLayoutAlgo.prototype.boxModelValuesAsConstants = {
@@ -404,8 +473,17 @@ BaseLayoutAlgo.prototype.localDebugLog = function() {
 //	console.log.apply(null, args);
 }
 
+const virtualFunctionCall = 'Virtual function call :';
 
-
+/**
+ * noOp is a virtual function to be called on non-flex cases,
+ * to avoid branching during the layout :
+ * => we shall always call the layout methods for cases with 
+ * 	the presence of a specific flex property, which in turn
+ * 	shall only call noOp is that property isn't present on the CS
+ * (and therefore, tu special method hasn't been aliased in the ctor)
+ */
+const  noOp = function() {}
 
 
 

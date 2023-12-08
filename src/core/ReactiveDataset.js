@@ -150,10 +150,20 @@ Object.defineProperty(RecitalDataset.prototype, 'getDatasetState', {
 
 Object.defineProperty(RecitalDataset.prototype, 'push',  {
 	value : function(item) {
-		var lastIndex = this.trackedComponent._children.length;
+		var souldForceEventSubscriptions = false,
+			lastIndex = this.trackedComponent._children.length;
+		// There is a case where we add children -before- the appIgnition has been done
+		// so the trackedCompenent, already has children, and shall already have subscribed to its children,
+		// so handling event subs on children shall subscribe a seconde time starting at child index 0
+		// => test if the tracked component has a master node, and only force subscriptions if it has been rendered
+		if (this.trackedComponent.view.getMasterNode())
+			souldForceEventSubscriptions = true;
+			
 		this.defaultListDef.host.each = [item];
 		new App.List(this.defaultListDef, this.trackedComponent);
-		this.trackedComponent.handleEventSubsOnChildrenAt(TypeManager.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
+		
+		if (souldForceEventSubscriptions)
+			this.trackedComponent.handleEventSubsOnChildrenAt(TypeManager.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
 // this.trackedComponent.addModules(this.defaultListDef,
 // this.trackedComponent._children.length);
 		Array.prototype.push.call(this, item);
@@ -165,10 +175,21 @@ Object.defineProperty(RecitalDataset.prototype, 'pushApply',  {
 	value : function(itemArray) {
 		if (!itemArray.length)
 			return;
-		var lastIndex = this.trackedComponent._children.length;
+			
+		var souldForceEventSubscriptions = false,
+			lastIndex = this.trackedComponent._children.length;
+		// There is a case where we add children -before- the appIgnition has been done
+		// so the trackedCompenent, already has children, and shall already have subscribed to its children,
+		// so handling event subs on children shall subscribe a seconde time starting at child index 0
+		// => test if the tracked component has a master node, and only force subscriptions if it has been rendered
+		if (this.trackedComponent.view.getMasterNode())
+			souldForceEventSubscriptions = true;
+			
 		this.defaultListDef.host.each = itemArray;
 		new App.List(this.defaultListDef, this.trackedComponent);
-		this.trackedComponent.handleEventSubsOnChildrenAt(TypeManager.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
+		
+		if (souldForceEventSubscriptions)
+			this.trackedComponent.handleEventSubsOnChildrenAt(TypeManager.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
 // this.trackedComponent.addModules(this.defaultListDef,
 // this.trackedComponent._children.length);
 		Array.prototype.push.apply(this, itemArray);

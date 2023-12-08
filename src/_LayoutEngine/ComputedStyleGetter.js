@@ -148,6 +148,11 @@ ComputedStyleGetter.prototype.getBorderFunctions = function(layoutAlgo) {
 	var summedInlineBorders = borderInlineStartWidth + borderInlineEndWidth;
 	var summedBlockBorders = borderBlockStartWidth + borderBlockEndWidth;
 	
+	var borderStartStartRadius = layoutAlgo.layoutNode.computedStyle.fastBufferedValueToNumber(CSSProps.borderStartStartRadius.prototype.propName);
+	var borderEndStartRadius = layoutAlgo.layoutNode.computedStyle.fastBufferedValueToNumber(CSSProps.borderEndStartRadius.prototype.propName);
+	var borderEndEndRadius = layoutAlgo.layoutNode.computedStyle.fastBufferedValueToNumber(CSSProps.borderEndEndRadius.prototype.propName);
+	var borderStartEndRadius = layoutAlgo.layoutNode.computedStyle.fastBufferedValueToNumber(CSSProps.borderStartEndRadius.prototype.propName);
+	
 	// Single Values
 	this.getBorderBlockStartWidth = function() {
 		return borderBlockStartWidth;
@@ -171,6 +176,11 @@ ComputedStyleGetter.prototype.getBorderFunctions = function(layoutAlgo) {
 	}
 	this.getSummedBlockBorders = function() {
 		return summedBlockBorders;
+	}
+	
+	// HACK for border-radius
+	this.getBorderRadius = function() {
+		return borderStartStartRadius;
 	}
 	
 	// PARENT VALUES

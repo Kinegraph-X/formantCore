@@ -348,7 +348,7 @@ coreComponents.CompoundComponentWithHooks = CompoundComponentWithHooks;
  * @constructor CompoundComponentWithReactiveText
  */
 var CompoundComponentWithReactiveText = function(definition, parentView, parent, isChildOfRoot) {
-	console.log(this);
+//	console.log(this);
 	CompoundComponent.call(this, definition, parentView, parent, isChildOfRoot);
 	this.objectType = 'CompoundComponentWithReactiveText';
 //	console.log(this);
@@ -584,7 +584,10 @@ var createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
 var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilterFunction) {
 	//	console.log(definition, parentView, parent, jsonData);
 	var stdDefinition = createAbstractTreeDef();
-
+	// HACK: no solution for now to override the default def : there is no createDefaultDef method on a compound component
+	if  (definition.getGroupHostDef().sOverride)
+		stdDefinition.getGroupHostDef().sOverride = definition.getGroupHostDef().sOverride;
+	
 	/**
 	 * Standard Implementation :
 	 * (this requirements may be overridden through extension. see affectClickEvents())
@@ -597,7 +600,7 @@ var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilter
 	this.listTemplate = TypeManager.createComponentDef({ type: 'ComponentList' });
 	this.listTemplate.getHostDef().each = this.pseudoModel;
 
-	this.expanded = 'expanded';
+	this.expanded = this.expanded || 'expanded';
 
 	CompoundComponent.call(this, stdDefinition, parentView, parent);
 	this.objectType = 'AbstractTree';
@@ -607,20 +610,22 @@ var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilter
 		this.streams.selected.value = e.data.self_UID;
 	}.bind(this));
 	this.createEvent('exportdata');
-
+	
 	if (jsonData && Object.prototype.toString.call(jsonData) === '[object Object]')
 		this.renderJSON(jsonData, nodeFilterFunction);
 }
-AbstractTree.prototype = Object.create(CompoundComponent.prototype);
+AbstractTree.prototype = Object.create(CompoundComponentWithHooks.prototype);
 AbstractTree.prototype.objectType = 'AbstractTree';
 coreComponents.AbstractTree = AbstractTree;
 
 AbstractTree.prototype.createMember = function(memberSpec, parent) {
 	var type = memberSpec.type, componentDef, component;
+//	console.log(memberSpec);
 	//	console.log(memberSpec);
 	if (memberSpec.children.length) {
+		// When a def isn't already cached, isKnownUID() returns a string : the definitionsCache creates an emty entry and returns the newly added cacheID
 		if (typeof (componentDef = TypeManager.definitionsCache.isKnownUID('branchTemplate_' + type)) === 'string') {
-			componentDef = TypeManager.createComponentDef(this.branchTemplate, 'branchTemplate_' + type);
+			componentDef = TypeManager.createComponentDef(this.branchTemplate);
 			//			componentDef.getGroupHostDef().attributes.push(TypeManager.PropsFactory({textContent : this.getHeaderTitle(type)}));
 		}
 
@@ -795,7 +800,7 @@ AbstractTree.prototype.affectClickEvents_Base = function(memberDesc, component) 
 		component.registerClickEvents = function() {
 			if (!component._eventHandlers.clicked_ok)
 				component.createEvent('clicked_ok');
-
+			
 			Object.getPrototypeOf(this).registerClickEvents.call(this);
 
 			// Say we have 2 divs with key : value

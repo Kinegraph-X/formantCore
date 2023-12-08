@@ -22,7 +22,7 @@ var LayoutAvailableSpaceBuffer = function() {
 }
 LayoutAvailableSpaceBuffer.prototype = Object.create(ExtensibleInt32Buffer.prototype)
 LayoutAvailableSpaceBuffer.prototype.objectType = 'LayoutAvailableSpaceBuffer';
-LayoutAvailableSpaceBuffer.prototype.bufferValuesCount = 11;
+LayoutAvailableSpaceBuffer.prototype.bufferValuesCount = 15;
 
 
 

@@ -161,6 +161,8 @@ ExtensibleInt32Buffer.prototype.getValueAtPos = function(UID, atPos) {
  * @param value {Number}
  */
 ExtensibleInt32Buffer.prototype.setValueAtPos = function(UID, atPos, value) {
+//	if (UID === '7' && atPos === 2)
+//		console.error(value);
 	UID = parseInt(UID);
 	var pos = this.getPosForItem(UID) + atPos * this.valueSize;
 	this._buffer.setInt32(pos, value, true);

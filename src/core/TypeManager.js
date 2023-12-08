@@ -333,7 +333,6 @@ exportedObjects.EventSubscriptionModel = EventSubscriptionModel;
 Object.defineProperty(EventSubscriptionModel.prototype, 'objectType', {value : 'EventSubscription'});
 Object.defineProperty(EventSubscriptionModel.prototype, 'subscribeToEvent', {
 	value : function(targetComponent, requestingComponent) {
-//		console.log(targetComponent._key, this.on, targetComponent, requestingComponent);
 		targetComponent.addEventListener(this.on, this.subscribe.bind(requestingComponent));
 }});
 
@@ -950,12 +949,13 @@ var layoutCallbacksRegistry = new PropertyCache('layoutCallbacksRegistry');
  */
 var fontSizeBuffersCache = new PropertyCache('fontSizeBuffersCache');
 
+//console.log(exportedObjects.definitionsCache);
 
-console.log(hostsDefinitionsCacheRegistry);
-console.log(listsDefinitionsCacheRegistry);
+//console.log(hostsDefinitionsCacheRegistry);
+//console.log(listsDefinitionsCacheRegistry);
 //console.log(naiveDOMRegistry);
-console.log(masterStyleRegistry);
-console.log(rasterShapesRegistry);
+//console.log(masterStyleRegistry);
+//console.log(rasterShapesRegistry);
 //console.log(permanentProvidersRegistry);
 
 //console.log(viewsRegistry);
@@ -1026,10 +1026,11 @@ Object.assign(exportedObjects, {
 	setAcceptsProp : setAcceptsProp,
 	UIDGenerator : UIDGenerator.UIDGenerator,
 	StyleUIDGenerator : UIDGenerator.StyleUIDGenerator,
-	DefUIDGenerator : UIDGenerator.DefUIDGenerator
+	DefUIDGenerator : UIDGenerator.DefUIDGenerator,
+//	debugFlexCtx : {}
 });
 
-console.log(exportedObjects.definitionsCache);
+
 
 module.exports = exportedObjects;
 

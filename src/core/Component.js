@@ -110,6 +110,9 @@ HierarchicalObject.prototype.addChild = HierarchicalObject.prototype.pushChild;
  * @param {number} atIndex : the required index to splice at
  */
 HierarchicalObject.prototype.addChildAt = function(child, atIndex) {
+	if (atIndex >= this._children.length)
+		return;
+		
 	child._parent = this;
 	child._key = atIndex;
 	this._children.splice(atIndex, 0, child);
@@ -121,6 +124,9 @@ HierarchicalObject.prototype.addChildAt = function(child, atIndex) {
  * @param {string} moduleName
  */
 HierarchicalObject.prototype.removeChild = function(childKey) {
+	if (childKey >= this._children.length)
+		return;
+		
 	var removedChild;
 
 	this._children[childKey].isAttached = false;
@@ -136,6 +142,8 @@ HierarchicalObject.prototype.removeChild = function(childKey) {
  * @param {number} atIndex : the required index to clear at
  */
 HierarchicalObject.prototype.removeChildAt = function(atIndex) {
+	if (atIndex >= this._children.length)
+		return;
 	var removedChild = this._children.splice(atIndex, 1);
 	this.generateKeys(atIndex);
 	this.onRemoveChild(removedChild[0]);
@@ -642,6 +650,14 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 		// => Is it really the right way to do it ?
 		if (hostDef.sWrapper === null)
 			hostDef.sWrapper = defaultHostDef.sWrapper;
+		// Overrides should not be defined in the  defaultDef:
+		// but we met a case were we were wrongly defining it there,
+		// and that showed us that users may want to do that and expect it to work
+		// => so it's a worst case situation: the default override won't work 
+		// if there's an explicit override. But users should understand
+		// that we won't support fusionning the override and the override. That makes no sense...
+		if (hostDef.sOverride === null)
+			hostDef.sOverride = defaultHostDef.sOverride;
 		if (hostDef.command === null)
 			hostDef.command = defaultHostDef.command;
 		
@@ -794,9 +810,10 @@ ComponentWithView.prototype.instanciateView = function(definition, parentView, p
  * @abstract
  */
 ComponentWithView.prototype.setContentFromValueOnView = function(value) {
-//	console.log('setContentFromValueOnView', value)
 	if (typeof value !== 'string' && isNaN(parseInt(value)))
 		return;
+	if (this.view.getWrappingNode().childNodes.length)
+		console.warn('setContentFromValueOnView : replacing the content of a node that already has content. Value is :', value)
 	this.view.value = value.toString();		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
 };
 
@@ -804,6 +821,8 @@ ComponentWithView.prototype.setContentFromValueOnView = function(value) {
  * @abstract
  */
 ComponentWithView.prototype.setContentFromValueOnMemberView = function(value, memberViewIdx) {
+	if (this.view.subViewsHolder.memberAt(memberViewIdx).getWrappingNode().childNodes.length)
+		console.warn('setContentFromValueOnView : replacing the content of a node that already has content. Value is :', value)
 	this.view.subViewsHolder.memberAt(memberViewIdx).setContentNoFail(value.toString());		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
 };
 
@@ -1061,7 +1080,6 @@ ComponentWithHooks.prototype.asyncRegister = function(definition) {
  * @param {string} state
  */
 ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(componentDefinition, nodeDefinition, state) {
-	
 	var newDef = state ? this.extendDefToStatefull(componentDefinition, nodeDefinition, state) : nodeDefinition;
 	
 	var view;

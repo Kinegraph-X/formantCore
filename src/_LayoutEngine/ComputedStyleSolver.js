@@ -46,7 +46,7 @@ ComputedStyleSolver.prototype.objectType = 'ComputedStyleSolver';
 
 
 ComputedStyleSolver.prototype.scaleCSSBuffer = function() {
-	return new MemoryBufferStack(CSSSelectorsList.prototype.optimizedSelectorBufferSchema.size, 1500);
+	return new MemoryBufferStack(CSSSelectorsList.prototype.optimizedSelectorBufferSchema.size, 2000);
 }
 
 

@@ -228,6 +228,7 @@ CanvasTypes._baseShape.prototype.reDraw = function() {
 }
 
 /** _baseRect
+ * @param {}
  * @param [lineStyle] {[number, number(hex), number]}
  * @param [fillStyle] {[number(hex), number]}
  */
@@ -239,54 +240,6 @@ CanvasTypes._baseRect = function(size, lineStyle, fillStyle) {
 }
 
 CanvasTypes._baseRect.prototype = Object.create(CanvasTypes._baseShape.prototype);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/** _baseSprite
- * 
- */
-CanvasTypes._baseSprite = function(texture) {
-	this._shape = new PIXI.extras.TilingSprite(texture);
-}
-
-CanvasTypes._baseSprite.prototype.generateNew = function(texture) {
-	this._shape.destroy();
-	this._shape = new PIXI.extras.TilingSprite(texture);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -408,7 +361,7 @@ CanvasTypes.AbstractNode = function(position, lineStyle, fillStyle) {
 	this.fillStyle = fillStyle || new CanvasTypes.FillStyle();
 	this.position = position || new CanvasTypes.Position();
 
-	this._baseShape = new CanvasTypes._baseShape(this.position, this.lineStyle, this.fillStyle);
+	this._baseShape = new CanvasTypes._baseShape(this.lineStyle, this.fillStyle);
 	this.shape = this._baseShape._shape;
 	this.shape.__type = 'AbstractNode';
 }
@@ -419,7 +372,7 @@ CanvasTypes.AbstractNode.prototype.draw = function() {		// Pure Virtual
 };
 
 CanvasTypes.AbstractNode.prototype.reDraw = function() {	// Defaulted Virtual
-	this.shape.clear();
+	this._baseShape._shape.clear();
 	this.draw();
 }
 
@@ -449,12 +402,14 @@ CanvasTypes.AbstractBox = function(position, size, lineStyle, fillStyle, borderR
 CanvasTypes.AbstractBox.prototype = Object.create(CanvasTypes.AbstractNode.prototype);
 
 CanvasTypes.AbstractBox.prototype.draw = function() {
-	this._baseShape._shape.beginFill(this.fillStyle.fillColor, this.fillStyle.fillAlpha);
-	this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.size.width - this.borderWidth, this.size.height - this.borderWidth, this.borderRadius);
-	this._baseShape._shape.endFill();
+//	if (this.fillStyle.fillAlpha) {
+		this._baseShape._shape.beginFill(this.fillStyle.fillColor, this.fillStyle.fillAlpha);
+		this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.size.width - this.borderWidth, this.size.height - this.borderWidth, this.borderRadius);
+		this._baseShape._shape.endFill();
+//	}
 	
 	if (this.debug) {
-		this._baseShape._shape.lineStyle(1, 0xFAFA44, this.lineStyle.lineAlpha, this.lineStyle.lineAlignement, null, this.lineStyle.lineDash);
+		this._baseShape._shape.lineStyle(1, this.lineStyle.lineColor || 0xFAFA44, this.lineStyle.lineAlpha, this.lineStyle.lineAlignement, null, this.lineStyle.lineDash);
 		
 		this._baseShape._shape.moveTo(this.position.x, this.position.y);
 		this._baseShape._shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y);
@@ -464,13 +419,16 @@ CanvasTypes.AbstractBox.prototype.draw = function() {
 	}
 	else if (this.borderWidth) {
 		// lineStyle (width, color, alpha, alignment, native) 
+//		this._baseShape._shape.lineStyle(this.lineStyle.lineWidth, this.lineStyle.lineColor, this.lineStyle.lineAlpha, this.lineStyle.lineAlignement, null, this.lineStyle.lineDash);
+//		
+//		this._baseShape._shape.moveTo(this.position.x, this.position.y);
+//		this._baseShape._shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y);
+//		this._baseShape._shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y + this.size.height - this.borderWidth);
+//		this._baseShape._shape.lineTo(this.position.x, this.position.y + this.size.height - this.borderWidth);
+//		this._baseShape._shape.lineTo(this.position.x, this.position.y);
+
 		this._baseShape._shape.lineStyle(this.lineStyle.lineWidth, this.lineStyle.lineColor, this.lineStyle.lineAlpha, this.lineStyle.lineAlignement, null, this.lineStyle.lineDash);
-		
-		this._baseShape._shape.moveTo(this.position.x, this.position.y);
-		this._baseShape._shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y);
-		this._baseShape._shape.lineTo(this.position.x + this.size.width - this.borderWidth, this.position.y + this.size.height - this.borderWidth);
-		this._baseShape._shape.lineTo(this.position.x, this.position.y + this.size.height - this.borderWidth);
-		this._baseShape._shape.lineTo(this.position.x, this.position.y);
+		this._baseShape._shape.drawRoundedRect(this.position.x, this.position.y, this.size.width - this.borderWidth, this.size.height - this.borderWidth, this.borderRadius);
 	}
 };
 
@@ -600,6 +558,64 @@ CanvasTypes.NodeShape = function(position, size, lineStyle, fillStyle, borderRad
 CanvasTypes.NodeShape.prototype = Object.create(CanvasTypes.AbstractBox.prototype);
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/** _baseSprite
+ * 
+ */
+CanvasTypes._baseSprite = function(url) {
+	this._shape = PIXI.Sprite.from(url);
+}
+
+
+// NOT WORKING
+CanvasTypes.LinkShape = function(position, size, lineStyle, fillStyle, borderRadius, borderWidth, href, debug) {
+	CanvasTypes.AbstractBox.call(this, position, size, lineStyle, fillStyle, borderRadius, borderWidth, debug);
+	this.sprite = new CanvasTypes._baseSprite('plugins/StylingSolverDebugView/ressources/_blank.png');
+	this.sprite._shape.width = size.width;
+	this.sprite._shape.height = size.height;
+	this.sprite._shape.interactive = true;
+	this.sprite._shape.buttonMode = true;
+	this.sprite._shape.cursor = 'pointer';
+	
+	// Not allowed in an IFramee, but let's keep that for the user to see the error message
+	if (href)
+		this.sprite._shape.on('pointerdown', function() {
+			// The DevTools make use of Iframes
+			if (window.parent !== window)
+				window.parent.location.href = href;
+			else
+				window.location.href = href;
+		});
+	
+	this.shape = this.sprite._shape;
+}
+CanvasTypes.LinkShape.prototype = Object.create(CanvasTypes.AbstractBox.prototype);
+
+CanvasTypes.LinkShape.prototype.reDraw = function() {
+//	console.log(this.position, this.size)
+	this.sprite._shape.zIndex = 10;
+	this.sprite._shape.x = this.position.x;
+	this.sprite._shape.y = this.position.y;
+	this.sprite._shape.width = this.size.width;
+	this.sprite._shape.height = this.size.height;
+}
 
 
 

@@ -50,6 +50,20 @@ GeneratorForLayoutNodes.prototype.resetCursor = function() {
 
 
 
+var GeneratorForTweens = function() {
+	this.nextUID = 0;
+}
+
+GeneratorForTweens.prototype.newUID = function() {
+	return (this.nextUID++).toString();
+}
+
+GeneratorForTweens.prototype.resetCursor = function() {
+	this.nextUID = 0;
+}
+
+
+
 
 var GeneratorFor16bitsInt = function() {
 	this.nextUID = 0;
@@ -75,5 +89,6 @@ module.exports =  {
 	StyleUIDGenerator : new GeneratorForStyles(),
 	DefUIDGenerator : new GeneratorForDefs(),
 	NodeUIDGenerator : new GeneratorForLayoutNodes(),
+	TweenUIDGenerator : GeneratorForTweens,
 	GeneratorFor16bitsInt : new GeneratorFor16bitsInt()
 }

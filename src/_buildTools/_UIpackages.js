@@ -17,6 +17,7 @@ module.exports = function(grunt, options) {
 	}
 	
 	options = options || {};
+//	var componentLibPath =options.rootPath + 'jsUIFramework/src/';
 	
 	// UI package : "minimal" by default
 	options.UIpackage = options.UIpackage || 'minimal';
@@ -27,7 +28,7 @@ module.exports = function(grunt, options) {
 	options.UIvalidatorsList = [];
 	var packageTree = {}, validatorTree = [];
 	
-	if (grunt && fs.existsSync('jsUIFramework/src/')) {
+	if (grunt && fs.existsSync(grunt.config.data.rootPath + 'jsUIFramework/src/')) {
 		var packageFolders = grunt.file.expand({cwd : grunt.config.data.rootPath + 'jsUIFramework/src/UI/packages/'}, '*!(_Base|copy)');
 		var validatorTree = grunt.file.expand({cwd : grunt.config.data.rootPath + 'jsUIFramework/src/UI/validators/'}, '*');
 		

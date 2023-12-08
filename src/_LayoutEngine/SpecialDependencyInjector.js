@@ -89,12 +89,12 @@ SpecialDependencyInjector.prototype.collectNaiveDOMandStyleInDescendants = funct
 SpecialDependencyInjector.prototype.getInDepthViewStructure = function (component, viewsWrapper) {
 	var hostNode, subNodesGroup;
 	return {
-		masterView : (hostNode = new NaiveDOMNode(viewsWrapper, component.view, 0)),
+		masterView : (hostNode = new NaiveDOMNode(viewsWrapper, component.view, 0, component._defUID)),
 		subSections : (subNodesGroup = component.view.subViewsHolder.subViews.map(function(view) {
-			return new NaiveDOMNode(viewsWrapper, view, 1, hostNode, component.view);
+			return new NaiveDOMNode(viewsWrapper, view, 1, component._defUID, hostNode, component.view);
 		})),
 		memberViews : component.view.subViewsHolder.memberViews.map(function(view) {
-			return new NaiveDOMNode(viewsWrapper, view, 2, hostNode, component.view, subNodesGroup);
+			return new NaiveDOMNode(viewsWrapper, view, 2, component._defUID, hostNode, component.view, subNodesGroup);
 		})
 	};
 }

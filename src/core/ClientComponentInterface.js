@@ -19,7 +19,6 @@ var ClientComponentInterface = function(concreteInterface, definition) {
 	this.subscribeAtOriginOfTime = this.subscribeAtOriginOfTime || false;
 	this.objectType = 'ClientComponentInterface';
 	
-//	console.log(concreteInterface);
 	concreteInterface = concreteInterface || 'APIconsumerInterface';
 	
 	this.dataLink = new interfaces[concreteInterface](this);
@@ -27,8 +26,7 @@ var ClientComponentInterface = function(concreteInterface, definition) {
 	var def = definition.getGroupHostDef() || definition.getHostDef(),
 		addStreamsToDefinition = false;
 		
-	if (addStreamsToDefinition = this.shouldInjectReactOnSelf(def)) {
-//		console.log(addStreamToDefinition, concreteInterface);
+	if ((addStreamsToDefinition = this.shouldInjectReactOnSelf(def))) {
 		// CAUTION: not tested what happens when rendered: stream overridden ?
 		
 		//  Keep following commented lines : Can't add the definition of the stream to the def,
@@ -46,7 +44,6 @@ var ClientComponentInterface = function(concreteInterface, definition) {
 		
 //		this.updateCaches(def);
 	}
-//	console.log(def);
 }
 ClientComponentInterface.prototype = Object.create(Object.prototype);
 ClientComponentInterface.prototype.objectType = 'ClientComponentInterface';

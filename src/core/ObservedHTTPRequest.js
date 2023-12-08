@@ -79,6 +79,7 @@ ObservedHTTPRequest.prototype.sendRequest = async function(type, path, payload) 
 	this.pending = true;
 	
 	var self = this;
+	// Only GET in this implem (only GET in the whole codebase ? seems yes...)
 	type = type || 'GET';
 	path = path || this.pathToData;
 	payload = payload || null;

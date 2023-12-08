@@ -19,20 +19,25 @@ var UIDGenerator = require('src/core/UIDGenerator').UIDGenerator;
  * All is conditionned on the presence of the view Object as the layoutTreePrepare is using this constructor
  * to build a "viewport" layoutNode
  */
-var NaiveDOMNode = function(viewWrapper, view, hierarchicalDepth, hostNode, hostView, subNodesGroup) {
+var NaiveDOMNode = function(viewWrapper, view, hierarchicalDepth, _defUID, hostNode, hostView, subNodesGroup) {
 	this.objectType = 'NaiveDOMNode';
+	this.hasBeenSeenForLayout = false;
 //	console.log(view.currentViewAPI, view);
 	var masterNode = view ? view.getMasterNode() : null;
-//	console.log(masterNode);
+	
 	this._viewWrapper = viewWrapper;
 	this._parentView = view ? this.getParentView(view, hierarchicalDepth, hostNode, hostView, subNodesGroup) : null;
 	this._UID = UIDGenerator.newUID();
 	
 	this.nodeName = view ? masterNode.nodeName.toLowerCase() : null;
 	this.nodeId = view ? masterNode.id : null;
+	this.section = view 
+					? view.section === null ? '0' : view.section.toString()
+					: '0';
 	this.classNames = view ? Object.values(masterNode.classList) : null;
 	if (view) {
-		var textContent;
+		var textContent,
+			href;
 		this.attributes = new CoreTypes.ListOfPairs();//masterNode.attributes);
 //		console.log(masterNode.textContent);
 		if (viewWrapper.textContent.length)
@@ -52,6 +57,16 @@ var NaiveDOMNode = function(viewWrapper, view, hierarchicalDepth, hostNode, host
 				textContent
 			));
 		}
+		
+		if (hierarchicalDepth === 0) {
+//			console.log(_defUID, TypeManager.caches['attributes'].getItem(_defUID).getObjectValueByKey('href'));
+			if ((href = TypeManager.caches['attributes'].getItem(_defUID).getObjectValueByKey('href')))
+				this.attributes.push(new CoreTypes.Pair(
+					'href',
+					href
+				));
+		}
+//		console.log(this.attributes);
 	}
 	else
 		this.attributes = new CoreTypes.ListOfPairs();

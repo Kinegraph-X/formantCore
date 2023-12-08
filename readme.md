@@ -29,6 +29,8 @@ Formant is perfect for apps that demand instant updates. Think lengthy tables, d
 Try out our demos
 -----------------
 
+[Pimp my Mind-Map](http://wisemapnaturizer.kinegraphx.com) An "all-in-one" demo of the framework and its affiliate modules
+
 [The Raster Renderer](http://rasterrenderer.kinegraphx.com)
 
 [Table Benchmark](http://tablebenchmark.kinegraphx.com)
@@ -42,7 +44,7 @@ Try out our demos
 Other links
 -----------
 
-[Landing page Formant](http://kinegraphx.com/)
+[Formant's landing page](http://kinegraphx.com/)
 
 [Portfolio E_B_U_n19](http://sylvainbreil.kinegraphx.com/)
 

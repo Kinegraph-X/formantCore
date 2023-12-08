@@ -22,10 +22,11 @@ var abstractTreeDef = function(uniqueID, options, model) {
 	
 	var moduleDef = TypeManager.createComponentDef({
 		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
+			type : 'CompoundComponent',
 			nodeName : 'folded-tree',
 			props : [
-				{selected : undefined}
+				{selected : undefined},
+				{expanded : true}
 			]/**@CSSifyStyle componentStyle : AbstractTreeHost */
 		}),
 		members : [
@@ -45,7 +46,7 @@ var abstractTreeDef = function(uniqueID, options, model) {
 						from : 'headerTitle',
 						to : 'content'
 					}
-				]/**@CSSify Style componentStyle : AbstractTreHeader */
+				]/**@CSSify Style componentStyle : AbstractTreeHeader */
 			})
 		]
 	}, null, 'rootOnly');

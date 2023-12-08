@@ -36,10 +36,10 @@ Ignition.prototype.decorateComponentsThroughDefinitionsCache = function(listDef)
 		this.instanciateDOM();
 	
 	// instanciate streams
-	this.instanciateStreams(listDef);
+	this.instanciateStreams();
 	
 	// handle reactivity and event subscription : each component holds a "unique ID from the def" => retrieve queries from the "reactivity" register
-	this.handleReactivityAndEvents(listDef);
+	this.handleReactivityAndEvents();
 	
 	// decorate DOM Objects with :
 	// * 						- streams
@@ -118,17 +118,18 @@ Ignition.prototype.instanciateDOM = function() {
 //				console.log(view._sWrapperUID, appConstants.getUID(view._sWrapperUID));
 			if (Object.prototype.toString.call(appConstants.getUID(view._sWrapperUID)) === '[object Object]') {
 //				console.log(view);
-//				console.log(appConstants.getUID(view._sWrapperUID));
+//				if (view.currentViewAPI.nodeName === 'cancel-button')
+//					console.log(appConstants.getUID(view._sWrapperUID));
 				view.styleHook.s = appConstants.getUID(view._sWrapperUID).clone();
-				if (view.sOverride)
+				
+				if (view.sOverride) {
+//					console.log(view.sOverride);
 					view.styleHook.s.overrideStyles(view.sOverride);
+				}
 				view.styleHook.s.shouldSerializeAll();
 				
 				// For style overrides and custom def objects.
-				// But take care of giving an explicit ID, as the iframe is -no- shadow root
-				// 		=> and at this point of risk, we should as well target the parent element
-				// 		when appending the style Elem... It would be way more scopped...
-//				console.log(view.currentViewAPI.nodeName);
+				// the iframe is -no- shadow root => get the first app-root encountered as parent node
 				if (view.currentViewAPI.nodeName === 'iframe') {
 					if (rootNodeIfDOM.shadowRoot)
 						rootNodeIfDOM.shadowRoot.prepend(view.styleHook.s.getStyleNode());
@@ -136,8 +137,12 @@ Ignition.prototype.instanciateDOM = function() {
 					else
 						document.body.prepend(view.styleHook.s.getStyleNode());
 				}
-				else
+				else {
 					view.callCurrentViewAPI('getWrappingNode').append(view.styleHook.s.getStyleNode());
+				}
+					
+//				if (view.currentViewAPI.nodeName  === 'enriched-option')
+//					console.log(view._sWrapperUID, view.callCurrentViewAPI('getWrappingNode'), view.styleHook.s.getStyleNode())
 				
 //				if (view.currentViewAPI.nodeName === 'app-title')
 //					console.log(
@@ -152,6 +157,7 @@ Ignition.prototype.instanciateDOM = function() {
 				
 			
 		}
+		
 //		if (view.parentView && view._parent) {
 //			console.log(Object.getPrototypeOf(view._parent).objectType);
 ////			console.log(view.parentView.callCurrentViewAPI('getWrappingNode'));
@@ -181,7 +187,7 @@ Ignition.prototype.instanciateDOM = function() {
  * INITIALIZATION CHAPTER : instanciate Streams
  * 
  */
-Ignition.prototype.instanciateStreams = function(listDef) {
+Ignition.prototype.instanciateStreams = function() {
 	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
 	var streams = TypeManager.caches.streams.cache;
 	for (let defUID in typedComponentRegister) {
@@ -202,7 +208,7 @@ Ignition.prototype.instanciateStreams = function(listDef) {
  * INITIALIZATION CHAPTER : handle reactivity & events
  * 
  */
-Ignition.prototype.handleReactivityAndEvents = function(listDef) {
+Ignition.prototype.handleReactivityAndEvents = function() {
 	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
 	var reactivityQueries, eventQueries, bindingHandler, component;
 	
@@ -239,6 +245,7 @@ Ignition.prototype.handleReactivityAndEvents = function(listDef) {
 			eventQueries = TypeManager.caches[subscriptionType].cache[defUID];
 			
 			typedComponentRegister[defUID].forEach(function(component) {
+				
 				if (!eventQueries.length)
 					return;
 				switch(subscriptionType) {
@@ -509,7 +516,7 @@ DelayedDecoration.prototype.objectType = 'DelayedDecoration';
  */
 var createRootViewComponentHostDef = require('src/coreComponents/RootViewComponent/coreComponentDefs/RootViewComponentHostDef');
 
-var RootView = function(igniterForChild, preparePage) {
+var RootView = function(igniterForChild, preparePage, noAppend) {
 	var component;
 //	console.log(TypeManager.createComponentDef(createRootViewComponentHostDef()));
 	if (preparePage)
@@ -528,7 +535,8 @@ var RootView = function(igniterForChild, preparePage) {
 	if (typeof document === 'undefined' || typeof document.ownerDocument === 'undefined')
 		return component;
 	
-	document.querySelector('body').prepend(component.view.getMasterNode());
+	if (!noAppend)
+		document.querySelector('body').prepend(component.view.getMasterNode());
 	return component;
 }
 RootView.prototype = Object.create(Ignition.prototype);

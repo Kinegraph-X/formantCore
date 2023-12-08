@@ -99,52 +99,80 @@ LayoutAvailableSpaceGetSet.prototype.getBlockOffset = function() {
 }
 
 /**
+ * @method getFlexEndInlineOffset
+ */
+LayoutAvailableSpaceGetSet.prototype.getFlexEndInlineOffset = function() {
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 4);
+}
+
+/**
+ * @method getFlexEndBlockOffset
+ */
+LayoutAvailableSpaceGetSet.prototype.getFlexEndBlockOffset = function() {
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 5);
+}
+
+/**
  * @method getLastInlineOffset
  */
 LayoutAvailableSpaceGetSet.prototype.getLastInlineOffset = function() {
-	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 4);
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 6);
 }
 
 /**
  * @method getLastBlockOffset
  */
 LayoutAvailableSpaceGetSet.prototype.getLastBlockOffset = function() {
-	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 5);
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 7);
+}
+
+/**
+ * @method getFlexEndLastInlineOffset
+ */
+LayoutAvailableSpaceGetSet.prototype.getFlexEndLastInlineOffset = function() {
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 8);
+}
+
+/**
+ * @method getFlexEndLastBlockOffset
+ */
+LayoutAvailableSpaceGetSet.prototype.getFlexEndLastBlockOffset = function() {
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 9);
 }
 
 /**
  * @method getTempInlineOffset
  */
 LayoutAvailableSpaceGetSet.prototype.getTempInlineOffset = function() {
-	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 6);
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 10);
 }
 
 /**
  * @method getTempBlockOffset
  */
 LayoutAvailableSpaceGetSet.prototype.getTempBlockOffset = function() {
-	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 7);
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 11);
 }
 
 /**
  * @method getChildCount
  */
 LayoutAvailableSpaceGetSet.prototype.getChildCount = function() {
-	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 8);
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 12);
 }
 
 /**
  * @method getShouldGrowChildCount
  */
 LayoutAvailableSpaceGetSet.prototype.getShouldGrowChildCount = function() {
-	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 9);
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 13);
 }
 
 /**
  * @method getShouldShrinkChildCount
  */
 LayoutAvailableSpaceGetSet.prototype.getShouldShrinkChildCount = function() {
-	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 10);
+	return availableSpaceBuffer.getValueAtPos(this.relatedUID, 14);
 }
 
 
@@ -181,52 +209,80 @@ LayoutAvailableSpaceGetSet.prototype.setBlockOffset = function(value) {
 }
 
 /**
+ * @method setFlexEndInlineOffset
+ */
+LayoutAvailableSpaceGetSet.prototype.setFlexEndInlineOffset = function(value) {
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 4, value);
+}
+
+/**
+ * @method setFlexEndBlockOffset
+ */
+LayoutAvailableSpaceGetSet.prototype.setFlexEndBlockOffset = function(value) {
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 5, value);
+}
+
+/**
  * @method setLastInlineOffset
  */
 LayoutAvailableSpaceGetSet.prototype.setLastInlineOffset = function(value) {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 4, value);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 6, value);
 }
 
 /**
  * @method setLastBlockOffset
  */
 LayoutAvailableSpaceGetSet.prototype.setLastBlockOffset = function(value) {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 5, value);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 7, value);
+}
+
+/**
+ * @method setFlexEndLastInlineOffset
+ */
+LayoutAvailableSpaceGetSet.prototype.setFlexEndLastInlineOffset = function(value) {
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 8, value);
+}
+
+/**
+ * @method setFlexEndLastBlockOffset
+ */
+LayoutAvailableSpaceGetSet.prototype.setFlexEndLastBlockOffset = function(value) {
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 9, value);
 }
 
 /**
  * @method setTempInlineOffset
  */
 LayoutAvailableSpaceGetSet.prototype.setTempInlineOffset = function(value) {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 6, value);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 10, value);
 }
 
 /**
  * @method setTempBlockOffset
  */
 LayoutAvailableSpaceGetSet.prototype.setTempBlockOffset = function(value) {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 7, value);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 11, value);
 }
 
 /**
  * @method setChildCount
  */
 LayoutAvailableSpaceGetSet.prototype.setChildCount = function(value) {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 8, value);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 12, value);
 }
 
 /**
  * @method setShouldGrowChildCount
  */
 LayoutAvailableSpaceGetSet.prototype.setShouldGrowChildCount = function(value) {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 9, value);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 13, value);
 }
 
 /**
  * @method setShouldShrinkChildCount
  */
 LayoutAvailableSpaceGetSet.prototype.setShouldShrinkChildCount = function(value) {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 10, value);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 14, value);
 }
 
 
@@ -235,21 +291,21 @@ LayoutAvailableSpaceGetSet.prototype.setShouldShrinkChildCount = function(value)
  * @method getChildCount
  */
 LayoutAvailableSpaceGetSet.prototype.incrementChildCount = function() {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 8, availableSpaceBuffer.getValueAtPos(this.relatedUID, 8) + 1);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 12, availableSpaceBuffer.getValueAtPos(this.relatedUID, 8) + 1);
 }
 
 /**
  * @method getShouldGrowChildCount
  */
 LayoutAvailableSpaceGetSet.prototype.incrementShouldGrowChildCount = function() {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 9, availableSpaceBuffer.getValueAtPos(this.relatedUID, 9) + 1);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 13, availableSpaceBuffer.getValueAtPos(this.relatedUID, 9) + 1);
 }
 
 /**
  * @method getShouldShrinkChildCount
  */
 LayoutAvailableSpaceGetSet.prototype.incrementShouldShrinkChildCount = function() {
-	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 10, availableSpaceBuffer.getValueAtPos(this.relatedUID, 10) + 1);
+	return availableSpaceBuffer.setValueAtPos(this.relatedUID, 14, availableSpaceBuffer.getValueAtPos(this.relatedUID, 10) + 1);
 }
 
 

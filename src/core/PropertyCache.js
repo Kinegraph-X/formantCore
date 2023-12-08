@@ -15,6 +15,13 @@ var ObjectCache = function(name) {
 	this.firstID = null;
 }
 
+ObjectCache.prototype.hasItem = function(mainID, composedWithID) {
+	if (!composedWithID)
+		return (typeof this.cache[mainID.toString()] !== 'undefined');
+	else
+		return (typeof this.cache[mainID.toString() + '-' + composedWithID.toString()] !== 'undefined');
+}
+
 ObjectCache.prototype.getItem = function(mainID, composedWithID) {
 	if (!composedWithID)
 		return this.cache[mainID.toString()];

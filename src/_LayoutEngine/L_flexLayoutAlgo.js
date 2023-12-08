@@ -20,6 +20,7 @@ var FlexLayoutAlgo = function(layoutNode) {
 	this.algoName = 'flex';
 	
 	this.setFlexCtx(this, layoutNode._parent.layoutAlgo.flexCtx._UID);
+//	console.log(this.layoutNode.nodeName, this.isIndirectFlexChild, this.flexCtx._UID, TypeManager.layoutCallbacksRegistry.getItem(this.flexCtx._UID));
 	
 //	this.localDebugLog('FlexLayoutAlgo INIT', this.layoutNode.nodeName, ' ');
 	
@@ -27,6 +28,8 @@ var FlexLayoutAlgo = function(layoutNode) {
 	
 	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.inline)
 		console.warn('Layout forbidden structure: Found a block-flow element inside an inline-flow element.')
+		
+	this.setParentDimensions = this.setGenericParentDimensions;
 	
 	if (this.layoutNode._parent.layoutAlgo.algoName === this.layoutAlgosAsConstants.flex
 			&& this.layoutNode._parent.layoutAlgo.flexDirection === this.flexDirectionsAsConstants.row)
@@ -85,9 +88,10 @@ FlexLayoutAlgo.prototype.setSelfDimensions = function() {
 		this.dimensions.setFromOuterInline(this.parentLayoutAlgo.availableSpace.getInline());
 	
 	this.dimensions.setFromBlock(!this.hasExplicitHeight ? 0 : this.getBlockDimension());
+//	console.error('SET SELF DIMENSIONS', this.layoutNode.nodeName, this.layoutNode._UID, this.layoutNode._parent.nodeName, this.layoutNode._parent._UID, this.parentLayoutAlgo.dimensions.getBorderInline(), this.parentLayoutAlgo.availableSpace.getFlexEndInlineOffset());
 }
 
-FlexLayoutAlgo.prototype.setParentDimensions = function() {
+FlexLayoutAlgo.prototype.setGenericParentDimensions = function() {
 	this.parentDimensions.setFromBorderInline(
 		Math.max(
 			this.parentLayoutAlgo.dimensions.getBorderInline(),
@@ -160,6 +164,7 @@ FlexLayoutAlgo.prototype.updateFlexParentDimensions = function() {
 }
 
 FlexLayoutAlgo.prototype.updateInlineBlockParentDimensions = function() {
+	
 	this.parentDimensions.setFromBorderInline(
 		Math.max(
 			this.parentLayoutAlgo.dimensions.getBorderInline(),
@@ -172,6 +177,8 @@ FlexLayoutAlgo.prototype.updateInlineBlockParentDimensions = function() {
 			this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock() + this.cs.getParentPaddingBlockEnd() + this.cs.getParentBorderBlockEndWidth()
 		)
 	);
+	
+//	console.log(this.layoutNode.nodeName, this.layoutNode._UID, this.parentLayoutAlgo.availableSpace.getLastInlineOffset(), this.dimensions.getOuterInline());
 	
 	this.parentLayoutAlgo.availableSpace.setInlineOffset(this.parentLayoutAlgo.availableSpace.getLastInlineOffset() + this.dimensions.getOuterInline());
 	this.parentLayoutAlgo.availableSpace.setBlockOffset(this.parentLayoutAlgo.availableSpace.getLastBlockOffset() + this.dimensions.getOuterBlock());
