@@ -712,6 +712,8 @@ var createDef = function(defObj) {
 //	console.log(defObj);
 	// MASTER VIEW OF A COMPOUND COMPONENT
 	if ((defObj.type && defObj.type === 'CompoundComponent') || defObj.isCompound) {
+//		if (defObj.sOverride)
+//			console.log((new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly')));
 //		if (defObj.nodeName === 'big-modalbox')
 //			console.log('big-modalbox host', new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
 		return (new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));

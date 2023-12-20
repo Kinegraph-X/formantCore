@@ -136,6 +136,9 @@ var customElems;
 					};
 				desc.set = function(value) {
 						// We're setting an attribute:  don't if the propName is camelCase 
+						if (prop.toLowerCase() !== prop)
+							console.warn('Reflected streams must have a lowercase name :', prop);
+						
 						// For litteral values, Updating the Stream is handled by onAttributeChangeCallback
 						if (prop !== 'content' && prop.toLowerCase() === prop && typeof value !== 'undefined' && typeof value !== 'object' && !Array.isArray(value)) {
 							if (this.streams[prop].value !== value && this.nodeName.indexOf('-') === -1) {
@@ -161,7 +164,9 @@ var customElems;
 					return this.hasAttribute(prop) ? (this.getTypedValue ? this.getTypedValue(this.getAttribute(prop)) : ElementFactory.prototype.getTypedValue.call(this, this.getAttribute(prop))) : null;
 				},
 				set : function(value) {
-					// We're setting an attribute:  don't if the propName is camelCase 
+					// We're setting an attribute:  don't if the propName is camelCase
+					if (prop.toLowerCase() !== prop)
+						console.warn('Reflected streams must have a lowercase name :', prop);
 					
 					// For litteral values, Updating the Stream is handled by onAttributeChangeCallback
 					if (prop !== 'content' && prop.toLowerCase() === prop && typeof value !== 'undefined' && typeof value !== 'object' && !Array.isArray(value)) {

@@ -40,6 +40,9 @@ App.componentTypes.ScrollSlider.prototype.render = function(DOMNodeId) {
 App.componentTypes.SlidingPanel.prototype.render = function(DOMNodeId) {
 	new App.DelayedDecoration(DOMNodeId, this);
 };
+App.componentTypes.ImgPlaceholder.prototype.render = function(DOMNodeId) {
+	new App.DelayedDecoration(DOMNodeId, this);
+};
 
 if (isLayoutEngineON) {
 	var SpecialDependencyInjector = require('src/_LayoutEngine/SpecialDependencyInjector');

@@ -421,6 +421,7 @@ Object.defineProperty(Stream.prototype, 'value', {
 	
 	set : function(value) {
 //		console.log(value);
+//		console.log(this.hostedInterface);
 		var val = this.transform(value);
 //		console.log(this.name, val);
 		this.setAndUpdateConditional(val);
@@ -1137,6 +1138,82 @@ StreamPool.prototype.generateKeys = function(atIndex) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * @constructor SavableStore
+ * @param {Function} onUpdateCallback
+ * @param {Array<String>} valueNamesList
+ */
+var SavableStore = function(onUpdateCallback, valueNamesList = []) {
+	this.onUpdateCallback = onUpdateCallback;
+	this.valueNames = Array();
+	this.values = Array();
+	if (valueNamesList && valueNamesList.length) {
+		valueNamesList.forEach(function(valueName) {
+			this.addValue(valueName);
+		}, this);
+	}
+}
+
+/**
+ * @method addValue
+ * @param {String} valueName
+ */
+SavableStore.prototype.addValue = function(valueName) {
+	this.valueNames.push(valueName);
+	this.values.push(new TypeManager.PropModel({[valueName] : undefined}))
+}
+
+/**
+ * @method removeValue
+ * @param {String} valueName
+ */
+SavableStore.prototype.removeValue = function(valueName) {
+	// FIXME: we should make use of the valueNames index
+	var valuePos = this.valueNames.indexOf(valueName);
+	this.values.splice(valuePos, 1);
+	this.valueNames.splice(valuePos, 1);
+}
+
+SavableStore.prototype.clearValues = function() {
+	this.values.length = 0;
+}
+
+/**
+ * @method update
+ * @param {String} valueName
+ * @param {String|Boolean} value
+ */
+SavableStore.prototype.update = function(valueName, value) {
+	// FIXME: we should make use of the valueNames index
+	var valueObj = this.values[this.valueNames.indexOf(valueName)];
+	valueObj[valueName] = value;
+	
+	/** @type {{[key : String] : String|Boolean}} */
+	let returnValue = {};
+	this.valueNames.forEach(function(name, key) {
+		returnValue[name] = this.values[key][name];
+	}, this);
+	this.onUpdateCallback(JSON.stringify(returnValue));
+}
+
+SavableStore.prototype.empty = function() {
+	this.valueNames.forEach(function(valueName, key) {
+		this.values[key][valueName] = undefined;
+	}, this);
+}
 
 
 
@@ -2385,7 +2462,8 @@ module.exports = {
 	LazyResettableColdStream : LazyResettableColdStream,
 	NumberedStream : NumberedStream,
 	StreamPool : StreamPool,
-	ComponentView, ComponentView,
+	SavableStore : SavableStore,
+	ComponentView : ComponentView,
 	ComponentSubView : ComponentSubView,
 	ComponentSubViewsHolder : ComponentSubViewsHolder,
 	CanvasView : CanvasView,

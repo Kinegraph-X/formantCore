@@ -10,8 +10,7 @@ var TypeManager = require('src/core/TypeManager');
 var CoreTypes = require('src/core/CoreTypes');
 var Components = require('src/core/Component');
 
-var componentTypes = require('src/UI/_build_helpers/_UIpackages')(null, { UIpackage: '%%UIpackage%%' }).packageList;
-
+var componentTypes = require('src/_buildTools/_UIpackages')(null, { UIpackage: '%%UIpackage%%' }).packageList;
 
 var coreComponents = {};
 
@@ -103,6 +102,9 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 	this._firstListUIDSeen = null;
 	var shouldExtend = false;
 	
+	if (!definition.getGroupHostDef())
+		console.error('Definition given to CompoundComponent isn\'t a nested HierachicalDefinition.', definition, 'Type is:', definition.getHostDef().type, this);
+	
 	// Any custom element must be befined when calling the Def Factory, unless there's no shadow DOM
 //	if (!definition.getGroupHostDef().nodeName) {
 //		definition.getGroupHostDef().nodeName = 'compound-view';
@@ -121,9 +123,6 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 
 //	if (definition.getGroupHostDef().type === 'FileSelector')
 //		console.error(def);
-
-	if (!definition.getGroupHostDef())
-		console.error('CompoundComponent was not given a groupDef', this, definition);
 
 	if (!TypeManager.hostsDefinitionsCacheRegistry.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
 		shouldExtend = true;

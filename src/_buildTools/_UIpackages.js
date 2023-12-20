@@ -13,7 +13,7 @@ module.exports = function(grunt, options) {
 			special : ['special'],
 			video : ['video'],
 			std : ['minimal', 'boxes', 'panels', 'structs', 'titles'],
-			all : ['minimal', 'boxes', 'panels', 'structs', 'setsForPanels', 'titles', 'video', 'special']
+			all : ['minimal', 'boxes', 'overlays', 'panels', 'structs', 'setsForPanels', 'titles', 'video', 'special']
 	}
 	
 	options = options || {};
@@ -44,7 +44,8 @@ module.exports = function(grunt, options) {
 		grunt.file.write(grunt.config.data.pathToProject + 'cache/UIpackagesFolderCache.js', prefix + JSON.stringify(packageTree) + postfix);
 		grunt.file.write(grunt.config.data.pathToProject + 'cache/UIvalidatorsFileCache.js', prefix + JSON.stringify(validatorTree) + postfix);
 	}
-	else if (fs.existsSync('cache/UIpackagesFolderCache.js') && fs.existsSync('cache/UIvalidatorsFileCache.js')) {
+	// if (fs.existsSync('cache/UIpackagesFolderCache.js') && fs.existsSync('cache/UIvalidatorsFileCache.js'))
+	else  {
 		packageTree = require('cache/UIpackagesFolderCache');
 		validatorTree = require('cache/UIvalidatorsFileCache');
 	}

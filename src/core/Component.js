@@ -1,7 +1,7 @@
 /**
  * @constructor Component
  */
-
+// @ts-nocheck
 var CoreTypes = require('src/core/CoreTypes');
 var TypeManager = require('src/core/TypeManager');
 var ElementDecorator = require('src/UI/_mixins/elementDecorator_HSD');
@@ -412,7 +412,7 @@ ExtensibleObject.prototype.addInterface = function(base, extension) {
 	namingObj[objectType].prototype.objectType = objectType.indexOf('Extended') === 0 ? objectType : 'Extended' + objectType;
 	(namingObj[objectType].prototype._implements
 		? namingObj[objectType].prototype._implements.push(extension.prototype.objectType)
-				: namingObj[objectType].prototype._implements = [extension.prototype.objectType]);
+		: namingObj[objectType].prototype._implements = [extension.prototype.objectType]);
 	
 	base.prototype.onExtend(namingObj[objectType]);
 	
@@ -422,10 +422,10 @@ ExtensibleObject.prototype.addInterface = function(base, extension) {
 				? namingObj[objectType].prototype._asyncInitTasks.splice(
 						(taskDef.index !== null 
 								? taskDef.index 
-										: namingObj[objectType].prototype._asyncInitTasks.length),
+								: namingObj[objectType].prototype._asyncInitTasks.length),
 						0,
 						taskDef)
-							: namingObj[objectType].prototype._asyncInitTasks = [taskDef]);
+				: namingObj[objectType].prototype._asyncInitTasks = [taskDef]);
 	}
 	if (extension.prototype.queueAsyncRegister) {
 		var taskDef = extension.prototype.queueAsyncRegister(objectType);
@@ -433,17 +433,17 @@ ExtensibleObject.prototype.addInterface = function(base, extension) {
 				? namingObj[objectType].prototype._asyncRegisterTasks.splice(
 						(taskDef.index !== null 
 								? taskDef.index 
-										: namingObj[objectType].prototype._asyncRegisterTasks.length),
+								: namingObj[objectType].prototype._asyncRegisterTasks.length),
 						0,
 						taskDef)
-							: namingObj[objectType].prototype._asyncRegisterTasks = [taskDef]);
+				: namingObj[objectType].prototype._asyncRegisterTasks = [taskDef]);
 	}
 	
 	return namingObj[objectType];
 }
 
 /**
- * @param {boolean || prototype}: keepNonStdProtosOrProto
+ * @param {boolean|prototype}: keepNonStdProtosOrProto
  * @param {prototype} proto
  * @illimitedParams {prototype} proto
  */
@@ -508,15 +508,9 @@ ExtensibleObject.prototype.mergeOwnProperties = function(keepNonStdProtosOrProto
  */
 ExtensibleObject.prototype.onExtend = function(namespace) {
 	if (!(namespace.prototype.hasOwnProperty('_asyncInitTasks')))
-		Object.defineProperty(namespace.prototype, '_asyncInitTasks', {
-			value : [],
-			writable : true,
-		});
+		namespace.prototype._asyncInitTasks = [];
 	if (!(namespace.prototype.hasOwnProperty('_asyncRegisterTasks')))
-		Object.defineProperty(namespace.prototype, '_asyncRegisterTasks', {
-			value : [],
-			writable : true,
-		}); 
+		namespace.prototype._asyncRegisterTasks = [];
 }
 
 
@@ -546,10 +540,10 @@ var AsyncActivableObject = function(definition, parentView, parent) {
 AsyncActivableObject.prototype = Object.create(ExtensibleObject.prototype);
 AsyncActivableObject.prototype.objectType = 'AsyncActivableObject';
 
-///**
-// * @reminder
-// * Asynchronous tasks are inherited through the prototype during the mixin, but should not be referenced by "any" component
-// */
+/**
+ * @reminder
+ * Asynchronous tasks are inherited through the prototype during the mixin, but should not be referenced by "any" component
+ */
 //AsyncActivableObject.prototype._asyncInitTasks = [];
 //AsyncActivableObject.prototype._asyncRegisterTasks = []
 
@@ -1035,7 +1029,6 @@ ComponentWithHooks.prototype.registerEvents = function() {
  */
 ComponentWithHooks.prototype.asyncViewExtend = function(definition) {
 //	console.log('viewExtend', this.view, this._asyncInitTasks);
-
 	var asyncTask;
 	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
 		asyncTask = this._asyncInitTasks[i];
@@ -1050,7 +1043,6 @@ ComponentWithHooks.prototype.asyncViewExtend = function(definition) {
  */
 ComponentWithHooks.prototype.lateAddChildren = function(definition) {
 //	console.log('lateAddChildren', this.view, this._asyncInitTasks);
-
 	var asyncTask;
 	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
 		asyncTask = this._asyncInitTasks[i];
@@ -1063,12 +1055,12 @@ ComponentWithHooks.prototype.lateAddChildren = function(definition) {
 /**
  * @hook
  */
-ComponentWithHooks.prototype.asyncRegister = function(definition) {
+ComponentWithHooks.prototype.asyncRegister = function() {
 	var asyncTask;
 	for (let i = 0, l = this._asyncRegisterTasks.length; i < l; i++) {
 		asyncTask = this._asyncRegisterTasks[i];
 		if(asyncTask.type === 'lateBinding') {
-			asyncTask.execute(this, definition);
+			asyncTask.execute(this);
 		}
 	}
 }
@@ -1157,48 +1149,6 @@ ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition
 	}
 	return statefullExtendedDef;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-/**
- * @constructor CompositorComponent
- */
-var CompositorComponent = function(definition, parentView, parent) {//, argx, argy, arg...
-	this.Compositor.apply(this, arguments);
-	this.objectType = 'CompositorComponent';
-}
-CompositorComponent.prototype = Object.create(ComponentWithView.prototype);
-CompositorComponent.prototype.objectType = 'CompositorComponent';
-CompositorComponent.prototype.extendsCore = '';							// virtual
-CompositorComponent.prototype.extends = '';								// virtual
-
-//CompositorComponent.prototype.Compositor = function() {};				// virtual
-
-CompositorComponent.prototype.acquireCompositor = function() {};		// virtual
-
-CompositorComponent.prototype.extendFromCompositor = function(inheritingType, inheritedType) {
-//	console.log(inheritedType);
-	var proto_proto = Object.create(inheritedType.prototype);
-	Object.assign(proto_proto, inheritingType.prototype);
-	inheritingType.prototype = proto_proto;
-}
-
-
-
-
-
-
-
 
 
 
@@ -1412,7 +1362,32 @@ ComponentWithCanvas.prototype.instanciateView = function(definition, parentView,
 
 
 
+/**
+ * @constructor CompositorComponent
+ */
+var CompositorComponent = function(definition, parentView, parent) {//, argx, argy, arg...
+	if (!this.Compositor)
+		console.warn('Invalid inheritance through CompositorComponent: it seems you\'ve tried to extend a non-core component. Were you inheriting from an abstract type through the simple "extends" property ? (CompositorComponent is not needed then)')
+	this.Compositor.apply(this, arguments);
+	this.objectType = 'CompositorComponent';
+}
+CompositorComponent.prototype = Object.create(ComponentWithView.prototype);
+CompositorComponent.prototype.objectType = 'CompositorComponent';
+CompositorComponent.prototype.extendsCore = '';							// virtual
+CompositorComponent.prototype.extends = '';								// virtual
 
+//CompositorComponent.prototype.Compositor = function() {};				// virtual (decorated type property)
+
+CompositorComponent.prototype.acquireCompositor = function() {};		// virtual
+
+CompositorComponent.prototype.extendFromCompositor = function(inheritingType, inheritedType) {
+//	console.log(inheritingType.prototype, inheritedType);
+	var proto_proto = Object.create(inheritedType.prototype);
+//	console.log(Object.hasOwn(inheritingType.prototype, '_asyncRegisterTasks'));
+	Object.assign(proto_proto, inheritingType.prototype);
+	inheritingType.prototype = proto_proto;
+//	console.log(proto_proto, inheritingType.prototype);
+}
 
 
 
