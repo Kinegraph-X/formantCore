@@ -1,6 +1,7 @@
 /**
  * @bootstraper AppIgniter
  * @bootstraper ListInjector
+ * KEPT FOR HISTORICAL COMPATIBILITY : IS BEING REWORKED IN APP.JS
  */
 
 var appConstants = require('src/appLauncher/appLauncher');

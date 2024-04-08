@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<sitemap>
+   <loc>http://kinegraphx.com/sitemap_landing.xml</loc>
+</sitemap>
+<sitemap>
+   <loc>http://pimpmymindmap.kinegraphx.com/sitemap.xml</loc>
+</sitemap>
+<sitemap>
+     <loc>http://tubedj.kinegraphx.com/sitemap.xml</loc>
+</sitemap>
+<sitemap>
+     <loc>http://mp4parser.kinegraphx.com/sitemap.xml</loc>
+</sitemap>
+<sitemap>
+     <loc>http://rasterrenderer.kinegraphx.com/sitemap.xml</loc>
+</sitemap>
+<sitemap>
+     <loc>http://tablebenchmark.kinegraphx.com/sitemap.xml</loc>
+</sitemap>
+<sitemap>
+     <loc>http://todomvc.kinegraphx.com/sitemap.xml</loc>
+</sitemap>
+<sitemap>
+     <loc>http://markdown.kinegraphx.com/sitemap.xml</loc>
+</sitemap>
+<sitemap>
+     <loc>http://sylvainbreil.kinegraphx.com/sitemap.xml</loc>
+</sitemap>
+</sitemapindex>

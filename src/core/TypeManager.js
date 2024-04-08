@@ -1,5 +1,6 @@
 /**
  * @Singleton : Core Definitions Ctor
+ * KEPT FOR HISTORICAL COMPATIBILITY : SHOULD NOT BE INCLUDED ANYMORE
  */
 //var appConstants = require('src/appLauncher/appLauncher');
 var UIDGenerator = require('src/core/UIDGenerator');
@@ -53,11 +54,11 @@ Object.defineProperty(ValueObject.prototype, 'fromArray',{
 Object.defineProperty(ValueObject.prototype, 'isEmpty', {
 	value : function(obj) {
 		for(var prop in obj) {
-				return false;
+			return false;
 		};
 		return true;
 	}
-});
+});Z
 Object.defineProperty(ValueObject.prototype, 'set', {
 	value : function(def, isSpecial) {
 //		var objectType = Object.getPrototypeOf(this).objectType;
@@ -97,18 +98,6 @@ Object.defineProperty(ValueObject.prototype, 'set', {
 });
 
 
-//Object.defineProperty(ValueObject.prototype, 'renewArray', {
-//	value : function(arr, prop) {
-//		var objType = prop + 'Model';
-//		if (!(objType in exportedObjects))
-//			return [];
-//		var ret = [];
-//		for(let i = 0, l = arr.length; i < l; i++) {
-//			ret.push(new exportedObjects[objType](arr[i]));
-//		}
-//		return ret;
-//	}
-//});
 
 /**
  * @constructor OptionsListModel
@@ -119,8 +108,8 @@ var OptionsListModel = function(obj, isSpecial) {
 	ValueObject.call(this, obj, isSpecial);
 }
 OptionsListModel.prototype = Object.create(ValueObject.prototype);
-exportedObjects.OptionsListModel = OptionsListModel
 Object.defineProperty(OptionsListModel.prototype, 'objectType', {value :  'AttributesList'});
+exportedObjects.OptionsListModel = OptionsListModel;
 
 
 /**
@@ -543,6 +532,7 @@ ComponentDefCache.prototype.setUID = function(uniqueID, globalObj) {
 /**
  * @constructor createComponentDef
  * @factory
+ * HISTORICAL - DO NOT USE ANYMORE
  */
 var createComponentDef = function(defObj, useCache, isSpecial) {
 	var def, UID;
@@ -874,7 +864,7 @@ var listsDefinitionsCacheRegistry = new PropertyCache('listsDefinitionsCacheRegi
 var permanentProvidersRegistry = new RequestCache('permanentProvidersRegistry');
 var boundingBoxesCache = new PropertyCache('boundingBoxesCache');
 
-// TODO: this cache is used by the RichComponenentInternalsPicker, 
+// MAYBE TODO: this cache is used by the RichComponenentInternalsPicker, 
 // to resolve the sWrapper associated with a component out of its UID (? to be confirmed/precised), but
 // we also need a MasterStyleCache, to store each CSS rule at global level,
 // and resolve the binding between a matched rules and a (pseudo-)DOM node, from any outer scope.
