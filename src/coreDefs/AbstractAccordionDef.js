@@ -11,9 +11,6 @@
 
 var TypeManager = require('src/core/TypeManager');
 
-var CreateStyle = require('src/core/GenericStyleConstructor');
-var pseudoSlotsStyles = require('src/UI/defs/extraStyles/pseudoSlot');
-
 
 var AbstractAccordionDef = function(uniqueID, options, model) {
 	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos

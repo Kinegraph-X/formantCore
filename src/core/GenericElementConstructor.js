@@ -4,10 +4,10 @@
  */
 
 
-var AGDef = require('src/UI/defs/_arias&glyphsDef');
+//var AGDef = require('src/UI/categories/_configurationFiles/_arias&glyphsDef');
 
-var elementConstructorDecorator_HSD = require('src/UI/_mixins/elementDecorator_HSD');
-//var elementDecorator_Offset = require('src/UI/_mixins/elementDecorator_Offset');
+var elementConstructorDecorator_HSD = require('src/core/elementDecorator_HSD');
+//var elementDecorator_Offset = require('src/core/elementDecorator_Offset');
 
 
 var customElems;
@@ -89,11 +89,11 @@ var customElems;
 			attributeChangedCallback(attrName, oldVal, newVal) {
 				if (oldVal === newVal)
 					return;
-				var arias = AGDef.getArias(this.componentType);
-				for(var aria in arias) {
-					if (aria.indexOf(attrName) !== -1)
-						(function(a) {this.setAttribute(a, newVal);})(aria);
-				}
+//				var arias = AGDef.getArias(this.componentType);
+//				for(var aria in arias) {
+//					if (aria.indexOf(attrName) !== -1)
+//						(function(a) {this.setAttribute(a, newVal);})(aria);
+//				}
 				if (this.streams[attrName] && this.streams[attrName].get() !== newVal)
 					this.streams[attrName].value = this.getTypedValue(newVal);
 					
@@ -127,36 +127,37 @@ var customElems;
 	}
 	
 	ElementFactory.prototype.propGetterSetter = function(prop) {
+		
 		// FIXME: Big code duplication. Multi-test the override of native DOM getter-setters, and refactor
 		var desc = (Object.getOwnPropertyDescriptor(this, prop) || Object.getPropertyDescriptor(this, prop));
-		if (typeof desc !== 'undefined') {
-			if (desc.configurable && desc.get) {
-				desc.get = function() {
-						return this.hasAttribute(prop) ? (this.getTypedValue ? this.getTypedValue(this.getAttribute(prop)) : ElementFactory.prototype.getTypedValue.call(this, this.getAttribute(prop))) : null;
-					};
-				desc.set = function(value) {
-						// We're setting an attribute:  don't if the propName is camelCase 
-						if (prop.toLowerCase() !== prop)
-							console.warn('Reflected streams must have a lowercase name :', prop);
-						
-						// For litteral values, Updating the Stream is handled by onAttributeChangeCallback
-						if (prop !== 'content' && prop.toLowerCase() === prop && typeof value !== 'undefined' && typeof value !== 'object' && !Array.isArray(value)) {
-							if (this.streams[prop].value !== value && this.nodeName.indexOf('-') === -1) {
-								// special case for non-custom elements : attributeChange doesn't trigger the stream update
-								this.streams[prop].value = value;
-							}
-							// case of double update on the attr can't be avoided when :
-							// 		- we're reflecting the attr on the prop through the stream (marginal case of someone absolutely wanting to mutate the obj targetting the attr)
-							// the stream won't update twice though : forward is set to false
-							this.setAttribute(prop, value);
-						}
-						else {
-							if (this.streams[prop].value !== value)
-								this.streams[prop].value = value;
-							((value === null || value === undefined) && this.removeAttribute(prop));
-						}
-					};
-			}
+		
+//		console.log(prop, desc)
+		if (typeof desc !== 'undefined' && desc.configurable && desc.get) {
+			desc.get = function() {
+					return this.hasAttribute(prop) ? (this.getTypedValue ? this.getTypedValue(this.getAttribute(prop)) : ElementFactory.prototype.getTypedValue.call(this, this.getAttribute(prop))) : null;
+				};
+			desc.set = function(value) {
+				// We're setting an attribute:  don't if the propName is camelCase 
+				if (prop.toLowerCase() !== prop)
+					console.warn('Reflected streams must have a lowercase name :', prop);
+				
+				// For litteral values, Updating the Stream is handled by onAttributeChangeCallback
+				if (prop !== 'content' && prop.toLowerCase() === prop && typeof value !== 'undefined' && typeof value !== 'object' && !Array.isArray(value)) {
+					if (this.streams[prop].value !== value && this.nodeName.indexOf('-') === -1) {
+						// special case for non-custom elements : attributeChange doesn't trigger the stream update
+						this.streams[prop].value = value;
+					}
+					// case of double update on the attr can't be avoided when :
+					// 		- we're reflecting the attr on the prop through the stream (marginal case of someone absolutely wanting to mutate the obj targetting the attr)
+					// the stream won't update twice though : forward is set to false
+					this.setAttribute(prop, value);
+				}
+				else {
+					if (this.streams[prop].value !== value)
+						this.streams[prop].value = value;
+					((value === null || value === undefined) && this.removeAttribute(prop));
+				}
+			};
 		}
 		else {
 			Object.defineProperty(this, prop, {

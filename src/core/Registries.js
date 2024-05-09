@@ -2,10 +2,10 @@
  * @Singletons : Registries to cache useful objects in the global scope
  */
 
-var PropertyCache = require('src/core/PropertyCache').ObjectCache;
-var RequestCache = require('src/core/PropertyCache').RequestCache;
-var StateMachineCache = require('src/core/PropertyCache').StateMachineCache;
-var stateMachineCache = new StateMachineCache('stateMachineCache');
+const PropertyCache = require('src/core/PropertyCache').ObjectCache;
+const RequestCache = require('src/core/PropertyCache').RequestCache;
+const StateMachineCache = require('src/core/PropertyCache').StateMachineCache;
+const stateMachineCache = new StateMachineCache('stateMachineCache');
 
 var exportedObjects = {};
 
@@ -66,6 +66,20 @@ ComponentDefCache.prototype.setUID = function(uniqueID, globalObj) {
 /**
  * CORE CACHES
  */
+/** Duplicated code from Template Factory (otherwise we would cause an include loop) */
+var propsAreArray = [
+	'attributes',
+	'states',
+	'props',
+	'streams',
+	'reactOnParent',
+	'reactOnSelf',
+	'subscribeOnParent',
+	'subscribeOnChild',
+	'subscribeOnSelf'//,
+//	'keyboardSettings',			// TODO: FIX that bypass : implement keyboard handling in the context of the v0.2
+//	'keyboardEvents'
+];
 var caches = {};
 (function initCaches() {
 	propsAreArray.forEach(function(prop) {
@@ -184,10 +198,6 @@ Object.assign(exportedObjects, {
 	nodesRegistry : nodesRegistry,									// Object PropertyCache
 	viewsRegistry : viewsRegistry,									// Object PropertyCache
 	dataStoreRegistry : dataStoreRegistry,							// Object PropertyCache
-	reactivityQueries : reactivityQueries,							// Object PropertyCache
-	eventQueries : eventQueries,									// Array
-	propsAreArray : propsAreArray,									// Array
-	propsArePrimitives : propsArePrimitives,						// Array
 	definitionsCache : new ComponentDefCache(),						// Object ComponentDefCache
 });
 	

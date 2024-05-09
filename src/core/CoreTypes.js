@@ -4,19 +4,21 @@
 
 
 
-var appConstants = require('src/appLauncher/appLauncher');
-var TypeManager = require('src/core/TypeManager');
-var SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator');
+const appConstants = require('src/appLauncher/appLauncher');
+//const TypeManager = require('src/core/TypeManager');
+const TemplateFactory = require('src/core/TemplateFactory');
+const Registries = require('src/core/Registries');
+const SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator');
 
 
-var UIDGenerator = require('src/core/UIDGenerator');
-var PropertyCache = require('src/core/PropertyCache');
-var CachedTypes = require('src/core/CachedTypes');
-var idGenerator = TypeManager.UIDGenerator;
-var nodesRegistry = TypeManager.nodesRegistry;
-var viewsRegistry = TypeManager.viewsRegistry;
+const UIDGenerator = require('src/core/UIDGenerator');
+const PropertyCache = require('src/core/PropertyCache');
+const CachedTypes = require('src/core/CachedTypes');
+//const idGenerator = TemplateFactory.UIDGenerator;
+const nodesRegistry = Registries.nodesRegistry;
+const viewsRegistry = Registries.viewsRegistry;
 
-var JSkeyboardMap = require('src/events/JSKeyboardMap');
+//const JSkeyboardMap = require('src/events/JSKeyboardMap');
 
 
 
@@ -391,11 +393,11 @@ Command.__factory_name = 'Command';
  * 					or as standalones when a view needs a simple "internal" reference to a stream (may also be totally elsewhere)
  */
 
-var Stream = function(name, value, hostedInterface, transform, lazy) {
-
+var Stream = function(name, value, hostedInterface, transform, lazy, component) {
+	this._hostComponent = component;
 	this.forward = true;
 	this.name = name;
-	this.lazy = typeof lazy !== 'undefined' ? lazy : false;
+	this.lazy = lazy || false;
 	this.hostedInterface = hostedInterface;
 	this.transform = transform || (value => value);
 	this.inverseTransform;
@@ -580,7 +582,7 @@ Stream.prototype.map = function(handlerOrHost, prop, mapFunc) {
 	return this.addSubscription(handlerOrHost, prop).map(mapFunc);
 }
 
-Stream.prototype.addSubscription = function(handlerOrHost, prop, inverseTransform) {
+Stream.prototype.addSubscription = function(handlerOrHost, prop, inverseTransform, subscribingComponent) {
 	this.subscriptions.push(new Subscription(handlerOrHost, prop, this, inverseTransform));
 	return this.subscriptions[this.subscriptions.length - 1];
 }
@@ -614,7 +616,9 @@ var Subscription = function(subscriberObjOrHandler, subscriberProp, parent, inve
 			cb : typeof subscriberObjOrHandler === 'function' ? subscriberObjOrHandler : function defaultCb() {return this._stream._value},
 			inverseTransform : inverseTransform || function(value) {return value;},
 			_subscription : this,
-			_stream : parent
+			_stream : parent,
+			_parentHost : parent._hostComponent,
+			host : null
 	}
 //	typeof subscriberProp === 'string' ?
 	this._stream = parent;
@@ -644,15 +648,19 @@ Subscription.prototype.unsubscribe = function() {
 	this._stream.unsubscribe(this);
 }
 
-Subscription.prototype.filter = function(filterFunc) {
-//	if (typeof filterFunc !== 'function')
-//		return this;
-	
+Subscription.prototype.filter = function(filterFunc, hostComponent) {
 	if (!filterFunc)
 		return this;
+		
+	// when cbOnly, we bind the cb on the component
+	// but when reacting from a streamon a stream
+	// we only have a ref on the parent stream
+	// => we need to acquire a ref on the component somehow
+	if (!this.subscriber.host)
+		this.subscriber.host = hostComponent;
 
 	// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark shows a slight improvement, as timings are identical although there is an overhaed with defineProperty)
-	var f = new Function('value', 'return (' + filterFunc.toString() + ').call(this.subscriber, value) === true ? true : false;');
+	var f = new Function('value', 'return (' + filterFunc.toString() + ').call(this.subscriber.host, value) === true ? true : false;');
 	Object.defineProperty(this, 'filter', {
 		value : f,
 		enumerable : true
@@ -661,12 +669,19 @@ Subscription.prototype.filter = function(filterFunc) {
 	return this;
 }
 
-Subscription.prototype.map = function(mapFunc) {
+Subscription.prototype.map = function(mapFunc, hostComponent) {
 	if (!mapFunc)
 		return this;
+		
+	// when cbOnly, we bind the cb on the component
+	// but when reacting from a streamon a stream
+	// we only have a ref on the parent stream
+	// => we need to acquire a ref on the component somehow
+	if (!this.subscriber.host)
+		this.subscriber.host = hostComponent;
 
 	// Optimize by breaking the reference : not sure it shall be faster (at least there is only one closure, which is internal to "this" : benchmark shows a slight improvement, as timings are identical although there is an overhaed with defineProperty)
-	var f = new Function('value', 'return (' + mapFunc.toString() + ').call(this.subscriber, value);');
+	var f = new Function('value', 'return (' + mapFunc.toString() + ').call(this.subscriber.host, value);');
 	Object.defineProperty(this, 'map', {
 		value : f,
 		enumerable : true
@@ -721,7 +736,7 @@ Subscription.prototype.unAnonymize = function(subscriberUID, subscriberType) {
 }
 
 Subscription.prototype.registerTransition = function(parent_UID) {
-	TypeManager.stateMachineCache.registerTransition(
+	Registries.stateMachineCache.registerTransition(
 		this._subscriberUID,
 		this._subscriberType,
 		{
@@ -1173,7 +1188,7 @@ var SavableStore = function(onUpdateCallback, valueNamesList = []) {
  */
 SavableStore.prototype.addValue = function(valueName) {
 	this.valueNames.push(valueName);
-	this.values.push(new TypeManager.PropModel({[valueName] : undefined}))
+	this.values.push(new TemplateFactory.PropModel({[valueName] : undefined}))
 }
 
 /**
@@ -1546,7 +1561,7 @@ PixiViewAPI.prototype.getFragmentFromContent = function(contentAsArray, template
 	var fragment = document.createDocumentFragment(), elem;
 	contentAsArray.forEach(function(val) {
 		var elem = document.createElement(templateNodeName);
-		elem.id = 'targetSubViewElem-' + TypeManager.UIDGenerator.newUID();
+		elem.id = 'targetSubViewElem-' + TemplateFactory.UIDGenerator.newUID();
 		if (val instanceof HTMLElement) {
 			elem.appendChild(val);
 			fragment.appendChild(elem);
@@ -1768,7 +1783,7 @@ DOMViewAPI.prototype.getFragmentFromContent = function(contentAsArray, templateN
 	var fragment = document.createDocumentFragment(), elem;
 	contentAsArray.forEach(function(val) {
 		var elem = document.createElement(templateNodeName);
-		elem.id = 'targetSubViewElem-' + TypeManager.UIDGenerator.newUID();
+		elem.id = 'targetSubViewElem-' + TemplateFactory.UIDGenerator.newUID();
 		if (val instanceof HTMLElement) {
 			elem.appendChild(val);
 			fragment.appendChild(elem);
@@ -1829,7 +1844,8 @@ DOMViewAPI.prototype.show = function() {
  * @constructor ComponentView
  */
 var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
-	var def = definition.getHostDef() || definition;
+//	console.error(definition);
+	var def = (definition.getHostDef && definition.getHostDef()) || definition;
 //	if (definition.getHostDef() && definition.getHostDef().nodeName === 'smart-select')
 //		console.log(def);
 	this._defUID = def.UID;
@@ -1845,7 +1861,7 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 		console.error('no nodeName given to a componentView : returning...', def);
 		return;
 	}
-	else if (!parentView && def.nodeName !== 'app-root') {
+	else if (!(parentView instanceof ComponentView) && def.nodeName !== 'app-root') {
 		console.warn('no parentView given to a componentView : nodeName is', def.nodeName, '& type is', def.type);
 	}
 		
@@ -1855,8 +1871,8 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	if (!nodesRegistry.getItem(this._defUID))
 		nodesRegistry.setItem(this._defUID, (new CachedTypes.CachedNode(def.nodeName, def.isCustomElem)));
 	
-	if (!TypeManager.caches.attributes.getItem(this._defUID))
-		TypeManager.caches.attributes.setItem(this._defUID, def.attributes);
+	if (!Registries.caches.attributes.getItem(this._defUID))
+		Registries.caches.attributes.setItem(this._defUID, def.attributes);
 		
 	viewsRegistry.push(this);
 
@@ -1880,8 +1896,8 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 			this.subViewsHolder = new ComponentSubViewsHolder(null, this);
 	}
 	
-	var hadParentView = this.parentView = parentView || null;
-	if (parentView && !isChildOfRoot) {
+	var hadParentView = this.parentView = parentView instanceof ComponentView ? parentView : null;
+	if (this.parentView && !isChildOfRoot) {
 		this.parentView = this.getEffectiveParentView();
 //		console.log('hadParentView', parentView, this.parentView);
 	}
@@ -1907,8 +1923,8 @@ ComponentView.prototype.callCurrentViewAPI = function(methodName, ...args) {
  */
 ComponentView.prototype.getEffectiveParentView = function() {
 	return (this.parentView.subViewsHolder && this.parentView.subViewsHolder.subViews.length) 
-						? this.parentView.subViewsHolder.subViews[this.section]
-							: this.parentView;
+					? this.parentView.subViewsHolder.subViews[this.section]
+					: this.parentView;
 }
 
 ComponentView.prototype.getTargetSubView = function(def) {
@@ -2049,7 +2065,6 @@ ComponentView.prototype.addChildAt = function(childView, atIndex) {
 	this.subViewsHolder.addMemberView(childView);
 	childView.parentView = this;
 	this.addChildNodeFromViewAt(childView, atIndex);
-	
 }
 
 /**
@@ -2141,6 +2156,12 @@ ComponentSubViewsHolder.prototype.instanciateSubViews = function(definition) {
 		this.subViews.push((new ComponentSubView(def, this.parentView)));
 	}, this);
 	definition.members.forEach(function(def) {
+		if(typeof def.section === 'undefined') {
+			if (typeof def.host !== 'undefined')
+				console.warn('A component\'s definition contains "members" which seem to be Components (they have a "host" property), but have no "type" property (so they\'re being instanciated as views, and it failed). If you menat to define a view, you must define a template without hierarchy (the nodeName & section properties must be defined at the first level). nodeName is ' + def.host.nodeName + ' & defUID is ' + def.host.UID);
+			else
+				console.warn('A member view\'s definition doesn\'t contain a "section" prop at first level, you may have defined it wrongly. You must define a template without hierarchy (the nodeName & section properties must be defined at the first level). nodeName is ' + def.nodeName + ' & defUID is ' + def.UID);
+		}
 		this.memberViews.push((new ComponentSubView(def, def.section !== null ? this.subViews[def.section] : this.parentView)));
 	}, this);
 }
@@ -2159,10 +2180,13 @@ ComponentSubViewsHolder.prototype.memberAt = function(idx) {
 
 ComponentSubViewsHolder.prototype.immediateAddMemberAt = function(idx, memberView) {
 	var backToTheFutureAmount = this.memberViews.length - idx;
-	TypeManager.viewsRegistry.splice(TypeManager.viewsRegistry.length - backToTheFutureAmount, 0, memberView);
+	Registries.viewsRegistry.splice(Registries.viewsRegistry.length - backToTheFutureAmount, 0, memberView);
 	this.memberViews.splice(idx, 1, memberView);
 }
 
+// Should not be used: 
+// We need the mecanism defined in ComponentView 
+// to define the correct parentView
 ComponentSubViewsHolder.prototype.addMemberView = function(view) {
 	this.memberViews.push(view);
 }
@@ -2186,18 +2210,18 @@ ComponentSubViewsHolder.prototype.moveLastMemberViewTo = function(to, offset, vi
 }
 
 ComponentSubViewsHolder.prototype.immediateUnshiftMemberView = function(definition) {
-	var lastView = TypeManager.viewsRegistry.pop();
+	var lastView = Registries.viewsRegistry.pop();
 	var view = new ComponentSubView(definition, this.parentView);
 	this.memberViews.unshift(view);
 	
-	TypeManager.viewsRegistry.push(lastView);
+	Registries.viewsRegistry.push(lastView);
 	return view;
 }
 
 ComponentSubViewsHolder.prototype.immediateAscendViewAFewStepsHelper = function(stepsCount, effectiveViewIdx) {
-	var ourLatelyAppendedView = TypeManager.viewsRegistry.splice(effectiveViewIdx, 1)[0];
-//	console.log(TypeManager.viewsRegistry.length, stepsCount, TypeManager.viewsRegistry[TypeManager.viewsRegistry.length - 1 - stepsCount]);
-	TypeManager.viewsRegistry.splice(effectiveViewIdx - stepsCount, 0, ourLatelyAppendedView);
+	var ourLatelyAppendedView = Registries.viewsRegistry.splice(effectiveViewIdx, 1)[0];
+//	console.log(Registries.viewsRegistry.length, stepsCount, Registries.viewsRegistry[Registries.viewsRegistry.length - 1 - stepsCount]);
+	Registries.viewsRegistry.splice(effectiveViewIdx - stepsCount, 0, ourLatelyAppendedView);
 }
 
 ComponentSubViewsHolder.prototype.resetMemberContent = function(idx, textContent) {

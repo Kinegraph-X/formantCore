@@ -5,14 +5,15 @@
  * 		App.List is coupled with [Dataset.push(), pushApply(), splice(), & more]
  */
 
-var TypeManager = require('src/core/TypeManager');
-var App = require('src/core/AppIgnition');
+const TemplateFactory = require('src/core/TemplateFactory');
+const Registries = require('src/core/Registries');
+const App = require('src/core/App');
 
 
 
 var RecitalDataset = function(rootComponent, trackedComponent, template, factoryPropsArray, arrayFunctions) {
-	if (!rootComponent || !trackedComponent || !template || !factoryPropsArray) {
-		console.warn('ReactiveDataset initialization failed: Missing parameters. Returning...')
+	if (typeof rootComponent === 'undefined' || !trackedComponent || !template || !factoryPropsArray) {
+		console.error('ReactiveDataset initialization failed: Missing parameters. Returning...', rootComponent, trackedComponent, template, factoryPropsArray);
 		return;
 	}
 	this.init(rootComponent, trackedComponent, template, factoryPropsArray);
@@ -41,11 +42,12 @@ Object.defineProperty(RecitalDataset.prototype, 'arrayFunc', {
 });
 Object.defineProperty(RecitalDataset.prototype, 'getDefaultListDef', {
 	value : function() {
-				return TypeManager.createComponentDef({
+				return TemplateFactory.createDef({
 					type : 'ComponentList',
 					each : [],
 					item : null,
-					template : null
+					template : null,
+					isInternal : true
 				});
 			}
 });
@@ -118,6 +120,9 @@ Object.defineProperty(RecitalDataset.prototype, 'newItem', {
 
 Object.defineProperty(RecitalDataset.prototype, 'updateDatasetState', {
 	value : function() {
+		if (!this.rootComponent)
+			return;
+			
 		this.funcList.forEach(function(prop) {
 			if (prop === 'filter' || prop === 'filterNot')
 				this.rootComponent.streams[prop].value = Array.prototype.filter.call(this, this.arrayFunc[prop], this.arrayFunc).length;
@@ -163,7 +168,7 @@ Object.defineProperty(RecitalDataset.prototype, 'push',  {
 		new App.List(this.defaultListDef, this.trackedComponent);
 		
 		if (souldForceEventSubscriptions)
-			this.trackedComponent.handleEventSubsOnChildrenAt(TypeManager.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
+			this.trackedComponent.handleEventSubsOnChildrenAt(Registries.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
 // this.trackedComponent.addModules(this.defaultListDef,
 // this.trackedComponent._children.length);
 		Array.prototype.push.call(this, item);
@@ -180,7 +185,7 @@ Object.defineProperty(RecitalDataset.prototype, 'pushApply',  {
 			lastIndex = this.trackedComponent._children.length;
 		// There is a case where we add children -before- the appIgnition has been done
 		// so the trackedCompenent, already has children, and shall already have subscribed to its children,
-		// so handling event subs on children shall subscribe a seconde time starting at child index 0
+		// so handling event subs on children shall subscribe a second time starting at child index 0
 		// => test if the tracked component has a master node, and only force subscriptions if it has been rendered
 		if (this.trackedComponent.view.getMasterNode())
 			souldForceEventSubscriptions = true;
@@ -189,7 +194,7 @@ Object.defineProperty(RecitalDataset.prototype, 'pushApply',  {
 		new App.List(this.defaultListDef, this.trackedComponent);
 		
 		if (souldForceEventSubscriptions)
-			this.trackedComponent.handleEventSubsOnChildrenAt(TypeManager.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
+			this.trackedComponent.handleEventSubsOnChildrenAt(Registries.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
 // this.trackedComponent.addModules(this.defaultListDef,
 // this.trackedComponent._children.length);
 		Array.prototype.push.apply(this, itemArray);
@@ -336,15 +341,16 @@ Object.defineProperty(RecitalDataset.prototype, 'targetContainerDeploy', {
 
 Object.defineProperty(RecitalDataset.prototype, 'sortForPropHostingArrayOnArrayIdx',  {
 	value : function(prop, idx, invert) {
-
 		var tmpThis = [];
 		for (let i = 0, l = this.length; i < l; i++) {
 			tmpThis.push(this[i][prop].slice(0));
 		}
+		
 		if (invert)
 			tmpThis.sort(Array.prototype.inverseSortOnObjectProp.bind(null, idx));
 		else
 			tmpThis.sort(Array.prototype.sortOnObjectProp.bind(null, idx));
+		
 		for (let i = 0, l = this.length; i < l; i++) {
 			this[i][prop] = tmpThis[i];
 		}
@@ -370,7 +376,7 @@ Object.defineProperty(RecitalDataset.prototype, 'reNewComponents',  {
 		var lastIndex = this.trackedComponent._children.length;
 		this.defaultListDef.host.each = this;
 		new App.List(this.defaultListDef, this.trackedComponent);
-		this.trackedComponent.handleEventSubsOnChildrenAt(TypeManager.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
+		this.trackedComponent.handleEventSubsOnChildrenAt(Registries.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
 		this.updateDatasetState();
 	}
 });

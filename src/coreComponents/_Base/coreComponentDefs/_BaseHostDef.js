@@ -7,7 +7,7 @@
  * @CSSifyTheme themeName : basic-light
  * 
  */
-var TypeManager = require('src/core/TypeManager');
+var TemplateFactory = require('src/core/TemplateFactory');
 var CreateStyle = require('src/core/GenericStyleConstructor');
 
 
@@ -18,8 +18,8 @@ var _componentNameDef = function(uniqueID, options, model) {
 	/**@CSSifySlots placeholder */
 	
 	
-	var slotDef = TypeManager.createComponentDef({
-		host : TypeManager.createComponentDef({
+	var slotDef = TemplateFactory.createDef({
+		host : TemplateFactory.createDef({
 			type : 'ComponentWithView',
 			nodeName : 'pseudo-slot',
 			states : [],
@@ -32,8 +32,8 @@ var _componentNameDef = function(uniqueID, options, model) {
 					}
 				}
 			]/**@CSSifyStyle componentStyle : _componentNameTemplate */
-		}, null, 'hostOnly')
-	}, null, 'rootOnly');
+		})
+	});
 	
 	
 	/*
@@ -49,9 +49,9 @@ var _componentNameDef = function(uniqueID, options, model) {
 	 * 			-*- eventually, his slotsCount property {number} also overridden (pre-defined) in the derived ctor
 	 * 			-*- and if the type of the slots must be different than "Dataset", his affectSlots() method must be overridden
 	 */
-	var moduleDef = TypeManager.createComponentDef({
-		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
+	var moduleDef = TemplateFactory.createDef({
+		host : TemplateFactory.createDef({
+//			type : 'CompoundCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the TabPanel ctor
 			nodeName : '_componentName'.toLowerCase() + '-component'/**@CSSifyStyle componentStyle : _componentNameHost */
 		}),
 		lists : [
@@ -60,7 +60,7 @@ var _componentNameDef = function(uniqueID, options, model) {
 				template : slotDef
 			})
 		]
-	}, null, 'rootOnly');
+	});
 	
 	return moduleDef;
 }

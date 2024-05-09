@@ -329,13 +329,19 @@ Object.defineProperty(Array.prototype, '_sortForPropHostingArrayOnArrayIdx',  {
 
 Object.defineProperty(Array.prototype, 'sortOnObjectProp',  {
 	value : function(prop, a, b) {
-		return parseInt(a[prop], 10) - parseInt(b[prop], 10);
+		if (typeof a[prop] === 'string')
+			return a[prop].charCodeAt(0) - b[prop].charCodeAt(0)
+		else
+			return parseInt(a[prop], 10) - parseInt(b[prop], 10);
 	}
 });
 
 Object.defineProperty(Array.prototype, 'inverseSortOnObjectProp',  {
 	value : function(prop, a, b) {
-		return parseInt(b[prop], 10) - parseInt(a[prop], 10);
+		if (typeof a[prop] === 'string')
+			return b[prop].charCodeAt(0) - a[prop].charCodeAt(0)
+		else
+			return parseInt(b[prop], 10) - parseInt(a[prop], 10);
 	}
 });
 

@@ -2,9 +2,11 @@
  * @constructor Component
  */
 // @ts-nocheck
-var CoreTypes = require('src/core/CoreTypes');
-var TypeManager = require('src/core/TypeManager');
-var ElementDecorator = require('src/UI/_mixins/elementDecorator_HSD');
+const CoreTypes = require('src/core/CoreTypes');
+const TypeManager = require('src/core/TypeManager');
+const TemplateFactory = require('src/core/TemplateFactory');
+const Registries = require('src/core/Registries');
+const ElementDecorator = require('src/core/elementDecorator_HSD');
 
 var Logger = require('src/Error&Log/Logger');
 
@@ -34,8 +36,13 @@ var HierarchicalObject = function(definition, parentView, parent) {
 	LoggingEventEmmitter.call(this);
 	this.objectType = 'HierarchicalObject';
 	this._key;
-
-	this._parent = (parent && parent instanceof HierarchicalObject && parent.pushChild(this)) ? parent : null;
+	
+	this._parent = (parent && parent instanceof HierarchicalObject) 
+		? (parent.pushChild(this) && parent)
+		: parentView instanceof CoreTypes.ComponentView && parentView._parent
+			? (parentView._parent.pushChild(this) && parentView._parent) 
+			: null;
+	
 	this._children = [];
 	this._fastAccessToChildren = {};
 }
@@ -94,7 +101,9 @@ HierarchicalObject.prototype.traverseChildrenAlongPath = function(path, result) 
 }
 
 /**
- * @param {object} child : an instance of another object
+ * A method accepting not having created the view
+ * (used mainly by the present type)
+ * @param {object} child : an instance of another object of the same type
  */
 HierarchicalObject.prototype.pushChild = function(child) {
 	child._parent = this;
@@ -103,7 +112,25 @@ HierarchicalObject.prototype.pushChild = function(child) {
 	this.onAddChild(child);
 	return true;
 }
-HierarchicalObject.prototype.addChild = HierarchicalObject.prototype.pushChild;
+
+/**
+ * A method to be used on the context of a component
+ * (requires having created a view)
+ * @param {object} child : an instance of another object of the same type
+ */
+HierarchicalObject.prototype.addChild = function(child) {
+	child._parent = this;
+	// Assign twice:
+	// The first time we define the view of the parent
+	// The second time, depending ont he view of the parent, we switch to a subView if appropriate
+	child.view.parentView = this.view;
+	child.view.parentView = child.view.getEffectiveParentView();
+	child._key = this._children.length;
+	// onAddChild is an ultra-standard approach wich doesn't support appending to subviews
+	// TODO: See if we can make it smarter
+//	this.onAddChild(child);
+	return true;
+}
 
 /**
  * @param {object} child : an instance of another object
@@ -443,59 +470,111 @@ ExtensibleObject.prototype.addInterface = function(base, extension) {
 }
 
 /**
- * @param {boolean|prototype}: keepNonStdProtosOrProto
- * @param {prototype} proto
- * @illimitedParams {prototype} proto
+ * mergeOwnProperties
+ * 
+ * This function has multiple signatures,
+ * the first parameter is optional
+ * 
+ * @param {Boolean|Object}: keepNonStdProtosOrProto
+ * @param {Object} proto
+ * @illimitedParams {Object} proto
  */
 ExtensibleObject.prototype.mergeOwnProperties = function(keepNonStdProtosOrProto, proto) {
-	var self = this, keepNonStdProtos = false, obj, desc, isArray, isObj, len,
+	var self = this, keepNonStdProtos = false, obj, desc, targetDesc, isArray, isObj, len, testedProto,
+		// allow not passing the "keepNonStdProtosOrProto" parameter
+		// => in that case, the first argument is the target object
 		target = (typeof arguments[0] === 'boolean'
 					&& arguments[0]
 					&& (keepNonStdProtos = true))
 						? arguments[1]
-								: arguments[0] || {},
+						: arguments[0] || {},
 		i = keepNonStdProtos ? 2 : 1,
 		length = arguments.length,
 		testObj;
-
+		
+	if (target.prototype === Object.prototype) {
+		console.error('you\'re not allowed to extend the native "Object" constructor');
+		return;
+	}
+	
+	// We may want to merge more than 2 objects : loop on the arguments
 	for ( ; i < length; i++ ) {
-		// Only deal with non-null/undefined args
-		if ((obj = arguments[ i ]) != null) {
+		// Avoid erroneous calls where this function is called with a "null" or undefined argument
+		if ((obj = arguments[ i ])) {
+			// As we may be "mixing" a constructor, which has its own prototype AND an inherited prototype
+			// Prepare the case for keepNonStdProtosOrProto :
+			// We'll set the prototype of the constructor AND the inherited prototype as "own" props
+			// Thus, we shall have sort of a "doubled" prototype chain.
+			// (in reality, the chain will end after the first level, on the inheriting type, for now,
+			// and we don't need more, as in most cases
+			// it inherits from the CompositorComponent)
 			testObj = Object.getOwnPropertyNames(obj).concat(Object.getOwnPropertyNames(Object.getPrototypeOf(obj)));
 
-			// Extend the base object
+			// Extend the target object
+			// (it is frequently an empty object,
+			// with its <prototype> key set to the baseClass's protoype we're inheriting from,
+			// as we have this need for late extensions,
+			// eg. extension of core Components in the framework)
 			testObj.forEach(function(name) {
-				if (!obj.hasOwnProperty(name) && !keepNonStdProtos)
+				// When keepNonStdProtos is set (as first argument of the function),
+				// this function aims at retrieving the prototype of an instance
+				// by setting its properties at the "own property" level
+				// of the target => avoid if not explicitely called
+				if (!keepNonStdProtos && !obj.hasOwnProperty(name))
 					return;
-				else if (keepNonStdProtos && target.prototype === Object.prototype && obj.prototype[name]) {
-					target.prototype = obj.prototype;
-					return;
-				}
+				// don't merge properties from the prototype of extended natives
+				// even if asked
+				else if (!obj.hasOwnProperty(name) && (target instanceof Array || target instanceof String || target instanceof Object || target instanceof Boolean))
+						return;
+				
 				desc = Object.getOwnPropertyDescriptor(obj, name);
-				if (typeof desc === 'undefined' || !desc.get) {
+				// Case of "described"" properties is handled at the end
+				if (typeof desc === 'undefined') {
 					if ((isArray = Array.isArray(obj[name])) || (isObj = (Object.prototype.toString.call(obj[name]) === '[object Object]'))) {
 						len = obj[name].length || Object.keys(obj[name]).length;
 						if (len) {
-							if (typeof $ !== 'undefined' && obj[name] instanceof $)
-								target[name] = obj[name];
-							else
+							// don't merge object instances that are deeper than the first level : 
+							// we don't have a mechanism here to cleanly retrieve their <prototype> key
+							// (Our mechanism would cause object instances from the framework
+							// hosted as a prop on an instance, to have its props from the prototype
+							// as "own" properties)
+							if ((testedProto = Object.getPrototypeOf(obj[name])) === Object.prototype || testedProto === Array.prototype)
 								target[name] = self.mergeOwnProperties(target[name] || (isArray ? [] : {}), obj[name]);
+							// just copy object instances and don't recurse
+							else
+								target[name] = obj[name]
 						}
 						else
 							target[name] = isArray ? [] : {};
 					}
 					else if (obj[name] || obj[name] === null) 	// copy null values : null is sometimes explicitly tested
 						target[name] = obj[name];
+					// Scalars that resolve to "falsy", which are not undefined and not null
 					else if (typeof obj[name] !== 'function' && typeof obj[name] !== 'undefined' && obj[name] !== null)
 						target[name] = typeof obj[name] === 'string' ? '' : 0;
 				}
 				else {
-					Object.defineProperty(target, name, {
-						enumerable : desc.enumerable,
-						configurable : desc.configurable,
-						get : desc.get,
-						set : desc.set
-					});
+					targetDesc = Object.getOwnPropertyDescriptor(target, name);
+					// Edge case ? Maybe there are some...
+					if (typeof targetDesc !== 'undefined' && (!targetDesc.writable || !targetDesc.configurable))
+						return;
+					
+					// Getters can't have a value
+					if (!desc.get)
+						Object.defineProperty(target, name, {
+							value : obj[name],
+							writable : desc.writable,
+							enumerable : desc.enumerable,
+							configurable : desc.configurable
+						});
+					else
+						Object.defineProperty(target, name, {
+							writable : desc.writable,
+							enumerable : desc.enumerable,
+							configurable : desc.configurable,
+							get : desc.get,
+							set : desc.set
+						});
 				}
 			});
 		}
@@ -583,22 +662,23 @@ var AbstractComponent = function(definition, parentView, parent) {
 	this.objectType = 'AbstractComponent';
 	
 	this._UID = TypeManager.UIDGenerator.newUID().toString();
-
+	
 	this._defUID = definition.getHostDef().UID;
 	this._defComposedUID = '';
 	
+//	console.log(definition);
 	if (typeof this._defUID === 'undefined') {
 		console.warn('No UID found in definition: the hierarchical structure of the def might be wrong. eg: a group def has been defined and its type is not "CompoundComponent", etc. Returning...', definition);
 		return;
 	}
 	
 //	console.log(definition);
-	if (!TypeManager.hostsDefinitionsCacheRegistry.getItem(this._defUID))
+	if (!Registries.hostsDefinitionsCacheRegistry.getItem(this._defUID))
 		this.populateStores(definition);
 	this.createEvent('update');
 	
 //	console.log(definition.getHostDef().UID, definition.getHostDef().nodeName, definition)
-	TypeManager.typedHostsRegistry.getItem(this._defUID).push(this);
+	Registries.typedHostsRegistry.getItem(this._defUID).push(this);
 }
 AbstractComponent.prototype = Object.create(AsyncActivableObject.prototype);
 AbstractComponent.prototype.objectType = 'AbstractComponent';
@@ -616,7 +696,7 @@ AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
 	if ((defaultDef = this.createDefaultDef(definition))) {
 		defaultHostDef = defaultDef.getGroupHostDef() ? defaultDef.getGroupHostDef() : defaultDef.getHostDef();
 		this._defComposedUID = defaultHostDef.UID;
-//		if (TypeManager.hostsDefinitionsCacheRegistry.getItem(this._defUID, this._defComposedUID))
+//		if (Registries.hostsDefinitionsCacheRegistry.getItem(this._defUID, this._defComposedUID))
 //			return;
 	}
 	else
@@ -685,11 +765,11 @@ AbstractComponent.prototype.populateStores = function(definition) {
 	if ((title = hostDefinition.attributes.getObjectValueByKey('title')) && title.slice(0, 1) === '-')
 		ElementDecorator['Hyphen-Star-Dash'].decorateAttributes(hostDefinition.nodeName, hostDefinition.attributes);
 	
-	for (let prop in TypeManager.caches) {
-		TypeManager.caches[prop].setItem(this._defUID, hostDefinition[prop]);
+	for (let prop in Registries.caches) {
+		Registries.caches[prop].setItem(this._defUID, hostDefinition[prop]);
 	}
-	TypeManager.hostsDefinitionsCacheRegistry.setItem(this._defUID, definition);
-	TypeManager.typedHostsRegistry.setItem(this._defUID, []);
+	Registries.hostsDefinitionsCacheRegistry.setItem(this._defUID, definition);
+	Registries.typedHostsRegistry.setItem(this._defUID, []);
 	
 	// HACK
 //	((hostDefinition.sOverride && hostDefinition.sWrapper) && hostDefinition.sWrapper.overrideStyles(hostDefinition.sOverride));
@@ -762,6 +842,16 @@ ComponentWithObservables.prototype.reactOnSelfBinding = function(reactOnSelf, pa
 var ComponentWithView = function(definition, parentView, parent, isChildOfRoot) {
 //	console.log('ComponentWithView', parentView);
 //	console.log('isChildOfRoot', isChildOfRoot);
+	// Let's allow not passing a definition.
+	// This is a common pattern we've used in the documentation
+	// (although we had chosen until now to excplicitely mock the def
+	//  before calling the specialized constructor)
+	if (definition === null) {
+		definition = TypeManager.mockDef();
+//		definition.getHostDef().nodeName = 'dummy';
+	}
+	
+//	console.log(definition);
 	ComponentWithObservables.call(this, definition, parentView, parent);
 	
 	this.objectType = 'ComponentWithView';
@@ -1047,6 +1137,8 @@ ComponentWithHooks.prototype.lateAddChildren = function(definition) {
 	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
 		asyncTask = this._asyncInitTasks[i];
 		if(asyncTask.type === 'lateAddChild' || asyncTask.type === 'lateInit') {
+			if (typeof asyncTask.execute !== 'function')
+				console.log(asyncTask);
 			asyncTask.execute(this, definition);
 		}
 	}
@@ -1080,7 +1172,7 @@ ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(compon
 		// HACK: the renderer expects a view to cache its "attributes" prop
 		// NOT WORKING?: caches items are inndexed on the defUID of the component
 		// FINAL HYPOTHESIS: not needed...
-//		TypeManager.caches['attributes'].setItem(newDef.getHostDef().UID, newDef.getHostDef()['attributes']);
+//		Registries.caches['attributes'].setItem(newDef.getHostDef().UID, newDef.getHostDef()['attributes']);
 	}
 	
 	if (newDef.members.length) {
@@ -1089,7 +1181,7 @@ ComponentWithHooks.prototype.addReactiveMemberViewFromFreshDef = function(compon
 			// HACK: the renderer expects a view to cache its "attributes" prop
 			// NOT WORKING?: caches items are inndexed on the defUID of the component
 			// FINAL HYPOTHESIS: not needed...
-//			TypeManager.caches['attributes'].setItem(memberDef.UID, memberDef['attributes']);
+//			Registries.caches['attributes'].setItem(memberDef.UID, memberDef['attributes']);
 		}, this);
 	}
 }
@@ -1121,14 +1213,14 @@ ComponentWithHooks.prototype.extendDefToStatefull = function(componentDefinition
 	// Add that view to the subViewsHost->memberViews of the main view
 	
 	var statefullExtendedDef;
-	if (!(statefullExtendedDef = TypeManager.hostsDefinitionsCacheRegistry.getItem(componentDefinition.host.UID + nodeDefinition.host.attributes.getObjectValueByKey('className')))) {
+	if (!(statefullExtendedDef = Registries.hostsDefinitionsCacheRegistry.getItem(componentDefinition.host.UID + nodeDefinition.host.attributes.getObjectValueByKey('className')))) {
 		// This also is tricky, as we keep all along the call stack that ComponentDef which should be a hostDef.
 		// The only reason being that we discriminate the "grouped" append in the second test-case above as the one having "members" and "no nodeName on host"
 		// TODO: THAT MUST CHANGE.
 		statefullExtendedDef = TypeManager.createComponentDef(nodeDefinition);
 		statefullExtendedDef.host.UID = componentDefinition.host.UID + nodeDefinition.host.attributes.getObjectValueByKey('className');
 		
-		TypeManager.hostsDefinitionsCacheRegistry.setItem(statefullExtendedDef.host.UID, statefullExtendedDef);
+		Registries.hostsDefinitionsCacheRegistry.setItem(statefullExtendedDef.host.UID, statefullExtendedDef);
 		
 		// This approach is realy tricky: everything is crucial and the context is totally blurred:
 		// memberViewIdx anticipate on the next member view (the one we are currently building) to be appended ont the component's view: 

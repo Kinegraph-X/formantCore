@@ -11,8 +11,6 @@
 
 var TypeManager = require('src/core/TypeManager');
 
-var CreateStyle = require('src/core/GenericStyleConstructor');
-var pseudoSlotsStyles = require('src/UI/defs/extraStyles/pseudoSlot');
 
 
 var lazySlottedComponentDef = function(uniqueID, options, model) {
@@ -40,7 +38,7 @@ var lazySlottedComponentDef = function(uniqueID, options, model) {
 							this.trigger('update', e.data, true);
 					}
 				}
-			]/**@CSSifyStyle componentStyle : LazySlottedCompoundComponentPseudoslot */
+			]/**@CSSify Style componentStyle : LazySlottedCompoundComponentPseudoslot */
 		}, null, 'hostOnly')
 	}, null, 'rootOnly');
 	

@@ -13,7 +13,7 @@ var CompoundComponent = require('src/core/CompoundComponent');
 var componentTypes = CompoundComponent.componentTypes;
 var coreComponents = CompoundComponent.coreComponents;
 
-var elementDecorator_OffsetProp = require('src/UI/_mixins/elementDecorator_Offset');
+var elementDecorator_OffsetProp = require('src/core/elementDecorator_Offset');
 
 //console.log(TypeManager.caches);
 //console.log(TypeManager.dataStoreRegistry);
@@ -28,7 +28,7 @@ Ignition.prototype = {};
 Ignition.prototype.objectType = 'Ignition'; 
 
 Ignition.prototype.decorateComponentsThroughDefinitionsCache = function(listDef) {
-	
+	console.warn('Recatoring Info : AppIgniton called');
 	// instanciate DOM objects through cloning : DOM attributes are always static
 	// 					=> iterate on the "views" register
 	
@@ -362,7 +362,7 @@ Ignition.prototype.reflectViewOnAStateStream = function(component, stateObj) {
 	if (!component.view.isCustomElem) {
 		// define reflexive props on view
 		ElementCreator.propGetterSetter.call(component.view.getMasterNode(), stateObj.getName());
-		component.streams[stateObj.getName()].value = stateObj.getValue();
+//		component.streams[stateObj.getName()].value = stateObj.getValue();
 	}
 }
 Ignition.prototype.handleReflectionOnModel = function(reflectOnModel, augmentModel, item) {
@@ -370,7 +370,6 @@ Ignition.prototype.handleReflectionOnModel = function(reflectOnModel, augmentMod
 	//		update the model (assigning a getter & setter) in order to get the component's props reflected on the model
 	// else
 	// 		update the component's reactive props without reflection on the model
-//	console.log(item);
 	if (reflectOnModel) {
 		if (augmentModel) {
 			for (var s in this.streams) {

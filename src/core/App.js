@@ -3,16 +3,18 @@
  * @bootstraper ListInjector
  */
 
-var appConstants = require('src/appLauncher/appLauncher');
-var ElementCreator = require('src/core/GenericElementConstructor');
-var TypeManager = require('src/core/TypeManager');
-var CoreTypes = require('src/core/CoreTypes');
-var Component = require('src/core/Component');
-var CompoundComponent = require('src/core/CompoundComponent');
-var componentTypes = CompoundComponent.componentTypes;
-var coreComponents = CompoundComponent.coreComponents;
+const appConstants = require('src/appLauncher/appLauncher');
+const ElementCreator = require('src/core/GenericElementConstructor');
+const TypeManager = require('src/core/TypeManager');
+const TemplateFactory = require('src/core/TemplateFactory');
+const Registries = require('src/core/Registries');
+const CoreTypes = require('src/core/CoreTypes');
+const Component = require('src/core/Component');
+const CompoundComponent = require('src/core/CompoundComponent');
+const componentTypes = CompoundComponent.componentTypes;
+const coreComponents = CompoundComponent.coreComponents;
 
-var elementDecorator_OffsetProp = require('src/UI/_mixins/elementDecorator_Offset');
+const elementDecorator_OffsetProp = require('src/core/elementDecorator_Offset');
 
 
 
@@ -20,7 +22,7 @@ var elementDecorator_OffsetProp = require('src/UI/_mixins/elementDecorator_Offse
 /**
  * @constructor Ignition : this is the abstract class
  */
-var Ignition = function(definition, containerIdOrContainerNode) {}
+const Ignition = function(definition, containerIdOrContainerNode) {}
 Ignition.prototype = {};
 Ignition.prototype.objectType = 'Ignition'; 
 
@@ -54,9 +56,9 @@ Ignition.prototype.decorateComponentsThroughDefinitionsCache = function(listDef)
  */
 Ignition.prototype.instanciateDOM = function() {
 	var rootNodeIfDOM,
-		views = TypeManager.viewsRegistry,
-		nodes = TypeManager.nodesRegistry.cache,
-		attributesCache = TypeManager.caches.attributes.cache,
+		views = Registries.viewsRegistry,
+		nodes = Registries.nodesRegistry.cache,
+		attributesCache = Registries.caches.attributes.cache,
 		attributes,
 		alreadyCloned = false,
 		cloneMother,
@@ -72,15 +74,18 @@ Ignition.prototype.instanciateDOM = function() {
 			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_OffsetProp);
 		}
 		else {
-			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, TypeManager.caches.states.cache[view._defUID]);
+			nodes[view._defUID].cloneMother = ElementCreator.createElement(nodes[view._defUID].nodeName, nodes[view._defUID].isCustomElem, Registries.caches.states.cache[view._defUID]);
 
 			alreadyCloned = false;
 			cloneMother = nodes[view._defUID].cloneMother;
 			attributes.forEach(function(attrObject) {
 				if (attrObject.getName().indexOf('aria') === 0)
 					cloneMother.setAria(attrObject.getName(), attrObject.getValue());
-				else
+				else {
+					if (attrObject.getName() === 'textContent' && view.currentViewAPI.isShadowHost)
+						console.warn('DOM rendering shall fail: textContent on a DOM custom-element shall be appended outside of the shadowRoot. nodeName is ' + view.currentViewAPI.nodeName + ' & _defUID is ' + view._defUID + '. Consider using a reactive prop instead. For example, the SimpleText Component can handle that case.')
 					cloneMother[attrObject.getName()] = attrObject.getValue();
+				}
 			});
 			view.callCurrentViewAPI('setMasterNode', cloneMother.cloneNode(true));
 			Object.assign(view.callCurrentViewAPI('getMasterNode'), elementDecorator_OffsetProp);
@@ -115,9 +120,9 @@ Ignition.prototype.instanciateDOM = function() {
 			}
 		}
 		
-		if(view.parentView && typeof view.parentView.callCurrentViewAPI === 'undefined')
-			console.log(view);
-
+		if(view.parentView && typeof view.parentView.callCurrentViewAPI !== 'function')
+			console.warn('unknown rendering error : view.parentView.callCurrentViewAPI is not a function', view.parentView);
+	
 		if (view.parentView && view.parentView.callCurrentViewAPI('getWrappingNode')) {
 			view.parentView.callCurrentViewAPI('getWrappingNode').append(view.callCurrentViewAPI('getMasterNode'));
 		}
@@ -138,12 +143,13 @@ Ignition.prototype.instanciateDOM = function() {
  * 
  */
 Ignition.prototype.instanciateStreams = function() {
-	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
-	var streams = TypeManager.caches.streams.cache;
+	var typedComponentRegister = Registries.typedHostsRegistry.cache;
+	var streams = Registries.caches.streams.cache;
 	for (let defUID in typedComponentRegister) {
 		typedComponentRegister[defUID].forEach(function(component) {
 			streams[defUID].forEach(function(stateObj) {
-				component.streams[stateObj.getName()] = new CoreTypes.Stream(stateObj.getName(), stateObj.getValue());
+//				console.log(stateObj.getName(), component)
+				component.streams[stateObj.getName()] = new CoreTypes.Stream(stateObj.getName(), stateObj.getValue(), null, null, null, component);
 			})
 		});
 	}
@@ -158,14 +164,14 @@ Ignition.prototype.instanciateStreams = function() {
  * 
  */
 Ignition.prototype.handleReactivityAndEvents = function() {
-	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
+	var typedComponentRegister = Registries.typedHostsRegistry.cache;
 	var reactivityQueries, eventQueries, bindingHandler, component;
 	
-	TypeManager.reactivityQueries.forEach(function(subscriptionType) {
+	TemplateFactory.reactivityQueries.forEach(function(subscriptionType) {
 		bindingHandler = subscriptionType + 'Binding';
 		
 		for (let defUID in typedComponentRegister) {
-			reactivityQueries = TypeManager.caches[subscriptionType].cache[defUID];
+			reactivityQueries = Registries.caches[subscriptionType].cache[defUID];
 			
 			typedComponentRegister[defUID].forEach(function(component) {
 				// DEBUG HACK: to stop the infinite recursion we had in the DesignSystemManager
@@ -186,10 +192,10 @@ Ignition.prototype.handleReactivityAndEvents = function() {
 		}
 		
 	});
-	TypeManager.eventQueries.forEach(function(subscriptionType) {
+	TemplateFactory.eventQueries.forEach(function(subscriptionType) {
 		
 		for (let defUID in typedComponentRegister) {
-			eventQueries = TypeManager.caches[subscriptionType].cache[defUID];
+			eventQueries = Registries.caches[subscriptionType].cache[defUID];
 			
 			typedComponentRegister[defUID].forEach(function(component) {
 				
@@ -231,7 +237,7 @@ Ignition.prototype.lateEventBindingAndBidirectionalReflection = function(listDef
 	
 }
 Ignition.prototype.streamsBidirectionalReflectionBlank = function() {
-	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
+	var typedComponentRegister = Registries.typedHostsRegistry.cache;
 
 	for (let defUID in typedComponentRegister) {
 
@@ -247,7 +253,7 @@ Ignition.prototype.streamsBidirectionalReflectionBlank = function() {
 	}
 }
 Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
-	var typedComponentRegister = TypeManager.typedHostsRegistry.cache;
+	var typedComponentRegister = Registries.typedHostsRegistry.cache;
 	for (let defUID in typedComponentRegister) {
 		typedComponentRegister[defUID].forEach(function(component) {
 			if (!component.view)
@@ -265,7 +271,7 @@ Ignition.prototype.streamsBidirectionalReflectionFilled = function(listDef) {
 	var dataStoreKey;
 	for (let defUID in typedComponentRegister) {
 		typedComponentRegister[defUID].forEach(function(component) {
-			if (typeof (dataStoreKey = TypeManager.dataStoreRegistry.getItem(component._UID)) !== 'undefined')
+			if (typeof (dataStoreKey = Registries.dataStoreRegistry.getItem(component._UID)) !== 'undefined')
 				this.handleReflectionOnModel.call(component, listDef.reflectOnModel, listDef.augmentModel, listDef.each[dataStoreKey]);
 		}, this);
 	}
@@ -286,7 +292,7 @@ Ignition.prototype.defineStreamsBidirectionalReflection = function(defUID, compo
 	//			=> the global state of the component is held by an attribute on the node : styling uses then "state dependant" selectors (through CSS or anything you could use)
 	//			=> this reflection mechanism is the second step needed to achieve the goal we've mentioned above,
 	// 			   say that the reactivity-chain is exposed for anyone to have access to the component's magic, even from outside of the framework    
-	TypeManager.caches.states.cache[defUID].forEach(function(stateObj) {
+	Registries.caches.states.cache[defUID].forEach(function(stateObj) {
 		this.reflectViewOnAStateStream(component, stateObj);
 	}, this);
 }
@@ -298,7 +304,7 @@ Ignition.prototype.reflectViewOnAStateStream = function(component, stateObj) {
 	if (!component.view.isCustomElem) {
 		// define reflexive props on view
 		ElementCreator.propGetterSetter.call(component.view.getMasterNode(), stateObj.getName());
-		component.streams[stateObj.getName()].value = stateObj.getValue();
+//		component.streams[stateObj.getName()].value = stateObj.getValue();
 	}
 }
 Ignition.prototype.handleReflectionOnModel = function(reflectOnModel, augmentModel, item) {
@@ -306,6 +312,7 @@ Ignition.prototype.handleReflectionOnModel = function(reflectOnModel, augmentMod
 	//		update the model (assigning a getter & setter) in order to get the component's props reflected on the model
 	// else
 	// 		update the component's reactive props without reflection on the model
+	
 	if (reflectOnModel) {
 		if (augmentModel) {
 			for (var s in this.streams) {
@@ -331,8 +338,8 @@ Ignition.prototype.handleReflectionOnModel = function(reflectOnModel, augmentMod
 
 
 Ignition.prototype.cleanRegisters = function() {
-	TypeManager.viewsRegistry.length = 0;
-	TypeManager.typedHostsRegistry.reset();	
+	Registries.viewsRegistry.length = 0;
+	Registries.typedHostsRegistry.reset();	
 }
 
 
@@ -373,7 +380,7 @@ Ignition.prototype.getWrappingComponentOutsideAppScope = function(selector) {
 /**
  * @constructor IgnitionFromDef
  */
-var IgnitionFromDef = function(definition, parentView, parent) {
+const IgnitionFromDef = function(definition, parentView, parent) {
 	
 	var type = definition.getHostDef().getType() || (definition.getGroupHostDef() && definition.getGroupHostDef().getType());
 	if (type in componentTypes) {
@@ -392,21 +399,21 @@ IgnitionFromDef.prototype.objectType = 'IgnitionFromDef';
 /**
  * @constructor IgnitionToComposed
  */
-var IgnitionToComposed = function(definition, containerIdOrContainerNode) {
+const IgnitionToCompound = function(definition, parentView) {
 	
-	var mainComponent = new CompoundComponent(definition, containerIdOrContainerNode); 
+	var mainComponent = new CompoundComponent(definition, parentView); 
 	this.decorateComponentsThroughDefinitionsCache();
 	return mainComponent;
 }
-IgnitionToComposed.prototype = Object.create(Ignition.prototype);
-IgnitionToComposed.prototype.objectType = 'IgnitionToComposed'; 
+IgnitionToCompound.prototype = Object.create(Ignition.prototype);
+IgnitionToCompound.prototype.objectType = 'IgnitionToCompound'; 
 
 
 
 /**
  * @constructor IgnitionToExtensible
  */
-var IgnitionToExtensible = function(definition, containerIdOrContainerNode) {
+const IgnitionToExtensible = function(definition, containerIdOrContainerNode) {
 	
 	var mainComponent = new componentTypes.SinglePassExtensibleCompoundComponent(definition, containerIdOrContainerNode); 
 	this.decorateComponentsThroughDefinitionsCache();
@@ -422,7 +429,7 @@ IgnitionToExtensible.prototype.objectType = 'IgnitionToExtensible';
  * @param {Component} component : the root component to be injected in the DOM
  * @param {HierarchicalDefinition} componentListHostDef : an optional definition for a list of components to be instanciaded /!\ RESEVERD for the Dataset Type
  */
-var DelayedDecoration = function(containerId, component, componentListHostDef) {
+const DelayedDecoration = function(containerId, component, componentListHostDef) {
 	
 	this.decorateComponentsThroughDefinitionsCache(componentListHostDef);
 	
@@ -445,22 +452,23 @@ DelayedDecoration.prototype.objectType = 'DelayedDecoration';
 
 /**
  * @utility renderDOM
- * @param {String} containerId : A DOM selector, can be body or an id selector without the #
+ * @param {String} containerSelector : A DOM selector, can be body or an id selector without the #
  * @param {Component} component : the root component to be injected in the DOM
  * @param {HierarchicalDefinition} componentListHostDef : an optional definition for a list of components to be instanciaded /!\ RESEVERD for the Dataset Type
  */
-var renderDOM = function(containerId, component, componentListHostDef) {
+const renderDOM = function(containerSelector, component, componentListHostDef) {
 	const app = new Ignition()
 	app.decorateComponentsThroughDefinitionsCache(componentListHostDef);
 	
 	if (componentListHostDef)
 		componentListHostDef.each.length = 0;
 	
-	if (typeof containerId !== 'string')
-		return;
+	if (typeof containerSelector !== 'string')
+		return component;
 
-	document.querySelector(containerId !== 'body' ? '#' + containerId : containerId).appendChild(component.view.getMasterNode());
+	document.querySelector(containerSelector).appendChild(component.view.getMasterNode());
 }
+
 
 
 
@@ -473,9 +481,9 @@ var renderDOM = function(containerId, component, componentListHostDef) {
 /**
  * @constructor RootView
  */
-var createRootViewComponentHostDef = require('src/coreComponents/RootViewComponent/coreComponentDefs/RootViewComponentHostDef');
+const createRootViewComponentHostDef = require('src/coreComponents/RootViewComponent/coreComponentDefs/RootViewComponentHostDef');
 
-var RootView = function(igniterForChild, preparePage, noAppend) {
+const RootView = function(igniterForChild, preparePage, noAppend) {
 	var component;
 	if (preparePage)
 		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().moduleDef));
@@ -495,7 +503,7 @@ var RootView = function(igniterForChild, preparePage, noAppend) {
 		return component;
 	
 	if (!noAppend)
-		document.querySelector('body').prepend(component.view.getMasterNode());
+		document.querySelector('body').appendChild(component.view.getMasterNode());
 	return component;
 }
 RootView.prototype = Object.create(Ignition.prototype);
@@ -518,7 +526,7 @@ RootView.prototype.objectType = 'RootView';
  * This ctor is the effector of the ReactiveDataset
  * 	=> tight coupling = mandatory static inclusion in core (Dataset requires App).
  */
-var List = function(definition, parent) {
+const List = function(definition, parent) {
 	this.create(definition, parent);
 }
 List.prototype = Object.create(Ignition.prototype);
@@ -530,12 +538,11 @@ List.prototype.create = function(definition, parent) {
 	definition.getHostDef().each = [];
 }
 
-
-var App = {
+const App = {
 		componentTypes : componentTypes,
 		coreComponents : coreComponents,
 		RootView : RootView,
-		Ignition : IgnitionToComposed,
+		IgnitionToCompound : IgnitionToCompound,
 		IgnitionFromDef : IgnitionFromDef,
 		IgnitionToExtensible : IgnitionToExtensible,
 		DelayedDecoration : DelayedDecoration,

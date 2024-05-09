@@ -9,8 +9,6 @@
 
 var TypeManager = require('src/core/TypeManager');
 
-var CreateStyle = require('src/core/GenericStyleConstructor');
-var pseudoSlotsStyles = require('src/UI/defs/extraStyles/pseudoSlot');
 
 
 var abstractTreeDef = function(uniqueID, options, model) {

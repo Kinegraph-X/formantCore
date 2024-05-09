@@ -1,5 +1,5 @@
 /**
- * @Singleton & @Factories : Core Definitions Ctor
+ * @Singletons & @Factories : Core Template Ctor
  */
 
 var UIDGenerator = require('src/core/UIDGenerator');
@@ -7,13 +7,24 @@ var exportedObjects = {};
 
 
 
-
+/**
+ * @typedef {import("src/core/CoreTypes").Stream} Stream
+ * @typedef {import("src/core/CoreTypes").EventEmitter} EventEmitter
+ * @typedef {import("src/core/CoreTypes").Command} Command
+ * @typedef {import("src/core/Component").HierarchicalObject} HierarchicalObject
+ * @typedef {import("src/core/Component").ComponentWithObservables} ComponentWithObservables
+ * @typedef {import("src/editing/AbstractStylesheet")} AbstractStylesheet
+ * @typedef {import("src/events/JSKeyboardMap")} KeyboardMap
+ */
 
 
 /**
  * @constructor ValueObject
+ * @param {ViewTemplate|HierarchicalTemplate} defObj
+ * @param {String} isSpecial
  */
 var ValueObject = function(defObj, isSpecial) {
+	// @ts-ignore : "Expression not callable: {} has no signature" => seems calling a function defined as "described property" isn't supported
 	this.set(defObj, isSpecial);
 }
 ValueObject.prototype.objectType = 'ValueObject';
@@ -22,92 +33,100 @@ Object.defineProperty(ValueObject.prototype, 'model', {value : null});			// virt
 Object.defineProperty(ValueObject.prototype, 'get',{
 	value : function() {}
 });
-Object.defineProperty(ValueObject.prototype, 'getGroupHostDef',{
-	value : function() {return (this.host && this.host.host);}
-});
-Object.defineProperty(ValueObject.prototype, 'getHostDef',{
-	value : function() {return this.host;}
-});
-Object.defineProperty(ValueObject.prototype, 'getType',{
-	value : function() {return this.type;}
-});
-Object.defineProperty(ValueObject.prototype, 'getSection',{
-	value : function() {
-		return this.getHostDef().section !== null
-				? this.getHostDef().section
-						: (
-								(this.getGroupHostDef() && this.getGroupHostDef().section)
-								|| -1
-							);
-	}
-});
-Object.defineProperty(ValueObject.prototype, 'fromArray',{
-	value : function(arr) {
-		var i = 0;
-		for (let p in this.model) {
-			this[p] = arr[i++];
-		}
-	}
-});
 Object.defineProperty(ValueObject.prototype, 'isEmpty', {
+	/**
+	 * @param {Object} obj
+	 */
 	value : function(obj) {
 		for(var prop in obj) {
 			return false;
 		};
 		return true;
 	}
-});Z
+});
 Object.defineProperty(ValueObject.prototype, 'set', {
+	/**
+	 * @param {ViewTemplate|HierarchicalTemplate} def
+	 * @param {String} isSpecial
+	 */
 	value : function(def, isSpecial) {
-		for (let p in def) {
+		const keys = Object.keys(def);
+		keys.forEach((/** @type {keyof (ViewTemplate|HierarchicalTemplate)} */p) => {
 			if (isSpecial === 'rootOnly' && def[p])
 				this[p] = def[p];
 			else {
 				const n = p + 'Model';
 				if (n in exportedObjects) {
 					if (Array.isArray(def[p])) {
+						// @ts-ignore : "string cannot index {typeof exportedObjects}" : 
+						// => but we already tested "n in exportedObjects" 2 lines above
 						if (exportedObjects[n] === PropFactory) {
+							// @ts-ignore : "property length does not exist on type never" : 
+							// => but we already tested "Array.isArray(def[p])" 2 lines above
 							for(let i = 0, l = def[p].length; i < l; i++) {
+								// @ts-ignore : "property push does not exist on type never" : 
+								// => but attributes, props & states are initialized as array in the child-ctor
 								this[p].push(PropFactory(def[p][i]));
 							}
 						}
 						else {
+							// @ts-ignore : "property length does not exist on type never" : 
+							// => but we already tested "Array.isArray(def[p])" a few lines above
 							for(let i = 0, l = def[p].length; i < l; i++) {
-								this[p].push(new exportedObjects[n](def[p][i], isSpecial));
+								// @ts-ignore : "property push does not exist on type never" : 
+								// => we can rely here on the fact that the object passed by the user is already type-checked
+								// so a prop passed as array DO correspond to an array initialized in the child-ctor
+								this[p].push(
+									// @ts-ignore : "string cannot index {typeof exportedObjects}" : 
+									// => but we already tested "n in exportedObjects" a few lines above
+									new exportedObjects[n](def[p][i], isSpecial)
+								);
 							}
 						}
 					}
+					// @ts-ignore : "property host does not exist on type never" : 
+					// => but we're indeed testing if it exists
 					else if (def[p] && def[p].host)
+						//@ts-ignore : "type HierarchicalComponentDefModel is not assignable to type never" : 
+						// Here, we recurse depending on what the user gave us: if the user wants it, we must do it
 						this[p] = new HierarchicalComponentDefModel(def[p], isSpecial);
+					// @ts-ignore : "property type does not exist on type never" : 
+					// => but we're indeed testing if it exists						
 					else if (def[p] && def[p].type === 'ComponentList')
+						//@ts-ignore : "type ComponentListDefModel is not assignable to type never" : 
+						// Here, we recurse depending on what the user gave us: if the user wants it, we must do it
 						this[p] = new ComponentListDefModel(def[p], isSpecial);
 					else if (def[p] !== null)
+						// @ts-ignore : "string cannot index {typeof exportedObjects}" & "type exportedObjects[p] is not assignable to type never" : 
+						// => but we already tested "n in exportedObjects" a few lines above
 						this[p] = new exportedObjects[n](def[p], isSpecial);
 				}
 				else
 					this[p] = def[p];
 			}
-		}
+		})
 	}
 });
 
 
 
 /**
- * @constructor OptionsListModel
- * @extends ValueObject
+ * @constructor 
+ * @param {Object} obj
+ * @param {String} isSpecial
  */
-var OptionsListModel = function(obj, isSpecial) {
+var OptionsModel = function(obj, isSpecial) {
 	ValueObject.call(this, obj, isSpecial);
 }
-OptionsListModel.prototype = Object.create(ValueObject.prototype);
-Object.defineProperty(OptionsListModel.prototype, 'objectType', {value :  'AttributesList'});
-exportedObjects.OptionsListModel = OptionsListModel;
+OptionsModel.prototype = Object.create(ValueObject.prototype);
+Object.defineProperty(OptionsModel.prototype, 'objectType', {value :  'AttributesList'});
+exportedObjects.OptionsModel = OptionsModel;
 
 
 /**
  * @constructor KeyboardHotkeysModel
- * @extends ValueObject
+ * @param {Object} obj					// KeyboardHotkeysTemplate
+ * @param {String} isSpecial
  */
 var KeyboardHotkeysModel = function(obj, isSpecial) {
 	this.ctrlKey = false;						// Boolean
@@ -139,35 +158,52 @@ Object.defineProperty(KeyboardHotkeysModel.prototype, 'objectType', {value : 'Ke
 
 
 /**
- * @factory PropFactory
- * 
+ * @constructor PropFactory
+ * @param {Object} obj
  */
 var PropFactory = function(obj) {
 	
-	var key = typeof obj === 'string' ? obj : (obj.getName ? obj.getName() : AbstractProp.prototype.getName.call(obj));
+	var key = typeof obj === 'string' 
+		? obj
+		// @ts-ignore : "property getName does not exist on type Object" : 
+		// we're indeed allowing to pass already typed object or native objects
+		: (obj.getName 
+			// @ts-ignore : "property getName does not exist on type Object" : idem
+			? obj.getName() 
+			: AbstractProp.prototype.getName.call(obj));
 	
 	if (!(key in PropFactory.props)) {
+		// @ts-ignore : "Expression of type any can't be used to index type {}" :
+		//  => accessing an object defined as a "described property" isn't supported
 		PropFactory.props[key] = new Function('obj', 'this["' + key + '"] = obj["' + key + '"];');
+		// @ts-ignore : "Expression of type any can't be used to index type {}" : idem
 		PropFactory.props[key].prototype = {};
+		// @ts-ignore : "Expression of type any can't be used to index type {}" : idem
 		Object.defineProperty(PropFactory.props[key].prototype, 'getName', {
 			value :  new Function('return "' + key + '";')
 		});
+		// @ts-ignore : "Expression of type any can't be used to index type {}" : idem
 		Object.defineProperty(PropFactory.props[key].prototype, 'getValue', {
 			value :  new Function('return this["' + key + '"];')
 		});
+		// @ts-ignore : "Expression of type any can't be used to index type {}" : idem
 		Object.defineProperty(PropFactory.props[key].prototype, 'key', {
 			value :  key
 		});
+		// @ts-ignore : "Expression of type any can't be used to index type {}" : idem
 		Object.defineProperty(PropFactory.props[key].prototype, 'objectType', {
 			value :  'AbstractProp'
 		});
+		// @ts-ignore : "Expression of type any can't be used to index type {}" : idem
 		return (new PropFactory.props[key](obj));
 	}
 	else {
+		// @ts-ignore : "Expression of type any can't be used to index type {}" : idem
 		return (new PropFactory.props[key](obj));
 	}
 		
 }
+PropFactory.prototype = Object.create(ValueObject.prototype);
 PropFactory.props = {};
 exportedObjects.PropFactory = PropFactory;
 
@@ -175,10 +211,16 @@ exportedObjects.PropFactory = PropFactory;
 
 /**
  * @constructor AbstractProp
- * @extends ValueObject
+ * @param {Object} obj
  */
 var AbstractProp = function(obj){
-	var key = typeof obj === 'string' ? obj : this.getName.call(obj);
+	var key = typeof obj === 'string' 
+		? obj
+		// @ts-ignore : "property getName does not exist on type Object" : 
+		// we're indeed allowing to pass a native object or just a string representing the name of the prop
+		: this.getName.call(obj);
+	// @ts-ignore : "Expression of type any can't be used to index type AbstractProp" : 
+	// naming the propos is indeed at discretion of the user
 	this[key] = obj[key];
 }
 AbstractProp.prototype = Object.create(ValueObject.prototype);
@@ -196,7 +238,7 @@ Object.defineProperty(AbstractProp.prototype, 'getValue', {
 
 /**
  * @constructor AttributeModel
- * @extends AbstractProp
+ * @param {Object} obj
  */
 var AttributeModel = function(obj) {
 	AbstractProp.call(this, obj);
@@ -208,7 +250,7 @@ Object.defineProperty(AttributeModel.prototype, 'objectType', {value :  'Attribu
 
 /**
  * @constructor StateModel
- * @extends AbstractProp
+ * @param {Object} obj
  */
 var StateModel = function(obj) {
 	AbstractProp.call(this, obj);
@@ -220,7 +262,7 @@ Object.defineProperty(StateModel.prototype, 'objectType', {value : 'States'});
 
 /**
  * @constructor PropModel
- * @extends AbstractProp
+ * @param {Object} obj
  */
 var PropModel = function(obj) {
 	AbstractProp.call(this, obj);
@@ -230,19 +272,30 @@ exportedObjects.PropModel = PropModel;
 Object.defineProperty(PropModel.prototype, 'objectType', {value : 'Props'});
 
 
-
+/**
+ * @typedef {Object} ReactivityQueryTemplate
+ * @prperty {Boolean} cbOnly
+ * @prperty {String} from 
+ * @prperty {String} to
+ * @prperty {HTMLElement|Stream} obj
+ * @prperty {Function} filter
+ * @prperty {Function} map
+ * @prperty {Function} subscribe
+ * @prperty {Function} inverseTransform
+ */
 
 /**
  * @constructor ReactivityQuery
- * @extends ValueObject
+ * @param {ReactivityQueryTemplate} obj
+ * @param {String} isSpecial
  */
 var ReactivityQueryModel = function(obj, isSpecial) {
 	this.cbOnly = false;						// Boolean
 	this.from = null;							// String
 	this.to = null;								// String
 	this.obj = null,							// Object [HTMLElement; Stream]
-	this.filter = null;							// function (GlorifiedPureFunction ;)
-	this.map = null;							// function (GlorifiedPureFunction ;)
+	this.filter = null;							// function (Glorified Pure Function)
+	this.map = null;							// function (Glorified Pure Function)
 	this.subscribe = null;						// function CallBack
 	this.inverseTransform = null;				// function CallBack
 	
@@ -252,8 +305,17 @@ ReactivityQueryModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.ReactivityQueryModel = ReactivityQueryModel;
 Object.defineProperty(ReactivityQueryModel.prototype, 'objectType', {value : 'ReactivityQuery'});
 Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
+	/**
+	 * @param {Stream} stream
+	 * @param {ComponentWithObservables} queriedOrQueryingObj
+	 */
 	value : function(stream, queriedOrQueryingObj) {
-		if (!this.cbOnly && !queriedOrQueryingObj.streams[this.to] && !this.subscribe) {
+		if (!this.cbOnly
+			// @ts-ignore : "expression of type any can't be used to type {}"
+			// queriedOrQueryingObj.streams isn't typed cause naming the streams is at the discretion of the user
+			// => We're indeed testing if that name exists
+			&& !queriedOrQueryingObj.streams[this.to] 
+			&& !this.subscribe) {
 			console.warn('missing stream or subscription callback on child subscribing from ' + stream.name + ' to ' + this.to);
 			return;
 		}
@@ -264,16 +326,19 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 		if (this.cbOnly) {
 			queriedOrQueryingObj._subscriptions.push(
 				stream.subscribe(this.subscribe.bind(queriedOrQueryingObj))
-					.filter(this.filter)
-					.map(this.map)
+					.filter(this.filter, queriedOrQueryingObj)
+					.map(this.map, queriedOrQueryingObj)
 					.reverse(this.inverseTransform)
 			);
 		}
 		else {
 			queriedOrQueryingObj._subscriptions.push(
+				// @ts-ignore : "expression of type any can't be used to type {}"
+				// queriedOrQueryingObj.streams isn't typed cause naming the streams is at the discretion of the user
+				// => We've indeed already tested if that name exists
 				stream.subscribe(queriedOrQueryingObj.streams[this.to], 'value')
-					.filter(this.filter)
-					.map(this.map)
+					.filter(this.filter, queriedOrQueryingObj)
+					.map(this.map, queriedOrQueryingObj)
 					.reverse(this.inverseTransform)
 			);
 		}
@@ -288,9 +353,17 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 
 
 
+
+/**
+ * @typedef {Object} EventSubscriptionTemplate
+ * @prperty {String} on 
+ * @prperty {Function} subscribe
+ */
+
 /**
  * @constructor EventSubscription
- * @extends ValueObject
+ * @param {EventSubscriptionTemplate} obj
+ * @param {String} isSpecial
  */
 var EventSubscriptionModel = function(obj, isSpecial) {
 
@@ -302,13 +375,27 @@ EventSubscriptionModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.EventSubscriptionModel = EventSubscriptionModel;
 Object.defineProperty(EventSubscriptionModel.prototype, 'objectType', {value : 'EventSubscription'});
 Object.defineProperty(EventSubscriptionModel.prototype, 'subscribeToEvent', {
+	/**
+	 * @param {EventEmitter} targetComponent
+	 * @param {EventEmitter} requestingComponent
+	 */
 	value : function(targetComponent, requestingComponent) {
 		targetComponent.addEventListener(this.on, this.subscribe.bind(requestingComponent));
 }});
 
+
+
+/**
+ * @typedef {Object} TaskDefinitionTemplate
+ * @prperty {String} type
+ * @prperty {Function} task 
+ * @prperty {Number} index
+ */
+
 /**
  * @constructor TaskDefinition
- * @extends ValueObject
+ * @param {TaskDefinitionTemplate} obj
+ * @param {String} isSpecial
  */
 var TaskDefinitionModel = function(obj, isSpecial) {
 
@@ -321,17 +408,28 @@ TaskDefinitionModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.TaskDefinitionModel = TaskDefinitionModel;
 Object.defineProperty(TaskDefinitionModel.prototype, 'objectType', {value : 'asyncTaskSubscription'});
 Object.defineProperty(TaskDefinitionModel.prototype, 'execute', {
+	/**
+	 * @param {HierarchicalObject} thisArg
+	 * @param {HierarchicalComponentDefModel} definition
+	 */
 	value : function(thisArg, definition) {
 		this.task.call(thisArg, definition);
 }});
 
 
 
-
+/**
+ * @typedef {Object} PublisherDefinitionTemplate
+ * @prperty {String} _name
+ * @property {Array<>} exportedTypes
+ * @prperty {Stream} stream 
+ * @prperty {String} _publisherUID
+ */
 
 /**
- * @constructor PublisherDefinition
- * @extends ValueObject
+ * @constructor PublisherDefinitionModel (GlobalyReacheableStream)
+ * @param {PublisherDefinitionTemplate} obj
+ * @param {String} isSpecial
  */
 var PublisherDefinitionModel = function(obj, isSpecial) {
 	
@@ -344,29 +442,34 @@ var PublisherDefinitionModel = function(obj, isSpecial) {
 PublisherDefinitionModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.PublisherDefinitionModel = PublisherDefinitionModel;
 Object.defineProperty(PublisherDefinitionModel.prototype, 'objectType', {value : 'GlobalyReacheableStream'});
-Object.defineProperty(PublisherDefinitionModel.prototype, 'tryReceiveConnection', {
-	value : function(subscriber) {
-			this.exportedTypes.forEach(function(type, sub) {
-				if (sub.acceptedTypes.indexOf(type) !== -1) {
-					this.stream.subscribe(sub.streams.updateChannel, 'value');
-				}
-			}.bind(this, subscriber));
-}});
-// Should not be used in the context of "single-provider" subscribers (the same DefinitionModel may be used in various types of registers)
-Object.defineProperty(PublisherDefinitionModel.prototype, 'tryLateReceiveConnection', {
-	value : function(publisherList) {
-		var publisher;
-		for(let publisherName in publisherList) {
-			publisher = publisherList[publisherName];
-			this.exportedTypes.forEach(function(type, pub) {
-				if (pub.exportedTypes.indexOf(type) !== -1) {
-					pub.stream.subscriptions.forEach(function(sub) {
-						this.stream.subscribe(sub.subscriber.obj, sub.subscriber.prop);
-					}, this);
-				}
-			}.bind(this, publisher));
-		}
-}});
+
+/*
+ * I don't know what was the purpose of this
+ * It seems completely fake
+ */
+//Object.defineProperty(PublisherDefinitionModel.prototype, 'tryReceiveConnection', {
+//	value : function(subscriber) {
+//			this.exportedTypes.forEach(function(type, sub) {
+//				if (sub.acceptedTypes.indexOf(type) !== -1) {
+//					this.stream.subscribe(sub.streams.updateChannel, 'value');
+//				}
+//			}.bind(this, subscriber));
+//}});
+//// Should not be used in the context of "single-provider" subscribers (the same DefinitionModel may be used in various types of registers)
+//Object.defineProperty(PublisherDefinitionModel.prototype, 'tryLateReceiveConnection', {
+//	value : function(publisherList) {
+//		var publisher;
+//		for(let publisherName in publisherList) {
+//			publisher = publisherList[publisherName];
+//			this.exportedTypes.forEach(function(type, pub) {
+//				if (pub.exportedTypes.indexOf(type) !== -1) {
+//					pub.stream.subscriptions.forEach(function(sub) {
+//						this.stream.subscribe(sub.subscriber.obj, sub.subscriber.prop);
+//					}, this);
+//				}
+//			}.bind(this, publisher));
+//		}
+//}});
 // TODO (we must evaluate this use case in real world, first): 
 // => should also be able to lateDisconnect:
 // when queried, answers true if it already holds a subscription
@@ -381,40 +484,69 @@ Object.defineProperty(PublisherDefinitionModel.prototype, 'tryLateReceiveConnect
 
 
 
-
+/**
+ * @typedef {Object} ViewTemplate
+ * @property {String|null} [UID]
+ * @property {String|null} [type]
+ * @property {Boolean} [isCompound]
+ * @property {String|null} [nodeName]
+ * @property {String|null} [n]
+ * @property {Boolean|null} [isCustomElem]
+ * @property {String} [templateNodeName]
+ * @property {Array<AttributeModel>} [attributes]
+ * @property {Number} [section]
+ * @property {Array<PropModel>} [props]
+ * @property {Array<StateModel>} [states]
+ * @property {Array<PropModel|StateModel>} [streams]
+ * @property {Number|null} [targetSlotIndex]
+ * @property {AbstractStylesheet|null} [sWrapper]
+ * @property {AbstractStylesheet|null} [sOverride]
+ * @property {Command|null} [command]
+ * @property {Array<ReactivityQueryModel>} [reactOnParent]
+ * @property {Array<ReactivityQueryModel>} [reactOnSelf]
+ * @property {Array<EventSubscriptionModel>} [subscribeOnParent]
+ * @property {Array<EventSubscriptionModel>} [subscribeOnChild]
+ * @property {Array<EventSubscriptionModel>} [subscribeOnSelf]
+ * @property {Array<KeyboardMap>} [keyboardSettings] 	<-- this is wrong, but not used until now
+ * @property {Array<KeyboardHotkeysModel>} [keyboardEvents]
+ * @property {Boolean} [isDummy]
+ */
 
 
 /**
  * @constructor SingleLevelComponentDefModel
- * @extends ValueObject
+ * @param {ViewTemplate | SingleLevelComponentDefModel | 'bare'} obj
+ * @param {String} isSpecial
+ * @param {ViewTemplate|null} givenDef
  */
-var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
+var SingleLevelComponentDefModel = function(obj, isSpecial = '', givenDef = null) {
 	if (givenDef)
 		Object.assign(this, givenDef);
 	else {
-		this.UID = null								// overridden at function end
+		this.UID = null								// String (overridden at function end)
 		this.type = null,							// String
 		this.isCompound = false;					// Boolean
 		this.nodeName = null;						// String
+		this.n = null;								// String
 		this.isCustomElem = null;					// Boolean
 		this.templateNodeName = null;				// String
-		this.attributes = [];						// Array [AttributeDesc]
+		this.attributes = Array();					// Array [AttributeDesc]
 		this.section = null;						// Number
-		this.props = [];							// Array [Prop]
-		this.states = [];							// Array [State]
-		this.streams = [];							// Array [Prop, States]
+		this.props = Array();						// Array [Prop]
+		this.states = Array();						// Array [State]
+		this.streams = Array();						// Array [Prop, States]
 		this.targetSlotIndex = null;				// Number
 		this.sWrapper = null;						// Object StylesheetWrapper
 		this.sOverride = null;						// Object StylesheetWrapper
 		this.command = null;						// Object Command
-		this.reactOnParent = [];					// Array [ReactivityQuery]
-		this.reactOnSelf = [];						// Array [ReactivityQuery]
-		this.subscribeOnParent = [];				// Array [EventSubscription]
-		this.subscribeOnChild = [];					// Array [EventSubscription]
-		this.subscribeOnSelf = [];					// Array [EventSubscription]
-		this.keyboardSettings = [];					// Array [KeyboardHotkeys]
-		this.keyboardEvents = [];					// Array [KeyboardListeners]
-		this.isDummy = false;
+		this.reactOnParent = Array();				// Array [ReactivityQuery]
+		this.reactOnSelf = Array();					// Array [ReactivityQuery]
+		this.subscribeOnParent = Array();			// Array [EventSubscription]
+		this.subscribeOnChild = Array();			// Array [EventSubscription]
+		this.subscribeOnSelf = Array();				// Array [EventSubscription]
+		this.keyboardSettings = Array();			// Array [KeyboardHotkeys]
+		this.keyboardEvents = Array();				// Array [KeyboardListeners]
+		this.isDummy = false;						// Boolean
 	}
 
 	if (obj !== 'bare')
@@ -424,25 +556,40 @@ var SingleLevelComponentDefModel = function(obj, isSpecial, givenDef) {
 	
 	// Fast-access props
 	this.streams = this.props.concat(this.states);
-	this.isCustomElem = this.nodeName !== null ? this.nodeName.indexOf('-') !== -1 : null;
+	this.isCustomElem = this.nodeName !== null
+		// @ts-ignore: "object is possibly null" : we just tested it isn't null
+		? this.nodeName.indexOf('-') !== -1
+		: null;
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.SingleLevelComponentDefModel = SingleLevelComponentDefModel;
-Object.defineProperty(SingleLevelComponentDefModel.prototype, 'objectType', {value : 'SComponentDef'});
+SingleLevelComponentDefModel.prototype.objectType = 'SComponentDef';
+SingleLevelComponentDefModel.prototype.getType = function() {return this.type;}
 
 
 
 /**
+ * @typedef {Object} HierarchicalTemplate
+ * @property {ViewTemplate|SingleLevelComponentDefModel|HierarchicalTemplate|HierarchicalComponentDefModel|ComponentListDefModel} host
+ * @property {ViewTemplate[]|HierarchicalTemplate[]} [subSections]
+ * @property {ViewTemplate[]|HierarchicalTemplate[]} [members]
+ * @property {ListTemplate[]} [lists]
+ * @property {OptionsModel} [options]
+ */
+
+
+/**
  * @constructor HierarchicalComponentDefModel
- * @extends ValueObject
+ * @param {HierarchicalTemplate|HierarchicalComponentDefModel|SingleLevelComponentDefModel} obj
+ * @param {String} isSpecial
  */
 var HierarchicalComponentDefModel = function(obj, isSpecial) {
 
-	this.host = null;							// Object SingleLevelComponentDef
-	this.subSections = [];						// Array [SingleLevelComponentDef]
-	this.members = [];							// Array [SingleLevelComponentDef]
-	this.lists = [];							// Array [ComponentListDef]
-	this.options = null;						// Object : plain
+	this.host = null;								// Object SingleLevelComponentDef
+	this.subSections = Array();						// Array [SingleLevelComponentDef]
+	this.members = Array();							// Array [SingleLevelComponentDef]
+	this.lists = Array();							// Array [ComponentListDef]
+	this.options = null;							// Object : plain
 
 	ValueObject.call(this, obj, isSpecial);
 }
@@ -450,22 +597,55 @@ HierarchicalComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.HierarchicalComponentDefModel = HierarchicalComponentDefModel;
 Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {value : 'MComponentDef'});
 
+HierarchicalComponentDefModel.prototype.getGroupHostDef = function() {
+	return (this.host && this.host.host);
+}
+HierarchicalComponentDefModel.prototype.getHostDef = function() {
+	return this.host;
+}
+HierarchicalComponentDefModel.prototype.getSection = function() {
+	// @ts-ignore : "Expression not callable: {} has no signature" => seems calling a function defined as "described property" isn't supported
+	return this.getHostDef().section !== null
+		// @ts-ignore : "Expression not callable: {} has no signature" => seems calling a function defined as "described property" isn't supported
+		? this.getHostDef().section
+		: (
+			// @ts-ignore : "Expression not callable: {} has no signature" => seems calling a function defined as "described property" isn't supported
+			(this.getGroupHostDef() && this.getGroupHostDef().section)
+			|| -1
+		);
+}
+
 
 
 /**
- * @constructor ComponentListDef
- * @extends ValueObject
+ * @typedef {Object} ListTemplate
+ * @property {String} UID
+ * @property {String} type
+ * @property {Boolean} reflectOnModel
+ * @property {Boolean} augmentModel
+ * @property {Array<any>} each
+ * @prperty {Object} item
+ * @prperty {HierarchicalComponentDefModel} template
+ * @prperty {Number} section
+ * @prperty {Boolean} isInternal
  */
-var ComponentListDefModel = function(obj, isSpecial) {
+
+/**
+ * @constructor ComponentListDef
+ * @param {ListTemplate} obj
+ * @param {String} isSpecial
+ */
+var ComponentListDefModel = function(obj, isSpecial = '') {
 
 	this.UID = typeof obj.UID === 'string' ? obj.UID : UIDGenerator.DefUIDGenerator.newUID().toString();
 	this.type = 'ComponentList';				// String
 	this.reflectOnModel = true;					// Boolean
 	this.augmentModel = false;					// Boolean
-	this.each = [];								// Array [unknown_type] (model to iterate on)
+	this.each = Array();								// Array [unknown_type] (model to iterate on)
 	this.item = null;							// Object (an item of the model)
 	this.template = null;						// Object HierarchicalComponentDef
 	this.section = null;						// Number
+	this.isInternal = false;					// Boolean
 
 	ValueObject.call(this, obj, isSpecial);
 }
@@ -484,26 +664,34 @@ Object.defineProperty(ComponentListDefModel.prototype, 'objectType', {value : 'C
 
 
 /**
- * @constructor MockedDefModel
- * @factory
+ * @factory MockedDefModel
+ * @param {ViewTemplate} obj
  */
 var mockDef = function(obj) {
 	var dummyObj = {UID : 'dummy'};
-	return new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(
-		(obj && Object.prototype.toString(obj) === '[object Object]') ? Object.assign(dummyObj, obj) : dummyObj
-	)}, 'rootOnly');
+	return new HierarchicalComponentDefModel(
+		{
+			host : new SingleLevelComponentDefModel(
+				(obj && Object.prototype.toString.call(obj) === '[object Object]')
+					? Object.assign(dummyObj, obj)
+					: dummyObj)
+		},
+		'rootOnly');
 }
 exportedObjects.mockDef = mockDef;
 
 /**
- * @constructor MockedGroupDefModel
- * @factory
+ * @factory MockedGroupDefModel
  */
 var mockGroupDef = function() {
-	return new HierarchicalComponentDefModel({host : new HierarchicalComponentDefModel({
-		host : new SingleLevelComponentDefModel()
-	}, 'rootOnly'
-	)}, 'rootOnly');
+	/** @type {ViewTemplate} */
+	const dummyTemplate =  {};
+	return new HierarchicalComponentDefModel(
+		{
+			host : new HierarchicalComponentDefModel({
+				host : new SingleLevelComponentDefModel(dummyTemplate)
+			}, 'rootOnly')
+	}, 'rootOnly');
 }
 exportedObjects.mockGroupDef = mockGroupDef;
 
@@ -516,23 +704,26 @@ exportedObjects.mockGroupDef = mockGroupDef;
 
 
 
-
+/**
+ * @helper setAcceptsProp
+ * @param {HierarchicalComponentDefModel} definition
+ * @param {String} accepts
+ * @param {String} title
+ * @param {Number} onMember
+ */
 var setAcceptsProp = function(definition, accepts, title, onMember) {
 	var acceptsObj = {accepts : accepts};
 	var titleObj = {title : title};
 	if (definition.getGroupHostDef()) {
 		if (title) {
-			if (typeof onMember === 'number')
+			if (typeof onMember === 'number') {
 				definition.members[onMember].getHostDef().attributes.push(
-					new PropFactory(
-						titleObj
-					)
+					new PropFactory(titleObj)
 				)
+			}
 			else
 				definition.getGroupHostDef().props.push(
-					new PropFactory(
-						titleObj
-					)
+					new PropFactory(titleObj)
 				)
 		}
 		definition.getGroupHostDef().props.push(
@@ -545,22 +736,16 @@ var setAcceptsProp = function(definition, accepts, title, onMember) {
 		if (title) {
 			if (typeof onMember === 'number')
 				definition.members[onMember].getHostDef().attributes.push(
-					new PropFactory(
-						titleObj
-					)
+					new PropFactory(titleObj)
 				)
 			else
 				definition.getHostDef().props.push(
-				new PropFactory(
-					titleObj
-				)
+					new PropFactory(titleObj)
 			)
 		}
 		
 		definition.getHostDef().props.push(
-			new PropFactory(
-				acceptsObj
-			)
+			new PropFactory(acceptsObj)
 		)
 	}
 }
@@ -571,14 +756,21 @@ var setAcceptsProp = function(definition, accepts, title, onMember) {
 
 
 
-
+/**
+ * @factory HierarchicalComponentDefModel
+ * @param {ViewTemplate & SingleLevelComponentDefModel & HierarchicalTemplate & HierarchicalComponentDefModel & ComponentListDefModel} defObj
+ */
 var createDef = function(defObj) {
 	// MASTER VIEW OF A COMPOUND COMPONENT
 	if ((defObj.type && defObj.type === 'CompoundComponent') || defObj.isCompound) {
 		return (new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
 	}
+	// COMPONENT LIST
+	else if (!defObj.host && defObj.type === 'ComponentList')
+		return (new HierarchicalComponentDefModel({host : new ComponentListDefModel(defObj)}, 'rootOnly'));
 	// VIEW DEF || HOST or VIEW OF A SIMPLE COMPONENT
 	else if (!defObj.host) {
+		// nodeName may be aliased as "n""
 		if (defObj.n && !defObj.type) {
 			defObj.nodeName = defObj.n;
 			delete defObj.n;
@@ -593,8 +785,16 @@ var createDef = function(defObj) {
 		return (new HierarchicalComponentDefModel(defObj, 'rootOnly'));
 	}
 }
-
 exportedObjects.createDef = createDef;
+
+/**
+ * @helper creates a hierarchical def even without a "host" prop
+ * @param {ViewTemplate & SingleLevelComponentDefModel & HierarchicalTemplate & HierarchicalComponentDefModel & ComponentListDefModel} defObj
+ */
+var createHostDef = function(defObj) {
+	return (new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
+}
+exportedObjects.createHostDef = createHostDef;
 
 
 
@@ -654,13 +854,8 @@ Object.assign(exportedObjects, {
 	streamsModel : PropFactory,										// Object AbstractProp
 	TaskDefinition : TaskDefinitionModel,							// Object TaskDefinition
 	PublisherDefinition : PublisherDefinitionModel,					// Object PublisherDefinition
-	optionsModel : OptionsListModel,								// Object OptionsList
-	// "host" key catch the special condition and should always be flat ("artificial" deepening of flat defs is handled in the ValueObject factory function)
-	hostModel : SingleLevelComponentDefModel,						// Object SingleLevelComponentDef
-	// "numericaly indexed" keys (in an array) catch the HierarchicalComponentDefModel
-	subSectionsModel : HierarchicalComponentDefModel,				// Array [HierarchicalComponentDefModel]
-	membersModel : HierarchicalComponentDefModel,					// Array [HierarchicalComponentDefModel]
-	list : ComponentListDefModel,
+	optionsModel : OptionsModel,									// Object OptionsModel
+	list : ComponentListDefModel,	
 	reactOnParentModel : ReactivityQueryModel,						// Object ReactivityQueryList
 	reactOnSelfModel : ReactivityQueryModel,						// Object ReactivityQueryList
 	subscribeOnParentModel : EventSubscriptionModel,				// Object EventSubscriptionsList
@@ -672,6 +867,11 @@ Object.assign(exportedObjects, {
 	UIDGenerator : UIDGenerator.UIDGenerator,
 	StyleUIDGenerator : UIDGenerator.StyleUIDGenerator,
 	DefUIDGenerator : UIDGenerator.DefUIDGenerator,
+	
+	propsAreArray : propsAreArray,									// Array
+	reactivityQueries : reactivityQueries,							// Array
+	eventQueries : eventQueries,									// Array
+	propsArePrimitives : propsArePrimitives							// Array
 });
 
 

@@ -6,13 +6,16 @@
  */
 
 
-var TypeManager = require('src/core/TypeManager');
-var CoreTypes = require('src/core/CoreTypes');
-var Components = require('src/core/Component');
+const TypeManager = require('src/core/TypeManager');
+const TemplateFactory = require('src/core/TemplateFactory');
+const Registries = require('src/core/Registries');
+const CoreTypes = require('src/core/CoreTypes');
+const Components = require('src/core/Component');
 
-var componentTypes = require('src/_buildTools/_UIpackages')(null, { UIpackage: '%%UIpackage%%' }).packageList;
+//const componentTypes = require('src/_buildTools/_UIpackages')(null, { UIpackage: '%%UIpackage%%' }).packageList;
 
-var coreComponents = {};
+const componentTypes = {};
+const coreComponents = {};
 
 Components.RootViewComponent = require('src/coreComponents/RootViewComponent/RootViewComponent');
 Components.AppOverlayComponent = require('src/coreComponents/AppOverlayComponent/AppOverlayComponent');
@@ -28,19 +31,19 @@ Components.RPCStackComponent = require('src/coreComponents/RPCStackComponent/RPC
 
 Components.SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator')
 
-Components.VisibleStateComponent = require('src/UI/Generics/VisibleStateComponent');
-Components.TypedListComponent = require('src/UI/Generics/TypedListComponent');
-Components.KeyValuePairComponent = require('src/UI/Generics/KeyValuePairComponent');
-Components.ExtensibleTable = require('src/UI/Generics/ExtensibleTable');
-Components.SpecializedTypedListComponent = require('src/UI/Generics/SpecializedTypedListComponent/SpecializedTypedListComponent');
-Components.MultisetAccordionComponent = require('src/UI/Generics/MultisetAccordionComponent/MultisetAccordionComponent');
-Components.GenericTitledPanelComponent = require('src/UI/Generics/GenericTitledPanelComponent/GenericTitledPanelComponent');
+//Components.VisibleStateComponent = require('src/UI/categories/basics/VisibleStateComponent/VisibleStateComponent');
+//Components.TypedListComponent = require('src/UI/categories/basics/TypedListComponent/TypedListComponent');
+//Components.KeyValuePairComponent = require('src/UI/categories/basics/KeyValuePairComponent/KeyValuePairComponent');
+//Components.ExtensibleTable = require('src/UI/categories/basics/ExtensibleTable/ExtensibleTable');
+//Components.SpecializedTypedListComponent = require('src/UI/categories/basics/SpecializedTypedListComponent/SpecializedTypedListComponent');
+//Components.MultisetAccordionComponent = require('src/UI/categories/basics/MultisetAccordionComponent/MultisetAccordionComponent');
+//Components.GenericTitledPanelComponent = require('src/UI/categories/basics/GenericTitledPanelComponent/GenericTitledPanelComponent');
 //var ColorSamplerSetComponent = require('src/UI/packages/setsForPanels/ColorSamplerSetComponent/ColorSamplerSetComponent');
 
-Components.VisualSetComponent = require('src/UI/Generics/VisualSetComponent/VisualSetComponent');
-Components.VariablyStatefullComponent = require('src/UI/Generics/VariablyStatefullComponent/VariablyStatefullComponent');
-Components.VaritextButtonComponent = require('src/UI/Generics/VaritextButtonComponent/VaritextButtonComponent');
-Components.VisualSetHostComponent = require('src/UI/Generics/VisualSetHostComponent/VisualSetHostComponent');
+//Components.VaritextButtonComponent = require('src/UI/categories/forms/NamedButton/NamedButton');
+//Components.VisualSetComponent = require('src/UI/Generics/VisualSetComponent/VisualSetComponent');
+//Components.VariablyStatefullComponent = require('src/UI/Generics/VariablyStatefullComponent/VariablyStatefullComponent');
+//Components.VisualSetHostComponent = require('src/UI/Generics/VisualSetHostComponent/VisualSetHostComponent');
 
 // Abstract types & abstract implementations re-injection
 
@@ -69,14 +72,14 @@ Components.VisualSetHostComponent = require('src/UI/Generics/VisualSetHostCompon
 //Components.VaritextButtonComponent = VaritextButtonComponent;
 //Components.VisualSetHostComponent = VisualSetHostComponent;
 
-Object.assign(Components, require(componentTypes.misc));
-delete componentTypes.misc;
+//Object.assign(Components, require(componentTypes.misc));
+//delete componentTypes.misc;
 
-for (let type in componentTypes) {
-	
-	if (typeof componentTypes[type] === 'string')
-		Components[type] = require(componentTypes[type]);
-}
+//for (let type in componentTypes) {
+//	
+//	if (typeof componentTypes[type] === 'string')
+//		Components[type] = require(componentTypes[type]);
+//}
 
 
 
@@ -97,13 +100,16 @@ for (let type in componentTypes) {
 /**
  * @constructor CompoundComponent
  */
-var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) {
+const CompoundComponent = function(definition, parentView, parent, isChildOfRoot) {
 //	console.log(definition);
 	this._firstListUIDSeen = null;
 	var shouldExtend = false;
 	
 	if (!definition.getGroupHostDef())
 		console.error('Definition given to CompoundComponent isn\'t a nested HierachicalDefinition.', definition, 'Type is:', definition.getHostDef().type, this);
+		
+	if (definition.getGroupHostDef().type)
+		console.warn('A type was given to a template instanciated by the CompoundComponent ctor: it\'ll be ignored. If the component isn\'t part of a list, it may not be what you meant. Type is', definition.getGroupHostDef().type)
 	
 	// Any custom element must be befined when calling the Def Factory, unless there's no shadow DOM
 //	if (!definition.getGroupHostDef().nodeName) {
@@ -139,9 +145,9 @@ var CompoundComponent = function(definition, parentView, parent, isChildOfRoot) 
 //		console.error('Definition overridden', type,  Components[type]);
 		this.createDefaultDef = Components[type].prototype.createDefaultDef;
 	}
-	//	console.log(parent);
-	//	console.log(definition);
-//	console.log(definition.getHostDef());
+//	console.error(parent);
+//	console.log(definition);
+//	console.log(this.createEvents);
 	Components.ComponentWithView.call(this, definition.getHostDef(), parentView, parent, isChildOfRoot);  // feed with host def
 	this.objectType = 'CompoundComponent';
 
@@ -211,10 +217,10 @@ CompoundComponent.prototype.instanciateSubSections = function(definition) {
 }
 
 CompoundComponent.prototype.instanciateMembers = function(definition) {
-//	console.log(definition);
+//	console.log(definition.members);
 	var type;
 	definition.members.forEach(function(memberDef) {
-		if (!memberDef.getHostDef() && (memberDef.nodeName || memberDef.type)) {
+		if (!memberDef.getHostDef && (memberDef.nodeName || memberDef.type)) {
 			console.warn('Member "' + (memberDef.type || memberDef.nodeName) + '" of a CompoundComponent : Definition given is the definition of a view. It should be wrapped in a HierarchicalComponentDef');
 			return;
 		}
@@ -243,7 +249,10 @@ CompoundComponent.prototype.instanciateLists = function(definition) {
 	}, this);
 };
 
-
+/**
+ * retrieveListDefinition
+ * Not used in Core: probably meant to help build very complex apps
+ */
 CompoundComponent.prototype.retrieveListDefinition = function() {
 	return this._firstListUIDSeen ? TypeManager.listsDefinitionsCacheRegistry.getItem(this._firstListUIDSeen) : false;
 }
@@ -259,7 +268,7 @@ CompoundComponent.prototype.retrieveListDefinition = function() {
 /**
  * @constructor ComponentList
  */
-var ComponentList = function(definition, parentView, parent) {
+const ComponentList = function(definition, parentView, parent) {
 	Components.HierarchicalObject.call(this);	// don't register the list as a child ... ', definition, parentView, parent);
 	this.objectType = 'ComponentList';
 	this._parent = parent;
@@ -268,10 +277,18 @@ var ComponentList = function(definition, parentView, parent) {
 }
 ComponentList.prototype = Object.create(Components.HierarchicalObject.prototype);
 ComponentList.prototype.objectType = 'ComponentList';
-coreComponents.ComponentList = ComponentList;		// used in AppIgnition.List (as a "life-saving" safety, we wan't to avoid declaring the ComponentList as a "known" Component)
+coreComponents.ComponentList = ComponentList;		// used in AppIgnition.List (as a "life-saving" tool : pretty abstract, but very useful)
 
 ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 	if (definition.getHostDef().each.length) {
+		// Debug notice: preventing a frequent case of error,
+		// when a def hosting a list is instanciated once and re-used many times.
+		// In most cases, the "each" property isn't resetted, so we get empty nodes from past iterations
+		if (!definition.getHostDef().isInternal && TypeManager.listsDefinitionsCacheRegistry.getItem(definition.getHostDef().UID)) { //  && this._parent._firstListUIDSeen !== null && this._parent._firstListUIDSeen === definition.getHostDef().UID
+			console.warn('ComponentList :', 'Constructing a list from a not-empty definition we\'ve already seen : There is a possibility that this is unintentional ans may cause unwanted empty nodes to be appended in the DOM.', 'The nodeName is', definition.getHostDef().template.getHostDef().nodeName, 'The "each" property is', definition.getHostDef().each);
+		}
+		// Not used in Core elsewhere than here: probably meant to help build very complex apps
+		// (but here, useful to catch the above "notice" log)
 		TypeManager.listsDefinitionsCacheRegistry.setItem(definition.getHostDef().UID, definition.getHostDef());
 		this._parent._firstListUIDSeen = definition.getHostDef().UID;
 	}
@@ -285,35 +302,21 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 	//	console.log(templateDef);
 	definition.getHostDef().each.forEach(function(item, key) {
 
-		if ((type = templateDef.getHostDef().getType())) {
-			//			console.log(type, key, templateDef.getHostDef());
+		if ((type = templateDef.getHostDef().type)) {
 			composedComponent = new Components[type](templateDef, this._parent.view, this._parent);
-			TypeManager.dataStoreRegistry.setItem(composedComponent._UID, key);
+			Registries.dataStoreRegistry.setItem(composedComponent._UID, key);
 		}
 		else if (templateDef.getGroupHostDef()) {
 			if ((type = templateDef.getGroupHostDef().getType()) && Components[type]) {
-				//				if (type === 'ColorSamplerSetComponentAsClient' || type === 'GenericTitledPanelComponent') {
-				//					console.log(type, type in Components, Components);
-				//				}
 				composedComponent = new Components[type](templateDef, this._parent.view, this._parent);
 			}
 			else
 				composedComponent = new CompoundComponent(templateDef, this._parent.view, this._parent);
-			TypeManager.dataStoreRegistry.setItem(composedComponent._UID, key);
+			Registries.dataStoreRegistry.setItem(composedComponent._UID, key);
 		}
 		else
 			this._parent.view.subViewsHolder.memberViews.push(new CoreTypes.ComponentView(templateDef, this._parent.view, this._parent));
-
-		//		if (reNewsWrapper) {
-		//			templateDef.getHostDef().sWrapper = null;
-		//			templateDef.getHostDef().UID = TypeManager.UIDGenerator.newUID().toString();
-		//			var diff = 0;
-		//			if (diff = (templateDef.members.length - hadChildren))
-		//				templateDef.members.splice(hadChildren, diff);
-		//		}
 	}, this);
-
-	//	console.log(this);
 }
 
 
@@ -330,15 +333,14 @@ ComponentList.prototype.iterateOnModel = function(definition, parentView) {
 /**
  * @constructor CompoundComponentWithHooks
  */
-var CompoundComponentWithHooks = function(definition, parentView, parent, isChildOfRoot) {
+const CompoundComponentWithHooks = function(definition, parentView, parent, isChildOfRoot) {
 	CompoundComponent.call(this, definition, parentView, parent, isChildOfRoot);
 	this.objectType = 'CompoundComponentWithHooks';
-//	console.log(this);
 	this.viewExtend(definition);
 }
-var proto_proto = Object.create(Components.ComponentWithHooks.prototype);
-Object.assign(proto_proto, CompoundComponent.prototype);
-CompoundComponentWithHooks.prototype = Object.create(proto_proto);
+const CompoundComponentWithHooksProto_proto = Object.create(Components.ComponentWithHooks.prototype);
+Object.assign(CompoundComponentWithHooksProto_proto, CompoundComponent.prototype);
+CompoundComponentWithHooks.prototype = Object.create(CompoundComponentWithHooksProto_proto);
 CompoundComponentWithHooks.prototype.objectType = 'CompoundComponentWithHooks';
 coreComponents.CompoundComponentWithHooks = CompoundComponentWithHooks;
 
@@ -346,18 +348,70 @@ coreComponents.CompoundComponentWithHooks = CompoundComponentWithHooks;
 /**
  * @constructor CompoundComponentWithReactiveText
  */
-var CompoundComponentWithReactiveText = function(definition, parentView, parent, isChildOfRoot) {
-//	console.log(this);
+const CompoundComponentWithReactiveText = function(definition, parentView, parent, isChildOfRoot) {
 	CompoundComponent.call(this, definition, parentView, parent, isChildOfRoot);
 	this.objectType = 'CompoundComponentWithReactiveText';
-//	console.log(this);
 	this.viewExtend(definition);
 }
-var proto_proto = Object.create(Components.ComponentWithReactiveText.prototype);
-Object.assign(proto_proto, CompoundComponent.prototype);
-CompoundComponentWithReactiveText.prototype = Object.create(proto_proto);
+const CompoundComponentWithReactiveTextProto_proto = Object.create(Components.ComponentWithReactiveText.prototype);
+Object.assign(CompoundComponentWithReactiveTextProto_proto, CompoundComponent.prototype);
+CompoundComponentWithReactiveText.prototype = Object.create(CompoundComponentWithReactiveTextProto_proto);
 CompoundComponentWithReactiveText.prototype.objectType = 'CompoundComponentWithReactiveText';
 coreComponents.CompoundComponentWithReactiveText = CompoundComponentWithReactiveText;
+
+
+
+
+
+
+
+
+
+
+const createIteratingComponentHostDef = require('src/coreDefs/IteratingComponentHostDef');
+const createIteratingComponentSlotsDef = require('src/coreDefs/IteratingComponentSlotsDef');
+
+const IteratingComponent = function(definition, parentView, parent, slotDef) {
+	this.slotDef = slotDef || createIteratingComponentSlotsDef().slotDef;
+	// Let's allow neither passing a parentView nor a parent.
+	// This is a common pattern we've used in the documentation
+	// (although the standard signature for Components has 3 parameters,
+	// and is useful in more complex cases)
+	if (parentView instanceof TemplateFactory.HierarchicalComponentDefModel)
+		this.slotDef = parentView;
+	else if (parent instanceof TemplateFactory.HierarchicalComponentDefModel)
+		this.slotDef = parent;
+	// Not passing a parentView of type "ComponentView"
+	// should fail smoothly in the abstract components
+	// but it's not heavily tested
+	Components.ComponentWithView.apply(this, arguments);
+	this.objectType = 'IteratingComponent';
+	
+	this.typedSlot = new this.rDataset(
+		null,										// wrapping component
+		this,										// host component
+		this.slotDef,									// list-item template
+		['text']									// schema of data for reactivity
+	);
+}
+IteratingComponent.prototype = Object.create(Components.ComponentWithView.prototype);
+IteratingComponent.prototype.objectType = 'IteratingComponent';
+coreComponents.IteratingComponent = IteratingComponent;
+
+IteratingComponent.prototype.createDefaultDef = function() {
+	return createIteratingComponentHostDef();
+}
+
+IteratingComponent.prototype.acquireData = function(listContentAsArray) {
+	const conformedList = listContentAsArray.map(
+		(item) => this.typedSlot.newItem(item)
+	);
+	this.typedSlot.pushApply(conformedList);
+}
+
+module.exports = IteratingComponent;
+
+
 
 
 
@@ -374,15 +428,14 @@ coreComponents.CompoundComponentWithReactiveText = CompoundComponentWithReactive
 /**
  * @constructor LazySlottedCompoundComponent
 */
-var createLazySlottedComponentDef = require('src/coreDefs/lazySlottedComponentDef');
-var createLazySlottedComponentSlotstDef = require('src/coreDefs/lazySlottedComponentSlotsDef');
-// TODO: alreadyComposed is of no use
-var LazySlottedCompoundComponent = function(definition, parentView, parent, alreadyComposed, slotsCount, slotsDef) {
+const createLazySlottedComponentDef = require('src/coreDefs/lazySlottedComponentDef');
+const createLazySlottedComponentSlotstDef = require('src/coreDefs/lazySlottedComponentSlotsDef');
+const LazySlottedCompoundComponent = function(definition, parentView, parent, slotsCount, slotsDef) {
 	var stdDefinition = definition || createLazySlottedComponentDef();
 	this.typedSlots = [];
-	this.slotsCount = this.slotsCount || 2;
+	this.slotsCount = slotsCount || this.slotsCount || 2;
 	//	console.log(this.slotsDef);
-	this.slotsDef = this.slotsDef || slotsDef || createLazySlottedComponentSlotstDef();
+	this.slotsDef = slotsDef || this.slotsDef || createLazySlottedComponentSlotstDef();
 
 	// Proceeding that way (i.e. not using the complete mixin mechanism : "addInterface") allows us to choose in which order the ctors are called
 	// When the base ctor is called, it calls the extension's ctor, and then, and only then, the superClasse's ctor
@@ -448,27 +501,30 @@ LazySlottedCompoundComponent.prototype.hackDOMAttributes = function() {
 	}, this);
 }
 
+/**
+ * updateDefinitionBasedOnSlotsCount
+ * This method initializes the current definition with as much pseudo-slots as in slotCount
+ */
 LazySlottedCompoundComponent.prototype.updateDefinitionBasedOnSlotsCount = function(definition) {
-	//	definition.lists[0].host.each = [];
+//	if (definition.lists[0] && definition.lists[0].host.each.length)
+//		console.warn(this.objectType, ': Initializing a ReactiveDataset with an inital value. Please ensure this is intentional. (it may result from using the same instance of a definition multiple times)');
+	
 	for (let i = 0, l = this.slotsCount; i < l; i++) {
 		definition.lists[0].host.each.push({ 'slot-id': 'slot' + i });
 	}
 }
 
 LazySlottedCompoundComponent.prototype.affectSlots = function() {
-	var i = 0;
-
-	for (let slotDef in this.slotsDef) {
+	let slotsDefs  = Object.values(this.slotsDef);
+	for (let i = 0, l = this.slotsCount; i < l; i++) {
 		this.typedSlots.push(new this.rDataset(
+			null,
 			this._children[i],
-			this._children[i],
-			this.slotsDef[slotDef],
+			slotsDefs[i],
 			[])
 		);
-		i++;
 	}
-
-	return true;
+	// This method used to return "true". As it was obviously a dirty hack, we've deteted that instruction.
 }
 
 LazySlottedCompoundComponent.prototype.setSchema = function() {
@@ -576,11 +632,11 @@ LazySlottedCompoundComponent.prototype.retrieveSlots = function(userlandUID) {
 
 
 
-var createAbstractTreeDef = require('src/coreDefs/abstractTreeDef');
-var createBranchTemplateDef = require('src/coreDefs/branchTemplateDef');
-var createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
+const createAbstractTreeDef = require('src/coreDefs/abstractTreeDef');
+const createBranchTemplateDef = require('src/coreDefs/branchTemplateDef');
+const createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
 
-var AbstractTree = function(definition, parentView, parent, jsonData, nodeFilterFunction) {
+const AbstractTree = function(definition, parentView, parent, jsonData, nodeFilterFunction) {
 	//	console.log(definition, parentView, parent, jsonData);
 	var stdDefinition = createAbstractTreeDef();
 	// HACK: no solution for now to override the default def : there is no createDefaultDef method on a compound component
@@ -629,12 +685,12 @@ AbstractTree.prototype.createMember = function(memberSpec, parent) {
 		}
 
 		component = new CompoundComponent(componentDef, parent.view, parent);
-		TypeManager.dataStoreRegistry.setItem(component._UID, this.pseudoModel.length);
+		Registries.dataStoreRegistry.setItem(component._UID, this.pseudoModel.length);
 		this.pseudoModel.push(this.getHeaderTitle(memberSpec));
 	}
 	else {
 		component = new Components[this.leafTemplate.getHostDef().type](this.leafTemplate, parent.view, parent);
-		TypeManager.dataStoreRegistry.setItem(component._UID, this.pseudoModel.length);
+		Registries.dataStoreRegistry.setItem(component._UID, this.pseudoModel.length);
 		this.pseudoModel.push(this.getKeyValueObj(memberSpec));
 	}
 	return component;
@@ -831,11 +887,11 @@ AbstractTree.prototype.affectClickEvents_Base = function(memberDesc, component) 
 
 
 
-var createAbstractTableDef = require('src/coreDefs/abstractTableDef');
-var createAbstractTableSlotsDef = require('src/coreDefs/abstractTableSlotsDef');
+const createAbstractTableDef = require('src/coreDefs/abstractTableDef');
+const createAbstractTableSlotsDef = require('src/coreDefs/abstractTableSlotsDef');
 
 
-var AbstractTable = function(def, parentView, parent) {
+const AbstractTable = function(def, parentView, parent) {
 	this.slotsCount = 2;
 
 	var stdDef = def || createAbstractTableDef();
@@ -845,6 +901,7 @@ var AbstractTable = function(def, parentView, parent) {
 
 	LazySlottedCompoundComponent.call(this, stdDef, parentView, parent);
 	this.typedSlots[0].setSchema(['headerTitle']);
+	// The schema for rows depends 
 	this.typedSlots[1].setSchema(['rowContentAsArray']);
 
 	// This concern is left to the implementation discretion
@@ -854,24 +911,32 @@ var AbstractTable = function(def, parentView, parent) {
 /**
  * @chained_inheritance AbstractTable <= LazySlottedCompoundComponent <= ComponentWithReactiveText
  */
-var proto_proto = Object.create(LazySlottedCompoundComponent.prototype);
-Object.assign(proto_proto, Components.ComponentWithReactiveText.prototype);
-AbstractTable.prototype = Object.create(proto_proto);
+const AbstractTableProto_proto = Object.create(LazySlottedCompoundComponent.prototype);
+Object.assign(AbstractTableProto_proto, Components.ComponentWithReactiveText.prototype);
+AbstractTable.prototype = Object.create(AbstractTableProto_proto);
 AbstractTable.prototype.objectType = 'AbstractTable';
 coreComponents.AbstractTable = AbstractTable;
 
-AbstractTable.prototype.setcolumnsCount = function(columnsCount, headerTitles) {
+
+AbstractTable.prototype.setColumnsCount = function(columnsCount, headerTitles) {
 	this.columnsCount = columnsCount;
 	this.typedSlots[0].resetLength();
 	//	console.log(this.typedSlots[0]);
-	if (!Array.isArray(headerTitles)) {
-		headerTitles = ['idx'];
-		for (let i = 1; i < columnsCount; i++) {
-			headerTitles.push('Column ' + i.toString());
-		}
-	}
-	else if (headerTitles[0] !== 'idx')
-		headerTitles.unshift('idx');
+//	if (!Array.isArray(headerTitles)) {
+//		headerTitles = ['idx'];
+//		for (let i = 1; i < columnsCount; i++) {
+//			headerTitles.push('Column ' + i.toString());
+//		}
+//	}
+//	else if (headerTitles[0] !== 'idx')
+//		headerTitles.unshift('idx');
+		
+	const {rowDef, tdDef} = this.slotsDef;
+	let uniqueTdDef;
+	for (let i = 0; i < columnsCount; i++) {
+		uniqueTdDef = TemplateFactory.createDef(tdDef);
+		rowDef.members.push(uniqueTdDef)
+	};
 	return this.pushApplyToSlot(0, headerTitles);
 }
 
@@ -898,7 +963,8 @@ AbstractTable.prototype.pushApplyToSlot = function(slotNbr, contentAsArray) {
 		else
 			return value;
 	}, this);
-
+	
+//	console.log(cAsArray);
 	this.typedSlots[slotNbr].pushApply(cAsArray);
 
 	if (slotNbr === 0) {
@@ -937,10 +1003,10 @@ AbstractTable.prototype.getRow = function(idx) {
  * @similarTo TypedListComponent : a restricted form of LazySlottedCompoundComponent
  * 				where slots are appended to self.
 */
-var createAbstractAccordionDef = require('src/coreDefs/AbstractAccordionDef');
-var createAbstractAccordionSlotDef = require('src/coreDefs/AbstractAccordionSlotsDef');
+const createAbstractAccordionDef = require('src/coreDefs/AbstractAccordionDef');
+const createAbstractAccordionSlotDef = require('src/coreDefs/AbstractAccordionSlotsDef');
 
-var AbstractAccordion = function(definition, parentView, parent, hostedTypes) {
+const AbstractAccordion = function(definition, parentView, parent, hostedTypes) {
 	if (!definition.getGroupHostDef().nodeName)
 		definition = createAbstractAccordionDef();
 
@@ -1056,9 +1122,15 @@ Components.CompositorComponent.prototype.acquireCompositor = function(inheriting
 Components.CompositorComponent.createAppLevelExtendedComponent = function() {
 	var extension2ndPass = {};
 	for (var componentType in Components) {
-		//		console.log(Components[componentType].prototype.hasOwnProperty('extendsCore'), componentType, Components[componentType].prototype.extendsCore);
-		if (Components[componentType].prototype.hasOwnProperty('extendsCore'))
+//		console.log(Components[componentType].prototype.hasOwnProperty('extendsCore'), componentType, Components[componentType]);
+
+		// An automatically included component may not really be a component : we have a "special" category that we also include
+		if (typeof Components[componentType].prototype === 'undefined')
+			continue;		 
+		if (Components[componentType].prototype.hasOwnProperty('extendsCore')) {
+//			console.log(Components[componentType]);
 			Components.CompositorComponent.prototype.acquireCompositor(Components[componentType], Components[componentType].prototype.extendsCore);
+		}
 		else if (Components[componentType].prototype.hasOwnProperty('extends'))
 			extension2ndPass[componentType] = Components[componentType];
 	}
@@ -1066,7 +1138,6 @@ Components.CompositorComponent.createAppLevelExtendedComponent = function() {
 		Components.CompositorComponent.prototype.extendFromCompositor(Components[componentType], Components[Components[componentType].prototype.extends]);
 	}
 }
-
 
 
 CompoundComponent.componentTypes = Components;

@@ -58,7 +58,7 @@ Object.defineProperty(ValueObject.prototype, 'isEmpty', {
 		};
 		return true;
 	}
-});Z
+});
 Object.defineProperty(ValueObject.prototype, 'set', {
 	value : function(def, isSpecial) {
 //		var objectType = Object.getPrototypeOf(this).objectType;
