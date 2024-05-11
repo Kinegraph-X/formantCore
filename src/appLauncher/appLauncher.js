@@ -10,14 +10,13 @@
 //		window = global;
 //}
 
-// TODO : Should not polute the namespace of this function : think seriously of removing the affectation to vars, as we only need to "execute" the require
 
 if (typeof Object.getOwnPropertyDescriptor(String.prototype, 'escapeRegExp') === 'undefined') { 
-	var Str = require('src/extendedNative/string');
-	var Arr = require('src/extendedNative/array');
-	var Bool = require('src/extendedNative/boolean');
-	var Obj = require('src/extendedNative/object');
-	var Regex = require('src/extendedNative/regexp');
+	require('src/extendedNative/string');
+	require('src/extendedNative/array');
+	require('src/extendedNative/boolean');
+	require('src/extendedNative/object');
+	require('src/extendedNative/regexp');
 }
 var Validate = require('src/integrated_libs_&_forks/Validate');
 var Hamster = require('src/integrated_libs_&_forks/Hamster');
