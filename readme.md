@@ -51,9 +51,9 @@ Other links
 Get Started
 -----------
 
-There is a bit of a documentation, for you to take part in our attempt at reuniting the best of all worlds in web development. The rest is being heavily processed, as you read this.
+There is a fairly didactic documentation, for you to take part in our attempt at reuniting the best of all worlds in web development. The rest is currently being written, as you read this.
 
-🔗 Documentation : [It has started!](http://documentation.kinegraphx.com)
+🔗 [Read the documentation](http://documentation.kinegraphx.com)
 
 
 Join the Formant experiment. We just do what works, we're not pretending to move the proven lines.
