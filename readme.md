@@ -57,3 +57,10 @@ There is a fairly didactic documentation, for you to take part in our attempt at
 
 
 Join the Formant experiment. We just do what works, we're not pretending to move the proven lines.
+
+Greetings
+---------
+
+Thanx to:
+My brother, for his tech & moral support
+SteveDev76 who heavily reviewed the documentation and the installation process
