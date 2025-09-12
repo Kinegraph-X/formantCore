@@ -62,5 +62,4 @@ Greetings
 ---------
 
 Thanx to:
-My brother, for his tech & moral support
 SteveDev76 who heavily reviewed the documentation and the installation process

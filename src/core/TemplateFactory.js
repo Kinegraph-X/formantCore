@@ -2,7 +2,7 @@
  * @file TemplateFactory
  */
 
-const {UIDGenerator} = require('formantjs');
+const {UIDGenerator} = require('@node_modules/formantjs');
 
 
 
@@ -365,63 +365,92 @@ class ViewTemplate {
 		this.type = obj.type;
 		this.isCompound = obj.isCompound;
 		
-		obj.props.forEach(
-			/** @param {PropDef} propObj */
-			function(propObj) {
-				this.props.push(new Prop(propObj));
-			},
-		this);
+		if (Array.isArray(obj.props)) {
+			obj.props.forEach(
+				/** @param {PropDef} propObj */
+				function(propObj) {
+					this.props.push(new Prop(propObj));
+				},
+			this);
+		}
 		
-		obj.states.forEach(
-			/** @param {StateDef} stateObj */
-			function(stateObj) {
-				this.states.push(new State(stateObj));
-			},
-		this);
+		if (Array.isArray(obj.states)) {
+			obj.states.forEach(
+				/** @param {StateDef} stateObj */
+				function(stateObj) {
+					this.states.push(new State(stateObj));
+				},
+			this);
+		}
 		
-		obj.reactOnParent.forEach(
-			/** @param {ReactivityQueryDef} reactivityQueryObj */
-			function(reactivityQueryObj) {
-				this.reactOnParent.push(new ReactivityQuery(reactivityQueryObj));
-			},
-		this);
+		if (Array.isArray(obj.reactOnParent)) {
+			obj.reactOnParent.forEach(
+				/** @param {ReactivityQueryDef} reactivityQueryObj */
+				function(reactivityQueryObj) {
+					this.reactOnParent.push(new ReactivityQuery(reactivityQueryObj));
+				},
+			this);
+		}
 		
-		obj.reactOnSelf.forEach(
-			/** @param {ReactivityQueryDef} reactivityQueryObj */
-			function(reactivityQueryObj) {
-				this.reactOnParent.push(new ReactivityQuery(reactivityQueryObj));
-			},
-		this);
+		if (Array.isArray(obj.reactOnSelf)) {
+			obj.reactOnSelf.forEach(
+				/** @param {ReactivityQueryDef} reactivityQueryObj */
+				function(reactivityQueryObj) {
+					this.reactOnSelf.push(new ReactivityQuery(reactivityQueryObj));
+				},
+			this);
+		}
 		
-		obj.subscribeOnParent.forEach(
-			/** @param {EventSubscriptionDef} subscribeOnParentObj */
-			function(subscribeOnParentObj) {
-				this.subscribeOnParent.push(new EventSubscription(subscribeOnParentObj));
-			},
-		this);
+		if (Array.isArray(obj.subscribeOnParent)) {
+			obj.subscribeOnParent.forEach(
+				/** @param {EventSubscriptionDef} subscribeOnParentObj */
+				function(subscribeOnParentObj) {
+					this.subscribeOnParent.push(new EventSubscription(subscribeOnParentObj));
+				},
+			this);
+		}
 		
-		obj.subscribeOnChild.forEach(
-			/** @param {EventSubscriptionDef} subscribeOnChildObj */
-			function(subscribeOnChildObj) {
-				this.subscribeOnChild.push(new EventSubscription(subscribeOnChildObj));
-			},
+		if (Array.isArray(obj.subscribeOnChild)) {
+			obj.subscribeOnChild.forEach(
+				/** @param {EventSubscriptionDef} subscribeOnChildObj */
+				function(subscribeOnChildObj) {
+					this.subscribeOnChild.push(new EventSubscription(subscribeOnChildObj));
+				},
 		this);
+		}
 		
-		obj.subscribeOnSelf.forEach(
-			/** @param {EventSubscriptionDef} subscribeOnSelfObj */
-			function(subscribeOnParentObj) {
-				this.subscribeOnSelf.push(new EventSubscription(subscribeOnSelfObj));
-			},
-		this);
+		if (Array.isArray(obj.subscribeOnSelf)) {
+			obj.subscribeOnSelf.forEach(
+				/** @param {EventSubscriptionDef} subscribeOnSelfObj */
+				function(subscribeOnParentObj) {
+					this.subscribeOnSelf.push(new EventSubscription(subscribeOnSelfObj));
+				},
+			this);
+		}
 		
-		obj.subSections.forEach(
-			/** @param {ComponentTemplateDef|ViewTemplateDef} subSection */
-			function(subSection) {
-				this.subSections.push(new ComponentTemplate(subSection));
-			},
-		this);
+		if (Array.isArray(obj.subSections)) {
+			obj.subSections.forEach(
+				/** @param {ComponentTemplateDef|ViewTemplateDef} subSection */
+				(subSection) => {
+					if (subSection instanceof ComponentTemplate || subSection instanceof ComponentTemplate) {
+					  this.subSections.push(subSection);
+					}
+				},
+			this);
+		}
 		
-		this.list = new ListDefinition(obj.list);
+		if (Array.isArray(obj.members)) {
+			obj.members.forEach(
+				/** @param {ComponentTemplateDef|ViewTemplateDef} member */
+				(member) => {
+					if (member instanceof ComponentTemplate || member instanceof ComponentTemplate) {
+					  this.members.push(new ComponentTemplate(member));
+					}
+				},
+			this);
+		}
+		
+		this.list = obj.list ? new ListDefinition(obj.list) : null;
 		this.streams = this.props.concat(this.states);
 		this.UID = UIDGenerator.TemplateUIDGenerator.newUID().toString();
 	}
