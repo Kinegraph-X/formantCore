@@ -2,7 +2,7 @@
  * @constructor FlexRowComponent
 */
 
-var TypeManager = require('src/core/TypeManager');
+var TemplateFactory = require('src/core/TemplateFactory');
 var Component = require('src/core/Component');
 
 var createFlexRowComponentHostDef = require('src/coreComponents/FlexRowComponent/coreComponentDefs/FlexRowComponentHostDef');
@@ -16,21 +16,8 @@ FlexRowComponent.prototype = Object.create(Component.CompositorComponent.prototy
 FlexRowComponent.prototype.objectType = 'FlexRowComponent';
 FlexRowComponent.prototype.extendsCore = 'CompoundComponent';
 
-//FlexRowComponent.defaultDef = {
-//	nodeName : 'box-row',
-//	attributes : [],
-//	states : [],
-//	props : [],
-//	reactOnParent : [],
-//	reactOnSelf : []
-//}
-
 FlexRowComponent.prototype.createDefaultDef = function() {
-	return TypeManager.createComponentDef(
-			createFlexRowComponentHostDef(),
-			'FlexRowComponentDefaultDef',
-			'rootOnly'
-		);
+	return createFlexRowComponentHostDef();
 }
 
 FlexRowComponent.prototype.getColumn = function(colIdx) {

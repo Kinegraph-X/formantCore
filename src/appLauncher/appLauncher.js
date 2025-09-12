@@ -21,7 +21,6 @@ if (typeof Object.getOwnPropertyDescriptor(String.prototype, 'escapeRegExp') ===
 var Validate = require('src/integrated_libs_&_forks/Validate');
 var Hamster = require('src/integrated_libs_&_forks/Hamster');
 //var MasterTimer = require('src/timers/MasterTimer');
-var NodeResizeObserver = require('src/core/ResizeObserver');
 var TextSizeGetter = require('src/core/TextSizeGetter');
 
 // TODO: move the main dependancies to permanent include
@@ -31,7 +30,6 @@ var TextSizeGetter = require('src/core/TextSizeGetter');
 var classConstructor = (function() {	
 	var debugMode = false,
 //		masterTimer = new MasterTimer(),
-		resizeObserver = new NodeResizeObserver(),
 		textSizeGetter = new TextSizeGetter(),
 		options = {
 			
@@ -137,7 +135,6 @@ var classConstructor = (function() {
 	
 	return {
 		debugMode : debugMode,
-		resizeObserver : resizeObserver,
 		textSizeGetter : textSizeGetter,
 		TextSizeGetterCtor : TextSizeGetter,
 		options : options,

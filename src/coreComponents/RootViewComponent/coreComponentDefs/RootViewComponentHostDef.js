@@ -8,44 +8,39 @@
  * @CSSifyTheme themeName : basic-light
  * 
  */
-var TypeManager = require('src/core/TypeManager');
-var CreateStyle = require('src/core/GenericStyleConstructor');
+const TemplateFactory = require('src/core/TemplateFactory');
+const CreateStyle = require('src/core/GenericStyleConstructor');
 
 
-var RootViewComponentDef = function(uniqueID, options, model) {
+const rootViewComponentDef = function(options, model) {
 	/**@CSSify DEBUG */		// DEBUG must "stick" to the annotation (ie. be RED and bold) to trigger debug infos
 		
 	// Some CSS stuff (styles are directly injected in the main def below)
 	/**@CSSifySlots placeholder */
 	
-
-	 
-
-	var moduleDef = TypeManager.createComponentDef({
-		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the ctor
+	var moduleDef = TemplateFactory.createDef({
+		host : TemplateFactory.createHostDef({
+//			type : 'CompoundCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the ctor
 			nodeName : 'app-root'/**@CSSifyStyle componentStyle : RootViewComponentHost */
 		}),
 		members : [
-			TypeManager.createComponentDef({
+			TemplateFactory.createDef({
 				type : 'ComponentWithView',
 				nodeName : 'app-header'/**@CSSifyStyle componentStyle : RootViewComponentHeader */
 			}),
-			TypeManager.createComponentDef({
+			TemplateFactory.createDef({
 				type : 'ComponentWithView',
 				nodeName : 'app-body'/**@CSSifyStyle componentStyle : RootViewComponentPage */
 			})
 		]
-	}, null, 'rootOnly');
+	});
 	
-	var minimalModuleDef = TypeManager.createComponentDef({
-		host : TypeManager.createComponentDef({
-//			type : 'ComposedCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the ctor
+	var minimalModuleDef = TemplateFactory.createDef({
+		host : TemplateFactory.createHostDef({
+//			type : 'CompoundCompnent', 				// this is implicit, as we call the CompoundComponent ctor in the ctor
 			nodeName : 'app-root'/**@CSSifyStyle componentStyle : RootViewComponentHost */
 		})
-	}, null, 'rootOnly');
-	
-//	console.error(minimalModuleDef);
+	});
 	
 	return {
 		moduleDef : moduleDef,
@@ -53,4 +48,4 @@ var RootViewComponentDef = function(uniqueID, options, model) {
 	};
 }
 
-module.exports = RootViewComponentDef;
+module.exports = rootViewComponentDef;

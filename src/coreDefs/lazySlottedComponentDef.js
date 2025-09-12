@@ -10,7 +10,7 @@
 
 
 var TypeManager = require('src/core/TypeManager');
-
+const CreateStyle = require('src/core/GenericStyleConstructor');
 
 
 var lazySlottedComponentDef = function(uniqueID, options, model) {

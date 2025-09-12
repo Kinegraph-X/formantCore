@@ -42,9 +42,19 @@ var HierarchicalObject = function(definition, parentView, parent) {
 		: parentView instanceof CoreTypes.ComponentView && parentView._parent
 			? (parentView._parent.pushChild(this) && parentView._parent) 
 			: null;
+			
+	let componentType;
+	if (this._parent === null && (componentType = Object.getPrototypeOf(this).objectType) !== 'RootViewComponent') {
+		if (parentView instanceof HierarchicalObject)
+			console.warn(componentType, 'HINT: Seems you passed a component instead of a view. The signature of a Component\'s ctor is "constructor(definition, parentView)"');
+		else
+			console.error(componentType, ': This Component has no parent. ParentView is ', parentView);
+	}
 	
 	this._children = [];
 	this._fastAccessToChildren = {};
+	
+	this.createEvent('update');
 }
 HierarchicalObject.prototype = Object.create(LoggingEventEmmitter.prototype);
 HierarchicalObject.prototype.objectType = 'HierarchicalObject';
@@ -423,50 +433,71 @@ ExtensibleObject.prototype.getCleanDefAfterExtension = function(Constructor) {
  */
 ExtensibleObject.prototype.addInterface = function(base, extension) {
 	// namingObj was just an attemp... to "name" the ctor. Doesn't work, though...
-	var namingObj = {}, objectType = base.prototype.objectType || '';
-	
-	namingObj[objectType] = function() {
-		base.apply(this, arguments);
-		extension.apply(this, arguments);
+	const objectType = base.prototype.objectType || '',
+		newName = objectType.indexOf('Extended') === 0 ? objectType : 'Extended' + objectType;
 		
-		base.prototype.onExtend.call(this, extension)
-		this.objectType = 'Extended' + objectType;
-		this._implements.push();
+	// Name masking error
+	if (base.prototype.hasOwnProperty('onExtend'))
+		console.error(base.prototype.objectType, 'the "onExtend" method is not allowed on a component');
+	
+	const resultingType = function() {
+		base.apply(this, arguments);
+		// Some time ago, interfaces could have side effects on the component
+		// and we were calling extension.apply(this, arguments).
+		// This is deprecated.
+		
+		this.objectType = newName;
 	};
-
-	namingObj[objectType].prototype = this.mergeOwnProperties(base.prototype, extension.prototype);
-	namingObj[objectType].prototype.constructor = namingObj[objectType];
-	namingObj[objectType].prototype.objectType = objectType.indexOf('Extended') === 0 ? objectType : 'Extended' + objectType;
-	(namingObj[objectType].prototype._implements
-		? namingObj[objectType].prototype._implements.push(extension.prototype.objectType)
-		: namingObj[objectType].prototype._implements = [extension.prototype.objectType]);
 	
-	base.prototype.onExtend(namingObj[objectType]);
+	// Wild mixins aren't anymore allowed
+	// (we could before add methods via interfaces)
+	// (this.mergeOwnProperties(base.prototype, extension.prototype);)
+	resultingType.prototype = base.prototype;
+	resultingType.prototype.constructor = resultingType;
+	resultingType.prototype.objectType = newName;
+	(resultingType.prototype._implements
+		? resultingType.prototype._implements.push(extension.prototype.objectType)
+		: resultingType.prototype._implements = [extension.prototype.objectType]);
 	
-	if (extension.prototype.queueAsync) {
-		var taskDef = extension.prototype.queueAsync(objectType);
-		(namingObj[objectType].prototype._asyncInitTasks
-				? namingObj[objectType].prototype._asyncInitTasks.splice(
-						(taskDef.index !== null 
-								? taskDef.index 
-								: namingObj[objectType].prototype._asyncInitTasks.length),
-						0,
-						taskDef)
-				: namingObj[objectType].prototype._asyncInitTasks = [taskDef]);
+	// Interfaces will inject hooks on _asyncInitTasks & _asyncRegisterTasks
+	this.prepareHookableOnProto(resultingType);
+	
+	let errorDetectFlag = false;
+	if (typeof extension.prototype.queueAsync === 'function') {
+		const taskDef = extension.prototype.queueAsync(objectType);
+		if (!(taskDef instanceof TemplateFactory.TaskDefinition || taskDef instanceof TypeManager.TaskDefinition)) {
+			console.error('Interfaces "queueAsync" & "queueAsyncRegister" function must return a TemplateFactory.TaskDefinition instance.', extension.prototype);
+			return resultingType;
+		}
+		resultingType.prototype._asyncInitTasks.splice(
+				(taskDef.index !== null 
+						? taskDef.index 
+						: resultingType.prototype._asyncInitTasks.length),
+				0,
+				taskDef);
 	}
-	if (extension.prototype.queueAsyncRegister) {
-		var taskDef = extension.prototype.queueAsyncRegister(objectType);
-		(namingObj[objectType].prototype._asyncRegisterTasks
-				? namingObj[objectType].prototype._asyncRegisterTasks.splice(
-						(taskDef.index !== null 
-								? taskDef.index 
-								: namingObj[objectType].prototype._asyncRegisterTasks.length),
-						0,
-						taskDef)
-				: namingObj[objectType].prototype._asyncRegisterTasks = [taskDef]);
+	else {
+		errorDetectFlag = true;
+	}
+	if (typeof extension.prototype.queueAsyncRegister === 'function') {
+		const taskDef = extension.prototype.queueAsyncRegister(objectType);
+		if (!(taskDef instanceof TemplateFactory.TaskDefinition || taskDef instanceof TypeManager.TaskDefinition)) {
+			console.error('Interfaces "queueAsync" & "queueAsyncRegister" function must return a TemplateFactory.TaskDefinition instance.', extension.prototype);
+			return resultingType;
+		}
+		resultingType.prototype._asyncRegisterTasks.splice(
+				(taskDef.index !== null 
+						? taskDef.index 
+						: resultingType.prototype._asyncRegisterTasks.length),
+				0,
+				taskDef);
+	}
+	else {
+		if (errorDetectFlag)
+			console.error('Interfaces must implement a "queueAsync" and/or "queueAsyncRegister" function returning a TemplateFactory.TaskDefinition instance.', extension.prototype);
 	}
 	
-	return namingObj[objectType];
+	return resultingType;
 }
 
 /**
@@ -583,68 +614,32 @@ ExtensibleObject.prototype.mergeOwnProperties = function(keepNonStdProtosOrProto
 }
 
 /**
- * @abstract_implementation {interface_name_masking_lock:must_be_first} {pure_virtual_on_abstract_type}
+ * 
  */
-ExtensibleObject.prototype.onExtend = function(namespace) {
+ExtensibleObject.prototype.prepareHookableOnProto = function(namespace) {
 	if (!(namespace.prototype.hasOwnProperty('_asyncInitTasks')))
 		namespace.prototype._asyncInitTasks = [];
 	if (!(namespace.prototype.hasOwnProperty('_asyncRegisterTasks')))
 		namespace.prototype._asyncRegisterTasks = [];
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
- * @constructor AsyncActivableObject
+ * pure signature (as a reminder: not to be implemented)
+ * interfaces don't inherit, but implement a method with this signature
  */
-var AsyncActivableObject = function(definition, parentView, parent) {
-	ExtensibleObject.call(this, definition, parentView, parent);
-	this.objectType = 'AsyncActivableObject';
-}
-AsyncActivableObject.prototype = Object.create(ExtensibleObject.prototype);
-AsyncActivableObject.prototype.objectType = 'AsyncActivableObject';
+//ExtensibleObject.prototype.queueAsync = function() {
+//	return new TemplateFactory.TaskDefinition({
+//		type : '',
+//		task : function() {}
+//	});
+//}
 
-/**
- * @reminder
- * Asynchronous tasks are inherited through the prototype during the mixin, but should not be referenced by "any" component
- */
-//AsyncActivableObject.prototype._asyncInitTasks = [];
-//AsyncActivableObject.prototype._asyncRegisterTasks = []
 
-/**
- * @virtual
- */
-AsyncActivableObject.prototype.asyncInit = function() {
-	
-	this._asyncInitTasks.forEach(function(asyncFunc, key) {
-		asyncFunc.call(this);
-	});
-}
 
-/**
- * @pure_signature not to be implemented : interfaces must not inherit from a Component type, but may implement a method with this signature
- */
-AsyncActivableObject.prototype.queueAsync = function() {
-	return new TypeManager.TaskDefinition({
-		type : '',
-		task : function() {}
-	});
-}
+
+
+
+
 
 
 
@@ -658,11 +653,10 @@ AsyncActivableObject.prototype.queueAsync = function() {
  * @constructor AbstractComponent
  */
 var AbstractComponent = function(definition, parentView, parent) {
-	AsyncActivableObject.call(this, definition, parentView, parent);
+	ExtensibleObject.call(this, definition, parentView, parent);
 	this.objectType = 'AbstractComponent';
 	
 	this._UID = TypeManager.UIDGenerator.newUID().toString();
-	
 	this._defUID = definition.getHostDef().UID;
 	this._defComposedUID = '';
 	
@@ -675,12 +669,11 @@ var AbstractComponent = function(definition, parentView, parent) {
 //	console.log(definition);
 	if (!Registries.hostsDefinitionsCacheRegistry.getItem(this._defUID))
 		this.populateStores(definition);
-	this.createEvent('update');
 	
 //	console.log(definition.getHostDef().UID, definition.getHostDef().nodeName, definition)
 	Registries.typedHostsRegistry.getItem(this._defUID).push(this);
 }
-AbstractComponent.prototype = Object.create(AsyncActivableObject.prototype);
+AbstractComponent.prototype = Object.create(ExtensibleObject.prototype);
 AbstractComponent.prototype.objectType = 'AbstractComponent';
 /**
  * @virtual
@@ -691,65 +684,58 @@ AbstractComponent.prototype.createDefaultDef = function() {}			// virtual
  * @param {ComponentDefinition}
  */
 AbstractComponent.prototype.mergeDefaultDefinition = function(definition) {
-	var defaultDef, defaultHostDef;
-//	console.log(this.createDefaultDef());
+	let defaultDef;
+
 	if ((defaultDef = this.createDefaultDef(definition))) {
-		defaultHostDef = defaultDef.getGroupHostDef() ? defaultDef.getGroupHostDef() : defaultDef.getHostDef();
-		this._defComposedUID = defaultHostDef.UID;
-//		if (Registries.hostsDefinitionsCacheRegistry.getItem(this._defUID, this._defComposedUID))
-//			return;
-	}
-	else
-		this._defComposedUID = this._defUID;
-	
-	var hostDef = definition.getHostDef();	// the CompoundComponent's ctor passes here only the received hostDef
-	
-//	console.log(definition.getHostDef().UID, definition.getHostDef().nodeName, defaultDef)
-//	if (hostDef.type === 'TextInput')		
-//		console.error('TextInput', defaultHostDef, hostDef);
+		this._defComposedUID = defaultDef.UID;
+		const defaultViewDef = defaultDef.getGroupHostDef() ? defaultDef.getGroupHostDef() : defaultDef.getHostDef();
+		const defaultHostDef = defaultDef.getGroupHostDef() ? defaultDef.getHostDef() : defaultDef;
+		const explicitDef = definition.getHostDef();	// No need to test getGroupHostDef() for explicit def
+														// (the CompoundComponent's ctor passes here only the received explicitDef)
+		// streams declarations can override the default declaration
+		TemplateFactory.propsAreArrayOfProps.forEach(function(templateEntry) {
+			defaultViewDef[templateEntry].forEach(function(prop) {
+				if (!explicitDef[templateEntry].fastHasObjectByKey(prop.getKey()))
+					explicitDef[templateEntry].push(prop);
+			});
+		});
+		// stream subscriptions must add to the default implementation
+		TemplateFactory.propsAreArrayOfSubscriptions.forEach(function(templateEntry) {
+			Array.prototype.push.apply(explicitDef[templateEntry], defaultViewDef[templateEntry]);
+		});
+		TemplateFactory.propsArePrimitives.forEach(function(prop) {
+			if (explicitDef[prop] === null)
+				explicitDef[prop] = defaultViewDef[prop];
+		});
 		
-//	console.log(hostDef.sWrapper === null, Object.getPrototypeOf(this).objectType, defaultHostDef);
-	if (defaultDef) {
-		TypeManager.propsAreArray.forEach(function(prop) {
-//			if(!defaultHostDef[prop])
-//				console.log(prop, defaultHostDef);
-//			if(defaultHostDef[prop].length)
-				Array.prototype.push.apply(hostDef[prop], defaultHostDef[prop]);
-		});
-		TypeManager.propsArePrimitives.forEach(function(prop) {
-			if (hostDef[prop] === null)
-				hostDef[prop] = defaultHostDef[prop];
-		});
-		// TODO: At first, we weren't allowing override,
-		// => Is it really the right way to do it ?
-		if (hostDef.sWrapper === null)
-			hostDef.sWrapper = defaultHostDef.sWrapper;
-		// Overrides should not be defined in the  defaultDef:
+		if (explicitDef.sWrapper === null)
+			explicitDef.sWrapper = defaultViewDef.sWrapper;
+		// Overrides should not be defined in the  defaultViewDef:
 		// but we met a case were we were wrongly defining it there,
 		// and that showed us that users may want to do that and expect it to work
 		// => so it's a worst case situation: the default override won't work 
-		// if there's an explicit override. But users should understand
-		// that we won't support fusionning the override and the override. That makes no sense...
-		if (hostDef.sOverride === null)
-			hostDef.sOverride = defaultHostDef.sOverride;
-		if (hostDef.command === null)
-			hostDef.command = defaultHostDef.command;
+		// if there's an explicit override.
+		// We should add a log: TODO: find the best place to log that
+		if (explicitDef.sOverride === null)
+			explicitDef.sOverride = defaultViewDef.sOverride;
+		if (explicitDef.command === null)
+			explicitDef.command = defaultViewDef.command;
 		
-		
-		var defaultDefContainedSubSectionsViews = defaultDef.getGroupHostDef() ? defaultDef.getHostDef().subSections : defaultDef.subSections;
-		var defaultDefContainedMemberViews = defaultDef.getGroupHostDef() ? defaultDef.getHostDef().members : defaultDef.members;
-		// Brutal subSections & members override:
-		// => descendant views are easier to define in the Component's class
-		// 		and should not be different in the runtime immplementation
+		const defaultDefContainedSubSectionsViews = defaultHostDef.subSections;
+		const defaultDefContainedMemberViews = defaultHostDef.members;
+		// Brutal subSections & members merging:
+		// => An explicit template can't be an override for child-views: it's too risky
+		// 		if a default implementation relies on certain views being present.
+		//		Let's accept adding views.
 		if (defaultDefContainedSubSectionsViews.length)
 			Array.prototype.push.apply(definition.subSections, defaultDefContainedSubSectionsViews);
 		
 		if (defaultDefContainedMemberViews.length)
 			Array.prototype.push.apply(definition.members, defaultDefContainedMemberViews);
 	}
-	
-//	if (hostDef.type === 'TextInput')
-//		console.log(definition);
+	else {
+		this._defComposedUID = this._defUID;
+	}
 }
 
 /**
@@ -1088,6 +1074,13 @@ ComponentWithHooks.prototype = Object.assign(Object.create(ComponentWithView.pro
 });
 ComponentWithHooks.prototype.objectType = 'ComponentWithHooks';
 
+/**
+ * @method viewExtend
+ * This is an old idea to handle lifecycle hooks defined on the prototype.
+ * But it implies a lot of reflection, and a messy declaration syntax.
+ * So FIXME: as we did for the rendering, lifecycle hooks should be referenced
+ * on a dedicated PropertyCache, with a syntax similar to react hooks declaration
+ */
 ComponentWithHooks.prototype.viewExtend = function(definition) {
 	this.basicEarlyViewExtend(definition);
 	if (this._asyncInitTasks)
@@ -1096,12 +1089,9 @@ ComponentWithHooks.prototype.viewExtend = function(definition) {
 	if (this._asyncInitTasks)
 		this.lateAddChildren(definition);
 	
-//	if (definition.getHostDef().targetSlotIndex !== null)
-//		console.log(this);
-	// Retry after having added more views
-	if (definition.getHostDef().targetSlotIndex !== null && this.view.targetSubView === null) {
-		this.view.getTargetSubView(definition.getHostDef());
-	}
+	// Deprecation error
+	if (typeof definition.getHostDef().targetSlotIndex !== 'undefined')
+		console.error('The "targetSlotIndex" property on a template is deprecated', definition);	
 }
 
 ComponentWithHooks.prototype.registerEvents = function() {
@@ -1119,12 +1109,21 @@ ComponentWithHooks.prototype.registerEvents = function() {
  */
 ComponentWithHooks.prototype.asyncViewExtend = function(definition) {
 //	console.log('viewExtend', this.view, this._asyncInitTasks);
-	var asyncTask;
-	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
-		asyncTask = this._asyncInitTasks[i];
-		if(asyncTask.type === 'viewExtend') {
-			asyncTask.execute(this, definition);
+	let asyncTask, currentProto = Object.getPrototypeOf(this);
+	while(currentProto.objectType !== 'ComponentWithHooks') {
+		if (currentProto.hasOwnProperty('_asyncInitTasks')) {
+			for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
+				asyncTask = this._asyncInitTasks[i];
+				if(asyncTask.type === 'viewExtend') {
+					if (typeof asyncTask.execute !== 'function') {
+						console.error(currentProto.objectType, ': The "execute" function of a late task is missing.',  asyncTask);
+						continue;
+					}
+					asyncTask.execute(this, definition);
+				}
+			}
 		}
+		currentProto = Object.getPrototypeOf(currentProto);
 	}
 }
 
@@ -1132,15 +1131,21 @@ ComponentWithHooks.prototype.asyncViewExtend = function(definition) {
  * @hook
  */
 ComponentWithHooks.prototype.lateAddChildren = function(definition) {
-//	console.log('lateAddChildren', this.view, this._asyncInitTasks);
-	var asyncTask;
-	for (let i = 0, l = this._asyncInitTasks.length; i < l; i++) {
-		asyncTask = this._asyncInitTasks[i];
-		if(asyncTask.type === 'lateAddChild' || asyncTask.type === 'lateInit') {
-			if (typeof asyncTask.execute !== 'function')
-				console.log(asyncTask);
-			asyncTask.execute(this, definition);
+	let asyncTask, currentProto = Object.getPrototypeOf(this);
+	while(currentProto.objectType !== 'ComponentWithHooks') {
+		if (currentProto.hasOwnProperty('_asyncInitTasks')) {
+			for (let i = 0, l = currentProto._asyncInitTasks.length; i < l; i++) {
+				asyncTask = currentProto._asyncInitTasks[i];
+				if(asyncTask.type === 'lateAddChild' || asyncTask.type === 'lateInit' || asyncTask.type === 'viewExtend') {
+					if (typeof asyncTask.execute !== 'function') {
+						console.error(currentProto.objectType, ': The "execute" function of a late task is missing.',  asyncTask);
+						continue;
+					}
+					asyncTask.execute(this, definition);
+				}
+			}
 		}
+		currentProto = Object.getPrototypeOf(currentProto);
 	}
 }
 
@@ -1148,12 +1153,21 @@ ComponentWithHooks.prototype.lateAddChildren = function(definition) {
  * @hook
  */
 ComponentWithHooks.prototype.asyncRegister = function() {
-	var asyncTask;
-	for (let i = 0, l = this._asyncRegisterTasks.length; i < l; i++) {
-		asyncTask = this._asyncRegisterTasks[i];
-		if(asyncTask.type === 'lateBinding') {
-			asyncTask.execute(this);
+	var asyncTask, currentProto = Object.getPrototypeOf(this);
+	while(currentProto.objectType !== 'ComponentWithHooks') {
+		if (currentProto.hasOwnProperty('_asyncInitTasks')) {
+			for (let i = 0, l = this._asyncRegisterTasks.length; i < l; i++) {
+				asyncTask = this._asyncRegisterTasks[i];
+				if(asyncTask.type === 'lateBinding') {
+					if (typeof asyncTask.execute !== 'function') {
+						console.error(currentProto.objectType, ': The "execute" function of a late task is missing.',  asyncTask);
+						continue;
+					}
+					asyncTask.execute(this);
+				}
+			}
 		}
+		currentProto = Object.getPrototypeOf(currentProto);
 	}
 }
 
@@ -1384,7 +1398,7 @@ ComponentStrokeAware.prototype.registerKeyboardEvents = function(e) {
  * @constructor ComponentWithViewAbstractingAFeed
  */
 var ComponentWithViewAbstractingAFeed = function(definition, parentView, parent, isChildOfRoot) {
-	ComponentWithHooks.call(this, definition);
+	ComponentWithHooks.call(this, definition, parentView, parent);
 	this.objectType = 'ComponentWithViewAbstractingAFeed';
 	this.createEvent('exportdata');
 }
@@ -1461,6 +1475,7 @@ var CompositorComponent = function(definition, parentView, parent) {//, argx, ar
 	if (!this.Compositor)
 		console.warn('Invalid inheritance through CompositorComponent: it seems you\'ve tried to extend a non-core component. Were you inheriting from an abstract type through the simple "extends" property ? (CompositorComponent is not needed then)')
 	this.Compositor.apply(this, arguments);
+//	console.log(this.Compositor);
 	this.objectType = 'CompositorComponent';
 }
 CompositorComponent.prototype = Object.create(ComponentWithView.prototype);

@@ -182,6 +182,9 @@ var PropFactory = function(obj) {
 		Object.defineProperty(PropFactory.props[key].prototype, 'getName', {
 			value :  new Function('return "' + key + '";')
 		});
+		Object.defineProperty(PropFactory.props[key].prototype, 'getKey', {
+			value :  new Function('return "' + key + '";')
+		});
 		// @ts-ignore : "Expression of type any can't be used to index type {}" : idem
 		Object.defineProperty(PropFactory.props[key].prototype, 'getValue', {
 			value :  new Function('return this["' + key + '"];')
@@ -225,6 +228,11 @@ var AbstractProp = function(obj){
 }
 AbstractProp.prototype = Object.create(ValueObject.prototype);
 Object.defineProperty(AbstractProp.prototype, 'getName', {
+	value :  function() {
+		for(let name in this)
+			return name; 
+}});
+Object.defineProperty(AbstractProp.prototype, 'getKey', {
 	value :  function() {
 		for(let name in this)
 			return name; 
@@ -316,11 +324,11 @@ Object.defineProperty(ReactivityQueryModel.prototype, 'subscribeToStream', {
 			// => We're indeed testing if that name exists
 			&& !queriedOrQueryingObj.streams[this.to] 
 			&& !this.subscribe) {
-			console.warn('missing stream or subscription callback on child subscribing from ' + stream.name + ' to ' + this.to);
+			console.warn('Missing stream or subscription callback on child subscribing from ' + stream.name + ' to ' + this.to);
 			return;
 		}
 		else if (typeof stream === 'undefined') {
-			console.error('no stream object passed for subscription', queriedOrQueryingObj, this.from, this.to);
+			console.error('No stream object passed for subscription. Probable usage of stream without a prior declaration: ', this.from, this.to, queriedOrQueryingObj);
 			return;
 		}
 		if (this.cbOnly) {
@@ -514,41 +522,40 @@ Object.defineProperty(PublisherDefinitionModel.prototype, 'objectType', {value :
 
 
 /**
- * @constructor SingleLevelComponentDefModel
+ * @constructor SingleLevelComponentDef
  * @param {ViewTemplate | SingleLevelComponentDefModel | 'bare'} obj
  * @param {String} isSpecial
  * @param {ViewTemplate|null} givenDef
  */
 var SingleLevelComponentDefModel = function(obj, isSpecial = '', givenDef = null) {
+	
+	this.UID = null								// String (overridden at function end)
+	this.type = null,							// String
+	this.isCompound = false;					// Boolean
+	this.nodeName = null;						// String
+	this.n = null;								// String
+	this.isCustomElem = null;					// Boolean
+	this.templateNodeName = null;				// String
+	this.attributes = Array();					// Array [AttributeDesc]
+	this.section = null;						// Number
+	this.props = Array();						// Array [Prop]
+	this.states = Array();						// Array [State]
+	this.streams = Array();						// Array [Prop, States]
+//	this.targetSlotIndex = null;				// Number (deprecated)
+	this.sWrapper = null;						// Object StylesheetWrapper
+	this.sOverride = null;						// Object StylesheetWrapper
+	this.command = null;						// Object Command
+	this.reactOnParent = Array();				// Array [ReactivityQuery]
+	this.reactOnSelf = Array();					// Array [ReactivityQuery]
+	this.subscribeOnParent = Array();			// Array [EventSubscription]
+	this.subscribeOnChild = Array();			// Array [EventSubscription]
+	this.subscribeOnSelf = Array();				// Array [EventSubscription]
+	this.keyboardSettings = Array();			// Array [KeyboardHotkeys]
+	this.keyboardEvents = Array();				// Array [KeyboardListeners]
+	this.isDummy = false;						// Boolean
+
 	if (givenDef)
 		Object.assign(this, givenDef);
-	else {
-		this.UID = null								// String (overridden at function end)
-		this.type = null,							// String
-		this.isCompound = false;					// Boolean
-		this.nodeName = null;						// String
-		this.n = null;								// String
-		this.isCustomElem = null;					// Boolean
-		this.templateNodeName = null;				// String
-		this.attributes = Array();					// Array [AttributeDesc]
-		this.section = null;						// Number
-		this.props = Array();						// Array [Prop]
-		this.states = Array();						// Array [State]
-		this.streams = Array();						// Array [Prop, States]
-		this.targetSlotIndex = null;				// Number
-		this.sWrapper = null;						// Object StylesheetWrapper
-		this.sOverride = null;						// Object StylesheetWrapper
-		this.command = null;						// Object Command
-		this.reactOnParent = Array();				// Array [ReactivityQuery]
-		this.reactOnSelf = Array();					// Array [ReactivityQuery]
-		this.subscribeOnParent = Array();			// Array [EventSubscription]
-		this.subscribeOnChild = Array();			// Array [EventSubscription]
-		this.subscribeOnSelf = Array();				// Array [EventSubscription]
-		this.keyboardSettings = Array();			// Array [KeyboardHotkeys]
-		this.keyboardEvents = Array();				// Array [KeyboardListeners]
-		this.isDummy = false;						// Boolean
-	}
-
 	if (obj !== 'bare')
 		ValueObject.call(this, obj, isSpecial);
 	
@@ -563,8 +570,18 @@ var SingleLevelComponentDefModel = function(obj, isSpecial = '', givenDef = null
 };
 SingleLevelComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.SingleLevelComponentDefModel = SingleLevelComponentDefModel;
-SingleLevelComponentDefModel.prototype.objectType = 'SComponentDef';
+SingleLevelComponentDefModel.prototype.objectType = 'SingleLevelComponentDef';
 SingleLevelComponentDefModel.prototype.getType = function() {return this.type;}
+SingleLevelComponentDefModel.prototype.addProp = function(propDef) {
+	const newStream = new PropFactory(propDef);
+	this.states.push(newStream);
+	this.streams.push(newStream);
+}
+SingleLevelComponentDefModel.prototype.addState = function(stateDef) {
+	const newStream = new PropFactory(stateDef);
+	this.states.push(newStream);
+	this.streams.push(newStream);
+}
 
 
 
@@ -579,7 +596,7 @@ SingleLevelComponentDefModel.prototype.getType = function() {return this.type;}
 
 
 /**
- * @constructor HierarchicalComponentDefModel
+ * @constructor HierarchicalComponentDef
  * @param {HierarchicalTemplate|HierarchicalComponentDefModel|SingleLevelComponentDefModel} obj
  * @param {String} isSpecial
  */
@@ -595,7 +612,7 @@ var HierarchicalComponentDefModel = function(obj, isSpecial) {
 }
 HierarchicalComponentDefModel.prototype = Object.create(ValueObject.prototype);
 exportedObjects.HierarchicalComponentDefModel = HierarchicalComponentDefModel;
-Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {value : 'MComponentDef'});
+Object.defineProperty(HierarchicalComponentDefModel.prototype, 'objectType', {value : 'HierarchicalComponentDef'});
 
 HierarchicalComponentDefModel.prototype.getGroupHostDef = function() {
 	return (this.host && this.host.host);
@@ -664,7 +681,7 @@ Object.defineProperty(ComponentListDefModel.prototype, 'objectType', {value : 'C
 
 
 /**
- * @factory MockedDefModel
+ * @factory MockedDef
  * @param {ViewTemplate} obj
  */
 var mockDef = function(obj) {
@@ -680,8 +697,9 @@ var mockDef = function(obj) {
 }
 exportedObjects.mockDef = mockDef;
 
+
 /**
- * @factory MockedGroupDefModel
+ * @factory MockedGroupDef
  */
 var mockGroupDef = function() {
 	/** @type {ViewTemplate} */
@@ -702,53 +720,6 @@ exportedObjects.mockGroupDef = mockGroupDef;
 
 
 
-
-
-/**
- * @helper setAcceptsProp
- * @param {HierarchicalComponentDefModel} definition
- * @param {String} accepts
- * @param {String} title
- * @param {Number} onMember
- */
-var setAcceptsProp = function(definition, accepts, title, onMember) {
-	var acceptsObj = {accepts : accepts};
-	var titleObj = {title : title};
-	if (definition.getGroupHostDef()) {
-		if (title) {
-			if (typeof onMember === 'number') {
-				definition.members[onMember].getHostDef().attributes.push(
-					new PropFactory(titleObj)
-				)
-			}
-			else
-				definition.getGroupHostDef().props.push(
-					new PropFactory(titleObj)
-				)
-		}
-		definition.getGroupHostDef().props.push(
-			new PropFactory(
-				acceptsObj
-			)
-		)
-	}
-	else if (definition.getHostDef()) {
-		if (title) {
-			if (typeof onMember === 'number')
-				definition.members[onMember].getHostDef().attributes.push(
-					new PropFactory(titleObj)
-				)
-			else
-				definition.getHostDef().props.push(
-					new PropFactory(titleObj)
-			)
-		}
-		
-		definition.getHostDef().props.push(
-			new PropFactory(acceptsObj)
-		)
-	}
-}
 
 
 
@@ -792,6 +763,8 @@ exportedObjects.createDef = createDef;
  * @param {ViewTemplate & SingleLevelComponentDefModel & HierarchicalTemplate & HierarchicalComponentDefModel & ComponentListDefModel} defObj
  */
 var createHostDef = function(defObj) {
+	if (defObj.host)
+		console.error('Malformed call to createHostDef: This shortcut factory isn\'t meant to embed a Hierarchical template in a hierarchical template. Use it only to create a Hierarchical def from a view template', defObj);
 	return (new HierarchicalComponentDefModel({host : new SingleLevelComponentDefModel(defObj, 'hostOnly')}, 'rootOnly'));
 }
 exportedObjects.createHostDef = createHostDef;
@@ -803,29 +776,31 @@ exportedObjects.createHostDef = createHostDef;
 /**
  * PRECIOUS HELPERS : for performance concerns, allows looping only on props that are arrays
  */
-var propsAreArray = [
+const propsAreArrayOfProps = [
 	'attributes',
 	'states',
 	'props',
 	'streams',
+//	'keyboardSettings',			// TODO: FIX that bypass : implement keyboard handling in the context of the v0.2
+//	'keyboardEvents'
+];
+const propsAreArrayOfSubscriptions = [
 	'reactOnParent',
 	'reactOnSelf',
 	'subscribeOnParent',
 	'subscribeOnChild',
 	'subscribeOnSelf'//,
-//	'keyboardSettings',			// TODO: FIX that bypass : implement keyboard handling in the context of the v0.2
-//	'keyboardEvents'
 ];
-var reactivityQueries = [
+const reactivityQueries = [
 	'reactOnParent',
 	'reactOnSelf'
 ];
-var eventQueries = [
+const eventQueries = [
 	'subscribeOnParent',
 	'subscribeOnChild',
 	'subscribeOnSelf'
 ];
-var propsArePrimitives = [
+const propsArePrimitives = [
 	'type',
 	'nodeName',
 	'isCustomElem',
@@ -848,6 +823,13 @@ var propsArePrimitives = [
  * @aliases
  */
 Object.assign(exportedObjects, {
+	// Export types (for runtime type checks: shall be of no use after typed rewrite)
+	DefType : ValueObject,
+	HierarchicalComponentDef : HierarchicalComponentDefModel,
+	SingleLevelComponentDef : SingleLevelComponentDefModel,
+	
+	// names kept for backward compatibility
+	createSimpleComponentDef : HierarchicalComponentDefModel,		// Object HierarchicalComponentDef
 	attributesModel : PropFactory,									// Object AbstractProp
 	statesModel : PropFactory,										// Object AbstractProp
 	propsModel : PropFactory,										// Object AbstractProp
@@ -861,14 +843,28 @@ Object.assign(exportedObjects, {
 	subscribeOnParentModel : EventSubscriptionModel,				// Object EventSubscriptionsList
 	subscribeOnChildModel : EventSubscriptionModel,					// Object EventSubscriptionsList
 	subscribeOnSelfModel : EventSubscriptionModel,					// Object EventSubscriptionsList
-	createSimpleComponentDef : HierarchicalComponentDefModel,		// Object HierarchicalComponentDef
-	setAcceptsProp : setAcceptsProp,								// function : Helper
+	
+	// names expressing these are types
+	Attributes : PropFactory,										// Object AbstractProp
+	States : PropFactory,											// Object AbstractProp
+	Props : PropFactory,											// Object AbstractProp
+	Streams : PropFactory,											// Object AbstractProp
+	TaskDefinition : TaskDefinitionModel,							// Object TaskDefinition
+	PublisherDefinition : PublisherDefinitionModel,					// Object PublisherDefinition
+	Options : OptionsModel,											// Object OptionsModel
+	ListTemplate : ComponentListDefModel,	
+	ReactOnParent : ReactivityQueryModel,							// Object ReactivityQueryList
+	ReactOnSelf : ReactivityQueryModel,								// Object ReactivityQueryList
+	SubscribeOnParent : EventSubscriptionModel,						// Object EventSubscriptionsList
+	SubscribeOnChild : EventSubscriptionModel,						// Object EventSubscriptionsList
+	SubscribeOnSelf : EventSubscriptionModel,						// Object EventSubscriptionsList
 	
 	UIDGenerator : UIDGenerator.UIDGenerator,
 	StyleUIDGenerator : UIDGenerator.StyleUIDGenerator,
 	DefUIDGenerator : UIDGenerator.DefUIDGenerator,
 	
-	propsAreArray : propsAreArray,									// Array
+	propsAreArrayOfProps : propsAreArrayOfProps,					// Array
+	propsAreArrayOfSubscriptions : propsAreArrayOfSubscriptions,					// Array
 	reactivityQueries : reactivityQueries,							// Array
 	eventQueries : eventQueries,									// Array
 	propsArePrimitives : propsArePrimitives							// Array

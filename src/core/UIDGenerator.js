@@ -24,12 +24,30 @@ GeneratorForStyles.prototype.newUID = function() {
 
 
 
-
-var GeneratorForDefs = function() {
+var GeneratorForDef = function() {
 	this.nextUID = 0;
 }
 
-GeneratorForDefs.prototype.newUID = function() {
+GeneratorForDef.prototype.newUID = function() {
+	return 'Def_' + (this.nextUID++).toString();
+}
+
+
+var GeneratorForTemplates = function() {
+	this.nextUID = 0;
+}
+
+GeneratorForTemplates.prototype.newUID = function() {
+	return 'Def_' + (this.nextUID++).toString();
+}
+
+
+
+var GeneratorForViews = function() {
+	this.nextUID = 0;
+}
+
+GeneratorForViews.prototype.newUID = function() {
 	return 'Def_' + (this.nextUID++).toString();
 }
 
@@ -87,7 +105,9 @@ GeneratorFor16bitsInt.prototype.numberFromInt = function(int16AsArray) {
 module.exports =  {
 	UIDGenerator : new Generator(),
 	StyleUIDGenerator : new GeneratorForStyles(),
-	DefUIDGenerator : new GeneratorForDefs(),
+	DefUIDGenerator : new GeneratorForDef(),
+	TemplateUIDGenerator : new GeneratorForTemplates(),
+	ViewUIDGenerator : new GeneratorForViews(),
 	NodeUIDGenerator : new GeneratorForLayoutNodes(),
 	TweenUIDGenerator : GeneratorForTweens,
 	GeneratorFor16bitsInt : new GeneratorFor16bitsInt()

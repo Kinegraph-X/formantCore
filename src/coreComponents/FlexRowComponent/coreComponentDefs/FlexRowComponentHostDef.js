@@ -7,11 +7,11 @@
  * @CSSifyTheme themeName : basic-light
  * 
  */
-var TypeManager = require('src/core/TypeManager');
+var TemplateFactory = require('src/core/TemplateFactory');
 var CreateStyle = require('src/core/GenericStyleConstructor');
 
 
-var FlexRowComponentDef = function(uniqueID, options, model) {
+var FlexRowComponentDef = function(options) {
 	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos
 		
 	// Some CSS stuff (styles are directly injected in the main def below)
@@ -19,7 +19,7 @@ var FlexRowComponentDef = function(uniqueID, options, model) {
 	
 	
 	
-	var moduleDef = TypeManager.createComponentDef({
+	var moduleDef = TemplateFactory.createHostDef({
 			nodeName : 'box-row'/**@CSSifyStyle componentStyle : FlexRowComponentHost */
 		});
 	

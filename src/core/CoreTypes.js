@@ -5,7 +5,6 @@
 
 
 const appConstants = require('src/appLauncher/appLauncher');
-//const TypeManager = require('src/core/TypeManager');
 const TemplateFactory = require('src/core/TemplateFactory');
 const Registries = require('src/core/Registries');
 const SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator');
@@ -1245,18 +1244,71 @@ SavableStore.prototype.empty = function() {
 
 
 
+const workerExceptionMessage = 'Worker MessageType normalization failed';
+
+/**
+ * @enum WorkerMessageType
+ * TS style enum
+ */
+const WorkerMessageType = {
+	event : 'event',
+	error : 'error',
+	warning : 'warning'
+};
 
 
+/**
+ * @typedef WorkerMessage
+ * @property {string] type
+ * @property {string} [id]
+ * @property {any} [payload]
+ * @property {string} [cause]
+ */
 
-
-
+/**
+ * @factory WorkerMessage
+ * (a type normalization)
+ * @param {WorkerMessage} untypedMessage
+ */
+const WorkerMessage = function(untypedMessage) {
+	if (typeof untypedMessage != 'object' || (!(untypedMessage.hasOwnProperty('type')) || !(WorkerMessageType.hasOwnProperty(untypedMessage.type)))) {
+		console.warn(workerExceptionMessage + ': maybe you\'re communicating with an external worker');
+//		throw new Error(workerExceptionMessage);
+		return undefined;
+	}
+	this.type = untypedMessage.type;				// string
+	this.id = untypedMessage.id || null;			// string (optional but here defined by default)
+	this.payload = untypedMessage.payload || null; // any (optional, any object, as the worker is accross an interface boundary)
+	this.cause = untypedMessage.cause || null		// string (optional, only if type is "error" or "warning")
+}
 
 
 
 
 
 /**
- * An interface to be implemented by a module based on a worker
+ * @constructor WorkerInterface
+ * A class to comunicate with a js worker more easily
+ * - post a task and a payload (use optimized serialization when possible)
+ * - receive different responses from a worker, allowing to bind a handler on each response type
+ * @param {string} workerName
+ * @param {string|null} [stringifiedWorker] (optional if url is defined)
+ * @param {string} [url] (optional)
+ */
+
+/*
+ * message = function(event) {
+	if (event.data.constructor === Array) {
+		var result = parser.apply(parser, event.data);
+		console.log(result);
+		if (result)
+			postMessage(result);
+		else
+			console.error('The MP4Parser didn't return anything.');
+	}
+	else
+		console.error('The MP4Parser expects an array as payload.', typeof event.data, 'received');
+}
  */
 var WorkerInterface = function(workerName, stringifiedWorker, url) {
 	EventEmitter.call(this);
@@ -1265,19 +1317,33 @@ var WorkerInterface = function(workerName, stringifiedWorker, url) {
 	this.createEvent('message');
 	this.name = workerName;
 	
-	var blob = new Blob([stringifiedWorker /*https://www.npmjs.com/package/stringify*/], {type: 'application/javascript'});
-	var blobURL = window.URL.createObjectURL(blob);
-	url = typeof blobURL === 'string' ? blobURL : url;
-	this.worker = new Worker(url);
-	this.worker.onmessage = this.handleResponse.bind(this); 
+	if (stringifiedWorker) {
+		var blob = new Blob([stringifiedWorker], {type: 'application/javascript'});
+		this.blobURL = window.URL.createObjectURL(blob);
+		this.worker = new Worker(this.blobURL);
+	}
+	else if (url) {
+		this.worker = new Worker(url);
+	}
+	else {
+		console.error(this.name + ': WorkerInterface requires passing a "stringifiedWorker" or an "url" param');
+	}
+	this.worker.onmessage = this.handleResponse.bind(this);
+	this.worker.onerror = this.workerHandleError.bind(this);
+	this.worker.onmessageerror = this.workerHandleMessageError.bind(this);
 }
 WorkerInterface.prototype = Object.create(EventEmitter.prototype);
 WorkerInterface.prototype.objectType = 'WorkerInterface';
 WorkerInterface.prototype.constructor = WorkerInterface;
 
-WorkerInterface.prototype.postMessage = function(action, e) { 	// e.data = File Object (blob)
+/**
+ * @method postMessage
+ * Meant to be passed as an event-handler, like "parser.postMessage.bind(parser, 'init')"
+ * @param {string} action
+ * @param {FormantEvent} [e]
+ */
+WorkerInterface.prototype.postMessage = function(action, e) { 	// e.g for the mp4Parser.worker : e.data = File Object (blob)
 	// syntax [(messageContent:any)arg0, (transferableObjectsArray:[transferable, transferable, etc.])arg1]
-
 	if (typeof e === 'undefined')
 		this.worker.postMessage.call(this.worker, [action]);
 	else if (e.data instanceof ArrayBuffer)
@@ -1286,48 +1352,95 @@ WorkerInterface.prototype.postMessage = function(action, e) { 	// e.data = File 
 		this.worker.postMessage.call(this.worker, [action, e.data]);
 }
 
+/**
+ * @method addResponseHandler
+ * @param {string} handlerName
+ * @param {function} handler
+ */
 WorkerInterface.prototype.addResponseHandler = function(handlerName, handler) {
 	if (typeof handler === 'function')
 		this._responseHandler[handlerName] = handler;
 }
 
+/**
+ * @method handleResponse
+ * @param {any} response (should be generically typed, as it could be a string, an array, an object... For now, we handle that)
+ */
 WorkerInterface.prototype.handleResponse = function(response) {
-//	console.log(response);
+	const message = response.data;
+	const normalizedMessage = new WorkerMessage(message);
+	const warningMessage = 'Formant Worker: name: "' + this.name + '" => No handler found for response event type.';
 	
-	if (!this.handleError(response))
-		return;
-	
-	if (typeof this._responseHandler[response.data[0]] === 'function') {
-		if (response.data.length > 1) {
-			var args = Array.prototype.slice.call(response.data, 1);
-			this._responseHandler[response.data[0]].apply(this, args);
-			this.trigger('message', response.data, ['string', 'number'].indexOf(typeof args[0]) !== -1 ? args[0] : ''); // only pass strings or numbers as eventID
+	if (!normalizedMessage) {	// Let's allow not following our custom spec
+		if (typeof message === 'string') {
+			if (typeof this._responseHandler[message] === 'function') {
+				this._responseHandler[message]();
+			}
+			else {
+				console.warn(warningMessage + ' response is ' + message);
+			}
+		}
+	}
+	else {
+		if (normalizedMessage.type === WorkerMessageType.error || normalizedMessage.type === WorkerMessageType.warning) {
+			this.handleMessageError(normalizedMessage);
+			this.trigger('message', response.data);
+			return;
+		}
+		
+		if (typeof this._responseHandler[normalizedMessage.id] === 'function') {
+			this._responseHandler[normalizedMessage.id](normalizedMessage.payload);
 		}
 		else {
-			this._responseHandler[response.data[0]]();
-			this.trigger('message', response.data);
+			console.warn(warningMessage + ' eventID is ' + normalizedMessage.id);
 		}
 	}
 	
+	this.trigger('message', response.data);
 }
 
-WorkerInterface.prototype.handleError = function(response) {
-	if (response.data.constructor !== Array) {
-		console.log([this.name + ' error generic', '']);
-		return;
-	}
+/**
+ * @method workerHandleError
+ * Generic error handling
+ * @param {Error} e
+ */
+WorkerInterface.prototype.workerHandleError = function(e) {
+	console.error('Generic Worker Error:', e);
+}
 
-	switch (response.data[0]) {
-		case 'error' :
-		case 'warning' :
-			console.log(this.name + ' ' + response.data[0], response.data[1]);
+/**
+ * @method workerHandleMessageError
+ * Generic error handling
+ * @param {Error} e
+ */
+WorkerInterface.prototype.workerHandleMessageError = function(e) {
+	console.error('Generic Worker Message Error:', e);
+}
+
+/**
+ * @method handleMessageError
+ * Specific error handling (from normalized message)
+ * @param {WorkerMessage} message
+ */
+WorkerInterface.prototype.handleMessageError = function(message) {
+	const errMessage = 'Formant Worker failure: ';
+	switch (message.type) {
+		case WorkerMessageType.error :
+			console.error(errMessage + this.name + ' ' + message.cause);
+			return;
+		case WorkerMessageType.warning :
+			console.warn(errMessage + this.name + ' ' + message.cause);
 			return;
 	}
-	
-	return true;
 }
 
-WorkerInterface.__factory_name = 'WorkerInterface';
+/**
+ * @method destroy
+ */
+WorkerInterface.prototype.destroy = function() {
+	URL.revokeObjectURL(this.blobURL);
+}
+
 
 
 
@@ -1865,7 +1978,7 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 		console.warn('no parentView given to a componentView : nodeName is', def.nodeName, '& type is', def.type);
 	}
 		
-	this.API = this.currentViewAPI = new DOMViewAPI(def);
+	this.currentViewAPI = new DOMViewAPI(def);
 	this.section = def.section;
 	
 	if (!nodesRegistry.getItem(this._defUID))
@@ -1875,9 +1988,10 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 		Registries.caches.attributes.setItem(this._defUID, def.attributes);
 		
 	viewsRegistry.push(this);
-
+	this._parent = parent;
+	
+	// components shall pass a HierarchicalTemplate, ComponentSubViewsHolder pass a View Template
 	if (def !== definition) {
-		this._parent = parent;
 		this.targetSubView = null;
 //		if (def.sOverride) {
 //			
@@ -1903,7 +2017,7 @@ var ComponentView = function(definition, parentView, parent, isChildOfRoot) {
 	}
 		
 	if (hadParentView && !this.parentView)
-		console.warn('Lost parentView => probable section number missing in definition obj :', def.nodeName);
+		console.warn('Lost parentView => probable section number missing in definition obj :', def);
 }
 ComponentView.prototype = {};
 ComponentView.prototype.objectType = 'ComponentView';
@@ -2117,8 +2231,8 @@ ComponentView.prototype.setContentFromArrayOnTargetSubview = function(contentAsA
 /**
  * @constructor ComponentSubView
  */
-var ComponentSubView = function(definition, parentView) {
-	ComponentView.call(this, definition, parentView);
+var ComponentSubView = function(definition, parentView, parent) {
+	ComponentView.call(this, definition, parentView, parent);
 	
 	this.objectType = 'ComponentSubView';
 	
@@ -2153,7 +2267,7 @@ ComponentSubViewsHolder.prototype.constructor = ComponentSubViewsHolder;
 
 ComponentSubViewsHolder.prototype.instanciateSubViews = function(definition) {
 	definition.subSections.forEach(function(def) {
-		this.subViews.push((new ComponentSubView(def, this.parentView)));
+		this.subViews.push((new ComponentSubView(def, this.parentView, this.parentView._parent)));
 	}, this);
 	definition.members.forEach(function(def) {
 		if(typeof def.section === 'undefined') {
@@ -2162,7 +2276,7 @@ ComponentSubViewsHolder.prototype.instanciateSubViews = function(definition) {
 			else
 				console.warn('A member view\'s definition doesn\'t contain a "section" prop at first level, you may have defined it wrongly. You must define a template without hierarchy (the nodeName & section properties must be defined at the first level). nodeName is ' + def.nodeName + ' & defUID is ' + def.UID);
 		}
-		this.memberViews.push((new ComponentSubView(def, def.section !== null ? this.subViews[def.section] : this.parentView)));
+		this.memberViews.push((new ComponentSubView(def, def.section !== null ? this.subViews[def.section] : this.parentView, this.parentView._parent)));
 	}, this);
 }
 

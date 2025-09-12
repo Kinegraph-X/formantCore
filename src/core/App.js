@@ -13,6 +13,7 @@ const Component = require('src/core/Component');
 const CompoundComponent = require('src/core/CompoundComponent');
 const componentTypes = CompoundComponent.componentTypes;
 const coreComponents = CompoundComponent.coreComponents;
+const RootViewComponent = require('src/coreComponents/RootViewComponent/RootViewComponent');
 
 const elementDecorator_OffsetProp = require('src/core/elementDecorator_Offset');
 
@@ -486,19 +487,19 @@ const createRootViewComponentHostDef = require('src/coreComponents/RootViewCompo
 const RootView = function(igniterForChild, preparePage, noAppend) {
 	var component;
 	if (preparePage)
-		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().moduleDef));
+		component = new RootViewComponent(createRootViewComponentHostDef().moduleDef);
 	else
-		component = new componentTypes.RootViewComponent(TypeManager.createComponentDef(createRootViewComponentHostDef().minimalModuleDef));
+		component = new RootViewComponent(createRootViewComponentHostDef().minimalModuleDef);
 	
 	if (igniterForChild && typeof igniterForChild.init === 'function') {
 		igniterForChild.init(component.view, component);
 	}
 	
 	// Render in all sitations as we may want a root view whithout children when beginning the creation of an app
-	component.render();
+	renderDOM('body', component);
 	
 	// HACK: before we generalize the API for style objects, there's only the DOM...
-	//		=> don't try to append a node to the DOM if we're outside the browser
+	//		=> don't try to append a node to the DOM if we're outside the browser (V8, Node, etc.)
 	if (typeof document === 'undefined' || typeof document.ownerDocument === 'undefined')
 		return component;
 	
@@ -539,8 +540,10 @@ List.prototype.create = function(definition, parent) {
 }
 
 const App = {
+		EventEmitter : CoreTypes.EventEmitter,
 		componentTypes : componentTypes,
 		coreComponents : coreComponents,
+		Worker : CoreTypes.Worker,
 		RootView : RootView,
 		IgnitionToCompound : IgnitionToCompound,
 		IgnitionFromDef : IgnitionFromDef,

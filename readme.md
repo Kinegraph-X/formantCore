@@ -2,7 +2,7 @@
 Formant: Fast & Efficient Frontend Framework
 ============================================
 
-Welcome to Formant – the JavaScript framework designed for instant display, and easy frontend development. We developed it to say goodbye to sluggish apps and tangled code. It's still experimental, but just give a try to the demos, you'll be surprised.
+Welcome to Formant – the JavaScript framework designed for instant display, and easy frontend development. We started it in 2015 to say goodbye to sluggish apps and tangled code. It's still experimental, but just give a try to the demos, you'll be surprised.
 
 Advantages at a Glance
 ----------------------

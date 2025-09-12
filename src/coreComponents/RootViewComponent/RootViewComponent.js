@@ -2,7 +2,7 @@
  * @constructor RootViewComponent
 */
 
-var TypeManager = require('src/core/TypeManager');
+var TemplateFactory = require('src/core/TemplateFactory');
 var Components = require('src/core/Component');
 
 //var createRootViewComponentHostDef = require('src/core/coreComponents/RootViewComponent/coreComponentDefs/RootViewComponentHostDef');
@@ -16,13 +16,11 @@ var RootViewComponent = function(definition, parentView, parent) {
 RootViewComponent.prototype = Object.create(Components.CompositorComponent.prototype);
 RootViewComponent.prototype.objectType = 'RootViewComponent';
 RootViewComponent.prototype.extendsCore = 'CompoundComponent';
-RootViewComponent.prototype.render = function() {} 							// pure virtual (injected as a dependancy by AppIgnition)
-
 
 
 RootViewComponent.prototype.createDefaultDef = function() {
-	return TypeManager.createDef({
-			host : TypeManager.createDef({
+	return TemplateFactory.createDef({
+			host : TemplateFactory.createDef({
 				nodeName : 'app-root'
 			})
 		});

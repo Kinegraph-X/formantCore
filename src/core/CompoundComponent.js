@@ -17,16 +17,16 @@ const Components = require('src/core/Component');
 const componentTypes = {};
 const coreComponents = {};
 
-Components.RootViewComponent = require('src/coreComponents/RootViewComponent/RootViewComponent');
-Components.AppOverlayComponent = require('src/coreComponents/AppOverlayComponent/AppOverlayComponent');
-Components.AppBoundaryComponent = require('src/coreComponents/AppBoundaryComponent/AppBoundaryComponent');
-Components.IFrameComponent = require('src/coreComponents/IFrameComponent/IFrameComponent');
-Components.HToolbarComponent = require('src/coreComponents/HToolbarComponent/HToolbarComponent');
-Components.FlexColumnComponent = require('src/coreComponents/FlexColumnComponent/FlexColumnComponent');
-Components.FlexRowComponent = require('src/coreComponents/FlexRowComponent/FlexRowComponent');
-Components.FlexGridComponent = require('src/coreComponents/FlexGridComponent/FlexGridComponent');
-Components.ComponentPickingInput = require('src/coreComponents/ComponentPickingInput/ComponentPickingInput');
-Components.RPCStackComponent = require('src/coreComponents/RPCStackComponent/RPCStackComponent');
+//Components.RootViewComponent = require('src/coreComponents/RootViewComponent/RootViewComponent');
+//Components.AppOverlayComponent = require('src/coreComponents/AppOverlayComponent/AppOverlayComponent');
+//Components.AppBoundaryComponent = require('src/coreComponents/AppBoundaryComponent/AppBoundaryComponent');
+//Components.IFrameComponent = require('src/coreComponents/IFrameComponent/IFrameComponent');
+//Components.HToolbarComponent = require('src/coreComponents/HToolbarComponent/HToolbarComponent');
+//Components.FlexColumnComponent = require('src/coreComponents/FlexColumnComponent/FlexColumnComponent');
+//Components.FlexRowComponent = require('src/coreComponents/FlexRowComponent/FlexRowComponent');
+//Components.FlexGridComponent = require('src/coreComponents/FlexGridComponent/FlexGridComponent');
+//Components.ComponentPickingInput = require('src/coreComponents/ComponentPickingInput/ComponentPickingInput');
+//Components.RPCStackComponent = require('src/coreComponents/RPCStackComponent/RPCStackComponent');
 //var ChildBoxComponent = require('src/coreComponents/ChildBoxComponent/ChildBoxComponent');
 
 Components.SWrapperInViewManipulator = require('src/_DesignSystemManager/SWrapperInViewManipulator')
@@ -105,6 +105,11 @@ const CompoundComponent = function(definition, parentView, parent, isChildOfRoot
 	this._firstListUIDSeen = null;
 	var shouldExtend = false;
 	
+	if (!(definition instanceof TemplateFactory.DefType)) {
+		console.warn('Malformed template:', definition, '. Probable outdated component implementation (TypeManager is deprecated).');
+		return;	
+	}
+	
 	if (!definition.getGroupHostDef())
 		console.error('Definition given to CompoundComponent isn\'t a nested HierachicalDefinition.', definition, 'Type is:', definition.getHostDef().type, this);
 		
@@ -117,7 +122,7 @@ const CompoundComponent = function(definition, parentView, parent, isChildOfRoot
 //		console.log(definition.getGroupHostDef());
 //	}
 
-	// Let's use an elementary and perf efficient hack right here, at the beginning, and abuse the ascendant component with a symbolic def,
+	// Let's hack here, to not rebuild the def: abuse the ascendant component,
 	// for the view to be instanciated with the correct context (knowing how many subSections we have is crucial when connecting children)
 	// This prevents us from instanciating a Component with subViews as the "host" of a composedComponent : No matter at all, cause that case wouldn't make much sense, though.
 	// (It's hard to implement that in the Type factory, as the "composed" definition, with its 2 levels of depth on the "host", is an exception)
@@ -133,7 +138,7 @@ const CompoundComponent = function(definition, parentView, parent, isChildOfRoot
 	if (!TypeManager.hostsDefinitionsCacheRegistry.getItem(definition.getGroupHostDef().UID)) // this shall always fail after having called "once for all" the superior ctor (although def is "explicit+default", and "special" is added afterwards: see extendDefinition())
 		shouldExtend = true;
 
-	// Another elementary Hack to integrate parts of the "host" of the def in that "composedComponent" (which is pretty "unfruity", not having any "applicative" behavior) :
+	// Another basic Hack to integrate parts of the "host" of the def in that "compoundComponent" (which is pretty "unfruity", not having any "applicative" behavior) :
 	// assuming we don't want to instanciate "in da space" (i.e. "in that present ctor") a whole Component, and have to reflect all of its props on "self",
 	// we call the "superior" ComponentWithView ctor on the def of solely the host (5 lines below)
 	// BUT beforehand, we reflect on "self" the "createDefaultDef" method defined on the prototype of the host, then it shall be called by the AbstractComponent ctor
@@ -159,6 +164,7 @@ const CompoundComponent = function(definition, parentView, parent, isChildOfRoot
 	
 	// When instanciating a CompoundComponent directly from its ctor,  there is no defaultDef : don't try to merge
 	if (defaultDef) {
+//		console.log(defaultDef);
 		if (defaultDef.subSections.length)
 			Array.prototype.push.apply(definition.subSections, defaultDef.subSections);
 		if (defaultDef.members.length)
@@ -181,7 +187,7 @@ coreComponents.CompoundComponent = CompoundComponent;
 CompoundComponent.prototype.extendDefinition = function(definition) {
 	// Special case : events of type "update" shall have the ability to bubble from CompoundComponent to CompoundComponent
 	definition.getGroupHostDef().subscribeOnChild.push(
-		(new TypeManager.EventSubscriptionModel({
+		(new TemplateFactory.SubscribeOnChild({
 			on: 'update',
 			subscribe: function(e) {
 				if (e.bubble)
@@ -194,25 +200,44 @@ CompoundComponent.prototype.extendDefinition = function(definition) {
 }
 
 CompoundComponent.prototype.instanciateSubSections = function(definition) {
-	var type, component;
+	let type, component;
 	definition.subSections.forEach(function(subSectionDef) {
-		if (!subSectionDef.getHostDef() && (subSectionDef.nodeName || subSectionDef.type)) {
-			console.warn('subSection "' + (subSectionDef.type || subSectionDef.nodeName) + '" of a CompoundComponent : Definition given is the definition of a view. It should be wrapped in a HierarchicalComponentDef');
-			return;
+		let def = subSectionDef.getGroupHostDef();
+		
+		// subSection should only be a single level component definition.
+		// It allows reactive updates on a subSection (like when we only need to update a DOM attributes reactively).
+		// But CompoundComponent members are not children of the subSection component,
+		// so this design should be re-thought, it puzzles the component hierarchy in the mind of the user)
+		// For retro-compoatibility, let's still handle weird cases, and warn on them
+		if (def) {
+			console.warn('Template subSection weird structure (non-blocking). Template is doubly Hierarchical. nodeName is', def.nodeName, '. type is ', def.type, 'Definition given is the definition of a CompoundComponent. It should be a HierarchicalComponentDef');
+			type = subSectionDef.getGroupHostDef().getType();
+//			return;
 		}
-		type = subSectionDef.getHostDef().getType() || (subSectionDef.getGroupHostDef() && subSectionDef.getGroupHostDef().getType());
+		else if (typeof subSectionDef.getHostDef instanceof CoreTypes.SingleLevelComponentDef) {
+			def = subSectionDef;
+			console.warn('Template subSection weird structure (non-blocking). Template is a View Template (SingleLevelComponentDef). nodeName is', def.nodeName, '. type is ', def.type, 'It should be a HierarchicalComponentDef.');
+			type = subSectionDef.getType();
+//			return;
+		}
+		else {
+			type = subSectionDef.getHostDef().getType();
+		}
 		//		console.log(type, type in Components);
-		if (type in Components && type !== 'CompoundComponent' && type !== 'FlexColumnComponent' && type !== 'FlexRowComponent' && type !== 'FlexGridComponent' && type !== 'HToolbarComponent') {
-			component = new Components[type](subSectionDef, this.view, null, 'isChildOfRoot');
+		
+		if (type in Components) { // In this scope, Components doesn't include  "compound" components
+			component = new Components[type](subSectionDef, this.view, null);
 			// mandatory, as we need to append memberViews on subViews without accessing the component's scope
 			this.view.subViewsHolder.subViews.push(component.view);
 		}
-		else if (subSectionDef.getGroupHostDef()) {
-			component = new CompoundComponent(subSectionDef, this.view, null, 'isChildOfRoot');
+		else if (type in coreComponents) {
+			component = new coreComponents[type](subSectionDef, this.view, null);
 			this.view.subViewsHolder.subViews.push(component.view);
 		}
 		else if (subSectionDef.getHostDef().nodeName)
-			this.view.subViewsHolder.subViews.push(new CoreTypes.ComponentView(subSectionDef, this.view, this, 'isChildOfRoot'));
+			this.view.subViewsHolder.subViews.push(new CoreTypes.ComponentView(subSectionDef, this.view, this));
+		else
+			console.error('Unknown HierarchicalComponent error: No case matched while constructing the subSection for type.', type, 'Check your template definition.')
 	}, this);
 }
 
@@ -636,12 +661,35 @@ const createAbstractTreeDef = require('src/coreDefs/abstractTreeDef');
 const createBranchTemplateDef = require('src/coreDefs/branchTemplateDef');
 const createLeafTemplateDef = require('src/coreDefs/leafTemplateDef');
 
+/**
+ * @constructor AbstractTree
+ * This type is a mix of an old inspiration and a cleaner logic
+ * The "jsonData" and "nodeFilterFunction"" were handy when this component had too much responsability
+ * You should now instanciate it "bare" (with only "definition"" and "parentView", and even "definition" is optional, just pass null)
+ * And call `instanciateTreeMembers()` with a correctly formed tree.
+ * (The possibility to pass the dataset directly to the ctor comes from a time when the type handled strings and objects... quite ugly...)
+ * (The possibility to use a `nodeFilterFunction` callback is also a legacy from the insiration of this type: it's not recommanded to use it: just pass an object correspondig to the expected spec.
+ * expected spec as pseudo-code (similar to the createNode() method, which was meant to normalize what the component receives)
+ * type TreeNode {
+		key: number (obj.key || null),
+		parent: TreeNode (obj.parent || null),
+		value: string|number|object (obj.value : null),
+		isExpanded: boolean (obj.isExpanded || false),
+		type: type enum (tbd obj.type || null),
+		children: array (obj.children || []),
+		depth: number (obj.depth || 0)
+	}
+ */
 const AbstractTree = function(definition, parentView, parent, jsonData, nodeFilterFunction) {
-	//	console.log(definition, parentView, parent, jsonData);
+//		console.log(definition, parentView, parent, jsonData);
 	var stdDefinition = createAbstractTreeDef();
 	// HACK: no solution for now to override the default def : there is no createDefaultDef method on a compound component
-	if  (definition.getGroupHostDef().sOverride)
-		stdDefinition.getGroupHostDef().sOverride = definition.getGroupHostDef().sOverride;
+	if (definition) {
+		if (definition.getGroupHostDef())
+			stdDefinition.getGroupHostDef().sOverride = definition.getGroupHostDef().sOverride
+		else
+			console.error('The AbstractTree Component expects a doubly hierarchical template');
+	}
 	
 	/**
 	 * Standard Implementation :
@@ -660,7 +708,7 @@ const AbstractTree = function(definition, parentView, parent, jsonData, nodeFilt
 	CompoundComponent.call(this, stdDefinition, parentView, parent);
 	this.objectType = 'AbstractTree';
 
-	this.addEventListener('update', function(e) {
+	this.addEventListener('selecte', function(e) {
 		//		console.log('abstractTree receives update and sets "selected"', e.data);
 		this.streams.selected.value = e.data.self_UID;
 	}.bind(this));
@@ -672,6 +720,10 @@ const AbstractTree = function(definition, parentView, parent, jsonData, nodeFilt
 AbstractTree.prototype = Object.create(CompoundComponentWithHooks.prototype);
 AbstractTree.prototype.objectType = 'AbstractTree';
 coreComponents.AbstractTree = AbstractTree;
+
+AbstractTree.prototype.createEvents = function() {
+	this.createEvent('selected');
+}
 
 AbstractTree.prototype.createMember = function(memberSpec, parent) {
 	var type = memberSpec.type, componentDef, component;
@@ -727,7 +779,7 @@ AbstractTree.prototype._typeof = function(obj) {
 		};
 	} else {
 		_typeof = function(obj) {
-			return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+			return obj && typeof Symbol === "function" && obj.constructobj == Symbol && obj === Symbol.prototype ? "symbol" : typeof obj;
 		};
 	}
 
@@ -777,6 +829,7 @@ AbstractTree.prototype.createSubnodes = function(data, node) {
 }
 
 AbstractTree.prototype.createTree = function(jsonData) {
+	// We may want to bypass the ctor, and pass either a string or an object to this method
 	var data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 	var rootNode = this.createNode({
 		value: data,
@@ -815,8 +868,17 @@ AbstractTree.prototype.instanciateTreeMembers = function(tree, nodeFilterFunctio
 	});
 }
 
+/**
+ * @method renderJSON
+ * Inheritied from the implementation which was the inspiration for this type.
+ * This should not necessarily be used, the component may be instanciated empty
+ * (It shall have everything it needs to work, you could call instanciateTreeMembers() directly, as it's the next step after this method)
+ * @param {string|object} jsonData
+ * @param {function} nodeFilterFunction : a callback to normalize the tree when it's not adapted to this component
+ * (The possibility to use a callback is also a legacy from the insiration of this type: it's not recommanded to use it)
+ */
 AbstractTree.prototype.renderJSON = function(jsonData, nodeFilterFunction) {
-	//	console.log(jsonData);
+	// The ctor accepts a JSON string or a JS object
 	var parsedData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 	var tree = this.createTree(parsedData);
 	//	console.log(parsedData, tree);
@@ -1112,10 +1174,10 @@ Components.CompositorComponent.prototype.acquireCompositor = function(inheriting
 		//		console.log(Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(coreComponents[inheritedType].prototype), inheritingType.prototype));
 		inheritingType.prototype = Components.ExtensibleObject.prototype.mergeOwnProperties(true, Object.create(coreComponents[inheritedType].prototype), inheritingType.prototype);
 		inheritingType.prototype.objectType = objectType;
-		if (!inheritingType.prototype._implements || !inheritingType.prototype._implements.length)
-			inheritingType.prototype._implements = [inheritedType];
+		if (!inheritingType.prototype._inheritsFrom || !inheritingType.prototype._inheritsFrom.length)
+			inheritingType.prototype._inheritsFrom = [inheritedType];
 		else
-			inheritingType.prototype._implements.push(inheritedType);
+			inheritingType.prototype._inheritsFrom.push(inheritedType);
 	}
 }
 

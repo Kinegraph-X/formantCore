@@ -10,7 +10,7 @@
 
 
 var TypeManager = require('src/core/TypeManager');
-
+const CreateStyle = require('src/core/GenericStyleConstructor');
 
 var AbstractAccordionDef = function(uniqueID, options, model) {
 	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos

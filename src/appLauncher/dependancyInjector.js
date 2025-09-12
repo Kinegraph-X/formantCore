@@ -17,9 +17,9 @@ App.coreComponents.AbstractAccordion.prototype.rDataset = ReactiveDataset;
 App.coreComponents.LazySlottedCompoundComponent.prototype.cSet = ComponentSet;
 
 
-App.componentTypes.RootViewComponent.prototype.render = function(DOMNodeId) {
-	new App.DelayedDecoration(null, this);
-};
+//App.componentTypes.RootViewComponent.prototype.render = function(DOMNodeId) {
+//	new App.DelayedDecoration(null, this);
+//};
 App.coreComponents.LazySlottedCompoundComponent.prototype.render = function(DOMNodeId, previousListHostDef) {
 	new App.DelayedDecoration(DOMNodeId, this, previousListHostDef);
 };

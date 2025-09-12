@@ -6,13 +6,7 @@
 
 
 
-
-
-
-
-
-
-exports.debounce = function (f, t, self) {
+const debounce = function (f, t, self) {
 	var startedTimer = null;
 	t = t || 512;
 	
@@ -33,7 +27,7 @@ exports.debounce = function (f, t, self) {
 	}
 }
 
-exports.throttle = function (f, t) {
+const throttle = function (f, t) {
 	var lastCallTimestamp, currentCallTimestamp;
 	t = t || 512;	
 	
@@ -43,4 +37,9 @@ exports.throttle = function (f, t) {
 			f(args);
 		lastCallTimestamp = currentCallTimestamp;
 	}
+}
+
+module.exports = {
+	debounce,
+	throttle
 }

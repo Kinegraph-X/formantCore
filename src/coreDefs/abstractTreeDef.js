@@ -7,8 +7,8 @@
  */
 
 
-var TypeManager = require('src/core/TypeManager');
-
+const TemplateFactory = require('src/core/TemplateFactory');
+const CreateStyle = require('src/core/GenericStyleConstructor');
 
 
 var abstractTreeDef = function(uniqueID, options, model) {
@@ -18,9 +18,8 @@ var abstractTreeDef = function(uniqueID, options, model) {
 	/**@CSSifySlots placeholder */
 	
 	
-	var moduleDef = TypeManager.createComponentDef({
-		host : TypeManager.createComponentDef({
-			type : 'CompoundComponent',
+	var moduleDef = TemplateFactory.createDef({
+		host : TemplateFactory.createHostDef({
 			nodeName : 'folded-tree',
 			props : [
 				{selected : undefined},
@@ -28,7 +27,7 @@ var abstractTreeDef = function(uniqueID, options, model) {
 			]/**@CSSifyStyle componentStyle : AbstractTreeHost */
 		}),
 		members : [
-			TypeManager.createComponentDef({
+			TemplateFactory.createHostDef({
 				type : 'VaritextButtonWithPicto',
 				nodeName : 'header',
 				// this is a big hack of shit (should be an attribute, but not... should be a "DOM" attribute... -> setAttribute(). TODO: fix after re-implementation of _arias&glyphs)
@@ -47,10 +46,9 @@ var abstractTreeDef = function(uniqueID, options, model) {
 				]/**@CSSify Style componentStyle : AbstractTreeHeader */
 			})
 		]
-	}, null, 'rootOnly');
+	});
 	
 	return moduleDef;
 }
 
-abstractTreeDef.__factory_name = 'abstractTreeDef';
 module.exports = abstractTreeDef;
