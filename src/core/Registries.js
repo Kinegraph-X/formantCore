@@ -1,13 +1,20 @@
 /**
- * @Singletons : Registries to cache useful objects in the global scope
+ * Singletons : Registries to cache useful objects in the global scope
  */
 
-const PropertyCache = require('src/core/PropertyCache').ObjectCache;
-const RequestCache = require('src/core/PropertyCache').RequestCache;
-const StateMachineCache = require('src/core/PropertyCache').StateMachineCache;
-const stateMachineCache = new StateMachineCache('stateMachineCache');
+/**
+ * @typedef {import('src/coreTest/TemplateFactory.js').KeyOfArrayOfSubscriptions} KeyOfArrayOfSubscriptions
+ * @typedef {import('src/coreTest/TemplateFactory.js').ComponentTemplate} ComponentTemplate
+ * @typedef {import('src/coreTest/TemplateFactory.js').ViewTemplate} ViewTemplate
+ * @typedef {import('src/coreTest/TemplateFactory.js').AbstractPropArray} AbstractPropArray
+ * @typedef {import('src/coreTest/TemplateFactory.js').ReactivityQueryArray} ReactivityQueryArray
+ * @typedef {import('src/coreTest/TemplateFactory.js').EventSubscriptionArray} EventSubscriptionArray
+ * @typedef {import('src/coreTest/CoreTypes.js').ComponentView} ComponentView
+ * @typedef {import('src/coreTest/CoreTypes.js').RootComponentView} RootComponentView
+ * @typedef {import('src/coreTest/Component.js').ComponentWithView} ComponentWithView
+ * @typedef {import('src/coreTest/Component.js').AbstractComponent} AbstractComponent
+*/
 
-var exportedObjects = {};
 
 /**
  * PROPS CACHES : for performance concerns, allows retrieving a prop on the def from anywhere
@@ -36,176 +43,48 @@ var exportedObjects = {};
  * 			- finally reflect streams on the model
  */
 
-/**
- * @constructor ComponentDefCache
- * 
- */
-var ComponentDefCache = function() {
-	this.knownIDs = {};
-	this.randomUID = 0;
-}
-ComponentDefCache.prototype = {};
-ComponentDefCache.prototype.getUID = function(uniqueID) {
-	if (uniqueID in this.knownIDs)
-		return this.knownIDs[uniqueID];
-	else if (!(uniqueID in this.knownIDs) || !uniqueID || !uniqueID.length) {
-		uniqueID = uniqueID ? uniqueID : (this.randomUID++).toString();
-		this.knownIDs[uniqueID] = uniqueID;
-		return this.knownIDs[uniqueID];
-	}
-}
 
-ComponentDefCache.prototype.isKnownUID = function(uniqueID) {
-	return this.getUID(uniqueID);
-}
-
-ComponentDefCache.prototype.setUID = function(uniqueID, globalObj) {
-	return (this.knownIDs[uniqueID] = globalObj);
-}
-
-/**
- * CORE CACHES
- */
-/** Duplicated code from Template Factory (otherwise we would cause an include loop) */
-var propsAreArray = [
-	'attributes',
-	'states',
-	'props',
-	'streams',
-	'reactOnParent',
-	'reactOnSelf',
-	'subscribeOnParent',
-	'subscribeOnChild',
-	'subscribeOnSelf'//,
-//	'keyboardSettings',			// TODO: FIX that bypass : implement keyboard handling in the context of the v0.2
-//	'keyboardEvents'
-];
-var caches = {};
-(function initCaches() {
-	propsAreArray.forEach(function(prop) {
-		caches[prop] = new PropertyCache(prop);
-	});
-})();
-
-var hostsDefinitionsCacheRegistry = new PropertyCache('hostsDefinitionsCacheRegistry');
-var listsDefinitionsCacheRegistry = new PropertyCache('listsDefinitionsCacheRegistry');
-var permanentProvidersRegistry = new RequestCache('permanentProvidersRegistry');
-var boundingBoxesCache = new PropertyCache('boundingBoxesCache');
-
-// MAYBE TODO: this cache is used by the RichComponenentInternalsPicker, 
-// to resolve the sWrapper associated with a component out of its UID (? to be confirmed/precised), but
-// we also need a MasterStyleCache, to store each CSS rule at global level,
-// and resolve the binding between a matched rules and a (pseudo-)DOM node, from any outer scope.
-// 		=> could we enhance this cache so it would allow to retrieve a whole sWrapper
-//		al well as a single CSS rule, in order -not- to duplicate the caches used for CSS ?
-// 	=> think of that deeply, and validate any choice regarding performances.
-var sWrappersCache = new PropertyCache('sWrappersCache');
-
-var typedHostsRegistry = new PropertyCache('typedHostsRegistry');
-
-/**
- * @typedCache {CachedNode} {UID : {nodeName : nodeName, isCustomElem : isCustomElem, cloneMother : DOMNode -but not yet-}}
- */
-var nodesRegistry = new PropertyCache('nodesRegistry');
-
-/**
- * @typedStore {StoredView} {UID : view}
- */
-var viewsRegistry = [];
-
-/**
- * @typedStore {StoredAssocWithModel} {UID : keyOnModel}
- */
-var dataStoreRegistry = new PropertyCache('dataStoreRegistry');
-
-/**
- * @typedStore {StoredStyleIFace} {UID : UID_OfTheOpitimizedSelectorBuffer}
- */
-var masterStyleRegistry = new PropertyCache('masterStyleRegistry');
-
-/**
- * @typedStore {StoredStyleIFace} {UID : UID_OfTheViewIdentifiedAsNeedingUpdate}
- */
-var pendingStyleRegistry = new PropertyCache('pendingStyleRegistry');
-
-/**
- * @typedStore {StoredStyleIFace} {UID : UID_OfTheViewIdentifiedAsNeedingUpdate}
- */
-var UApendingStyleRegistry = new PropertyCache('UApendingStyleRegistry');
-
-/**
- * @typedStore {StoredNodeFromNaiveDOM} {UID : nodeUID}
- */
-var naiveDOMRegistry = new PropertyCache('naiveDOMRegistry');
-
-/**
- * @typedStore {StoredLayoutNode} {UID : nodeUID}
- */
-var layoutNodesRegistry = new PropertyCache('layoutNodesRegistry');
-
-/**
- * @typedStore {StoredTextNode} {UID : nodeUID}
- */
-var textNodesRegistry = new PropertyCache('textNodesRegistry');
-
-/**
- * @typedStore {StoredRasterShape} {UID : nodeUID}
- */
-var rasterShapesRegistry = new PropertyCache('rasterShapesRegistry');
-
-/**
- * @typedStore {StoredFlexCtx} {UID : nodeUID}
- */
-var flexCtxRegistry = new PropertyCache('flexCtxRegistry');
-
-/**
- * @typedStore {StoredLayoutCallback} {UID : nodeUID}
- */
-var layoutCallbacksRegistry = new PropertyCache('layoutCallbacksRegistry');
-
-/**
- * @typedStore {FontSizeCache} {UID : nodeUID}
- */
-var fontSizeBuffersCache = new PropertyCache('fontSizeBuffersCache');
-
-
-
-
-
-/**
- * @aliases
- */
-Object.assign(exportedObjects, {
-	PropertyCache : PropertyCache,
-	hostsDefinitionsCacheRegistry : hostsDefinitionsCacheRegistry,	// Object PropertyCache
-	listsDefinitionsCacheRegistry : listsDefinitionsCacheRegistry,	// Object PropertyCache
-	permanentProvidersRegistry : permanentProvidersRegistry,		// Object RequestCache
-	boundingBoxesCache : boundingBoxesCache,						// Object PropertyCache
-	stateMachineCache : stateMachineCache,							// Object PropertyCache
-	sWrappersCache : sWrappersCache,								// Object PropertyCache
-	typedHostsRegistry : typedHostsRegistry,						// Object PropertyCache {defUID : [Components]}
-	naiveDOMRegistry : naiveDOMRegistry,							// Object PropertyCache
-	masterStyleRegistry : masterStyleRegistry,						// Object PropertyCache
-	UApendingStyleRegistry : UApendingStyleRegistry,				// Object PropertyCache
-	pendingStyleRegistry : pendingStyleRegistry,					// Object PropertyCache
-	rasterShapesRegistry : rasterShapesRegistry,					// Object PropertyCache
-	layoutNodesRegistry :layoutNodesRegistry,						// Object PropertyCache
-	textNodesRegistry : textNodesRegistry,							// Object PropertyCache
-	flexCtxRegistry : flexCtxRegistry,								// Object PropertyCache
-	layoutCallbacksRegistry : layoutCallbacksRegistry,				// Object PropertyCache
-	fontSizeBuffersCache : fontSizeBuffersCache,					// Object PropertyCache
-	caches : caches,												// Object {prop : PropertyCache}
-	nodesRegistry : nodesRegistry,									// Object PropertyCache
-	viewsRegistry : viewsRegistry,									// Object PropertyCache
-	dataStoreRegistry : dataStoreRegistry,							// Object PropertyCache
-	definitionsCache : new ComponentDefCache(),						// Object ComponentDefCache
-});
-	
-	
-	
-	
-	
-	
-	
-	
-module.exports = exportedObjects;
+module.exports = {
+	/** @type {Map<string, AbstractPropArray>} */
+	attribute : new Map(),
+	/** @type {Map<string, AbstractPropArray>} */
+	state : new Map(),
+	/** @type {Map<string, AbstractPropArray>} */
+	prop: new Map(),
+	/** @type {Map<string, ReactivityQueryArray>} */
+	reactOnParent : new Map(),
+	/** @type {Map<string, ReactivityQueryArray>} */
+	reactOnSelf : new Map(),
+	/** @type {Map<string, EventSubscriptionArray>} */
+	subscribeOnParent : new Map(),
+	/** @type {Map<string, EventSubscriptionArray>} */
+	subscribeOnChild : new Map(),
+	/** @type {Map<string, EventSubscriptionArray>} */
+	subscribeOnSelf : new Map(),
+	/** @type {Map<string, ComponentTemplate>} */
+	componentTemplate : new Map(),
+	/** @type {Map<string, StylesheetWrapper>} */
+	sWrapper : new Map(),
+	/** @type {Map<string, ComponentWithView>} */
+	component : new Map(),
+	/** @type {(ComponentView|RootComponentView)[]} */
+	views : [],
+	/** @type {Map<string, HTMLElement>} */
+	node : new Map(),
+	/** @type {Map<string, DOMRect>} */
+	boundingBox : new Map(),
+	/** @type {Map<string, NaiveDomNode>} */
+	naiveElement : new Map(),
+	/** @type {Map<string, LayoutNode>} */
+	layoutNode : new Map(),
+	/** @type {Map<string, textLayoutNode>} */
+	textLayoutNode : new Map(),
+	/** @type {Map<string, Shape>} */
+	rasterShape : new Map(),
+	/** @type {Map<string, FlexCtx>} */
+	flexCtx : new Map(),
+	/** @type {Map<string, function>} */
+	layoutCallback : new Map(),
+	/** @type {Map<string, FontSizeBuffer>} */
+	fontSizeBuffer : new Map(),
+};
