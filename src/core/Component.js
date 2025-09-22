@@ -330,6 +330,8 @@ class RootComponent extends RootHierarchicalObject {
 class ComponentWithView extends BaseComponentWithView {
 	/** @type {string} */
 	static objectType = 'ComponentWithView';
+	/** @type {ComponentWithView[]} */
+	children = [];
 	/** @type {RootComponent|ComponentWithView} */
 	parent;
 	/** @type {InstanceType<ComponentView>} */		// parsing bug, seemingly
@@ -374,144 +376,43 @@ class ComponentWithView extends BaseComponentWithView {
 		
 		this.view = new ComponentView(template.view, this.parent.view, this);
 	}
-	
-	// /**
-	//  * @param {ComponentWithView} child
-	//  */
-	// pushChildWithView(child) {
-	// 	this.pushChild(child);
-	// 	child.view.parentView = this.view;
-	// 	this.view.subViewsHolder.addMemberView(child.view);
-	// }
-
-	
-	
-	/**
-	 * @param {string} value
-	 */
-	setContentFromValueOnView(value) {
-		if (typeof value !== 'string' && isNaN(parseInt(value)))
-			return;
-		if (this.view.getWrappingNode().childNodes.length)
-			Logger.warn(this, 'setContentFromValueOnView : replacing the content of a node that already has content. Value is :', value)
-		this.view.value = value;		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
-	};
-	
-	/**
-	 * @param {string} value
-	 * @param {Number} memberViewIdx
-	 */
-	setContentFromValueOnMemberView(value, memberViewIdx) {
-		if (this.view.subViewsHolder.memberAt(memberViewIdx).getWrappingNode().childNodes.length)
-			console.warn('setContentFromValueOnView : replacing the content of a node that already has content. Value is :', value)
-		this.view.subViewsHolder.memberAt(memberViewIdx).setContentNoFail(value.toString());		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
-	};
-	
-	/**
-	 * @needsRefactoring Here only for ascendant compatibility
-	 * @param {String & Number} value
-	 */
-	appendContentFromValueOnView(value) {
-		this.appendTextFromValueOnView(value);
-	};
-	
-	/**
-	 * @param {string} value
-	 */
-	appendTextFromValueOnView(value) {
-		if (typeof value !== 'string' && isNaN(parseInt(value)))
-			return;
-		this.view.appendText(value);		// this.view.value is a "special" setter: it sets textContent OR value, based on the effective node
-	};
-	
-	/**
-	 * 
-	 */
-	emptyTargetSubView() {
-		return this.view.emptyTargetSubView();
-	}
-	
-	/**
-	 * 
-	 */
-	resetTargetSubViewContent() {
-		this.targetSubViewContentCache.length = 0;
-		this.emptyTargetSubView();
-		return true;
-	}
-
-
-
-
-
-
-
 
 
 
 	/**
 	 * @param {ComponentWithView} child
 	 */
-	onRemoveChild(child) {
-		if (typeof child === 'undefined') {
-	//		console.log(this.view.subViewsHolder.subViews[1].getMasterNode());
-			if (this.view.subViewsHolder.subViews.length) {
-				this.view.subViewsHolder.subViews.forEach(function(subView, key) {
-					while (subView.getMasterNode().firstChild) {
-						subView.getMasterNode().removeChild(subView.getMasterNode().lastChild);
-					}
-				}, this);
-			}
-			this.children.forEach(function(child, key) {
-				child.view.getMasterNode().remove();
-			}, this);
-			if (this.view.subViewsHolder.memberViews.length) {
-				this.view.subViewsHolder.memberViews.forEach(function(member, key) {
-					member.getMasterNode().remove();
-				}, this);
-			}
-	//		this.view.subViewsHolder.subViews[1].getMasterNode().length = 0;
-	//		this.view.getMasterNode().remove();
-		}
-		else if (child && child.view.getMasterNode()) {		// check presence of masterNode, as we may be removing a childComponent before the view has been rendered
-			if (child.view.subViewsHolder.subViews.length) {
-				child.view.subViewsHolder.subViews.forEach(function(subView, key) {
-					while (subView.getMasterNode().firstChild) {
-						subView.getMasterNode().removeChild(subView.getMasterNode().lastChild);
-					}
-				}, child);
-			}
-			child.children.forEach(function(childOfChild, key) {
-				childOfChild.view.getMasterNode().remove();
+	removeChild(child) {
+		if (child.subViews.length) {
+			child.subViews.forEach(function(subView, key) {
+				while (subView.getMasterNode().firstChild) {
+					subView.getMasterNode().removeChild(subView.getMasterNode().lastChild);
+				}
 			}, child);
-			if (child.view.subViewsHolder.memberViews.length) {
-				child.view.subViewsHolder.memberViews.forEach(function(member, key) {
-					member.getMasterNode().remove();
-				}, child);
-			}
-			child.view.getMasterNode().remove();
 		}
-		else if (child instanceof ComponentWithObservables){
-			// remove a child
-			// TODO: should call super(), as the ComponentWithView should neither handle streams, nor subscriptions 
-			child._subscriptions.forEach(function(subscription) {
-				subscription.unsubscribe();
-			});
+		child.children.forEach(function(childOfChild, key) {
+			childOfChild.view.getMasterNode().remove();
+		}, child);
+		if (child.memberViews.length) {
+			child.memberViews.forEach(function(member, key) {
+				member.getMasterNode().remove();
+			}, child);
 		}
+		child.view.getMasterNode().remove();
+		// remove a child
+		// TODO: should call super(), as the ComponentWithView should neither handle streams, nor subscriptions 
+		child._subscriptions.forEach(function(subscription) {
+			subscription.unsubscribe();
+		});
 	}
 	
 	/**
 	 * @param {ComponentWithView} child
 	 * @param {number} atIndex
 	 */
-	onAddChild(child, atIndex) {
-		
-		if (typeof atIndex !== 'undefined') {
-			if (child.view._parentView)		// try to respect an eventually specifically assigned parentView
-				child.view._parentView.addChildAt(child.view, atIndex);
-			else							// else consider the parent view is the main view of the parent
-				child.parent.view.addChildAt(child.view, atIndex);
-		}
+	addChildAt(child, atIndex) {
+		HierarchicalObject.prototype.addChildAt.call(this, child, atIndex);
+		child.parent.view.addChildAt(child.view, atIndex);
 	}
 	
 	/**

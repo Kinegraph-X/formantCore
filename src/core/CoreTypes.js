@@ -585,26 +585,25 @@ class Command {
  */
 
 /**
- * @typedef {object} StreamToDomInterface
  * @property {(arg1: HTMLElementProperty, arg2: StreamValue) => void} setProp
  * @property {(arg: HTMLElementProperty) => unknown} getProp
  */
 
-/** 
- * @param {ComponentWithView} component
- */
-const createStreamToDomInterface = function(component) {
-	return {
-		/** @param {HTMLElementProperty} propName @param {StreamValue} value */
-		setProp : function(propName, value) {
-			component.view.getMasterNode()[propName] = value;
-		},
-		/** @param {HTMLElementProperty} propName */
-		getProp : function(propName) {
-			return component.view.getMasterNode()[propName];
-		}
-	}
-};
+// /** 
+//  * @param {ComponentWithView} component
+//  */
+// const createStreamToDomInterface = function(component) {
+// 	return {
+// 		/** @param {HTMLElementProperty} propName @param {StreamValue} value */
+// 		setProp : function(propName, value) {
+// 			component.view.getMasterNode()[propName] = value;
+// 		},
+// 		/** @param {HTMLElementProperty} propName */
+// 		getProp : function(propName) {
+// 			return component.view.getMasterNode()[propName];
+// 		}
+// 	}
+// };
 
 
 
@@ -617,36 +616,24 @@ class Stream {
 	#_forward = true;
 	/** type {boolean} @default false */
 	#_dirty = false;
-	/** @type {StreamToDomInterface} object with a setProp() method bound on a custom-element instance*/
-	#_streamToDomInterface;
 	/** @type {string} @default '' */
 	name = '';
 	/** @type {StreamValue} @default undefined */
 	#_value;
 	/** @type {boolean} @default false*/
 	#lazy = false;
-	/** @type {((arg: StreamValue) => StreamValue)|null} @default null*/
-	transform = null;
-	/** @type {(arg: StreamValue) => StreamValue}  @default (value) => value */
-	inverseTransform = (value) => value;
 	/** @type {Subscription[]} @default []*/
 	subscriptions = [];
 	
 	/**
 	 * @param {string} name
 	 * @param {StreamValue} value
-	 * @param {StreamToDomInterface} streamToDomInterface
-	 * @param {(arg: StreamValue) => StreamValue} [transform]
-	 * @param {boolean} [lazy]
 	 * @param {ComponentWithView} component
+	 * @param {boolean} [lazy]
 	 */
-	constructor(name, value, streamToDomInterface, transform, lazy = false, component) {
+	constructor(name, value, component, lazy = false) {
 		this.name = name;
 		this.#_value = value;
-		this.#_streamToDomInterface = streamToDomInterface
-		if (transform) {
-			this.transform = transform;
-		}
 		this.#_hostComponent = component;
 	}
 	
@@ -658,44 +645,16 @@ class Stream {
 	}
 	/** @param {StreamValue} val */
 	set value(val) {
-		if (this.transform)
-			val = this.transform(val);
 		this.#_value = val;
 		this.#setAndUpdateConditional(val);
 	}
-	/** @param {StreamToDomInterface} streamToDomInterface */
-	acquireLinkedElem(streamToDomInterface) {
-		streamToDomInterface.setProp(this.name, this._value);
-		this.#_streamToDomInterface = streamToDomInterface;
-	}
-	/**@param {StreamValue} value */
-	#set(value) {
-		if (this.forward && this.#_streamToDomInterface) {
-			this.forward = false;
-			this.#_streamToDomInterface.setProp(this.name, value);
-			this.forward = true;
-		}
-		else
-			this.forward = true;
-	}
 	/**
-	 * Avoid infinite recursion when setting a prop on a custom element : 
-	 * 	- when set from outside : update and set the prop on the custom element
-	 *	- after updating a prop on a custom element : update only
-	 * 	- don't update when set from downward (reflected stream shall only call "set")
 	 * @param {StreamValue} value
 	 */
 	#setAndUpdateConditional(value) {
 		this.#_value = value;
 		if (!this.#lazy) {
-			if (this.forward) {
-				if (!this.transform)
-					this.#update();
-				else {
-					this.#_value = this.transform(this.#_value);
-					this.#update();
-				}
-			}
+			this.#update();
 		}
 		else {
 			this.#_dirty = true;
@@ -710,9 +669,6 @@ class Stream {
 		);
 	}
 	#lazyUpdate() {
-		if (typeof this.transform === 'function') {
-			this.#_value = this.transform(this.#_value);
-		}
 		this.#update();
 		this.#_dirty = false;
 	}
@@ -724,17 +680,9 @@ class Stream {
 	 *		OR
 	 *		lazy "sets" the reflectedHost (no infinite recursion, but no change propagation neither on the host) and triggers the given event when the local stream updates
 	 * @param {CustomElementProperty} propName
-	 * @param {HTMLCustomElement} reflectedElement
-	 * @param {((arg: StreamValue) => StreamValue)|null} [transform]
+	 * @param {HTMLElement} reflectedElement
 	 */ 
-	reflect(propName, reflectedElement, transform = null) {
-		// this.#_value = reflectedElement[propName];// ? reflectedElement[propName] : this._value;
-		
-		if (transform && this.transform)
-			console.warn('Stream', this.name, ': Bad transform assignment : this.transform already exists');
-		else if (!this.transform)
-			this.transform = transform;
-		
+	reflect(propName, reflectedElement) {
 		const desc = Object.getOwnPropertyDescriptor(reflectedElement, propName);
 		const stdDesc = Object.getOwnPropertyDescriptor(Stream.prototype, 'value');
 		const propertyDescriptor = {
@@ -757,29 +705,20 @@ class Stream {
 	
 	/**
 	 * instanciates and registers a new subscription, and returns it for the caller to define the refinement functions (filter & map)
-	 * @param {} handlerOrHost
-	 * @param {string} propName
-	 * @param {((arg: StreamValue) => StreamValue)|null} transform
+	 * @param {function} effect
+	 * @param {Stream} parentStream
 	 */ 
-	subscribe(handlerOrHost, propName, transform = null) {
-		if (!handlerOrHost || (typeof handlerOrHost !== 'function' && typeof handlerOrHost !== 'object')) {
-			console.warn('Bad observable handlerOrHost assigned : handler type is ' + typeof handlerOrHost + ' instead of "function or getter/setter"', 'StreamName ' + this.name);
-			return;
-		}
-		else {
-			if (typeof transform === 'function')
-				this.transform = transform;
-			return this.addSubscription(handlerOrHost, propName);//.subscribe();
-		}
+	subscribe(effect, parentStream) {
+		return this.addSubscription(effect, parentStream);//.subscribe();
 	}
 	/**
 	 * 
 	 * @param {} handlerOrHost 
-	 * @param {string} propName 
+	 * @param {Stream} parentStream 
 	 * @returns {Subscription}
 	 */
-	addSubscription(handlerOrHost, propName) {
-		this.subscriptions.push(new Subscription(handlerOrHost, propName, this));
+	addSubscription(handlerOrHost, parentStream) {
+		this.subscriptions.push(new Subscription(handlerOrHost, parentStream));
 		return this.subscriptions[this.subscriptions.length - 1];
 	}
 	/**
@@ -788,7 +727,7 @@ class Stream {
 	 */
 	unsubscribe(subscriptionOrStream) {
 		for(let i = this.subscriptions.length - 1; i >= 0; i--) {
-			if (this.subscriptions[i] === subscriptionOrStream || this.subscriptions[i].subscriber.obj === subscriptionOrStream) {
+			if (this.subscriptions[i] === subscriptionOrStream || this.subscriptions[i].stream === subscriptionOrStream) {
 				this.subscriptions.splice(i, 1);
 			}
 		}
@@ -796,6 +735,24 @@ class Stream {
 }
 
 
+
+class StreamToDomInterface {
+	constructor() {
+		throw new Error("ElementFactory is static-only; do not instantiate.");
+	}
+	/** @param {Stream} stream */
+	static getPropertyDescriptor(stream) {
+		return  {
+			get : () => stream.value,
+			/** @param {StreamValue} val*/
+			set : (val) => {
+				if (val !== stream.value)
+					/** @type {HTMLElement} */ (this).setAttribute(stream.name, val);
+				stream.value = val;
+			}
+		}
+	}
+}
 
 
 
@@ -809,31 +766,27 @@ class Stream {
 class Subscription {
 	/** @type {string} */
 	static objectType ='Subscription';
+	/** @type {function|null} */
+	effect = null;
+	/** @type {Stream} */
+	stream;
+	/** @type {function} */
+	filter = () => {};
+	/** @type {function} */
+	map = () => {};
+	/** @type {function} */
+	transform = () => {};
 	/**
-	 * @param {} subscriberObjOrHandler 
-	 * @param {string} subscriberProp 
+	 * @param {function|null} effect 
 	 * @param {Stream} parent 
 	 */
-	constructor(subscriberObjOrHandler, subscriberProp, parent) {
-		this.subscriber = {
-				prop : subscriberProp || null,
-				obj : typeof subscriberObjOrHandler === 'object' ? subscriberObjOrHandler : null,
-				cb : typeof subscriberObjOrHandler === 'function' 
-					? subscriberObjOrHandler
-					: /** @param {StreamValue} value*/function defaultCb(value) {return value},
-				_subscription : this,
-				_stream : parent,
-				_parentHost : parent._hostComponent,
-				host : null
-		}
-		this._stream = parent;
+	constructor(effect = null, parent) {
+		this.effect = effect;
+		this.stream = parent;
 		this._subscriberUID = '';
 		this._subscriberType = '';
-		
-		this._firstPass = true;
 	}
 	/**
-	 * 
 	 * @param {(arg: StreamValue) => boolean} filterFunc 
 	 * @returns {Subscription}
 	 */
@@ -841,22 +794,21 @@ class Subscription {
 		if (!filterFunc)
 			return this;
 			
-		// Automatically scope on the component (Optionnally, optimize by breaking the reference : TODO: benchmark
-		var f = new Function('value', 'return (' + filterFunc.toString() + ').call(this.subscriber.host, value) === true ? true : false;');
+		// optimize by breaking the reference : TODO: benchmark
+		var f = new Function('value', 'return (' + filterFunc.toString() + ')(value) === true ? true : false;');
 		this.filter = f;
 		return this;
 	}
 	/**
-	 * 
-	 * @param {(arg: StreamValue) => boolean} mapFunc 
+	 * @param {(arg: StreamValue) => StreamValue} mapFunc 
 	 * @returns {Subscription}
 	 */
 	createMap(mapFunc) {
 		if (!mapFunc)
 			return this;
 			
-		// Automatically scope on the component (Optionnally, optimize by breaking the reference : TODO: benchmark
-		var f = new Function('value', 'return (' + mapFunc.toString() + ').call(this.subscriber.host, value);');
+		// optimize by breaking the reference : TODO: benchmark
+		var f = new Function('value', 'return (' + mapFunc.toString() + ')(value);');
 		this.map = f;
 		return this;
 	}
@@ -875,7 +827,6 @@ class Subscription {
 				val = value;
 			else
 				return;
-//			console.log('val', this._stream.name, val);
 			
 			if (this.subscriber.obj !== null && this.subscriber.prop !== null)
 				this.subscriber.obj[this.subscriber.prop] = val;
@@ -1434,8 +1385,6 @@ class DOMViewAPI {
 	hostElem = null;
 	/** @type {ShadowRoot|null} @default null */
 	rootElem = null;
-	// /** @type {StreamToDomInterface} defined in ctor */
-	// streamToDomInterface;
 	/** @type {'inline'|'block'|'flex'|'none'} */
 	presenceAsAProp = 'flex';
 	/**
@@ -1444,11 +1393,6 @@ class DOMViewAPI {
 	constructor(def) {
 		this.isShadowHost = def.isCustomElem;
 		this.nodeName = def.nodeName;
-		// const streamToDomInterface = createStreamToDomInterface(this);
-		// this.streamToDomInterface = {
-		// 	setProp : streamToDomInterface.setProp.bind(this),
-		// 	getProp : streamToDomInterface.getProp.bind(this)
-		// };
 	}
 	/**
 	 * @param {boolean} bool
@@ -1822,13 +1766,6 @@ class BaseComponentView {
 class RootComponentView extends BaseComponentView {
 	/** @type {string} */
 	static objectType = 'RootComponentView';
-	// /** type {object} */
-	// _parentComponent = {
-	// 	subViewsHolder : {
-	// 		subViews : [],
-	// 		memberViews : []
-	// 	}
-	// };
 	/**
 	 * @param {ViewTemplate} vTemplate
 	 */
@@ -1838,11 +1775,11 @@ class RootComponentView extends BaseComponentView {
 }
 
 
-
-
 class ComponentView extends BaseComponentView {
 	/** @type {string} */
 	static objectType = 'ComponentView';
+	/** @type {string} */
+	_templateUID;
 	/** @type {ComponentWithView} */
 	_parentComponent;
 	/** @type {ComponentView|RootComponentView} */
@@ -1854,6 +1791,7 @@ class ComponentView extends BaseComponentView {
 	 */
 	constructor(vTemplate, parentView, parentComponent) {
 		super(vTemplate);
+		this._templateUID = parentComponent._defaultTemplateUID;
 		
 		if (!(parentView instanceof ComponentView)) {
 			throw new ComponentError(this, 'no parentView given to a componentView : nodeName is', vTemplate);
@@ -1863,55 +1801,6 @@ class ComponentView extends BaseComponentView {
 		this._parentView = parentView;
 		
 	}
-	
-	// /**
-	//  * @abstract
-	//  * HELPER : => when appending a child, should we append to rootNode or to a subSection ?
-	//  * 
-	//  */
-	// getEffectiveParentView() {
-	// 	return (this._parentView._parentComponent.subViewsHolder.subViews.length) 
-	// 					? this._parentView.subViewsHolder.subViews[this.section]
-	// 					: this._parentView;
-	// }
-	
-	// /** @param {ComponentTemplate} def */
-	// getTargetSubView(def) {
-	// 	this.targetSubView = (def.targetSlotIndex !== null && this.subViewsHolder.memberViews.length > def.targetSlotIndex)
-	// 		? this.subViewsHolder.memberAt(def.targetSlotIndex)
-	// 		: null;	
-	// }
-	
-	// /**
-	//  * @param {ComponentView} childView
-	//  * @param {number} atIndex
-	//  * 
-	//  * @needsGlobalRefactoring
-	//  */
-	// addChildAt(childView, atIndex) {
-	// 	this.subViewsHolder.addMemberView(childView);
-	// 	childView._parentView = this;
-	// 	this.addChildNodeFromViewAt(childView, atIndex);
-	// }
-	
-	// /**
-	//  * @param {ComponentView} childView
-	//  * @param {number} atIndex
-	//  */
-	// addChildNodeFromViewAt(childView, atIndex) {
-	// 	if (!childView.getMasterNode())		// check presence of masterNode, as we may be adding a childComponent before the view has been rendered
-	// 		return;
-	// 	this.callCurrentViewAPI('addChildNodeAt', childView.getMasterNode(), atIndex);
-	// }
-	
-	// /**
-	//  * @param {string[]} contentAsArray
-	//  */
-	// setContentFromArrayOnTargetSubview(contentAsArray) {
-	// //	console.log(this._parent.objectType);
-	// 	return this.targetSubView.setContentFromArray(contentAsArray);
-	// }
-
 }
 
 
@@ -1947,33 +1836,6 @@ class ComponentSubViewsHolder {
 	 */
 	constructor(template, parentView) {
 		this.parentView = parentView;
-		
-		// subViewsHolder exists even if there is no subViews (and we pass a definition as null if there is neither memberViews nor subViews)
-		if (template)
-			this.instanciateSubViews(template);
-	}
-	/**
-	 * @param {ComponentTemplate} template
-	 */
-	instanciateSubViews(template) {
-		template.subSections.forEach((tpl) => {
-			if (tpl instanceof ComponentTemplate)
-				return;
-			this.subViews.push((new ComponentSubView(tpl, this.parentView, this.parentView._parent)));
-		});
-		template.members.forEach(function(def) {
-			// this test must go away : the ComponentWithView type should handle children being components
-			if(typeof def.section === 'undefined') {
-				if (typeof def.host !== 'undefined')
-					console.warn('A component\'s definition contains "members" which seem to be Components (they have a "host" property), but have no "type" property (so they\'re being instanciated as views, and it failed). If you menat to define a view, you must define a template without hierarchy (the nodeName & section properties must be defined at the first level). nodeName is ' + def.host.nodeName + ' & defUID is ' + def.host.UID);
-				else
-					console.warn('A member view\'s definition doesn\'t contain a "section" prop at first level, you may have defined it wrongly. You must define a template without hierarchy (the nodeName & section properties must be defined at the first level). nodeName is ' + def.nodeName + ' & defUID is ' + def.UID);
-			}
-			if (def.getHostDef().nodeName === 'canvas')
-				this.memberViews.push((new CanvasView(def, def.section !== null ? this.subViews[def.section] : this.parentView, this.parentView._parent)));
-			else
-				this.memberViews.push((new ComponentSubView(def, def.section !== null ? this.subViews[def.section] : this.parentView, this.parentView._parent)));
-		}, this);
 	}
 	
 	/**
@@ -1989,6 +1851,7 @@ class ComponentSubViewsHolder {
 		return this.memberViews[this.memberViews.length - 1];
 	}
 	/**
+	 * @param {number} idx
 	 * @return {ComponentSubView}
 	 */
 	memberAt(idx) {
@@ -2001,7 +1864,7 @@ class ComponentSubViewsHolder {
 	 */
 	immediateAddMemberAt(idx, memberView) {
 		const backToTheFutureAmount = this.memberViews.length - idx;
-		Registries.viewsRegistry.splice(Registries.viewsRegistry.length - backToTheFutureAmount, 0, memberView);
+		registries.views.splice(registries.views.length - backToTheFutureAmount, 0, memberView);
 		this.memberViews.splice(idx, 1, memberView);
 	}
 	
@@ -2011,14 +1874,7 @@ class ComponentSubViewsHolder {
 	addMemberView() {
 		console.error('ComponentSubViewsHolder: call to unallowed method "addMemberView');
 	}
-	/**
-	 * @param {ComponentTemplate} definition
-	 */
-	addMemberViewFromDef(definition) {
-		const view = new ComponentSubView(definition, this.parentView);
-		this.memberViews.push(view);
-		return view;
-	}
+	
 	/**
 	 * @param {number} from
 	 * @param {number} to
@@ -2041,14 +1897,14 @@ class ComponentSubViewsHolder {
 			this.moveMemberViewFromTo(from, to, offset, viewsRegistryIdx);
 	}
 	/**
-	 * @param {ComponentTemplate} definition
+	 * @param {ViewTemplate} vTemplate
 	 */
-	immediateUnshiftMemberView(definition) {
-		const lastView = Registries.viewsRegistry.pop();
-		const view = new ComponentSubView(definition, this.parentView);
+	immediateUnshiftMemberView(vTemplate) {
+		const lastView = registries.views.pop();
+		const view = new ComponentSubView(vTemplate, this.parentView, this._parent);
 		this.memberViews.unshift(view);
-		
-		Registries.viewsRegistry.push(lastView);
+		if (lastView)
+			registries.views.push(lastView);
 		return view;
 	}
 	/**
@@ -2056,12 +1912,15 @@ class ComponentSubViewsHolder {
 	 * @param {number} effectiveViewIdx
 	 */
 	immediateAscendViewAFewStepsHelper(stepsCount, effectiveViewIdx) {
-		const ourLatelyAppendedView = Registries.viewsRegistry.splice(effectiveViewIdx, 1)[0];
+		const ourLatelyAppendedView = registries.views.splice(effectiveViewIdx, 1)[0];
 	//	console.log(Registries.viewsRegistry.length, stepsCount, Registries.viewsRegistry[Registries.viewsRegistry.length - 1 - stepsCount]);
-		Registries.viewsRegistry.splice(effectiveViewIdx - stepsCount, 0, ourLatelyAppendedView);
+		registries.views.splice(effectiveViewIdx - stepsCount, 0, ourLatelyAppendedView);
 	}
 	
-	resetMemberContent() {
+	/**
+	 * @param {number} idx
+	 */
+	resetMemberContent(idx) {
 		this.memberViews[idx].reset();
 	}
 	/**
@@ -2097,21 +1956,21 @@ class ComponentSubViewsHolder {
 	 * @param {string[]} contentAsArray
 	 */
 	setEachMemberContent(contentAsArray) {
-		contentAsArray.forEach(function(val, key) {
+		contentAsArray.forEach((val, key) => {
 			if (typeof val !== 'string')
 				return;
 			this.setMemberContent(key, val);
-		}, this);
+		});
 	}
 	/**
 	 * @param {string[]} contentAsArray
 	 */
 	setEachMemberContent_Fast(contentAsArray) {
-		contentAsArray.forEach(function(val, key) {
+		contentAsArray.forEach((val, key) => {
 			if (typeof val !== 'string')
 				return;
 			this.setMemberContent_Fast(key, val);
-		}, this);
+		});
 	}
 }
 
@@ -2173,7 +2032,7 @@ class DOMCanvasViewAPI extends DOMViewAPI {
 	//	});
 	}
 	/**
-	 * @param {CssColor} startColor
+	 * @param {string} startColor
 	 * @param {number} colorScaleLength
 	 * @param {number} x : x boundary of canvas 
 	 * @param {number} y : y boundary of canvas
@@ -2210,8 +2069,8 @@ class CanvasView extends ComponentView {
 	w = 0;
 	/** @type {number} */
 	h = 0;
-	/** @type {Promise} */
-	nodeAsAPromise;
+	/** @type {Promise<unknown> | null} */
+	nodeAsAPromise = null;
 	/**
 	 * @param {ViewTemplate} definition
 	 * @param {ComponentView} parentView
@@ -2362,5 +2221,5 @@ module.exports = {
 	ComponentSubView : ComponentSubView,
 	ComponentSubViewsHolder : ComponentSubViewsHolder,
 	CanvasView : CanvasView,
-	commonStates : commonStates
+	StreamToDomInterface
 }

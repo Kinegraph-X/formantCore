@@ -1,7 +1,7 @@
 /**
  * @file TemplateFactory
  */
-
+const {Logger, ComponentError} = require('src/coreTest/Error&Log');
 const {templateUIDGenerator, viewUIDGenerator, listUIDGenerator} = require('src/coreTest/UIDGenerator');
 
 
@@ -23,8 +23,8 @@ class AbstractProp {
 	 */
 	constructor(obj) {
 		// /** @type {AbstractPropKey} */
-		this.#name = this.#key = this.#getKey(obj);
-		this.#value = obj[this.#key];
+		/** @readonly */ this.#name = this.#key = this.#getKey(obj);
+		/** @readonly */ this.#value = obj[this.#key];
 	}
 	/** 
 	 * @param {{[key: string] : undefined|null|string|object}} obj
@@ -104,7 +104,7 @@ class AbstractPropArray extends Array {
  * property {HTMLElement|Stream} [obj]
  * @property {function} [filter]
  * @property {function} [map]
- * @property {function} [subscribe]
+ * @property {function} [effect]
  * property {function} [inverseTransform]
  */
 
@@ -122,80 +122,37 @@ class ReactivityQuery {
 	/** @type {function|null} */
 	map = null;
 	/** @type {function|null} */
-	subscribe = null;
+	effect = null;
 	// /** @type {function|null} */
 	// inverseTransform = null;
-	/** @type {string} */
+	/** @type {string} @readonly */
 	objectType = 'ReactivityQuery';
 	
 	/**
 	 * @param {ReactivityQueryDef} obj
 	 */
 	constructor(obj) {
-		if (!obj.to && !obj.subscribe) {
-			console.error(this.objectType, 'When the "to" field isn\'t defined, the "cbOnly" and "subscribe" field must be defined',  this);
+		if (!obj.to && !obj.effect) {
+			new ComponentError(this, 'When the "to" field isn\'t defined, the "effect" field must be defined',  this);
+		}
+		else if (obj.to && obj.effect) {
+			new ComponentError(this, 'When the "effect" field is defined, no propagation via the "to" field is allowed.',  this);
 		}
 		
-		this.from = obj.from;
-		this.to = obj.to || null;
-		this.cbOnly = typeof obj.to === 'string' || false;
-		this.filter = obj.filter || null;
-		this.map = obj.map || null;
-		this.subscribe = obj.subscribe || null;
-	}
-	
-	/**
-	 * Old doc
-	 * param {Stream} stream
-	 * param {ComponentWithObservables} queriedOrQueryingObj
-	 */
-	subscribeToStream(stream, queriedOrQueryingObj) {
-		if (!this.cbOnly
-			// @ts-ignore : "expression of type any can't be used to type {}"
-			// queriedOrQueryingObj.streams isn't typed cause naming the streams is at the discretion of the user
-			// => We're indeed testing if that name exists
-			&& !queriedOrQueryingObj.streams[this.to] 
-			&& !this.subscribe) {
-			console.warn('Missing stream or subscription callback on child subscribing from ' + stream.name + ' to ' + this.to);
-			return;
-		}
-		else if (typeof stream === 'undefined') {
-			console.error('No stream object passed for subscription. Probable usage of stream without a prior declaration: ', this.from, this.to, queriedOrQueryingObj);
-			return;
-		}
-		if (this.cbOnly) {
-			queriedOrQueryingObj._subscriptions.push(
-				stream.subscribe(this.subscribe.bind(queriedOrQueryingObj))
-					.filter(this.filter, queriedOrQueryingObj)
-					.map(this.map, queriedOrQueryingObj)
-					// .reverse(this.inverseTransform)
-			);
-		}
-		else {
-			queriedOrQueryingObj._subscriptions.push(
-				// @ts-ignore : "expression of type any can't be used to type {}"
-				// queriedOrQueryingObj.streams isn't typed cause naming the streams is at the discretion of the user
-				// => We've indeed already tested if that name exists
-				stream.subscribe(queriedOrQueryingObj.streams[this.to], 'value')
-					.filter(this.filter, queriedOrQueryingObj)
-					.map(this.map, queriedOrQueryingObj)
-					// .reverse(this.inverseTransform)
-			);
-		}
-
-		var subscription = queriedOrQueryingObj._subscriptions[queriedOrQueryingObj._subscriptions.length - 1];
-		
-		if (stream._value)
-			stream.subscriptions[stream.subscriptions.length - 1].execute(stream._value);
-			
-		return subscription;
+		/** @readonly */ this.from = obj.from;
+		/** @readonly */ this.to = obj.to || null;
+		/** @readonly */ this.filter = obj.filter || null;
+		/** @readonly */ this.map = obj.map || null;
+		/** @readonly */ this.effect = obj.effect || null;
 	}
 }
 
 class ReactOnParent extends ReactivityQuery {
+	/** @readonly  */
 	objectType = 'ReactOnParent';
 }
 class ReactOnSelf extends ReactivityQuery {
+	/** @readonly  */
 	objectType = 'ReactOnSelf';
 }
 
@@ -233,14 +190,14 @@ class EventSubscription {
 	on = null;
 	/** @type {function} */
 	subscribe = () => {};
-	/** @type {string} */
+	/** @type {string} @readonly */
 	objectType = 'EventSubscription';
 	/**
 	 * @param {EventSubscriptionDef} obj
 	 */
 	constructor(obj) {
-		this.on = obj.on;
-		this.subscribe = obj.subscribe;
+		/** @readonly */ this.on = obj.on;
+		/** @readonly */ this.subscribe = obj.subscribe;
 	}
 	
 	/**
@@ -252,13 +209,12 @@ class EventSubscription {
 	}
 }
 
-class SubscribeOnParent extends EventSubscription {
-	objectType = 'SubscribeOnParent';
-}
 class SubscribeOnChild extends EventSubscription {
+	/** @readonly  */
 	objectType = 'SubscribeOnChild';
 }
 class SubscribeOnSelf extends EventSubscription {
+	/** @readonly  */
 	objectType = 'SubscribeOnSelf';
 }
 
@@ -297,16 +253,16 @@ class TaskDefinition {
 	task = () => {};
 	/** @type {number} */
 	index = 0;
-	/** @type {'TaskSubscription'} */
+	/** @type {'TaskSubscription'} @readonly */
 	objectType = 'TaskSubscription';
 	
 	/**
 	 * @param {TaskDefinitionDef} obj
 	 */
 	constructor(obj) {
-		this.type = obj.type;
-		this.task = obj.task;
-		this.index = obj.index || 0;
+		/** @readonly */ this.type = obj.type;
+		/** @readonly */ this.task = obj.task;
+		/** @readonly */ this.index = obj.index || 0;
 	}
 	
 	/**
@@ -327,10 +283,9 @@ class TaskDefinition {
  * @property {Boolean} [reflectOnModel]
  * @property {Boolean} [augmentModel]
  * @property {ComponentTemplateDef[]} each
- * @property {object|null} item			// and instance of ReactiveDataset.item
+ * @property {ReactiveDatasetItem[]} item			// and instance of ReactiveDataset.item
  * @property {ComponentTemplateDef} template
  * @property {Number} [section]
- * @property {Boolean} [isInternal]
  */
  
  class ListDefinition {
@@ -340,31 +295,30 @@ class TaskDefinition {
 	reflectOnModel = true;
 	/** @type {boolean} */
 	augmentModel = false;
-	/** @type {ReactiveDatasetItem[]} */			// instances of ReactiveDataset.item
-	each = [];
+	/** @type {ReactiveDatasetItem[]|null} */			// instances of ReactiveDataset.item
+	each = null;
 	/** @type {object|null} */		// an instance of ReactiveDataset.item
 	item = null;
 	/** @type {ComponentTemplate|null} */
 	template = null;
 	/** @type {number|null} */
 	section = null;
-	/** @type {boolean} */
-	isInternal = false;
-	/** @type {string} */
+	/** @type {string} @readonly */
 	objectType = 'ListDefiniton';
 	
 	/**
 	 * @param {ListDefinitonDef} obj
 	 */
 	constructor(obj) {
-		this.UID = listUIDGenerator.newUID();
-		this.reflectOnModel = obj.reflectOnModel || true;
-		this.augmentModel = obj.augmentModel || false;
-		this.each = obj.each; // carefull with this reference assigned
-		this.item = obj.item;
-		this.template = new ComponentTemplate(obj.template);
-		this.section = obj.section || null;
-		this.isInternal = obj.isInternal || false;
+		/** @readonly */ this.UID = listUIDGenerator.newUID();
+		if (obj) {
+			/** @readonly */ this.reflectOnModel = obj.reflectOnModel || true;
+			/** @readonly */ this.augmentModel = obj.augmentModel || false;
+			/** @readonly */ if (obj.each) this.each = obj.each ; // carefull with this reference assigned
+			/** @readonly */ if (obj.item) this.item = obj.item;
+			/** @readonly */ if (obj.template) this.template = new ComponentTemplate(obj.template);
+			/** @readonly */ this.section = obj.section || null;
+		}
 	}
  }
 
@@ -381,9 +335,9 @@ class TaskDefinition {
  * @typedef {object} ViewTemplateDef
  * @property {string} nodeName
  * @property {AttributeDef[]} [attributes] 
- * @property {number|null} [section]
- * @property {StylesheetWrapper|null} [sWrapper]
- * @property {StylesheetWrapper|null} [sOverride]
+ * @property {number} [section]
+ * @property {StylesheetWrapper} [sWrapper]
+ * @property {StylesheetWrapper} [sOverride]
  */
 
 class ViewTemplate {
@@ -393,7 +347,7 @@ class ViewTemplate {
 	nodeName = 'div';
 	/** @type {boolean} */
 	isCustomElem = false;
-	/** @type {AbstractPropArray} */
+	/** @type {AbstractPropArray} @readonly */
 	attributes = new AbstractPropArray();
 	/** @type {number|null} */
 	section = null;
@@ -401,20 +355,23 @@ class ViewTemplate {
 	sWrapper = null;
 	/** @type {StylesheetWrapper|null} */
 	sOverride = null;
+	/** @type {string} @readonly */
+	objectType = 'ViewTemplate';
 	
 	/**
 	 * @param {ViewTemplateDef} [obj]
 	 */
 	constructor(obj) {
-		this.UID = viewUIDGenerator.newUID();
+		/** @readonly */ this.UID = viewUIDGenerator.newUID();
 		if (obj) {
 			if (obj.nodeName)
-				this.nodeName = obj.nodeName;
-			if (typeof obj.section !== 'undefined') this.section = obj.section;
-			this.sWrapper = obj.sWrapper || null;
-			this.sOverride = obj.sOverride || null;
+				/** @readonly */ this.nodeName = obj.nodeName;
+			if (typeof obj.section !== 'undefined') 
+				/** @readonly */ this.section = obj.section;
+			/** @readonly */ this.sWrapper = obj.sWrapper || null;
+			/** @readonly */ this.sOverride = obj.sOverride || null;
 			
-			this.isCustomElem = obj.nodeName.indexOf('-') !== -1
+			/** @readonly */ this.isCustomElem = obj.nodeName.indexOf('-') !== -1
 			
 			if (Array.isArray(obj.attributes)) {
 				obj.attributes.forEach(
@@ -461,45 +418,37 @@ class ViewTemplate {
 	view;
 	/** @type {string|null} */
 	type = null;
-	/** @type {boolean} */
-	isCompound = false;
-	/** @type {AbstractPropArray} */
+	/** @type {AbstractPropArray} @readonly */
 	props = new AbstractPropArray();
-	/** @type {AbstractPropArray} */
+	/** @type {AbstractPropArray} @readonly */
 	states = new AbstractPropArray();
 	/** @type {Command|null} */
 	command = null;
-	/** @type {ReactivityQueryArray} */
+	/** @type {ReactivityQueryArray} @readonly */
 	reactOnParent = new ReactivityQueryArray();
-	/** @type {ReactivityQueryArray} */
+	/** @type {ReactivityQueryArray} @readonly */
 	reactOnSelf = new ReactivityQueryArray();
-	/** @type {EventSubscriptionArray} */
-	subscribeOnParent = new EventSubscriptionArray();
-	/** @type {EventSubscriptionArray} */
+	/** @type {EventSubscriptionArray} @readonly */
 	subscribeOnChild = new EventSubscriptionArray();
-	/** @type {EventSubscriptionArray} */
+	/** @type {EventSubscriptionArray} @readonly */
 	subscribeOnSelf = new EventSubscriptionArray();
-	// /** @type KeyboardHotkeys[] */
-	// keyboardSettings = [];
-	// /** @type KeyboardListeners[] */
-	// keyboardEvents = [];
-	
-	/** @type {(ComponentTemplate|ViewTemplate)[]} */
+	/** @type {(ComponentTemplate|ViewTemplate)[]} @readonly */
 	members = [];
-	/** @type {(ComponentTemplate|ViewTemplate)[]} */
+	/** @type {(ComponentTemplate|ViewTemplate)[]} @readonly */
 	subSections = [];
-	/** @type {ListDefinition|null} list */
+	/** @type {ListDefinition|null} */
 	list = null;
+	/** @type {string} @readonly */
+	objectType = 'ComponentTemplate';
 	
 	/**
 	 * @param {ComponentTemplateDef} [obj]
 	 */
 	constructor(obj) {
-		this.UID = templateUIDGenerator.newUID();
+		/** @readonly */ this.UID = templateUIDGenerator.newUID();
 		if (obj) {
-			this.view = new ViewTemplate(obj.view);
-			this.type = obj.type || null;
-			this.isCompound = obj.isCompound || false;
+			/** @readonly */ this.view = new ViewTemplate(obj.view);
+			/** @readonly */ this.type = obj.type || null;
 			
 			if (Array.isArray(obj.props)) {
 				obj.props.forEach(
@@ -533,15 +482,6 @@ class ViewTemplate {
 					/** @param {ReactivityQueryDef} reactivityQueryObj */
 					(reactivityQueryObj) => {
 						this.reactOnSelf.push(new ReactOnSelf(reactivityQueryObj));
-					},
-				);
-			}
-			
-			if (Array.isArray(obj.subscribeOnParent)) {
-				obj.subscribeOnParent.forEach(
-					/** @param {EventSubscriptionDef} subscribeOnParentObj */
-					(subscribeOnParentObj) => {
-						this.subscribeOnParent.push(new SubscribeOnParent(subscribeOnParentObj));
 					},
 				);
 			}
@@ -592,10 +532,10 @@ class ViewTemplate {
 				);
 			}
 			
-			this.list = obj.list ? new ListDefinition(obj.list) : null;
+			/** @readonly */ this.list = obj.list ? new ListDefinition(obj.list) : null;
 		}
 		else {
-			this.view = new ViewTemplate();
+			/** @readonly */ this.view = new ViewTemplate();
 		}
 	}
 	
@@ -643,34 +583,34 @@ class ViewTemplate {
  
  
  
-/** @typedef {"attributes"|"props"|"states"|"reactOnParent"|"reactOnSelf"|"subscribeOnParent"|"subscribeOnChild"|"subscribeOnSelf"}  KeyOfArrayOfSubscriptions*/
-const propsAreArrayOfProps = [
-	'attributes',
-	'states',
-	'props',
-];
-const propsAreArrayOfSubscriptions = [
-	'reactOnParent',
-	'reactOnSelf',
-	'subscribeOnParent',
-	'subscribeOnChild',
-	'subscribeOnSelf',
-];
-const reactivityQueries = [
-	'reactOnParent',
-	'reactOnSelf'
-];
-const eventQueries = [
-	'subscribeOnParent',
-	'subscribeOnChild',
-	'subscribeOnSelf'
-];
-const propsArePrimitives = [
-	'type',
-	'nodeName',
-	'isCustomElem',
-	'section'
-];
+// /** @typedef {"attributes"|"props"|"states"|"reactOnParent"|"reactOnSelf"|"subscribeOnParent"|"subscribeOnChild"|"subscribeOnSelf"}  KeyOfArrayOfSubscriptions*/
+// const propsAreArrayOfProps = [
+// 	'attributes',
+// 	'states',
+// 	'props',
+// ];
+// const propsAreArrayOfSubscriptions = [
+// 	'reactOnParent',
+// 	'reactOnSelf',
+// 	'subscribeOnParent',
+// 	'subscribeOnChild',
+// 	'subscribeOnSelf',
+// ];
+// const reactivityQueries = [
+// 	'reactOnParent',
+// 	'reactOnSelf'
+// ];
+// const eventQueries = [
+// 	'subscribeOnParent',
+// 	'subscribeOnChild',
+// 	'subscribeOnSelf'
+// ];
+// const propsArePrimitives = [
+// 	'type',
+// 	'nodeName',
+// 	'isCustomElem',
+// 	'section'
+// ];
  
 
  
@@ -686,7 +626,6 @@ const propsArePrimitives = [
  	Prop,
 	SubscribeOnChild,
 	SubscribeOnSelf,
-	SubscribeOnParent,
 	ReactOnSelf,
 	ReactOnParent,
 
