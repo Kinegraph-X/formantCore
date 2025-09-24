@@ -2,77 +2,116 @@
  * @module ReactiveDataset
  * 
  * Tight coupling with Rendering
- * 		Rendering coupled with [Dataset.push(), pushApply(), splice(), & more]
+ * 		Rendering coupled with [push(), pushApply()]
  */
-
-const {ComonentTemplate, ListDefinition} = require('src/coreTest/TemplateFactory');
+/**
+ * @typedef {import('src/coreTest/Component').ComponentWithView} ComponentWithView
+ */
+const {ComponentTemplate, ListDefinition} = require('src/coreTest/TemplateFactory');
 const registries = require('src/coreTest/Registries');
+const processList = require('src/coreTest/Renderer').processList;
 
 /**
- * @template ReactiveDatasetItem
+ * @template {{[key : string]: unknown}} ReactiveDatasetItem
  */
-class ReactiveDataset extends Array {
+class ReactiveDataset {
+	/** @type {ReactiveDatasetItem[]} */
+	data = [];
 	/** @type {ComponentWithView} */
-	rootComponent;
+	trackedComponent;
 	/** @type {ListDefinition} */
-	defaultListDef = new ListDefinition({
-			type : 'ComponentList',
-			each : [],
-			item : null,
-			template : null,
-			isInternal : true
-		});
-	/** @type {{[key: string]: function}} */
-	arrayFunctions = {
-		// trackedProp : 'active',
-		every : function(item) {return item[this.trackedProp];},
-		none : function(item) {return !item[this.trackedProp];},
-		some : function(item) {return item[this.trackedProp];},
-		someNot : function(item) {return !item[this.trackedProp];},
-		filter : function(item) {return item[this.trackedProp];},
-		filterNot : function(item) {return !item[this.trackedProp];}
-	}
-	/** @type {((string|number|null)[]): void} is constructor*/
+	listDef = new ListDefinition(null);
+	/** @type {string} */
+	activeStateItemProp = 'active';
+	/** @type {{[key: string]: (value: any, index: number, array: any[]) => unknown}} */
+	arrayFunctions = {};
+	/** @type {(values : (string|number|null)[]) => void} is constructor*/
 	Item;
 
-	/**
-	 * @param {ComponentWithView} trackedComponent 
-	 * @param {ComponentTemplate} cTemplate 
-	 * @param {string[]} factoryPropsArray 
-	 * @param {function[]} [arrayFunctions] 
-	 */
-	constructor(trackedComponent, template, factoryPropsArray, arrayFunctions = null) {
-		this.init(trackedComponent, template, factoryPropsArray);
-		if (arrayFunctions !== null && arrayFunctions.length) {
-			this.setFunctionList(arrayFunctions);
-		}
-	}
+	filterStream;
+	filterNotStream;
+	everyStream;
+	someStream;
+	someNotStream;
+	noneStream;
+	lengthStream;
 
 	/**
 	 * @param {ComponentWithView} trackedComponent 
 	 * @param {ComponentTemplate} cTemplate 
 	 * @param {string[]} factoryPropsArray 
+	 * @param {function[]|null} [arrayFunctions] 
 	 */
-	init(trackedComponent, cTemplate, factoryPropsArray) {
+	constructor(trackedComponent, cTemplate, factoryPropsArray, arrayFunctions = null) {
 		this.trackedComponent = trackedComponent;
-		this.defaultListDef.template = cTemplate;
+		this.listDef.template = cTemplate;
 		this.Item = this.getItemFactory(factoryPropsArray);
+
+		/**
+		 * These functions are used as callbacks on standard  array filter functions
+		 * see updateDatasetState() 
+		 */
+		if (!arrayFunctions) {
+			this.arrayFunctions['every'] = 
+				/** @param {ReactiveDatasetItem} item @param {number} idx @param {any[]} arr*/
+				(item, idx, arr) => item[this.activeStateItemProp],
+			
+			this.arrayFunctions['none'] = 
+				/** @param {ReactiveDatasetItem} item @param {number} idx @param {any[]} arr*/
+				(item, idx, arr) => !item[this.activeStateItemProp],
+			
+			this.arrayFunctions['some'] = 
+				/** @param {ReactiveDatasetItem} item @param {number} idx @param {any[]} arr*/
+				(item, idx, arr) => item[this.activeStateItemProp],
+			
+			this.arrayFunctions['someNot'] = 
+				/** @param {ReactiveDatasetItem} item @param {number} idx @param {any[]} arr*/
+				(item, idx, arr) => !item[this.activeStateItemProp],
+			
+			this.arrayFunctions['filter'] = 
+				/** @param {ReactiveDatasetItem} item @param {number} idx @param {any[]} arr*/
+				(item, idx, arr) => item[this.activeStateItemProp],
+			
+			this.arrayFunctions['filterNot'] = 
+				/** @param {ReactiveDatasetItem} item @param {number} idx @param {any[]} arr*/
+				(item, idx, arr) => !item[this.activeStateItemProp]
+		}
+		else {
+			Object.assign(this.arrayFunctions, arrayFunctions);
+		}
+
+		const regUID = this.trackedComponent.regUID;
+		const registry = registries.streams.get(regUID);
+		this.filterStream = registry?.get('filter'); 
+		this.filterNotStream = registry?.get('filterNot'); 
+		this.everyStream = registry?.get('every'); 
+		this.someStream = registry?.get('some'); 
+		this.someNotStream = registry?.get('someNot'); 
+		this.noneStream = registry?.get('none'); 
+		this.lengthStream = registry?.get('length'); 
 	}
-	/** @param {function[]} arrayFunctions */
+
+	/**
+	 * These functions are used as callbacks on standard  array filter functions
+	 * see updateDatasetState() 
+	 * @param {function[]} arrayFunctions
+	 * */
 	setFunctionList(arrayFunctions) {
-		Array.prototype.push.apply(this.arrayFunctions, arrayFunc);
+		
 	}
 	/**
 	 * @param {string[]} factoryPropsArray 
 	 */
 	getItemFactory(factoryPropsArray) {
 		const arrayCopy = factoryPropsArray.slice(0);
+
+		/** @param {(string|number|null)[]} values */
 		const factory = function(values) {
-			values.forEach(function(arg, key) {
+			values.forEach((arg, key) => {
 				this[arrayCopy[key]] = arg;
-			}, this);
+			});
 		}
-		Object.defineProperty(factory.prototype, 'keys', {value : arraayCopy});
+		Object.defineProperty(factory.prototype, 'keys', {value : arrayCopy});
 		return factory;
 	}
 	/**
@@ -81,58 +120,50 @@ class ReactiveDataset extends Array {
 	newItem() {
 		return (new this.Item([...arguments]));
 	}
+	/**
+	 * The tracked component may implement a stream named
+	 * like one of the common array filter functions.
+	 * Child components of the trackedComponent may listen to
+	 * one of these streams, to set its visibility, without removing 
+	 * the item from that dataset 
+	 */
+	updateDatasetState() {
+		if (this.filterStream)
+			this.filterStream.value = this.data.filter(this.arrayFunctions.filter);
+		if (this.filterNotStream)
+			this.filterNotStream.value = this.data.filter(this.arrayFunctions.filterNot);
+		if (this.everyStream)
+			this.everyStream.value = this.data.every(this.arrayFunctions.every);
+		if (this.someStream)
+			this.someStream.value = this.data.some(this.arrayFunctions.some);
+		if (this.someNotStream)
+			this.someNotStream.value = this.data.some(this.arrayFunctions.someNot);
+		if (this.noneStream)
+			this.noneStream.value = this.data.filter(this.arrayFunctions.none);
 
-	updateDatasetState(){
-		this.funcList.forEach(function(prop) {
-			if (prop === 'filter' || prop === 'filterNot')
-				this.rootComponent.streams[prop].value = Array.prototype.filter.call(this, this.arrayFunc[prop], this.arrayFunc).length;
-			else {
-				this.rootComponent.streams[prop].value = Array.prototype[prop] 
-					? Array.prototype[prop].call(this, this.arrayFunc[prop], this.arrayFunc)
-						: (prop === 'none' 
-							? Array.prototype.every.call(this, this.arrayFunc[prop], this.arrayFunc)
-								: Array.prototype.some.call(this, this.arrayFunc[prop], this.arrayFunc));
-			}
-		}, this);
-		if (this.rootComponent.streams['length'])
-			this.rootComponent.streams['length'].value = this.length;
-	}
-	/**
-	 * @param {string} stateName 
-	 * @param {string|number|null} value 
-	 * @param {boolean} setSingle 
-	 */
-	setDatasetState(stateName, value, setSingle) {
-		this.rootComponent.streams[stateName].value = value;
-		if (!setSingle)
-			this.updateDatasetState();
-	}
-	/**
-	 * @param {string} stateName
-	 */
-	getDatasetState(stateName) {
-		return this.rootComponent.streams[stateName].value;
+		if (this.lengthStream)
+			this.lengthStream.value = this.data.length;
 	}
 	/**
 	 * @param {ReactiveDatasetItem} item 
 	 */
 	push(item) {
-		this.defaultListDef.host.each = [item];
-		renderList(this.trackedComponent, this.defaultListDef)
+		this.listDef.each = [item];
+		processList(this.trackedComponent, this.listDef);
 		// TODO: replace with ReactivityFactory
 		// this.trackedComponent.handleEventSubsOnChildrenAt(Registries.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
-		Array.prototype.push.call(this, item);
+		this.data.push(item);
 		this.updateDatasetState();
 	}
 	/**
 	 * @param {ReactiveDatasetItem[]} items
 	 */
 	pushApply(items) {
-		this.defaultListDef.host.each = items;
-		renderList(this.trackedComponent, this.defaultListDef)
+		this.listDef.each = items;
+		processList(this.trackedComponent, this.listDef)
 		// TODO: replace with ReactivityFactory
 		// this.trackedComponent.handleEventSubsOnChildrenAt(Registries.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
-		Array.prototype.push.apply(this, items);
+		this.data.push(...items);
 		this.updateDatasetState();
 	}
 	/**
@@ -140,39 +171,45 @@ class ReactiveDataset extends Array {
 	 * @param {number} index 
 	 * @param {number} length 
 	 * @param {[]|null} [replacedBy] 
-	 * @returns {[]|boolean}
+	 * @returns {[ReactiveDatasetItem, ComponentWithView]|boolean}
 	 */
 	splice(index, length, replacedBy) {
-		var c1, c2, mBackup;
+		let c1, c2, mBackup;
 
 		if (typeof replacedBy === 'number') {
 			if (replacedBy > index) {
-				c2 = this.trackedComponent._children[replacedBy].remove();
-				c1 = this.trackedComponent._children[index].remove();
+				c2 = this.trackedComponent.children[replacedBy]
+				this.trackedComponent.removeChildAt(replacedBy);
+				c1 = this.trackedComponent.children[index];
+				this.trackedComponent.removeChildAt(index);
 				this.trackedComponent.addChildAt(c2, index);
 			}
 			else {
-				c1 = this.trackedComponent._children[index].remove();
-				c2 = this.trackedComponent._children[replacedBy].remove();
+				c1 = this.trackedComponent.children[index];
+				this.trackedComponent.removeChildAt(index);
+				c2 = this.trackedComponent.children[replacedBy];
+				this.trackedComponent.removeChildAt(replacedBy);
 				this.trackedComponent.addChildAt(c2, index - 1);
 			}
 
-			mBackup = Array.prototype.splice.call(this, index, 1, this[replacedBy])[0];
+			mBackup = this.data.splice(index, 1, this[replacedBy])[0];
 			this.updateDatasetState();
 			return [mBackup, c1];
 		}
 		else if (typeof replacedBy === 'undefined' || replacedBy === null) {
-			c1 = this.trackedComponent._children[index].remove();
-			mBackup = Array.prototype.splice.call(this, index, 1)[0];
+			c1 = this.trackedComponent.children[index];
+			this.trackedComponent.removeChildAt(index);
+			mBackup = this.data.splice(index, 1)[0];
 			this.updateDatasetState();
 			return [mBackup, c1];
 		}
 		else if (Array.isArray(replacedBy)) {
 			this.trackedComponent.addChildAt(replacedBy[1], index);
-			Array.prototype.splice.call(this, index, 1, replacedBy[0]);
+			this.data.splice(index, 1, replacedBy[0]);
 			this.updateDatasetState();
 			return true;
 		}
+		return false;
 	}
 	/**
 	 * Removes the entries & child components having a certain value on a certain stream
@@ -185,9 +222,10 @@ class ReactiveDataset extends Array {
 			var module;
 			for (let i = this.trackedComponent.children.length - 1; i >= 0; i--) {
 				module = this.trackedComponent.children[i];
-				if (module.streams[prop] && module.streams[prop].value === value) {
-					module.remove();
-					Array.prototype.splice.call(this, i, 1);
+				const stream = registries.streams.get(module.regUID)?.get('props')?.get(prop);
+				if (stream && stream.value === value) {
+					this.trackedComponent.removeChildAt(i);
+					this.data.splice(i, 1);
 				}
 			}
 			this.updateDatasetState();
@@ -208,25 +246,26 @@ class ReactiveDataset extends Array {
 			for (let i = this.trackedComponent.children.length - 1; i >= 0; i--) {
 				module = this.trackedComponent.children[i];
 				if (module.streams[prop] && module.streams[prop].value !== value) {
-					module.remove();
-					Array.prototype.splice.call(this, i, 1);
+					this.trackedComponent.removeChildAt(i);
+					this.data.splice(i, 1);
 				}
 			}
 			this.updateDatasetState();
+			return true;
 		}
 		else
 			return false;
 	}
 
 	resetLength() {
-		for (var i = this.length - 1; i >= 0; i--) {
-			this.trackedComponent.removeChildAt(this.trackedComponent._children.length - 1);
+		for (var i = this.data.length - 1; i >= 0; i--) {
+			this.trackedComponent.removeChildAt(this.trackedComponent.children.length - 1);
 		};
-		Array.prototype.splice.call(this, 0, this.length);
+		this.data.length = 0;
 	}
 
 	serialize() {
-		return JSON.stringify(Array.from(this));
+		return JSON.stringify(this.data);
 	}
 	/**
 	 * 
@@ -235,29 +274,23 @@ class ReactiveDataset extends Array {
 	 * @param {boolean} invert 
 	 */
 	sortForPropHostingArrayOnArrayIdx(prop, idx, invert) {
-		var tmpThis = [];
-		for (let i = 0, l = this.length; i < l; i++) {
-			tmpThis.push(this[i][prop].slice(0));
+		/** @type {ReactiveDatasetItem[]} */
+		const tmpThis = [];
+		for (let i = 0, l = this.data.length; i < l; i++) {
+			tmpThis.push(this.data[i][prop]);
 		}
 		
 		if (invert)
-			tmpThis.sort(this.inverseSortOnObjectProp.bind(null, idx));
+			tmpThis.sort(this.inverseSortOnObjectProp);
 		else
-			tmpThis.sort(this.sortOnObjectProp.bind(null, idx));
+			tmpThis.sort(this.sortOnObjectProp); // .bind(null, idx)
 		
-		for (let i = 0, l = this.length; i < l; i++) {
-			this[i][prop] = tmpThis[i];
+		for (let i = 0, l = this.data.length; i < l; i++) {
+			/** @ts-ignore */
+			(this.data[i][prop]) = tmpThis[i];
 		}
 	}
-
-	reNewComponents() {
-		var lastIndex = this.trackedComponent._children.length;
-		this.defaultListDef.host.each = this;
-		new App.List(this.defaultListDef, this.trackedComponent);
-		this.trackedComponent.handleEventSubsOnChildrenAt(Registries.caches['subscribeOnChild'].cache[this.trackedComponent._defUID], lastIndex);
-		this.updateDatasetState();
-	}
-
+	/** @param {string} a @param {string} b */
 	sortStringsAsNumbers(a, b) {
 		return (parseInt(a) > parseInt(b)
 					? 1 
@@ -265,13 +298,38 @@ class ReactiveDataset extends Array {
 						? 0
 						: -1));
 	}
-
+	/** @param {string} a @param {string} b */
 	invertSortStringsAsNumbers(a, b) {
 		return (parseInt(a) < parseInt(b)
 					? 1 
 					: (parseInt(a) === parseInt(b)
 						? 0
 						: -1));
+	}
+	/**
+	 * @param {string} prop 
+	 * @param {{[key:string]:unknown}} a
+	 * @param {{[key:string]:unknown}} b
+	 * */
+	sortOnObjectProp(prop, a, b) {
+		if (typeof a[prop] === 'string')
+			return a[prop].charCodeAt(0) - b[prop].charCodeAt(0)
+		else if (typeof a[prop] === 'number')
+			return a[prop] - b[prop];
+		return 0;
+	}
+	/**
+	 * @param {string} prop 
+	 * @param {{[key:string]:unknown}} a
+	 * @param {{[key:string]:unknown}} b
+	 * */
+	inverseSortOnObjectProp(prop, a, b) {
+		if (typeof a[prop] === 'string')
+			return b[prop].charCodeAt(0) - a[prop].charCodeAt(0)
+		else if (typeof a[prop] === 'number')
+			return b[prop] - a[prop];
+
+		return 0;
 	}
 }
 

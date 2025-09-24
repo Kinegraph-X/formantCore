@@ -6,7 +6,7 @@
  * @typedef {import('src/coreTest/CoreTypes').Stream} Stream
  */
 const {Logger, ComponentError} = require('src/coreTest/Error&Log');
-const {StreamToDomInterface} = require('src/coreTest/Coretypes');
+const {StreamToDomInterface} = require('src/coreTest/CoreTypes');
 const {camelToHyphens} = require('src/coreTest/StringUtilities');
 
 

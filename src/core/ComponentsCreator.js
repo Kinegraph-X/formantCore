@@ -22,12 +22,14 @@ class ComponentFactory {
         throw new Error("MemberComponentsFactory is static-only; do not instantiate.");
     }
     /**
-     * Recursive template composer
+     * Recursive template processor
      * subSection templates must not have multiple hierarchical levels
+     * (may be views or single-level components, but not mixed)
      * member templates are handled recursively if needed
+     * @param {ComponentWithView|RootComponent} parentComponent
      * @param {ComponentTemplate} cTemplate
      */
-    static add(parentComponent = new RootComponent(), cTemplate) {
+    static process(parentComponent, cTemplate) {
         // subComponents array is just a temporary helper
         this.subComponents.length = 0;
         if (cTemplate.subSections.length) {
@@ -59,11 +61,10 @@ class ComponentFactory {
                 if (subSection.subSections.length || subSection.members.length) {
                     throw new ComponentError(parentComponent, 'Multi-level subSections are forbidden: please constrain your component template to only one view', subSection);
                 }
-                // Register the component on the default templateUID (the reconcilier sets the default one on the instance, which must be unique)
-		        registries.component.set(newComponent.defaultTemplateUID, newComponent);
+		        registries.component.set(newComponent.regUID, newComponent);
 			}
             else {
-                parentComponent.subViews.push(ViewFactory.newView(member, targetView, parentComponent));
+                parentComponent.subViews.push(ViewFactory.newView(member, targetView, parentComponent.regUID));
             }
 		})
 	}
@@ -89,15 +90,14 @@ class ComponentFactory {
                 else {
                     newComponent = new ComponentWithView(targetComponent, member);
                 }
-                // Register the component on the default templateUID (the reconcilier sets the default one on the instance, which must be unique)
-		        registries.component.set(newComponent.defaultTemplateUID, newComponent);
-                this.add(member, targetComponent);
+		        registries.component.set(newComponent.regUID, newComponent);
+                this.process(targetComponent, member);
 			}
             else {
                 if (member.section) {
                     targetView = this.handleTargetViewOnparentComponent(member.section, parentComponent);
                 }
-                parentComponent.memberViews.push(ViewFactory.newView(member, targetView, parentComponent));
+                parentComponent.memberViews.push(ViewFactory.newView(member, targetView, parentComponent.regUID));
             }
 		})
 	}

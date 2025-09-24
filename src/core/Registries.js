@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {import('src/coreTest/TemplateFactory.js').KeyOfArrayOfSubscriptions} KeyOfArrayOfSubscriptions
+ * @typedef {import('src/coreTest/styleManagement/Stylesheet.js')} Stylesheet
  * @typedef {import('src/coreTest/TemplateFactory.js').ComponentTemplate} ComponentTemplate
  * @typedef {import('src/coreTest/TemplateFactory.js').ViewTemplate} ViewTemplate
  * @typedef {import('src/coreTest/TemplateFactory.js').AbstractPropArray} AbstractPropArray
@@ -11,8 +11,10 @@
  * @typedef {import('src/coreTest/TemplateFactory.js').EventSubscriptionArray} EventSubscriptionArray
  * @typedef {import('src/coreTest/CoreTypes.js').ComponentView} ComponentView
  * @typedef {import('src/coreTest/CoreTypes.js').RootComponentView} RootComponentView
+ * @typedef {import('src/coreTest/CoreTypes.js').Stream} Stream
  * @typedef {import('src/coreTest/Component.js').ComponentWithView} ComponentWithView
- * @typedef {import('src/coreTest/Component.js').AbstractComponent} AbstractComponent
+ * @typedef {import('src/coreTest/Imperative.js').Imperative} Imperative
+ * @typedef {import('src/coreTest/StreamCtxProvider')} StreamCtxProvider;
 */
 
 
@@ -63,12 +65,16 @@ module.exports = {
 	subscribeOnSelf : new Map(),
 	/** @type {Map<string, ComponentTemplate>} */
 	componentTemplate : new Map(),
-	/** @type {Map<string, StylesheetWrapper>} */
+	/** @type {Map<string, Stylesheet>} */
 	sWrapper : new Map(),
 	/** @type {Map<string, ComponentWithView>} */
 	component : new Map(),
 	/** @type {(ComponentView|RootComponentView)[]} */
 	views : [],
+	/** @type {Map<string, Map<string, Stream>>} */
+	streams = new Map();
+	/** @type {Map<string, Map<string, Imperative>>} */
+	imperatives : new Map();
 	/** @type {Map<string, HTMLElement>} */
 	node : new Map(),
 	/** @type {Map<string, DOMRect>} */

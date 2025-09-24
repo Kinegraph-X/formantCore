@@ -1,9 +1,16 @@
 /**
  * @file TemplateFactory
  */
+/**
+ * @typedef {import('src/coreTest/ReactiveDataset').ReactiveDatasetItem} ReactiveDatasetItem
+ * @typedef {import('src/coreTest/EffectCtx')} EffectCtx
+ * @typedef {import('src/coreTest/styleManagement/Stylesheet')} Stylesheet
+ * @typedef {import('src/coreTest/CoreTypes').EventEmitter<unknown>} EventEmitter
+ */
 const {Logger, ComponentError} = require('src/coreTest/Error&Log');
 const {templateUIDGenerator, viewUIDGenerator, listUIDGenerator} = require('src/coreTest/UIDGenerator');
-
+const registries = require('src/coreTest/Registries');
+const {Imperative} = require('src/coreTest/Imperative'); 
 
 
 
@@ -101,11 +108,9 @@ class AbstractPropArray extends Array {
  * @property {boolean} [cbOnly]		// backwards compatibility
  * @property {string} from
  * @property {string} [to]
- * property {HTMLElement|Stream} [obj]
  * @property {function} [filter]
  * @property {function} [map]
- * @property {function} [effect]
- * property {function} [inverseTransform]
+ * @property {((ctx: EffectCtx) => {})|null} [effect]
  */
 
 class ReactivityQuery {
@@ -121,10 +126,8 @@ class ReactivityQuery {
 	filter = null;
 	/** @type {function|null} */
 	map = null;
-	/** @type {function|null} */
+	/** @type {((ctx: EffectCtx) => {})|null} */
 	effect = null;
-	// /** @type {function|null} */
-	// inverseTransform = null;
 	/** @type {string} @readonly */
 	objectType = 'ReactivityQuery';
 	
@@ -143,7 +146,7 @@ class ReactivityQuery {
 		/** @readonly */ this.to = obj.to || null;
 		/** @readonly */ this.filter = obj.filter || null;
 		/** @readonly */ this.map = obj.map || null;
-		/** @readonly */ this.effect = obj.effect || null;
+		/**           */ this.effect = obj.effect || null;
 	}
 }
 
@@ -186,8 +189,8 @@ class ReactivityQueryArray extends Array {
  */
 
 class EventSubscription {
-	/** @type {string|null} */
-	on = null;
+	/** @type {string} */
+	on;
 	/** @type {function} */
 	subscribe = () => {};
 	/** @type {string} @readonly */
@@ -201,6 +204,7 @@ class EventSubscription {
 	}
 	
 	/**
+	 * @this {EventSubscription}
 	 * @param {EventEmitter} targetComponent
 	 * @param {EventEmitter} requestingComponent
 	 */
@@ -282,23 +286,18 @@ class TaskDefinition {
  * @typedef {Object} ListDefinitonDef
  * @property {Boolean} [reflectOnModel]
  * @property {Boolean} [augmentModel]
- * @property {ComponentTemplateDef[]} each
- * @property {ReactiveDatasetItem[]} item			// and instance of ReactiveDataset.item
+ * @property {ReactiveDatasetItem[]} each
  * @property {ComponentTemplateDef} template
  * @property {Number} [section]
  */
  
  class ListDefinition {
-	/** @type {string} to be overridden by the ctor */
+	/** @type {string} to be defined by the ctor */
 	UID;
 	/** @type {boolean} */
 	reflectOnModel = true;
-	/** @type {boolean} */
-	augmentModel = false;
 	/** @type {ReactiveDatasetItem[]|null} */			// instances of ReactiveDataset.item
 	each = null;
-	/** @type {object|null} */		// an instance of ReactiveDataset.item
-	item = null;
 	/** @type {ComponentTemplate|null} */
 	template = null;
 	/** @type {number|null} */
@@ -307,15 +306,13 @@ class TaskDefinition {
 	objectType = 'ListDefiniton';
 	
 	/**
-	 * @param {ListDefinitonDef} obj
+	 * @param {ListDefinitonDef|null} obj
 	 */
 	constructor(obj) {
 		/** @readonly */ this.UID = listUIDGenerator.newUID();
 		if (obj) {
 			/** @readonly */ this.reflectOnModel = obj.reflectOnModel || true;
-			/** @readonly */ this.augmentModel = obj.augmentModel || false;
 			/** @readonly */ if (obj.each) this.each = obj.each ; // carefull with this reference assigned
-			/** @readonly */ if (obj.item) this.item = obj.item;
 			/** @readonly */ if (obj.template) this.template = new ComponentTemplate(obj.template);
 			/** @readonly */ this.section = obj.section || null;
 		}
@@ -336,12 +333,12 @@ class TaskDefinition {
  * @property {string} nodeName
  * @property {AttributeDef[]} [attributes] 
  * @property {number} [section]
- * @property {StylesheetWrapper} [sWrapper]
- * @property {StylesheetWrapper} [sOverride]
+ * @property {Stylesheet} [sWrapper]
+ * @property {Stylesheet} [sOverride]
  */
 
 class ViewTemplate {
-	/** @type {string} overriden in ctor*/
+	/** @type {string} defined in ctor*/
 	UID;
 	/** @type {string}*/
 	nodeName = 'div';
@@ -351,9 +348,9 @@ class ViewTemplate {
 	attributes = new AbstractPropArray();
 	/** @type {number|null} */
 	section = null;
-	/** @type {StylesheetWrapper|null} */
+	/** @type {Stylesheet|null} */
 	sWrapper = null;
-	/** @type {StylesheetWrapper|null} */
+	/** @type {Stylesheet|null} */
 	sOverride = null;
 	/** @type {string} @readonly */
 	objectType = 'ViewTemplate';
@@ -394,25 +391,22 @@ class ViewTemplate {
  * @typedef {object} ComponentTemplateDef
  * @property {ViewTemplateDef} view
  * @property {string} [type]
- * @property {boolean} [isCompound] 
+ * @property {[string, string][]} [imperatives]
  * @property {PropDef[]} [props]
  * @property {StateDef[]} [states]
- * @property {Command} [command]
+ * property {Command} [command]
  * @property {ReactivityQueryDef[]} [reactOnParent]
  * @property {ReactivityQueryDef[]} [reactOnSelf]
  * @property {EventSubscriptionDef[]} [subscribeOnParent]
  * @property {EventSubscriptionDef[]} [subscribeOnChild]
  * @property {EventSubscriptionDef[]} [subscribeOnSelf]
- * property {KeyboardHotkeys} [keyboardSettings]
- * property {KeyboardListeners} [keyboardEvents]
- * 
  * @property {(ComponentTemplate|ViewTemplate)[]} [members]
  * @property {(ComponentTemplate|ViewTemplate)[]} [subSections]
  * @property {ListDefinitonDef} [list]
  */
 
  class ComponentTemplate {
-	/** @type {string} overriden in ctor*/
+	/** @type {string} defined in ctor*/
 	UID;
 	/** @type {ViewTemplate} */
 	view;
@@ -422,8 +416,8 @@ class ViewTemplate {
 	props = new AbstractPropArray();
 	/** @type {AbstractPropArray} @readonly */
 	states = new AbstractPropArray();
-	/** @type {Command|null} */
-	command = null;
+	// /** @type {Command|null} */
+	// command = null;
 	/** @type {ReactivityQueryArray} @readonly */
 	reactOnParent = new ReactivityQueryArray();
 	/** @type {ReactivityQueryArray} @readonly */
@@ -442,13 +436,26 @@ class ViewTemplate {
 	objectType = 'ComponentTemplate';
 	
 	/**
-	 * @param {ComponentTemplateDef} [obj]
+	 * @param {ComponentTemplateDef|null} [obj]
 	 */
 	constructor(obj) {
 		/** @readonly */ this.UID = templateUIDGenerator.newUID();
 		if (obj) {
 			/** @readonly */ this.view = new ViewTemplate(obj.view);
 			/** @readonly */ this.type = obj.type || null;
+
+			if (Array.isArray(obj.imperatives)) {
+				obj.imperatives.forEach((imperative) => {
+					if (!registries.imperatives.has(this.UID))
+						registries.imperatives.set(this.UID, new Map());
+					// get(UID) can be undefined (tested above)
+					/** @ts-ignore  */
+					(registries.imperatives.get(this.UID)).set(
+						imperative[0],
+						new Imperative(this.UID, imperative[0], imperative[1])
+					);
+				})
+			}
 			
 			if (Array.isArray(obj.props)) {
 				obj.props.forEach(
@@ -556,14 +563,12 @@ class ViewTemplate {
 		return [
 			this.reactOnParent,
 			this.reactOnSelf,
-			this.subscribeOnParent,
 			this.subscribeOnChild,
 			this.subscribeOnSelf
 		];
 	}
 	get propsAreArrayOfEventQueries() {
 		return [
-			this.subscribeOnParent,
 			this.subscribeOnChild,
 			this.subscribeOnSelf
 		];

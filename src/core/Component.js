@@ -19,6 +19,7 @@ const UIDGenerator = require('src/coreTest/UIDGenerator').UIDGenerator;
 
 const {EventEmitter, Stream, RootComponentView, ComponentView} = require('src/coreTest/CoreTypes');
 const TemplateReconcilier = require('src/coreTest/TemplateReconcilier');
+const ViewFactory = require('src/coreTest/ViewFactory');
 // const MemberComponentsFactory = require('src/coreTest/MemberComponentsFactory');
 
 const registries = require('src/coreTest/Registries');
@@ -308,19 +309,23 @@ class BaseComponentWithView extends ComponentWithObservables {
 	_templateUID = '';
 	/** @type {string} */
 	_defaultTemplateUID = '';
+	/** @type {string} */
+	regUID = '';
 	/** @type {unknown} */
 	view;
 
 	/**
 	 * @virtual
-	 * @returns {ComponentTemplate|void}
+	 * @returns {ComponentTemplate}
 	 */
-	static createDefaultDef() {}
+	static createDefaultDef() {return new ComponentTemplate(null);}
 }
 
 class RootComponent extends RootHierarchicalObject {
 	/** @type {string} */
 	static objectType = 'RootComponent';
+	/** @type {string} */
+	regUID = '';
 	/** @type {InstanceType<typeof RootComponentView>} */	// parsing bug, seemingly
 	view = new RootComponentView();
 }
@@ -371,10 +376,10 @@ class ComponentWithView extends BaseComponentWithView {
 		// Debug props: the TemplateReconcilier registers the default template (reconciliated if needed)
 		// We keep track of what's been passed.
 		this._templateUID = cTemplateUID;	// may be null
-		this._defaultTemplateUID = defaultTemplateUID;
+		this._defaultTemplateUID = this.regUID = defaultTemplateUID;
 		this.command = template.command;
 		
-		this.view = new ComponentView(template.view, this.parent.view, this);
+		this.view = ViewFactory.newView(template.view, this.parent.view, this);
 	}
 
 

@@ -104,10 +104,12 @@ GeneratorFor16bitsInt.prototype.newUID = function() {
 	return [++this.nextUID & 0x00FF, (this.nextUID & 0x0000FF00) >> 8] ;
 }
 
-GeneratorFor16bitsInt.prototype.intFromNumber = function(number) {
-	return [number & 0x00FF, (number & 0x0000FF00) >> 8] ;
+/** @param {number} num */
+GeneratorFor16bitsInt.prototype.intFromNumber = function(num) {
+	return [num & 0x00FF, (num & 0x0000FF00) >> 8] ;
 }
 
+/** @param {[number, number]} int16AsArray */
 GeneratorFor16bitsInt.prototype.numberFromInt = function(int16AsArray) {
 	return int16AsArray[0] | (int16AsArray[1] << 8) ;
 }

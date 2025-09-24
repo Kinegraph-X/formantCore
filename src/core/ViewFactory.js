@@ -18,10 +18,10 @@ class ViewFactory {
     /**
 	 * @param {ViewTemplate} vTemplate
 	 * @param {ComponentView|RootComponentView} parentView
-	 * @param {ComponentWithView} parentComponent
+	 * @param {string} regUID
 	 */
-    newView(vTemplate, parentView, parentComponent) {
-        const newView = new ComponentView(vTemplate, parentComponent.view, parentComponent);
+    static newView(vTemplate, parentView, regUID) {
+        const newView = new ComponentView(vTemplate, parentView, regUID);
         registries.views.push(newView);
 
         if (!registries.node.get(vTemplate.UID))
@@ -31,4 +31,4 @@ class ViewFactory {
     }
 }
 
-module.exxports = ViewFactory;
+module.exports = ViewFactory;

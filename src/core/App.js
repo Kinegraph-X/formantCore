@@ -60,7 +60,7 @@ Ignition.prototype.instanciateDOM = function() {
 		views = Registries.viewsRegistry,
 		nodes = Registries.nodesRegistry.cache,
 		attributesCache = Registries.caches.attributes.cache,
-		attributes,
+		attributes, 
 		alreadyCloned = false,
 		cloneMother,
 		effectiveViewAPI,

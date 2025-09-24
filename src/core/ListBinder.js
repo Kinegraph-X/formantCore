@@ -14,14 +14,14 @@ class ListBinder {
     }
     /**
      * @param {ComponentWithView} component 
-     * @param {ReactiveDatasetItem} itemFromStore 
+     * @param {ReactiveDatasetItem} itemFromDataset 
      */
-    bindListItem(component, itemFromStore) {
-        for (var prop in itemFromStore) {
+    bindListItem(component, itemFromDataset) {
+        for (var prop in itemFromDataset) {
             if (!component.streams[prop])
                 continue;
             Object.defineProperty(
-                itemFromStore,
+                itemFromDataset,
                 prop,
                 {
                     get : function() {return this.value}.bind(component.streams[prop]),

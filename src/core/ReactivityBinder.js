@@ -4,34 +4,38 @@
 
 /**
  * @typedef {import('src/coreTest/TemplateFactory').ReactivityQuery} ReactivityQuery 
- * @typedef {import('src/coreTest/CoreTypes').Stream} Stream 
+ * @typedef {import('src/coreTest/TemplateFactory').EventSubscription} EventSubscription 
+ * @typedef {import('src/coreTest/CoreTypes').Stream<unknown>} Stream 
  * @typedef {import('src/coreTest/Component').ComponentWithView} ComponentWithView
  */
 
 const {Logger, ComponentError} = require('src/coreTest/Error&Log');
-const registries = require('src/core/Registries');
+const registries = require('src/coreTest/Registries');
+const EffectCtx = require('src/coreTest/EffectCtx');
 
 class ReactivityBinder {
     constructor() {
         throw new Error("ReactivityBinder is static-only; do not instantiate.");
     }
-
-    bindReactivity() {
-        for (let _templateUID in registries.component) {
-            const component = registries.component.get(_templateUID);
-            bindReactOnParent(component, _templateUID);
-            bindReactOnSelf(component, _templateUID);
-            bindSubscribeOnSelf(component, _templateUID);
-            bindSubscribeOnChild(component, _templateUID);
-        }
+    /**
+     * @param {string} regUID 
+     */
+    bindReactivity(regUID) {
+        const component = registries.component.get(regUID);
+        if (!component)
+            throw new ComponentError(this, 'Component not found in registry. regUID is', regUID);
+        this.bindReactOnParent(component, regUID);
+        this.bindReactOnSelf(component, regUID);
+        this.bindSubscribeOnSelf(component, regUID);
+        this.bindSubscribeOnChild(component, regUID);
     }
     /**
      * @param {ComponentWithView} component 
-     * @param {string} _templateUID 
+     * @param {string} regUID 
      */
-    bindReactOnParent(component, _templateUID) {
-        registries.reactOnParent.get(_templateUID).forEach((reactivityQuery) => {
-            bindReactOnParentStream(component, reactivityQuery);
+    bindReactOnParent(component, regUID) {
+        registries.reactOnParent.get(regUID)?.forEach((reactivityQuery) => {
+            this.bindReactOnParentStream(component, reactivityQuery);
         });
     }
     /**
@@ -39,34 +43,40 @@ class ReactivityBinder {
      * @param {ReactivityQuery} reactivityQuery
      */
     bindReactOnParentStream(component, reactivityQuery) {
-        let stream;
-        if (typeof (stream = component.parent.streams[reactivityQuery.from]) === 'undefined')
-            throw new ComponentError(component, 'Missing stream on parent component.', reactivityQuery.from);
-        if (reactivityQuery.effect) {  
-            stream.subscribe(
-                reactivityQuery.effect.bind(component),
-                stream
+        let parentStream, childStream;
+        const parentRegUID = component.parent.regUID;
+        const regUID = component.regUID;
+        
+        if (typeof (parentStream = registries.streams.get(parentRegUID)?.get(reactivityQuery.from)) === 'undefined')
+                throw new ComponentError(component, 'Missing stream on parent component.', reactivityQuery.from);
+
+        if (reactivityQuery.effect) { 
+            parentStream.subscribe(
+                EffectCtx.getEffectFunction(regUID, reactivityQuery.effect),
+                parentStream
             );
         }
         else {
-            if (typeof (stream = component.streams[reactivityQuery.to]) === 'undefined')
+            if (!reactivityQuery.to)
+                throw new ComponentError(component, 'Neither "effect" nor "to" property on reactOn definition.', reactivityQuery);
+            if (typeof (childStream = registries.streams.get(regUID)?.get(reactivityQuery.to)) === 'undefined')
                 throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.to);
             
-            const newSubscription = stream.subscribe(
+            const newSubscription = parentStream.subscribe(
                 null,
-                component.streams[reactivityQuery.to]
+                childStream
             );
-            newSubscription.createFilter(reactivityQuery.filter, component);
-            newSubscription.createMap(reactivityQuery.map, component);
+            newSubscription.createFilter(reactivityQuery.filter);
+            newSubscription.createMap(reactivityQuery.map);
         }
     }
     /**
      * @param {ComponentWithView} component 
-     * @param {string} _templateUID 
+     * @param {string} regUID 
      */
-    bindReactOnSelf(component, _templateUID) {
-        registries.reactOnParent.get(_templateUID).forEach((reactivityQuery) => {
-            bindReactOnSelfStream(component, reactivityQuery);
+    bindReactOnSelf(component, regUID) {
+        registries.reactOnParent.get(regUID)?.forEach((reactivityQuery) => {
+            this.bindReactOnSelfStream(component, reactivityQuery);
         });
     }
     /**
@@ -75,34 +85,38 @@ class ReactivityBinder {
      */
     bindReactOnSelfStream(component, reactivityQuery) {
         let stream;
-        if (typeof (stream = component.streams[reactivityQuery.from]) === 'undefined')
+        const regUID = component.regUID;
+        if (typeof (stream = registries.streams.get(regUID)?.get(reactivityQuery.from)) === 'undefined')
             throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.from);
+        
         if (reactivityQuery.effect) {  
             stream.subscribe(
-                reactivityQuery.effect.bind(component),
+                EffectCtx.getEffectFunction(regUID, reactivityQuery.effect),
                 stream
             );
         }
         else {
-            if (typeof (stream = component.streams[reactivityQuery.to]) === 'undefined')
+            if (!reactivityQuery.to)
+                throw new ComponentError(component, 'Neither "effect" nor "to" property on reactOn definition.', reactivityQuery);
+            if (typeof (stream = registries.streams.get(regUID)?.get(reactivityQuery.to)) === 'undefined')
                 throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.to);
             
             const newSubscription = stream.subscribe(
                 null,
-                component.streams[reactivityQuery.to]
+                stream
             );
-            newSubscription.createFilter(reactivityQuery.filter, component);
-            newSubscription.createMap(reactivityQuery.map, component);
+            newSubscription.createFilter(reactivityQuery.filter);
+            newSubscription.createMap(reactivityQuery.map);
         }
     }
 
     /**
      * @param {ComponentWithView} component 
-     * @param {string} _templateUID 
+     * @param {string} regUID 
      */
-    bindSubscribeOnSelf(component, _templateUID) {
-        registries.subscribeOnSelf.get(_templateUID).forEach((eventSubscription) => {
-            bindSubscribeOnSelfStream(component, eventSubscription);
+    bindSubscribeOnSelf(component, regUID) {
+        registries.subscribeOnSelf.get(regUID)?.forEach((eventSubscription) => {
+            this.bindSubscribeOnSelfStream(component, eventSubscription);
         });
     }
     /**
@@ -110,18 +124,18 @@ class ReactivityBinder {
      * @param {EventSubscription} eventSubscription
      */
     bindSubscribeOnSelfStream(component, eventSubscription) {
-        if (!Array.isArray(component._eventListeners[eventSubscription.on]))
+        if (!Array.isArray(component.eventHandlers[eventSubscription.on]))
             throw new ComponentError(component, 'Missing event on component.', eventSubscription.on);
         component.addEventListener(eventSubscription.on, eventSubscription.subscribe.bind(component));
     }
 
     /**
      * @param {ComponentWithView} component 
-     * @param {string} _templateUID 
+     * @param {string} regUID 
      */
-    bindSubscribeOnChild(component, _templateUID) {
-        registries.subscribeOnSelf.get(_templateUID).forEach((eventSubscription) => {
-            bindSubscribeOnChildStream(component, eventSubscription);
+    bindSubscribeOnChild(component, regUID) {
+        registries.subscribeOnSelf.get(regUID)?.forEach((eventSubscription) => {
+            this.bindSubscribeOnChildStream(component, eventSubscription);
         });
     }
     /**
@@ -130,7 +144,7 @@ class ReactivityBinder {
      */
     bindSubscribeOnChildStream(component, eventSubscription) {
         component.children.forEach((child) => {
-            if (!Array.isArray(child._eventListeners[eventSubscription.on]))
+            if (!Array.isArray(child.eventHandlers[eventSubscription.on]))
                 throw new ComponentError(child, 'Missing event on component.', eventSubscription.on);
             child.addEventListener(eventSubscription.on, eventSubscription.subscribe.bind(component));
         });

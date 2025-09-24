@@ -1,61 +1,52 @@
 /**
- * @module Renderer
+ * @module Orchestrator
  */
+const registries = require('src/coreTest/Registries');
+const {ComponentTemplate} = require('src/coreTest/TemplateFactory');
+const {ListDefinition} = require('src/coreTest/TemplateFactory');
+const {renderDOM} = require('src/coreTest/ViewsRenderer');
+const ComponentFactory = require('src/coreTest/ComponentFactory');
+const {bindListItem} = require('src/coreTest/ListBinder');
+const {createStreams} = require('src/coreTest/StreamCreator');
+const {bindReactivity} = require('src/coreTest/ReactivityBinder');
 
-/**
- * @typedef {import('src/coreTest/CoreTypes').ComponentView} ComponentView
- */
-const {camelToHyphens} = require('src/coreTest/StringUtilities');
-const {createElement} = require('src/coreTest/ElementFactory');
-const registries = require('src/core/Registries');
-const views = registries.views;
-const nodes = registries.node;
-const attributesCache = registries.attribute;
-
-class Renderer {
+class Orchestrator {
     constructor() {
-        throw new Error("Renderer is static-only; do not instantiate.");
+        throw new Error("Orchestrator is static-only; do not instantiate.");
     }
-
-    static renderDOM() {
-        views.forEach((view, key) => {
-            const node = this.getNode(view);
-            this.setAttributes(view, node);
-            this.setStyle(view);
-            view.parentView.callCurrentViewAPI('getWrappingNode').append(view.callCurrentViewAPI('getMasterNode'));
+    /**
+     * @param {ComponentWithView|RootComponent} parentComponent
+     * @param {ComponentTemplate} cTemplate 
+     */
+    static processTemplate(parentComponent, cTemplate) {
+        ComponentFactory.process(parentComponent, cTemplate);
+        renderDOM();
+        registries.component.forEach((component) => {
+            createStreams(component);
+            bindReactivity(component);
         });
+        registries.component.length = 0;
     }
     /**
-     * @param {ComponentView} view 
+     * @param {ComponentWithView|RootComponent} parentComponent
+     * @param {ListDefinition} listTemplate 
      */
-    static getNode(view) {
-        if (nodes[view._viewUID].cloneMother) {
-            view.callCurrentViewAPI('setMasterNode', nodes[view._defUID].cloneMother.cloneNode(true));
-        }
-        else {
-            nodes[view._viewUID].cloneMother = createElement(view.nodeName, view.isCustomElem, registries.state.get(view._viewUID));
-        }
-        return nodes[view._viewUID].cloneMother;
-    }
-    /**
-     * @param {ComponentView} view
-     * @param {HTMLElement} node
-     */
-    static setAttributes(view, node) {
-        attributesCache[view._templateUID].forEach((tplAttr) => {
-            if (tplAttr.getName().indexOf('aria') === 0)
-					node.setAttribute(camelToHyphens(tplAttr.getName()), tplAttr.getValue());
-            else {
-                if (tplAttr.getName() === 'textContent' && view.callCurrentViewAPI('isShadowHost'))
-                    console.warn('DOM rendering shall fail: textContent on a DOM custom-element shall be appended outside of the shadowRoot. nodeName is ' + view.currentViewAPI.nodeName + ' & _defUID is ' + view._defUID + '. Consider using a reactive prop instead. For example, the SimpleText Component can handle that case.')
-                node[tplAttr.getName()] = tplAttr.getValue();
-            }
+    static processList(parentComponent, listTemplate) {
+        const cTemplate = new ComponentTemplate();
+        listTemplate.each.forEach((dataEntry) => {
+            cTemplate.members.push(listTemplate.template);
         })
-    }
-    /**
-     * @param {ComponentView} view 
-     */
-    static setStyle(view) {
-        // view.callCurrentViewAPI('getWrappingNode').append(view.styleHook.s.getStyleNode());
+        ComponentFactory.process(parentComponent, cTemplate);
+        renderDOM();
+        let listCounter = 0;
+        registries.component.forEach((component) => {
+            createStreams(component);
+            bindReactivity(component);
+            if (component._templateUID === listTemplate.template.UID) {
+                bindListItem(component, listTemplate.each[listCounter]);
+                listCounter++;
+            }
+        });
+        registries.component.length = 0;
     }
 }

@@ -304,7 +304,7 @@ class EventEmitter {
 	/** @type {string} */
 	static objectType = 'EventEmitter';
 	/** @type {Object<string, function[]>} */
-	#_eventHandlers = {};
+	eventHandlers = {};
 	/** @type {Object<string, function[]>} */
 	#_one_eventHandlers = {};
 	/** @type {Object<string, {'id' : number, handler : function}[]>} */
@@ -320,21 +320,18 @@ class EventEmitter {
 	}
 
 	constructor() {
-		this.createEvents();		// (not to be used, defined for backward compat)
 	}
-	
-	createEvents() {}				// virtual (not to be used, defined for backward compat)
 	
 	/**
 	 * @param {string} eventType
 	 */
 	createEvent(eventType) {
-		if (eventType in this.#_eventHandlers) {
+		if (eventType in this.eventHandlers) {
 			console.warn(Object.getPrototypeOf(this).objectType, ': this.createEvent has been called with an existing eventType =>', eventType);
 			return;
 		}
 
-		this.#_eventHandlers[eventType] = [];
+		this.eventHandlers[eventType] = [];
 		this.#_one_eventHandlers[eventType] = [];
 		// identified event handlers are meant to be one-shot events
 		this.#_identified_eventHandlers[eventType] = [];
@@ -345,7 +342,7 @@ class EventEmitter {
 	 * @param {string} eventType
 	 */
 	deleteEvent(eventType) {
-		delete this.#_eventHandlers[eventType];
+		delete this.eventHandlers[eventType];
 		delete this.#_one_eventHandlers[eventType];
 		delete this.#_identified_eventHandlers[eventType];
 	}
@@ -354,7 +351,7 @@ class EventEmitter {
 	 * @param {string} eventType
 	 */
 	hasStdEvent(eventType) {
-		return (typeof this.#_eventHandlers[eventType] !== 'undefined');
+		return (typeof this.eventHandlers[eventType] !== 'undefined');
 	}
 	
 	/**
@@ -362,13 +359,13 @@ class EventEmitter {
 	 * @param {function} handler : the handler to remove (the associated event stays available) 
 	 */
 	removeEventListener(eventType, handler) {
-		if (typeof this.#_eventHandlers[eventType] === 'undefined') {
+		if (typeof this.eventHandlers[eventType] === 'undefined') {
 			console.error(Object.getPrototypeOf(this).objectType, 'event type to remove doesn\'t exist.', eventType);
 			return;
 		}
-		for(var i = 0, l = this.#_eventHandlers[eventType].length; i < l; i++) {
-			if (this.#_eventHandlers[eventType][i] === handler) {
-				this.#_eventHandlers[eventType].splice(i, 1);
+		for(var i = 0, l = this.eventHandlers[eventType].length; i < l; i++) {
+			if (this.eventHandlers[eventType][i] === handler) {
+				this.eventHandlers[eventType].splice(i, 1);
 			}
 		}
 		for(var i = 0, l = this.#_one_eventHandlers[eventType].length; i < l; i++) {
@@ -389,11 +386,11 @@ class EventEmitter {
 	 * @param {function} handler : the handler to add 
 	 */
 	addEventListener(eventType, handler) {
-		if (typeof this.#_eventHandlers[eventType] === 'undefined') {
+		if (typeof this.eventHandlers[eventType] === 'undefined') {
 			console.error(Object.getPrototypeOf(this).objectType, 'event type to add doesn\'t exist.', eventType);
 			return;
 		}
-		this.#_eventHandlers[eventType].push(handler);
+		this.eventHandlers[eventType].push(handler);
 	}
 	
 	/**
@@ -402,11 +399,11 @@ class EventEmitter {
 	 * @param {number} index : where to add
 	 */
 	addEventListenerAt(eventType, handler, index) {
-		if (typeof this.#_eventHandlers[eventType] === 'undefined') {
+		if (typeof this.eventHandlers[eventType] === 'undefined') {
 			console.error(Object.getPrototypeOf(this).objectType, 'event type to add doesn\'t exist.', eventType);
 			return;
 		}
-		this.#_eventHandlers[eventType].splice(index, 0, handler);
+		this.eventHandlers[eventType].splice(index, 0, handler);
 	}
 	
 	/**
@@ -414,12 +411,12 @@ class EventEmitter {
 	 * @param {number} index : position at which to remove an handler
 	 */
 	removeEventListenerAt(eventType, index) {
-		if (typeof this.#_eventHandlers[eventType] === 'undefined') {
+		if (typeof this.eventHandlers[eventType] === 'undefined') {
 			console.error(Object.getPrototypeOf(this).objectType, 'event type to remove doesn\'t exist.', eventType);
 			return;
 		}
-		if (typeof index === 'number' && index < this.#_eventHandlers[eventType].length) {
-			this.#_eventHandlers[eventType].splice(index, 1);
+		if (typeof index === 'number' && index < this.eventHandlers[eventType].length) {
+			this.eventHandlers[eventType].splice(index, 1);
 		}
 	}
 	
@@ -427,11 +424,11 @@ class EventEmitter {
 	 * @param {string} eventType
 	 */
 	clearEventListeners(eventType) {
-		if (typeof this.#_eventHandlers[eventType] === 'undefined'){
+		if (typeof this.eventHandlers[eventType] === 'undefined'){
 			console.error(Object.getPrototypeOf(this).objectType, 'event type to clear doesn\'t exist.', eventType);
 			return;
 		}
-		this.#_eventHandlers[eventType].length = 0;
+		this.eventHandlers[eventType].length = 0;
 		this.#_one_eventHandlers[eventType].length = 0;
 		this.#_identified_eventHandlers[eventType].length = 0;
 	}
@@ -443,14 +440,14 @@ class EventEmitter {
 	 * @param {number} [eventID]
 	 */ 
 	trigger(eventType, payload, bubble, eventID) {
-		if (!this.#_eventHandlers[eventType] && !this.#_one_eventHandlers[eventType] && !this.#_identified_eventHandlers[eventType]) {
+		if (!this.eventHandlers[eventType] && !this.#_one_eventHandlers[eventType] && !this.#_identified_eventHandlers[eventType]) {
 			console.warn(Object.getPrototypeOf(this).objectType, 'Event : ' + eventType + ' triggered although it doesn\'t exist. Returning...');
 			return;
 		}
 		
-		for(let i = 0, l = this.#_eventHandlers[eventType].length; i < l; i++) {
-			if (typeof this.#_eventHandlers[eventType][i] === 'function')
-				this.#_eventHandlers[eventType][i]({type : eventType, data : payload, bubble : bubble});
+		for(let i = 0, l = this.eventHandlers[eventType].length; i < l; i++) {
+			if (typeof this.eventHandlers[eventType][i] === 'function')
+				this.eventHandlers[eventType][i]({type : eventType, data : payload, bubble : bubble});
 		}
 	
 		for(let i = this.#_one_eventHandlers[eventType].length - 1; i >= 0; i--) {
@@ -580,9 +577,7 @@ class Command {
 
 
 
-/**
- * @template StreamValue
- */
+
 
 /**
  * @property {(arg1: HTMLElementProperty, arg2: StreamValue) => void} setProp
@@ -606,7 +601,9 @@ class Command {
 // };
 
 
-
+/**
+ * @template StreamValue
+ */
 class Stream {
 	/** @type {string} */
 	static objectType ='Stream';
@@ -672,58 +669,58 @@ class Stream {
 		this.#update();
 		this.#_dirty = false;
 	}
-	/**
-	 * reflect method  :
-	 *	triggers the local update loop when the reflectedHost updates
-	 *	AND
-	 *		simply sets a reflection mecanism if the reflectedHost[prop] was a literal
-	 *		OR
-	 *		lazy "sets" the reflectedHost (no infinite recursion, but no change propagation neither on the host) and triggers the given event when the local stream updates
-	 * @param {CustomElementProperty} propName
-	 * @param {HTMLElement} reflectedElement
-	 */ 
-	reflect(propName, reflectedElement) {
-		const desc = Object.getOwnPropertyDescriptor(reflectedElement, propName);
-		const stdDesc = Object.getOwnPropertyDescriptor(Stream.prototype, 'value');
-		const propertyDescriptor = {
-				get : stdDesc.get.bind(this),
-				set : stdDesc.set.bind(this)
-		};
+	// /**
+	//  * reflect method  :
+	//  *	triggers the local update loop when the reflectedHost updates
+	//  *	AND
+	//  *		simply sets a reflection mecanism if the reflectedHost[prop] was a literal
+	//  *		OR
+	//  *		lazy "sets" the reflectedHost (no infinite recursion, but no change propagation neither on the host) and triggers the given event when the local stream updates
+	//  * @param {CustomElementProperty} propName
+	//  * @param {HTMLElement} reflectedElement
+	//  */ 
+	// reflect(propName, reflectedElement) {
+	// 	const desc = Object.getOwnPropertyDescriptor(reflectedElement, propName);
+	// 	const stdDesc = Object.getOwnPropertyDescriptor(Stream.prototype, 'value');
+	// 	const propertyDescriptor = {
+	// 			get : stdDesc.get.bind(this),
+	// 			set : stdDesc.set.bind(this)
+	// 	};
 		
-		if (!desc || (!desc.get && desc.writable))
-			Object.defineProperty(reflectedElement, propName, propertyDescriptor);
+	// 	if (!desc || (!desc.get && desc.writable))
+	// 		Object.defineProperty(reflectedElement, propName, propertyDescriptor);
 		
-		else if (reflectedElement.streams && reflectedElement.streams[propName]) {
-			this._value = reflectedElement.streams[propName].get(); // we need transformed value if lazy
+	// 	else if (reflectedElement.streams && reflectedElement.streams[propName]) {
+	// 		this._value = reflectedElement.streams[propName].get(); // we need transformed value if lazy
 			
-			reflectedElement.streams[propName].subscribe(this);
+	// 		reflectedElement.streams[propName].subscribe(this);
 			
-			return this.subscribe(reflectedElement.streams[propName].set, null, inverseTransform);
-		}
-		return this._value;
-	}
+	// 		return this.subscribe(reflectedElement.streams[propName].set, null, inverseTransform);
+	// 	}
+	// 	return this._value;
+	// }
 	
 	/**
 	 * instanciates and registers a new subscription, and returns it for the caller to define the refinement functions (filter & map)
-	 * @param {function} effect
-	 * @param {Stream} parentStream
+	 * @param {function|null} effect
+	 * @param {Stream<StreamValue>} parentStream
 	 */ 
 	subscribe(effect, parentStream) {
 		return this.addSubscription(effect, parentStream);//.subscribe();
 	}
 	/**
 	 * 
-	 * @param {} handlerOrHost 
-	 * @param {Stream} parentStream 
+	 * @param {function|null} effect 
+	 * @param {Stream<StreamValue>} parentStream 
 	 * @returns {Subscription}
 	 */
-	addSubscription(handlerOrHost, parentStream) {
-		this.subscriptions.push(new Subscription(handlerOrHost, parentStream));
+	addSubscription(effect, parentStream) {
+		this.subscriptions.push(new Subscription(effect, parentStream));
 		return this.subscriptions[this.subscriptions.length - 1];
 	}
 	/**
 	 * 
-	 * @param {Subscription|Stream} subscriptionOrStream 
+	 * @param {Subscription|Stream<StreamValue>} subscriptionOrStream 
 	 */
 	unsubscribe(subscriptionOrStream) {
 		for(let i = this.subscriptions.length - 1; i >= 0; i--) {
@@ -735,12 +732,11 @@ class Stream {
 }
 
 
-
 class StreamToDomInterface {
 	constructor() {
 		throw new Error("ElementFactory is static-only; do not instantiate.");
 	}
-	/** @param {Stream} stream */
+	/** @param {Stream<StreamValue>} stream */
 	static getPropertyDescriptor(stream) {
 		return  {
 			get : () => stream.value,
@@ -763,12 +759,15 @@ class StreamToDomInterface {
  * e.g. : childModules make use of this mecanism when automatically subscribing to streams on their parent :
  * 		this.streams[streamName].subscribe(candidate.hostElem, streamValue);
  */
+/**
+ * @template StreamValue
+ */
 class Subscription {
 	/** @type {string} */
 	static objectType ='Subscription';
 	/** @type {function|null} */
 	effect = null;
-	/** @type {Stream} */
+	/** @type {Stream<StreamValue>} */
 	stream;
 	/** @type {function} */
 	filter = () => {};
@@ -778,7 +777,7 @@ class Subscription {
 	transform = () => {};
 	/**
 	 * @param {function|null} effect 
-	 * @param {Stream} parent 
+	 * @param {Stream<StreamValue>} parent 
 	 */
 	constructor(effect = null, parent) {
 		this.effect = effect;
@@ -787,8 +786,8 @@ class Subscription {
 		this._subscriberType = '';
 	}
 	/**
-	 * @param {(arg: StreamValue) => boolean} filterFunc 
-	 * @returns {Subscription}
+	 * @param {function|null} filterFunc 
+	 * @returns {Subscription<StreamValue>}
 	 */
 	createFilter(filterFunc) {
 		if (!filterFunc)
@@ -800,8 +799,8 @@ class Subscription {
 		return this;
 	}
 	/**
-	 * @param {(arg: StreamValue) => StreamValue} mapFunc 
-	 * @returns {Subscription}
+	 * @param {function|null} mapFunc 
+	 * @returns {Subscription<StreamValue>}
 	 */
 	createMap(mapFunc) {
 		if (!mapFunc)
@@ -842,7 +841,7 @@ class Subscription {
 	 * 
 	 * @param {string} subscriberUID 
 	 * @param {string} subscriberType 
-	 * @returns {Subscription} 
+	 * @returns {Subscription<StreamValue>} 
 	 */
 	unAnonymize(subscriberUID, subscriberType) {
 		this._subscriberUID = subscriberUID;
@@ -1787,17 +1786,17 @@ class ComponentView extends BaseComponentView {
 	/**
 	 * @param {ViewTemplate} vTemplate
 	 * @param {ComponentView|RootComponentView} parentView
-	 * @param {ComponentWithView} parentComponent
+	 * @param {string} parentUID
 	 */
-	constructor(vTemplate, parentView, parentComponent) {
+	constructor(vTemplate, parentView, parentUID) {
 		super(vTemplate);
-		this._templateUID = parentComponent._defaultTemplateUID;
+		this._templateUID = parentUID;
 		
 		if (!(parentView instanceof ComponentView)) {
 			throw new ComponentError(this, 'no parentView given to a componentView : nodeName is', vTemplate);
 		}
 			
-		this._parentComponent = parentComponent;
+		// this._parentComponent = parentComponent;
 		this._parentView = parentView;
 		
 	}
