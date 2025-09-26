@@ -14,19 +14,19 @@ const {Imperative} = require('src/coreTest/Imperative');
 
 
 
-/** @typedef {{[key: string] : undefined|null|string|object}} AbstractPropDef*/
+/** @typedef {{[key: string] : (undefined|null|string|number|boolean)}} AbstractPropDef*/
 
 class AbstractProp {
 	/** @type {string} */
 	#key = '';
 	/** @type {string} */
 	#name = '';
-	/** @type {undefined|null|string|object} */
+	/** @type {undefined|null|string|number|boolean} */
 	#value = null;
 	/** @type {string} */
 	objectType = 'AbstractProp';
 	/**
-	 * @param {{[key: string]: undefined|null|string|object}} obj
+	 * @param {AbstractPropDef} obj
 	 */
 	constructor(obj) {
 		// /** @type {AbstractPropKey} */
@@ -34,19 +34,22 @@ class AbstractProp {
 		/** @readonly */ this.#value = obj[this.#key];
 	}
 	/** 
-	 * @param {{[key: string] : undefined|null|string|object}} obj
+	 * @param {AbstractPropDef} obj
 	 * @returns {string}
 	 * */
-	key(obj) {
+	#_key(obj) {
 		return this.#key;
 	}
-	name() {
+	get name() {
 		return this.#name;
 	}
-	value() {
+	get value() {
 		return this.#value;
 	}
-	/* Legacy */
+	set value(newVal) {
+		this.#value = newVal;
+	}
+
 	/** @param {AbstractPropDef} obj */
 	#getKey(obj) {
 		return Object.keys(obj)[0];

@@ -9,6 +9,7 @@
  * @typedef {import('src/coreTest/TemplateFactory.js').AbstractPropArray} AbstractPropArray
  * @typedef {import('src/coreTest/TemplateFactory.js').ReactivityQueryArray} ReactivityQueryArray
  * @typedef {import('src/coreTest/TemplateFactory.js').EventSubscriptionArray} EventSubscriptionArray
+ * @typedef {import('src/coreTest/CachedNode.js')} CachedNode
  * @typedef {import('src/coreTest/CoreTypes.js').ComponentView} ComponentView
  * @typedef {import('src/coreTest/CoreTypes.js').RootComponentView} RootComponentView
  * @typedef {import('src/coreTest/CoreTypes.js').Stream} Stream
@@ -69,13 +70,13 @@ module.exports = {
 	sWrapper : new Map(),
 	/** @type {Map<string, ComponentWithView>} */
 	component : new Map(),
-	/** @type {(ComponentView|RootComponentView)[]} */
+	/** @type {(ComponentView)[]} */
 	views : [],
 	/** @type {Map<string, Map<string, Stream>>} */
 	streams = new Map();
 	/** @type {Map<string, Map<string, Imperative>>} */
 	imperatives : new Map();
-	/** @type {Map<string, HTMLElement>} */
+	/** @type {Map<string, CachedNode>} */
 	node : new Map(),
 	/** @type {Map<string, DOMRect>} */
 	boundingBox : new Map(),

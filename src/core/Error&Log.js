@@ -14,8 +14,29 @@ function getType(instance) {
 }
 
 class Logger {
+    static debugLevel = 0;
     constructor() {
         throw new Error ('Logger: this is a static class. The constructor must not be called.');
+    }
+
+    /**
+     * @param {object} instance 
+     * @param {string} message 
+     * @param  {...unknown} context 
+     */
+    static debug(instance, message, ...context) {
+        if (this.debugLevel > 0)
+            console.log(getType(instance), message, ...context);
+    }
+
+    /**
+     * @param {object} instance 
+     * @param {string} message 
+     * @param  {...unknown} context 
+     */
+    static debugWarn(instance, message, ...context) {
+        if (this.debugLevel > 0)
+            console.warn(getType(instance), message, ...context);
     }
 
     /**

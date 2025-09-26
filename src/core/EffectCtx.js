@@ -3,54 +3,57 @@
  */
 /**
  * @typedef {import('src/coreTest/CoreTypes.js').ComponentView} ComponentView
- * @typedef {import('src/coreTest/CoreTypes.js').Stream} Stream
+ * @typedef {import('src/coreTest/CoreTypes.js').Stream<unknown>} Stream
  */
 const {Logger, ComponentError} = require('src/coreTest/Error&Log');
 const registries = require('src/coreTest/Registries');
+const createToolingFunction = require('src/coreTest/tooling/toolingFunction');
 
 class EffectCtx {
-    /** @type {ComponentView} */
+    /** @type {() => ComponentView} */
     view;
-    /** @type {ComponentView[]} */
+    /** @type {() => ComponentView[]} */
     subViews;
-    /** @type {ComponentView[]} */
+    /** @type {() => ComponentView[]} */
     memberViews;
-    /** @type {HTMLElement} */
+    // /** @type {() => HTMLElement} */
     element;
-    /** @type {ShadowRoot|null} */
+    /** @type {() => ShadowRoot|null} */
     shadowRoot;
-    /** @type {Map<string, Stream>} */
+    /** @type {() => Map<string, Stream>} */
     streams;
     /**
      * @param {string} regUID 
      */
     constructor(regUID) {
         const component = registries.component.get(regUID);
+        /* @debug-build */
         if (!component)
             throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
-        this.view = component.view;
-        this.element = component.view.getMasterNode();
-        const shadowRoot = component.view.getWrappingNode();
-        this.shadowRoot = this.element !== shadowRoot ? shadowRoot : null;
-        this.subViews = component.subViews;
-        this.memberViews = component.memberViews;
-        const streamRegistry = registries.streams.get(regUID);
+        this.view = createToolingFunction(regUID, 'view', component.view);
         
+        this.element = createToolingFunction(regUID, 'element', component.view.node);
+        const shadowRoot = component.view.wrappingNode;
+        this.shadowRoot = createToolingFunction(regUID, 'shadowRoot', this.element !== shadowRoot ? shadowRoot : null);
+        this.subViews = createToolingFunction(regUID, 'subViews', component.subViews);
+        this.memberViews = createToolingFunction(regUID, 'memberViews', component.memberViews);
+
+        const streamRegistry = registries.streams.get(regUID);
+        /* @debug-build */
         if (!streamRegistry)
             throw new ComponentError(this, 'Component instance not found in streams registry. UID is', regUID);
-        const props = streamRegistry.get('props');
-        const states = streamRegistry.get('states');
-        this.streams = streamRegistry;
+        this.streams = createToolingFunction(regUID, 'streams', streamRegistry);
     }
     /**
      * 
      * @param {string} regUID 
      * @param {function} originalEffect 
-     * @returns 
+     * @returns {(ctx : EffectCtx, next : any) => void}
      */
     static getEffectFunction(regUID, originalEffect) {
         return originalEffect.bind(null, new EffectCtx(regUID));
     }
+
 }
 
 module.exports = EffectCtx;

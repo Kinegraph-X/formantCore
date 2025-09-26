@@ -5,6 +5,8 @@
 
 /**
  * Node Type for corresponding registry
+ * @param {string} nodeName
+ * @param {boolean} isCustomElem
  */
 const CachedNode = function(nodeName, isCustomElem) {
 	

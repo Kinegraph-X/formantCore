@@ -204,8 +204,10 @@ class ReactiveDataset {
 			return [mBackup, c1];
 		}
 		else if (Array.isArray(replacedBy)) {
-			this.trackedComponent.addChildAt(replacedBy[1], index);
-			this.data.splice(index, 1, replacedBy[0]);
+			/** @ts-ignore undefined already checked */ 
+			this.trackedComponent.addChildAt((replacedBy[1]), index);
+			/** @ts-ignore undefined already checked */ 
+			this.data.splice(index, 1, (replacedBy[0]));
 			this.updateDatasetState();
 			return true;
 		}
@@ -222,7 +224,7 @@ class ReactiveDataset {
 			var module;
 			for (let i = this.trackedComponent.children.length - 1; i >= 0; i--) {
 				module = this.trackedComponent.children[i];
-				const stream = registries.streams.get(module.regUID)?.get('props')?.get(prop);
+				const stream = registries.streams.get(module.regUID)?.get(prop);
 				if (stream && stream.value === value) {
 					this.trackedComponent.removeChildAt(i);
 					this.data.splice(i, 1);
@@ -242,10 +244,11 @@ class ReactiveDataset {
 	 */
 	spliceOnPropInverse(prop, value) {
 		if (this.trackedComponent.children.length) {
-			var module;
+			var instance;
 			for (let i = this.trackedComponent.children.length - 1; i >= 0; i--) {
-				module = this.trackedComponent.children[i];
-				if (module.streams[prop] && module.streams[prop].value !== value) {
+				instance = this.trackedComponent.children[i];
+				const stream = registries.streams.get(instance.regUID)?.get(prop);
+				if (stream && stream.value !== value) {
 					this.trackedComponent.removeChildAt(i);
 					this.data.splice(i, 1);
 				}
@@ -268,7 +271,7 @@ class ReactiveDataset {
 		return JSON.stringify(this.data);
 	}
 	/**
-	 * 
+	 * TODO: where was this method used ?
 	 * @param {string} prop 
 	 * @param {number} idx 
 	 * @param {boolean} invert 
@@ -277,16 +280,19 @@ class ReactiveDataset {
 		/** @type {ReactiveDatasetItem[]} */
 		const tmpThis = [];
 		for (let i = 0, l = this.data.length; i < l; i++) {
+			/** @ts-ignore template not enough precise */
 			tmpThis.push(this.data[i][prop]);
 		}
 		
 		if (invert)
+			/** @ts-ignore sort callback args are typed unknown => can't be resolved as object */
 			tmpThis.sort(this.inverseSortOnObjectProp);
 		else
+			/** @ts-ignore sort callback args are typed unknown => can't be resolved as object */
 			tmpThis.sort(this.sortOnObjectProp); // .bind(null, idx)
 		
 		for (let i = 0, l = this.data.length; i < l; i++) {
-			/** @ts-ignore */
+			/** @ts-ignore template not enough precise */
 			(this.data[i][prop]) = tmpThis[i];
 		}
 	}
@@ -313,8 +319,10 @@ class ReactiveDataset {
 	 * */
 	sortOnObjectProp(prop, a, b) {
 		if (typeof a[prop] === 'string')
+			/** @ts-ignore utility: b[prop] can't be of a different type than a[prop] */
 			return a[prop].charCodeAt(0) - b[prop].charCodeAt(0)
 		else if (typeof a[prop] === 'number')
+			/** @ts-ignore utility: b[prop] can't be of a different type than a[prop] */
 			return a[prop] - b[prop];
 		return 0;
 	}
@@ -325,8 +333,10 @@ class ReactiveDataset {
 	 * */
 	inverseSortOnObjectProp(prop, a, b) {
 		if (typeof a[prop] === 'string')
+			/** @ts-ignore utility: b[prop] can't be of a different type than a[prop] */
 			return b[prop].charCodeAt(0) - a[prop].charCodeAt(0)
 		else if (typeof a[prop] === 'number')
+			/** @ts-ignore utility: b[prop] can't be of a different type than a[prop] */
 			return b[prop] - a[prop];
 
 		return 0;

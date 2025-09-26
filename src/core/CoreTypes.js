@@ -5,7 +5,7 @@
 
 const {Logger, ComponentError} = require('src/coreTest/Error&Log');
 const createRootComponentTemplate = require('src/coreTest/rootComponentTemplate');
-const {ComponentTemplate, ViewTemplate} = require('src/coreTest/TemplateFactory');
+const {ComponentTemplate, ViewTemplate, Prop} = require('src/coreTest/TemplateFactory');
 const registries = require('src/coreTest/Registries');
 
 const UIDGenerator = require('src/coreTest/UIDGenerator');
@@ -634,14 +634,14 @@ class Stream {
 		this.#_hostComponent = component;
 	}
 	
-	get value() {
+	get next() {
 		if (this.#lazy && this.#_dirty) {
 			this.#lazyUpdate();
 		}
 		return this.#_value;
 	}
 	/** @param {StreamValue} val */
-	set value(val) {
+	set next(val) {
 		this.#_value = val;
 		this.#setAndUpdateConditional(val);
 	}
@@ -669,58 +669,27 @@ class Stream {
 		this.#update();
 		this.#_dirty = false;
 	}
-	// /**
-	//  * reflect method  :
-	//  *	triggers the local update loop when the reflectedHost updates
-	//  *	AND
-	//  *		simply sets a reflection mecanism if the reflectedHost[prop] was a literal
-	//  *		OR
-	//  *		lazy "sets" the reflectedHost (no infinite recursion, but no change propagation neither on the host) and triggers the given event when the local stream updates
-	//  * @param {CustomElementProperty} propName
-	//  * @param {HTMLElement} reflectedElement
-	//  */ 
-	// reflect(propName, reflectedElement) {
-	// 	const desc = Object.getOwnPropertyDescriptor(reflectedElement, propName);
-	// 	const stdDesc = Object.getOwnPropertyDescriptor(Stream.prototype, 'value');
-	// 	const propertyDescriptor = {
-	// 			get : stdDesc.get.bind(this),
-	// 			set : stdDesc.set.bind(this)
-	// 	};
-		
-	// 	if (!desc || (!desc.get && desc.writable))
-	// 		Object.defineProperty(reflectedElement, propName, propertyDescriptor);
-		
-	// 	else if (reflectedElement.streams && reflectedElement.streams[propName]) {
-	// 		this._value = reflectedElement.streams[propName].get(); // we need transformed value if lazy
-			
-	// 		reflectedElement.streams[propName].subscribe(this);
-			
-	// 		return this.subscribe(reflectedElement.streams[propName].set, null, inverseTransform);
-	// 	}
-	// 	return this._value;
-	// }
-	
 	/**
 	 * instanciates and registers a new subscription, and returns it for the caller to define the refinement functions (filter & map)
+	 * @param {Stream<StreamValue>|null} downStream
 	 * @param {function|null} effect
-	 * @param {Stream<StreamValue>} parentStream
 	 */ 
-	subscribe(effect, parentStream) {
-		return this.addSubscription(effect, parentStream);//.subscribe();
+	subscribe(downStream = null, effect = null) {
+		return this.addSubscription(downStream, effect);
 	}
 	/**
 	 * 
+	 * @param {Stream<StreamValue>|null} downStream
 	 * @param {function|null} effect 
-	 * @param {Stream<StreamValue>} parentStream 
-	 * @returns {Subscription}
+	 * @returns {Subscription<StreamValue>}
 	 */
-	addSubscription(effect, parentStream) {
-		this.subscriptions.push(new Subscription(effect, parentStream));
+	addSubscription(downStream = null, effect = null) {
+		this.subscriptions.push(new Subscription(downStream, effect));
 		return this.subscriptions[this.subscriptions.length - 1];
 	}
 	/**
 	 * 
-	 * @param {Subscription|Stream<StreamValue>} subscriptionOrStream 
+	 * @param {Subscription<StreamValue>|Stream<StreamValue>} subscriptionOrStream 
 	 */
 	unsubscribe(subscriptionOrStream) {
 		for(let i = this.subscriptions.length - 1; i >= 0; i--) {
@@ -742,8 +711,10 @@ class StreamToDomInterface {
 			get : () => stream.value,
 			/** @param {StreamValue} val*/
 			set : (val) => {
+				/** @type {unknown} bound function */
+				const thisArg = this;
 				if (val !== stream.value)
-					/** @type {HTMLElement} */ (this).setAttribute(stream.name, val);
+					/** @type {HTMLElement} */ (thisArg).setAttribute(stream.name, val);
 				stream.value = val;
 			}
 		}
@@ -755,9 +726,15 @@ class StreamToDomInterface {
 /**
  * A Class to be used by the Streams
  * 
- * returns chainable callback assignment functions on subscription
- * e.g. : childModules make use of this mecanism when automatically subscribing to streams on their parent :
- * 		this.streams[streamName].subscribe(candidate.hostElem, streamValue);
+ * 	example  this.streams[streamName].subscribe(candidate.hostElem, streamValue);
+ * 
+ * Comparison with RxJS:
+ * 
+ * where Subscriber implements the Observer interface and extends the Subscription class
+ * An Observer holds the value over time, through calls to its next() by an Observable.
+ * filter(), map() and transform are applied through the Pipe.
+ * 
+ * Here, a subscription is the pipe AND the application of the next() method of an observable
  */
 /**
  * @template StreamValue
@@ -767,8 +744,8 @@ class Subscription {
 	static objectType ='Subscription';
 	/** @type {function|null} */
 	effect = null;
-	/** @type {Stream<StreamValue>} */
-	stream;
+	/** @type {Stream<StreamValue>|null} */
+	downStream;
 	/** @type {function} */
 	filter = () => {};
 	/** @type {function} */
@@ -776,12 +753,12 @@ class Subscription {
 	/** @type {function} */
 	transform = () => {};
 	/**
+	 * @param {Stream<StreamValue>|null} downStream 
 	 * @param {function|null} effect 
-	 * @param {Stream<StreamValue>} parent 
 	 */
-	constructor(effect = null, parent) {
+	constructor(downStream = null, effect = null) {
 		this.effect = effect;
-		this.stream = parent;
+		this.downStream = downStream;
 		this._subscriberUID = '';
 		this._subscriberType = '';
 	}
@@ -794,7 +771,10 @@ class Subscription {
 			return this;
 			
 		// optimize by breaking the reference : TODO: benchmark
-		var f = new Function('value', 'return (' + filterFunc.toString() + ')(value) === true ? true : false;');
+		const functionBody = filterFunc.toString().match(/\{.*\}\s*$/);
+		if (!functionBody)
+			throw new ComponentError(this, 'probably malformed filter function, unable to parse function body', filterFunc);
+		var f = new Function('value', `${functionBody}`);
 		this.filter = f;
 		return this;
 	}
@@ -807,8 +787,27 @@ class Subscription {
 			return this;
 			
 		// optimize by breaking the reference : TODO: benchmark
-		var f = new Function('value', 'return (' + mapFunc.toString() + ')(value);');
+		const functionBody = mapFunc.toString().match(/\{.*\}\s*$/);
+		if (!functionBody)
+			throw new ComponentError(this, 'probably malformed map function, unable to parse function body', mapFunc);
+		var f = new Function('value', `${functionBody}`);
 		this.map = f;
+		return this;
+	}
+	/**
+	 * @param {function|null} transformFunc 
+	 * @returns {Subscription<StreamValue>}
+	 */
+	createTransform(transformFunc) {
+		if (!transformFunc)
+			return this;
+			
+		// optimize by breaking the reference : TODO: benchmark
+		const functionBody = transformFunc.toString().match(/\{.*\}\s*$/);
+		if (!functionBody)
+			throw new ComponentError(this, 'probably malformed transform function, unable to parse function body', transformFunc);
+		var f = new Function('value', `${functionBody}`);
+		this.transform = f;
 		return this;
 	}
 	/**
@@ -822,20 +821,21 @@ class Subscription {
 				shouldExecute = this.filter(value);
 			if (shouldExecute && this.map)
 				val = this.map(value);
+			if (shouldExecute && this.transform)
+				val = this.transform(value);
 			else if (shouldExecute)
 				val = value;
 			else
 				return;
 			
-			if (this.subscriber.obj !== null && this.subscriber.prop !== null)
-				this.subscriber.obj[this.subscriber.prop] = val;
+			if (this.downStream)
+				this.downStream.next = val;
 			// second case shall only be reached if no prop is given : on a "reflected" subscription by a child component
-			else if (this.subscriber.obj && (desc = Object.getOwnPropertyDescriptor(this.subscriber.obj, 'value')) && typeof desc.set === 'function')
-				this.subscriber.obj.value = val;
-			else if (this.subscriber.obj === null)
-				this.subscriber.cb(); // inverseTransform may be a transparent function (is not when reflecting : we must not reflect the child state "as is" : the parent value may be "mapped requested" by the child)   
+			// else if (this.subscriber.obj && (desc = Object.getOwnPropertyDescriptor(this.subscriber.obj, 'value')) && typeof desc.set === 'function')
+			// 	this.subscriber.obj.value = val;
+			else if (this.effect !== null)
+				this.effect(val);
 		}
-//		this._firstPass = false;
 	}
 	/**
 	 * 
@@ -859,7 +859,7 @@ class Subscription {
 
 
 
-class ColdStream extends Stream {
+class ColdStream extends Stream<StreamValue> {
 	/** @type {string} */
 	static objectType ='ColdStream';
 	/** @type {ColdSubscription[]} subscriptions */
@@ -886,7 +886,7 @@ class ColdStream extends Stream {
 }
 
 
-class ColdSubscription extends Subscription {
+class ColdSubscription extends Subscription<StreamValue> {
 	/** @type {string} */
 	static objectType ='ColdSubscription';
 	/**
@@ -1040,7 +1040,7 @@ class SavableStore {
 	onUpdateCallback;
 	/** @type {string[]} */
 	valueNames = [];
-	/** @type {{[key: string]: string|number|boolean|undefined}[]} */
+	/** @type {Prop[]} */
 	values = [];
 	/**
 	 * @param {function} onUpdateCallback
@@ -1083,13 +1083,13 @@ class SavableStore {
 	update(valueName, value) {
 		// FIXME: we should make use of the valueNames index
 		var valueObj = this.values[this.valueNames.indexOf(valueName)];
-		valueObj[valueName] = value;
+		valueObj.value = value;
 		
-		/** @type {{[key : string] : string|number|boolean|undefined}} */
+		/** @type {{[key : string] : string|number|boolean|object|null|undefined}} */
 		let returnValue = {};
 		this.valueNames.forEach(
 			(name, key) => {
-				returnValue[name] = this.values[key][name];
+				returnValue[name] = this.values[key].value;
 			}
 		);
 		this.onUpdateCallback(JSON.stringify(returnValue));
@@ -1097,7 +1097,7 @@ class SavableStore {
 	
 	empty() {
 		this.valueNames.forEach((valueName, key) => {
-			this.values[key][valueName] = undefined;
+			this.values[key].value = undefined;
 		});
 	}
 	
@@ -1369,21 +1369,20 @@ class WorkerInterface extends EventEmitter {
 
 
 
-
 /**
- * @constructor DOMView
+ * @template {keyof HTMLElementTagNameMap} tagName
  */
 class DOMViewAPI {
 	/** @type {string} */
 	static objectType = 'DOMViewAPI';
 	/** @type {boolean} @default false*/
 	isShadowHost = false;
-	/** @type {string} @default '' */
-	nodeName = '';
-	/** @type {HTMLElement|null} @default null */
-	hostElem = null;
+	/** @type {tagName}*/
+	nodeName;
+	/** @type {HTMLElementTagNameMap[tagName]|HTMLExtendedElement|null} @default null */
+	#masterNode = null;
 	/** @type {ShadowRoot|null} @default null */
-	rootElem = null;
+	#wrappingNode = null;
 	/** @type {'inline'|'block'|'flex'|'none'} */
 	presenceAsAProp = 'flex';
 	/**
@@ -1391,7 +1390,7 @@ class DOMViewAPI {
 	 */
 	constructor(def) {
 		this.isShadowHost = def.isCustomElem;
-		this.nodeName = def.nodeName;
+		this.nodeName = /** @type {tagName}*/ (def.nodeName);
 	}
 	/**
 	 * @param {boolean} bool
@@ -1407,26 +1406,35 @@ class DOMViewAPI {
 		this.hostElem.addEventListener(eventName, handler);
 	}
 	
+	
+
+	get elementMasterNode() {
+		return /** @type {HTMLElementTagNameMap[tagName]} */ (this.#masterNode);
+	}
+	get customElementMasterNode() {
+		return /** @type {HTMLExtendedElement} */ (this.#masterNode);
+	}
+	
+	get masterNode() {
+		if (!this.isShadowHost) {
+			return this.elementMasterNode;
+		}
+		else {
+			return this.customElementMasterNode;
+		}
+	}
 	/**
 	 * @param {HTMLElement} node
 	 */
-	setMasterNode(node) {
-		this.hostElem = node;
-		this.rootElem = node.shadowRoot;
+	set masterNode(node) {
+		this.#masterNode = node;
+		this.#wrappingNode = node.shadowRoot;
 	}
-	
-	/**
-	 * @return {HTMLElement}
-	 */
-	getMasterNode() {
-		return this.hostElem;
-	}
-	
 	/**
 	 * @return {HTMLElement|ShadowRoot}
 	 */
-	getWrappingNode() {
-		return this.rootElem || this.hostElem;
+	get wrappingNode() {
+		return this.#wrappingNode || this.#masterNode;
 	}
 	
 	/**
@@ -1587,12 +1595,14 @@ class DOMViewAPI {
 
 
 
-
+/** @template {keyof HTMLElementTagNameMap} tagName */
 class BaseComponentView {
 	/** @type {string} */
 	static objectType = 'BaseComponentView';
 	/** @type {string} */
-	_viewUID;
+	viewUID;
+	/** @type {string} */
+	regUID = '';
 	/** @type {boolean} */
 	isCustomElem = false;
 	/** @type {number|null} */
@@ -1603,22 +1613,31 @@ class BaseComponentView {
 	styleHook;
 	/** @type {FormantStylesheet} */
 	sOverride;
+	/** @type {HTMLElement|null} */
+	factoryType = null;
+	/** @type {DOMViewAPI<'div'>} */
+	#currentViewAPI;
 	/**
 	 * @param {ViewTemplate} vTemplate
 	 */
 	constructor(vTemplate) {
-		this._viewUID = vTemplate.UID;
+		this.viewUID = vTemplate.UID;
 		this.isCustomElem = vTemplate.isCustomElem;
 		this.section = vTemplate.section;
 		this.sOverride = vTemplate.sOverride;
+
+		let nodeName /** @type {tagName}*/ = vTemplate.nodeName;
+
 		if (!vTemplate.nodeName) {
 			throw new ComponentError(this, 'no nodeName given to a componentView : returning...', vTemplate);
 		}
-		this.currentViewAPI = new DOMViewAPI(vTemplate);
+
+		/** @type {DOMViewAPI<tagName>} */
+		this.#currentViewAPI = new DOMViewAPI(vTemplate);
 		this.styleHook = new SWrapperInViewManipulator(this);
 
-		if (!registries.attribute.get(this._viewUID))
-			registries.attribute.set(this._viewUID, vTemplate.attributes);
+		if (!registries.attribute.get(this.viewUID))
+			registries.attribute.set(this.viewUID, vTemplate.attributes);
 
 		registries.views.push(this);
 	}
@@ -1628,23 +1647,31 @@ class BaseComponentView {
 	 * @param {string} methodName
 	 * @param {...unknown} args
 	 */
-	callCurrentViewAPI(methodName, ...args) {
-		return this.currentViewAPI[methodName](...args);
+	get currentViewAPI() {
+		return this.tooledCurrentViewAPI;
 	}
 	
 	/**
 	 * Shorthand method on the currentViewAPI
 	 */
-	getMasterNode() {
-		return this.callCurrentViewAPI('getMasterNode');
+	get node() {
+		return this.currentViewAPI.masterNode;
 	}
-	
 	/**
 	 * Shorthand method on the currentViewAPI
 	 */
-	getWrappingNode() {
-		return this.callCurrentViewAPI('getWrappingNode');
+	get wrappingNode() {
+		return this.currentViewAPI.wrappingNode;
 	}
+	/**
+	 * Shorthand method on the currentViewAPI
+	 * @param {HTMLElementTagNameMap[tagName]|HTMLExtendedElement} node
+	 */
+	set node(node) {
+		this.#currentViewAPI.masterNode = node;
+	}
+	
+	
 	
 	/**
 	 * These shorthands methods are only useful when we explicitly need
@@ -1765,11 +1792,13 @@ class BaseComponentView {
 class RootComponentView extends BaseComponentView {
 	/** @type {string} */
 	static objectType = 'RootComponentView';
+	;
 	/**
 	 * @param {ViewTemplate} vTemplate
 	 */
 	constructor(vTemplate = createRootComponentTemplate().view) {
 		super(vTemplate);
+		this.regUID = 0;
 	}
 }
 
@@ -1782,7 +1811,7 @@ class ComponentView extends BaseComponentView {
 	/** @type {ComponentWithView} */
 	_parentComponent;
 	/** @type {ComponentView|RootComponentView} */
-	_parentView;
+	parentView;
 	/**
 	 * @param {ViewTemplate} vTemplate
 	 * @param {ComponentView|RootComponentView} parentView
@@ -1790,14 +1819,14 @@ class ComponentView extends BaseComponentView {
 	 */
 	constructor(vTemplate, parentView, parentUID) {
 		super(vTemplate);
-		this._templateUID = parentUID;
+		this._templateUID = this.regUID = parentUID;
 		
 		if (!(parentView instanceof ComponentView)) {
 			throw new ComponentError(this, 'no parentView given to a componentView : nodeName is', vTemplate);
 		}
 			
 		// this._parentComponent = parentComponent;
-		this._parentView = parentView;
+		this.parentView = parentView;
 		
 	}
 }
