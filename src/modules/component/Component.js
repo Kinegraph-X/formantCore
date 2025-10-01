@@ -20,10 +20,10 @@ import { UIDGenerator } from '../UIDGenerator.js';
 import { FrameworkEvent, EventEmitter } from '../reactivity/EventEmitter.js';
 import Stream from '../reactivity/Stream.js';
 import { ComponentView, ComponentRootView as RootComponentView } from '../view/ComponentView.js';
+import viewRef from '../view/viewRef.js';
 import TemplateReconcilier from './TemplateReconcilier.js';
-import ViewFactory from '../view/ViewFactory.js';
-// import ElementDecorator from '../component/elementDecorator_HSD.js';
-import registries from '../Registries.js';
+// import ViewFactory from '../view/ViewFactory.js';
+// import registries from '../Registries.js';
 
 
 
@@ -344,8 +344,8 @@ class ComponentWithView extends BaseComponentWithView {
 	children = [];
 	/** @type {RootComponent|ComponentWithView} */
 	parent;
-	/** @type {InstanceType<ComponentView>} */		// parsing bug, seemingly
-	view;
+	/** @type {InstanceType<ComponentView>|InstanceType<RootComponentView>} RootComponentView is a fallback for this to be always non-null */		// parsing bug, seemingly
+	viewRef = viewRef.create();
 	/** @type {InstanceType<ComponentView>[]} */	// parsing bug, seemingly (TODO: find out why)
 	subViews = [];
 	/** @type {InstanceType<ComponentView>[]} */	// parsing bug, seemingly (TODO: find out why)
@@ -392,8 +392,6 @@ class ComponentWithView extends BaseComponentWithView {
 		// We keep track of what's been passed.
 		this._templateUID = cTemplateUID;	// may be null
 		this._defaultTemplateUID = this.regUID = defaultTemplateUID;
-		
-		this.view = ViewFactory.newView(template.view, this.parent.view, this.regUID);
 	}
 
 

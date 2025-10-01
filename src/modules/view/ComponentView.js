@@ -5,6 +5,7 @@ import config from '../../config';
 import { viewStrategyTrap } from '../proxies/proxyTraps';
 import createRootComponentTemplate from '../templates/rootComponentTemplate';
 import viewStrategy from config.viewStrategyPath;
+import {viewStrategyTrap} from 'proxyTraps.js';
 
 /**
  * @typedef {import('./stdTagNameType').stdTagNameType} stdTagName
@@ -18,7 +19,7 @@ class BaseComponentView {
 	static objectType = 'BaseComponentView';
 	/** @type {string} */
 	viewUID;
-	/** @type {string} */
+	/** @type {string} set by the ViewFactory */
 	regUID = '';
 	/** @type {boolean} */
 	isCustomElem = false;
@@ -42,10 +43,20 @@ class BaseComponentView {
 
 		let nodeName /** @type {tagName}*/ = vTemplate.nodeName;
 
+		/* @debug-build start */
 		this.#currentViewStrategy = new Proxy(
 			new viewStrategy(vTemplate),
-			viewStrategyTrap
+			{
+				get : viewStrategyTrap.get.bind(null, this.regUID, 'viewStrategy'),
+				set : viewStrategyTrap.set
+			}
 		);
+		/* @debug-build end */
+		
+		/* @production-build start 
+		this.#currentViewStrategy = new viewStrategy(vTemplate);
+		@production-build end */
+		
 		// this.styleHook = new SWrapperInViewManipulator(this);
 	}
 	

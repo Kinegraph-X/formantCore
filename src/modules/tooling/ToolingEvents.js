@@ -6,16 +6,44 @@
  * @typedef {import('../view/ComponentView.js').ComponentView} ComponentView
  * @typedef {import('../reactivity/Stream.js').Stream<unknown>} Stream
  * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
+ * @typedef {import('../DOM/Factories.js').HTMLCustomElement} HTMLCustomElement
  */
 import {Logger, ComponentError} from 'src/coreTest/Error&Log';
 import registries from 'src/coreTest/Registries';
 
+function stringify(...values) {
+    let ret = '';
+    values.forEach((value) => {
+        if (value instanceof Function)
+            ret += `${value.toString()}, `;
+        else {
+            try {
+                ret += `${JSON.stringify(value)}, `;
+            }
+            catch (e) {}
+        }
+    });
+    return ret;
+}
+
 class BaseToolingEvent {
     /** @type {string} */
+    static objectType = 'BaseToolingEvent';
+    /** @type {string} */
     regUID;
-    /** @param {string} regUID */
-    constructor(regUID) {
+    /** 
+     * @param {string} regUID
+     * @param {string} prop
+     * @param {any[]} values
+     */
+    constructor(regUID, prop, ...values) {
         this.regUID = regUID;
+        this.prop = prop;
+        this.values = values;
+        this.component = registries.component.get(regUID);
+        /* @debug-build */
+        if (!this.component)
+            throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
     }
     toString() {
         return '';   
@@ -27,22 +55,23 @@ class BaseToolingEvent {
 
 /** @template {keyof HTMLElementTagNameMap} K */
 class ElementAccessEvent extends BaseToolingEvent {
-    /** @type {HTMLElementTagNameMap[K]} */
+    /** @type {string} */
+    static objectType = 'BaseToolingEvent';
+    /** @type {HTMLElementTagNameMap[K]|HTMLCustomElement} */
     element;
     /** @type {ComponentWithView} */
     component;
-    /** @param {string} regUID */
-    constructor(regUID) {
-        super(regUID);
-        const component = registries.component.get(regUID);
-        /* @debug-build */
-        if (!component)
-            throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
-        this.element = component.view.node;
-        this.component = component;
+    /** 
+     * @param {string} regUID
+     * @param {string} prop
+     * @param {any[]} values
+     */
+    constructor(regUID, prop, ...values) {
+        super(regUID, prop, ...values);
+        this.element = this.component.viewRef.node;
     }
     toString() {
-        return '';   
+        return `element-${this.regUID}-${this.element.nodeName}-${this.prop}-${stringify(this.values)}`;   
     }
     warning() {
         /* @debug-build */
@@ -50,89 +79,115 @@ class ElementAccessEvent extends BaseToolingEvent {
     }
 }
 
-class ShadowRootAccessEvent extends BaseToolingEvent {
-    /** @type {HTMLElement|ShadowRoot} */
-    shadowRoot;
-    /** @param {string} regUID */
-    constructor(regUID) {
-        super(regUID);
-        const component = registries.component.get(regUID);
-        /* @debug-build */
-        if (!component)
-            throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
-        this.shadowRoot = component.view.wrappingNode;
+// class ShadowRootAccessEvent extends BaseToolingEvent {
+//     /** @type {HTMLElement|ShadowRoot} */
+//     shadowRoot;
+//     /** @param {string} regUID */
+//     constructor(regUID) {
+//         super(regUID);
+//         const component = registries.component.get(regUID);
+//         /* @debug-build */
+//         if (!component)
+//             throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
+//         this.shadowRoot = component.viewRef.wrappingNode;
+//     }
+//     toString() {
+//         return '';   
+//     }
+// }
+
+class ViewStrategyAccessEvent extends BaseToolingEvent {
+    /** @type {string} */
+    static objectType = 'ViewStrategyAccessEvent';
+    /** @type {ComponentView} */
+    view;
+    /** 
+     * @param {string} regUID
+     * @param {string} prop
+     * @param {any[]} values
+     */
+    constructor(regUID, prop, ...values) {
+        super(regUID, prop, ...values);
+        this.view = this.component.viewRef;
     }
     toString() {
-        return '';   
+        return `view-strategy-${this.regUID}-${this.prop}-${stringify(this.values)}`;   
     }
 }
 
 class ViewAccessEvent extends BaseToolingEvent {
+    /** @type {string} */
+    static objectType = 'ViewAccessEvent';
     /** @type {ComponentView} */
     view;
-    /** @param {string} regUID */
-    constructor(regUID) {
-        super(regUID);
-        const component = registries.component.get(regUID);
-        /* @debug-build */
-        if (!component)
-            throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
-        this.view = component.view;
+    /** 
+     * @param {string} regUID
+     * @param {string} prop
+     * @param {any[]} values
+     */
+    constructor(regUID, prop, ...values) {
+        super(regUID, prop, ...values);
+        this.view = this.component.viewRef;
     }
     toString() {
-        return '';   
+        return `view-${this.regUID}-${this.prop}-${stringify(this.values)}`;   
     }
 }
 
 class SubViewsAccessEvent extends BaseToolingEvent {
+    /** @type {string} */
+    static objectType = 'SubViewsAccessEvent';
     /** @type {ComponentView[]} */
     subViews;
-    /** @param {string} regUID */
-    constructor(regUID) {
-        super(regUID);
-        const component = registries.component.get(regUID);
-        /* @debug-build */
-        if (!component)
-            throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
-        this.subViews = component.subViews;
+    /** 
+     * @param {string} regUID
+     * @param {string} prop
+     * @param {any[]} values
+     */
+    constructor(regUID, prop, ...values) {
+        super(regUID, prop, ...values);
+        this.subViews = this.component.subViews;
     }
     toString() {
-        return '';   
+        return `subView-${this.regUID}-${this.prop}`;   
     }
 }
 
 class MemberViewsAccessEvent extends BaseToolingEvent {
+    /** @type {string} */
+    static objectType = 'MemberViewsAccessEvent';
     /** @type {ComponentView[]} */
     memberViews;
-    /** @param {string} regUID */
-    constructor(regUID) {
-        super(regUID);
-        const component = registries.component.get(regUID);
-        /* @debug-build */
-        if (!component)
-            throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
-        this.memberViews = component.memberViews;
+    /** 
+     * @param {string} regUID
+     * @param {string} prop
+     * @param {any[]} values
+     */
+    constructor(regUID, prop, ...values) {
+        super(regUID, prop, ...values);
+        this.memberViews = this.component.memberViews;
     }
     toString() {
-        return '';   
+        return `memberView-${this.regUID}-${this.prop}`;   
     }
 }
 
-class StreamsAccessEvent extends BaseToolingEvent {
-    /** @type {Map<string, Stream>} */
-    streams;
-    /** @param {string} regUID */
-    constructor(regUID) {
-        super(regUID);
-        const component = registries.component.get(regUID);
-        const streamRegistry = registries.streams.get(regUID);
-        /* @debug-build */
-        if (!streamRegistry)
-            throw new ComponentError(this, 'Component instance not found in streams registry. UID is', regUID);
-        this.streams = streamRegistry;
+class StreamAccessEvent extends BaseToolingEvent {
+    /** @type {string} */
+    static objectType = 'StreamAccessEvent';
+    /** @type {Stream} */
+    stream;
+    /** 
+     * @param {string} regUID
+     * @param {string} prop
+     * @param {any[]} values
+     */
+    constructor(regUID, prop, ...values) {
+        super(regUID, prop, ...values);
+        this.stream = streamRegistry[prop];
     }
     toString() {
-        return '';   
+        return `stream-${this.regUID}-${this.prop}-${stringify(this.values)}`;   
     }
 }
 
@@ -140,7 +195,8 @@ export default {
     element : ElementAccessEvent,
     shadowRoot : ShadowRootAccessEvent,
     view : ViewAccessEvent,
+    viewStrategy : ViewStrategyAccessEvent,
     subViews : SubViewsAccessEvent,
     memberViews : MemberViewsAccessEvent,
-    streams : StreamsAccessEvent,
+    streams : StreamAccessEvent,
 }

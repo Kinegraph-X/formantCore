@@ -6,11 +6,8 @@
 import ComponentError from '../error/Error.js';
 import { ComponentTemplate, ViewTemplate } from '../template/TemplateFactory.js';
 import ViewFactory from '../view/ViewFactory.js';
-import registries from '../Registries.js';
-import { RootComponent, ComponentWithView } from './Component.js';
-/** @ts-ignore Virtual modules can't be statically resolved */
-import {componentTypes} from 'virtual:auto-import.js'
-const knownTypes = Object.assign(componentTypes, {RootComponent, ComponentWithView });
+import {newComp} from './ComponentFactory.js'
+
 
 class ComponentFactory {
     /** @type {ComponentWithView[]} */
@@ -42,27 +39,19 @@ class ComponentFactory {
      * @param {ComponentWithView} parentComponent
      * */
 	static handleSubSections(subSections, parentComponent) {
-        let newComponent;
+        let newComp;
 		subSections.forEach((subSection) => {
             if (subSection.constructor !== this.firstSubSectionType)
                 throw new ComponentError(parentComponent, 'Mixed subSection types is forbidden: please define subSections as being all ComponentTemplate or ViewTemplate', subSection);
 			if (subSection instanceof ComponentTemplate) {
-				if (subSection.type) {
-                    if (subSection.type in knownTypes)
-                        this.subComponents.push((newComponent = new knownTypes[subSection.type](parentComponent, subSection)));
-                    else
-                        new ComponentError(parentComponent, 'Unknown component type declared as subSection:', subSection.type);
-                }
-                else {
-                    this.subComponents.push((newComponent = new ComponentWithView(parentComponent, subSection)));
-                }
+                this.subComponents.push((newComp = newComponent(subSection, parentComponent)));
+                
                 if (subSection.subSections.length || subSection.members.length) {
                     throw new ComponentError(parentComponent, 'Multi-level subSections are forbidden: please constrain your component template to only one view', subSection);
                 }
-		        registries.component.set(newComponent.regUID, newComponent);
 			}
             else {
-                parentComponent.subViews.push(ViewFactory.newView(member, targetView, parentComponent.regUID));
+                parentComponent.subViews.push(ViewFactory.newView(subSection, targetView, parentComponent.regUID));
             }
 		})
 	}
@@ -72,23 +61,14 @@ class ComponentFactory {
      * @param {ComponentWithView} parentComponent
      * */
 	static handleMembers(ComponentWithView, members, parentComponent) {
-        let targetComponent, newComponent, targetView;
+        let targetComponent, newComp, targetView;
 		members.forEach((member) => {
             targetView = parentComponent.view, targetComponent = parentComponent;
 			if (member instanceof ComponentTemplate) {
                 if (member.view.section) {
                     targetComponent = this.handleTargetComponentOnparentComponent(member.view.section, parentComponent);
                 }
-				if (member.type) {
-                    if (member.type in knownTypes)
-                        newComponent = new knownTypes[member.type](targetComponent, member);
-                    else
-                        new ComponentError(parentComponent, 'Unknown component type declared as member:', member.type);
-                }
-                else {
-                    newComponent = new ComponentWithView(targetComponent, member);
-                }
-		        registries.component.set(newComponent.regUID, newComponent);
+                newComp = newComponent(member, targetComponent);
                 this.process(targetComponent, member);
 			}
             else {

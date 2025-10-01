@@ -103,7 +103,7 @@ class Renderer {
             return;
         for (const eventType in domListens) {
             if (!component.hasOwnProperty(domListens[eventType]))
-                throw new ComponentError(component, 'A view is listening to a DOM event without a handler being defined on the component. View is ', view, 'Component is ', Component);
+                throw new ComponentError(component, 'A view is listening to a DOM event without a handler being defined on the component. View is ', view, 'Component is ', component);
 
             const handler = EventEmitter.getDOMTriggerFunction(component, component[domListens[eventType]]);
             view.masterNode.addEventListener(eventType, handler);
