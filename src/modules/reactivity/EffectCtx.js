@@ -40,8 +40,8 @@ class EffectCtx {
         if (!component)
             throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
         
-        this.element = getToolingProxy(regUID, 'element', component.view.node);
-        this.view = getToolingProxy(regUID, 'view', component.view);
+        this.element = getToolingProxy(regUID, 'element', component.viewRef.node);
+        this.view = getToolingProxy(regUID, 'view', component.viewRef);
         this.subViews = getToolingProxy(regUID, 'subViews', component.subViews);
         this.memberViews = getToolingProxy(regUID, 'memberViews', component.memberViews);
 
@@ -56,8 +56,8 @@ class EffectCtx {
     /* @production-build start
     constructor(regUID) {
         const component = registries.component.get(regUID);
-        this.element = component.view.node;
-        this.view = component.view;
+        this.element = component.viewRef.node;
+        this.view = component.viewRef;
         this.subViews = component.subViews;
         this.memberViews = component.memberViews;
         this.streams = registries.streams.get(regUID);;
