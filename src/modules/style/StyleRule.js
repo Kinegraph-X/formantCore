@@ -5,13 +5,15 @@
 import Style from './Style.js';
 import AdvancedAttributesList from './SplittedAttributes.js';
 
-
+/**
+ * @typedef {{[key: string]: string}} RawRule
+ */
 
 class StyleRule {
 	/**
  	* @constructor StyleRule
 	* @param {number} ruleIdx  
-	* @param {Style} rawRule
+	* @param {RawRule} rawRule
 	* @returns self
 	*/
 	constructor(ruleIdx, rawRule) {
@@ -45,7 +47,12 @@ class StyleRule {
 		return styleRule;
 	}
 	/**
-	 * @param {Style} rawRule
+	 * extracts non-selector properties from a raw style rule object.
+	 * It is used during the construction of a StyleRule instance 
+	 * to isolate styling attributes from the selector field, 
+	 * preparing them for use in a Style object.
+	 * 
+	 * @param {RawRule} rawRule
 	 * @returns {object}
 	 */
 	getAttributes(rawRule) {
@@ -57,7 +64,7 @@ class StyleRule {
 		return attr;
 	}
 	/**
-	 * @param {Style} rawRule
+	 * @param {RawRule} rawRule
 	 */
 	setAttributes(rawRule) {
 		for (let prop in rawRule) {
@@ -66,13 +73,13 @@ class StyleRule {
 		}
 	}
 	/**
-	 * @returns {object}
+	 * @returns {AdvancedAttributesList}
 	 */
 	cloneAttributes() {
 		return (new AdvancedAttributesList(this.attrIFace.getAllDefinedAttributes())).getAllDefinedAttributes();
 	}
 	/**
-	 * @returns {string}
+	 * Populates the strRule property with the linearized style rule.
 	 */
 	populateStrRule() {
 		this.strRule = this.styleIFace.linearize();
@@ -92,7 +99,7 @@ class StyleRule {
 		this.attrIFace.set(attr, value);
 	}
 	/**
-	 * @param {Style} rawRule
+	 * @param {RawRule} rawRule
 	 */
 	safeMergeAttributes(rawRule) {
 		for (let prop in rawRule) {
@@ -116,19 +123,4 @@ class StyleRule {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-module.exports = StyleRule;
+export default StyleRule;

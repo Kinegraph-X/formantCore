@@ -19,12 +19,10 @@ class ReactivityBinder {
         throw new Error("ReactivityBinder is static-only; do not instantiate.");
     }
     /**
-     * @param {string} regUID 
+     * @param {ComponentWithView} component 
      */
-    static bindReactivity(regUID) {
-        const component = registries.component.get(regUID);
-        if (!component)
-            throw new ComponentError(this, 'Component not found in registry. regUID is', regUID);
+    static bindReactivity(component) {
+        const regUID = component.regUID;
         this.bindReactOnParent(component, regUID);
         this.bindReactOnSelf(component, regUID);
         this.bindSubscribeOnSelf(component, regUID);
@@ -49,7 +47,7 @@ class ReactivityBinder {
         const regUID = component.regUID;
         
         if (typeof (upStream = registries.streams.get(parentRegUID)?.get(reactivityQuery.from)) === 'undefined')
-                throw new ComponentError(component, 'Missing stream on parent component.', reactivityQuery.from);
+            throw new ComponentError(component, 'Missing stream on parent component.', reactivityQuery.from);
 
         if (reactivityQuery.effect) { 
             upStream.subscribe(
@@ -58,8 +56,11 @@ class ReactivityBinder {
             );
         }
         else {
+            /* already tested in ReactivityQuery */
+            /** @debug-build start */
             if (!reactivityQuery.to)
                 throw new ComponentError(component, 'Neither "effect" nor "to" property on reactOn definition.', reactivityQuery);
+            /** @debug-build end */
             if (typeof (downStream = registries.streams.get(regUID)?.get(reactivityQuery.to)) === 'undefined')
                 throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.to);
             
@@ -97,8 +98,11 @@ class ReactivityBinder {
             );
         }
         else {
+            /* already tested in ReactivityQuery */
+            /** @debug-build start */
             if (!reactivityQuery.to)
                 throw new ComponentError(component, 'Neither "effect" nor "to" property on reactOn definition.', reactivityQuery);
+            /** @debug-build end */
             if (typeof (targetStream = registries.streams.get(regUID)?.get(reactivityQuery.to)) === 'undefined')
                 throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.to);
             
@@ -126,7 +130,7 @@ class ReactivityBinder {
      */
     static bindSubscribeOnSelfStream(component, eventSubscription) {
         if (!component[/** @type {keyof ComponentWithView} */ (eventSubscription.on)])
-            throw new ComponentError(component, 'Missing event on component.', eventSubscription.on);
+            throw new ComponentError(component, 'Missing EventEmitter on component.', eventSubscription.on);
         component[/** @type {keyof ComponentWithView} */ (eventSubscription.on)].addEventListener(eventSubscription.subscribe.bind(component));
     }
 
@@ -146,7 +150,7 @@ class ReactivityBinder {
     static bindSubscribeOnDownStream(component, eventSubscription) {
         component.children.forEach((child) => {
             if (!(child[/** @type {keyof ComponentWithView} */ (eventSubscription.on)] instanceof EventEmitter))
-                throw new ComponentError(child, 'Missing event emitter on component.', eventSubscription.on);
+                throw new ComponentError(child, 'Missing EventEmitter on component.', eventSubscription.on);
             
             child[/** @type {keyof ComponentWithView} */ (eventSubscription.on)].addEventListener(eventSubscription.subscribe);
         });

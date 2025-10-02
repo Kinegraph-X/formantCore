@@ -4,7 +4,7 @@
 
 /**
  * @typedef {import('../view/ComponentView.js').ComponentView<string>} ComponentView
- * @typedef {import('../reactivity/Stream.js')<unknown>} Stream
+ * @typedef {import('../reactivity/Stream.js').default<unknown>} Stream
  * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
  * @typedef {import('../DOM/Factories.js').HTMLCustomElement<string>} HTMLCustomElement
  */
@@ -186,11 +186,15 @@ class StreamAccessEvent extends BaseToolingEvent {
         super(regUID, prop, ...values);
         const streamRegistry = registries.streams.get(regUID);
         if (!streamRegistry)
-            throw new Error('Logging error: streams not found in registry');
-        this.stream = streamRegistry.get(prop);
+            throw new Error('Logging error: streams not found in registry for UID: ' + regUID);
+        let stream;
+        if (!(stream = streamRegistry.get(prop)))
+            throw new Error('Logging error: stream not found in registry for UID: ' + regUID + '& name: ' + prop);
+        this.stream = stream;
+
     }
     toString() {
-        return `stream-${this.regUID}-${this.prop}-${stringify(this.values)}`;   
+        return `stream-${this.regUID}-${this.stream.name}-${this.prop}-${stringify(this.values)}`;   
     }
 }
 

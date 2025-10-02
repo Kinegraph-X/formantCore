@@ -34,7 +34,11 @@ class FontSizeBuffer {
 	getWidthOfSpace() {
 		return this._buffer.at(32);
 	}
-
+	/**
+	 * 
+	 * @param {string} str 
+	 * @returns 
+	 */
 	getWidthOfWord(str) {
 		var width = 0;
 		for (var i = 0, l = str.length; i < l; i++) {

@@ -33,7 +33,7 @@ class Renderer {
         renderDOM();
         registries.component.forEach((component) => {
             createStreams(component);
-            bindReactivity(component.regUID);
+            bindReactivity(component);
         });
         registries.component.clear();
     }
@@ -58,7 +58,7 @@ class Renderer {
         let listCounter = 0;
         registries.component.forEach((component) => {
             createStreams(component);
-            bindReactivity(component.regUID);
+            bindReactivity(component);
             if (component._templateUID 
                     /** @ts-ignore : possibly null, checked above */
                     === listTemplate.template.UID) {

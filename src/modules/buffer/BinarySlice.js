@@ -1,32 +1,13 @@
 /**
- * @consructor BinarySlice
+ * @module BinarySlice
  */
 
 
-
-
-
-var BinarySlice = function(start, length) {
-	this.start = start;
-	this.length= length;
+class BinarySlice {
+	constructor(start, length) {
+		this.start = start;
+		this.length= length;
+	}
 }
-BinarySlice.prototype = {};
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-module.exports = BinarySlice;
+export default BinarySlice;

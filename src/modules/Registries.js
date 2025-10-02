@@ -16,6 +16,7 @@
  * @typedef {import('./reactivity/Stream.js').default<any>} Stream
  * @typedef {import('./component/Component.js').ComponentWithView} ComponentWithView
  * @typedef {import('./Imperative.js').Imperative} Imperative
+ * @typedef {import('./style/FontSizeBuffer.js').default} FontSizeBuffer
  * typedef {import('./reactivity/StreamCtxProvider.js').StreamCtxProvider} StreamCtxProvider;
 */
 
@@ -97,6 +98,6 @@ export default {
 	// flexCtx : new Map(),
 	/** @type {Map<string, function>} */
 	layoutCallback : new Map(),
-	// /** @type {Map<string, FontSizeBuffer>} */
-	// fontSizeBuffer : new Map(),
+	/** @type {Map<string, FontSizeBuffer>} */
+	fontSizeBuffer : new Map(),
 };

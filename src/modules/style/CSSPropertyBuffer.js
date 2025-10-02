@@ -5,10 +5,76 @@
 
 import BinarySchemaFactory from '../buffer/BinarySchema.js';
 import parser from '../../third-party/css-parser_forked_normalized.js';
-import {GeneratorFor16bitsInt} from '../UIDGenerator.js'
-
+import {generatorFor16bitsInt} from '../UIDGenerator.js'
+/**
+ * CSSPropertyBuffer is a binary-backed container 
+ * for storing and manipulating individual CSS property values
+ * 
+ * It is used in CSSPropertySetBuffer to store the value of a CSS property.
+ * 
+ * It uses a fixed-size Uint8Array buffer to represent 
+ * CSS values (like 12px, red, bold) as structured binary data, 
+ * enabling fast serialization, comparison, and memory alignment
+ * especially important in layout and rendering systems where 
+ * thousands of style values are processed.
+ * 
+ * String Handling: Stores string representations (e.g., "10px") 
+ * as fixed-length char code arrays (up to 89 chars via stdStrLength)
+ * 
+ * Only supports integers (not floats), 
+ * with a FIXME noting that flexGrow, em, and other float-based values
+ * are currently truncated
+ * 
+ * - Token Types: Uses a lookup table (TokenTypes) to convert parser tokens 
+ * (e.g., IDENT, NUMBER, FUNCTION) into numeric constants for storage
+ * 
+ * - Value Types: Includes types like integer, percentage, float, hash, string
+ * 
+ * - Units: Stores units (e.g., px, em, %) as numeric constants
+ * 
+ * - Initial Value: Tracks whether the property is set to its initial value
+ * 
+ * Used primarily within CSSPropertySetBuffer to manage collections of CSS properties 
+ * It is instantiated both during initialization and runtime style updates
+ * 
+ * *Real Example*: Setting a CSS Property in SplittedAttributes.js
+ * SplittedAttributes.js #L111-119
+ * packedCSSProperty = new CSSPropertyBuffer(null, attrName);
+ * packedCSSProperty.setValue(attributes[attrName]);
+ * packedCSSProperty._buffer.set([0], CSSPropertyBuffer.prototype.bufferSchema.isInitialValue.start);
+ * self.CSSPropertySetBuffer.setPropFromShorthand(attrName, packedCSSProperty);
+ * 
+ * *Real Example*: Retrieving a Property in CSSPropertySetBuffer.getProp
+ * CSSPropertySetBuffer.js #L84-88
+ * var propAsBuffer = new CSSPropertyBuffer(
+ *     this._buffer.slice(posForProp, posForProp + this.itemSize),
+ *     propName
+ * );
+return propAsBuffer;
+ */
 class CSSPropertyBuffer {
 	static objectType = 'CSSPropertyBuffer';
+	static bufferSchema = BinarySchemaFactory.createSchema(
+		'compactedViewOnProperty',
+		[
+			'tokenType',
+			'propertyValue',
+			'propertyType',
+			'repr',
+			'reprLength',
+			'unit',
+			'isInitialValue'
+		],
+		[
+			1,
+			2,
+			1,
+			CSSPropertyBuffer.prototype.stdStrLength,		// defining a tight limit to the size of the representation of a string is obviously a strong opinion: lets keep some neurons on it)
+			1,
+			1,
+			1
+		]
+	);
 	/**
 	 * @param {object} initialLoad 
 	 * @param {string} propName 
@@ -17,30 +83,12 @@ class CSSPropertyBuffer {
 		this.objectType = 'CSSPropertyBuffer';
 		this.propName = propName;
 		this._buffer = new Uint8Array(initialLoad || this.bufferSchema.size);
-
-		//	if (typeof initialLoad === 'undefined' || initialLoad === null
-		//			|| (
-		//				Object.getPrototypeOf(initialLoad) === Uint8Array.prototype
-		//					&& initialLoad[0] === 0
-		//			)
-		//		) {
-		//			var defaultValue = CSSPropertyDescriptors[propName].prototype.initialValue;
-		//			
-		//			if (typeof defaultValue !== 'undefined' && defaultValue !== null) {
-		//				this.setValue(this.parseValue(defaultValue));
-		//			}
-		//	}
 	}
 	/**
 	 * @param {Array} value 
 	 */
 	setValue(value) {
 
-		//	if (/\s/.test(value))
-		//		parsedValue = parser.parseAListOfComponentValues(value);
-		//	else
-		//		parsedValue = [value];
-		//	console.log('setValue', value);
 		// For now, we haven't yet populated the initlaValue for each CSSPropertyDescriptor.
 		// So this function is very frequently called with an empty array
 		if (!value.length)
@@ -55,25 +103,16 @@ class CSSPropertyBuffer {
 			var parsedValue = parser.parseAListOfComponentValues(value.trim());
 			if (!parsedValue.length)
 				return;
-			//		if (Object.getPrototypeOf(parsedValue[0]).tokenType === 'WHITESPACE')
-			//			console.log(parsedValue);
 			tokenType = Object.getPrototypeOf(parsedValue[0]).tokenType.capitalizeFirstChar() + 'Token';
 
 			if (tokenType === 'FunctionToken') {
-				//			console.log('CSS function found');
 				valueAsParsed = this.functionToCanonical(parsedValue[0]);
 			}
 
 			else
-				valueAsParsed = parsedValue[0]; //this.fixValueFromParser(parsedValue[0]);
-
-
-
-			//		if (this.propName === 'backgroundImage')
-			//			console.log('valueAsParsed', parsedValue);
+				valueAsParsed = parsedValue[0];
 		}
 		else {
-			//		concatVal = this.concatenateBackFromParser(parsedValue);
 			concatVal = value.trim();
 			tokenType = 'NonparsedToken';
 
@@ -154,12 +193,12 @@ class CSSPropertyBuffer {
 	populate(tokenType, value) {
 		// the buffer size : 64 bytes buffers shall align well on a 2048KB L2 CPU cache
 		// 16 bits values have to be declared as byte-tuples ([1, 0] would then represent 1, as all CPU's are now little-endian) 
-		// (GeneratorFor16bitsInt, responsible for the UID, shall return an array)
+		// (generatorFor16bitsInt, responsible for the UID, shall return an array)
 
 		var normalizedValue = value; 
 		if (typeof normalizedValue.repr === 'undefined')
 			console.error('normalizedValue', normalizedValue);
-		var strVal = normalizedValue.repr, strLength = strVal.length, strBuf = strVal.getNcharsAsCharCodesArray(this.stdStrLength, 0)[1], valueBuf = GeneratorFor16bitsInt.intFromNumber(normalizedValue.value);
+		var strVal = normalizedValue.repr, strLength = strVal.length, strBuf = strVal.getNcharsAsCharCodesArray(this.stdStrLength, 0)[1], valueBuf = generatorFor16bitsInt.intFromNumber(normalizedValue.value);
 
 		//	console.log('POPULATE', strVal, strBuf, value);
 		// this.TokenTypes[tokenType] is the TokenType from the parser
@@ -401,7 +440,7 @@ class CSSPropertyBuffer {
 	 * @returns {number}
 	 */
 	byteTuppleTo16bits(bytesInt8Array) {
-		return GeneratorFor16bitsInt.numberFromInt(bytesInt8Array);
+		return generatorFor16bitsInt.numberFromInt(bytesInt8Array);
 	}
 }
 
@@ -647,29 +686,6 @@ Object.defineProperty(CSSPropertyBuffer.prototype, 'TokenTypesAsArray', {
 //	unit: "px"
 //}
 
-Object.defineProperty(CSSPropertyBuffer.prototype, 'bufferSchema', {
-	value : BinarySchemaFactory(
-		'compactedViewOnProperty',
-		[
-			'tokenType',
-			'propertyValue',
-			'propertyType',
-			'repr',
-			'reprLength',
-			'unit',
-			'isInitialValue'
-		],
-		[
-			1,
-			2,
-			1,
-			CSSPropertyBuffer.prototype.stdStrLength,		// defining a tight limit to the size of the representation of a string is obviously a strong opinion: lets keep some neurons on it)
-			1,
-			1,
-			1
-		]
-)
-});
 
 
 
