@@ -3,21 +3,24 @@
  */
 
 import ViewStrategyInterface from '../view/ViewStrategyInterface.js';
-import { stdTagName } from '../view/types.js';
 import { HTMLCustomElement } from '../DOM/Factories.js';
  
+/**
+ * @typedef {import('../view/stdTagNameType.js').stdTagNameType} stdTagName
+ * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
+ */
 
 /**
  * @template {string} tagName
  */
-class DOMViewStrategy extends ViewStrategyInterface {
+class DOMViewStrategy {		/* implements ViewStrategyInterface */
 	/** @type {string} */
 	static objectType = 'DOMViewAPI';
 	/** @type {boolean} @default false*/
 	isShadowHost = false;
 	/** @type {stdTagName|tagName}*/
 	nodeName;
-	/** @type {HTMLElementTagNameMap[stdTagName]|HTMLCustomElement|null} @default null */
+	/** @type {HTMLElementTagNameMap[stdTagName]|HTMLCustomElement<tagName>|null} @default null */
 	#masterNode = null;
 	/** @type {ShadowRoot|null} @default null */
 	#wrappingNode = null;
@@ -49,9 +52,9 @@ class DOMViewStrategy extends ViewStrategyInterface {
 	get HTMLElementMasterNode() {
 		return /** @type {HTMLElementTagNameMap[stdTagName]} */ (this.#masterNode);
 	}
-	/** @returns {HTMLCustomElement} */
+	/** @returns {HTMLCustomElement<tagName>} */
 	get customElementMasterNode() {
-		return /** @type {HTMLCustomElement} */ (this.#masterNode);
+		return /** @type {HTMLCustomElement<tagName>} */ (this.#masterNode);
 	}
 	
 	get masterNode() {
@@ -70,11 +73,11 @@ class DOMViewStrategy extends ViewStrategyInterface {
 		this.#wrappingNode = node.shadowRoot;
 	}
 	/**
-	 * @return {HTMLElement|HTMLCustomElement|ShadowRoot}
+	 * @return {HTMLElement|HTMLCustomElement<tagName>|ShadowRoot}
 	 */
 	get wrappingNode() {
 		// masterNode shall be acquired later
-		return this.#wrappingNode || /**@type {HTMLElement|HTMLCustomElement}*/ (this.#masterNode);
+		return this.#wrappingNode || /**@type {HTMLElement|HTMLCustomElement<tagName>}*/ (this.#masterNode);
 	}
 	
 	/**
@@ -88,7 +91,10 @@ class DOMViewStrategy extends ViewStrategyInterface {
 	  * @return {string}
 	  */
 	 getTextInputValue() {
-	 	return this.masterNode.value;
+		if (!this.#isTextInput())
+			throw new Error('Cannot call getTextInputValue on a non input node');
+	 	/** @ts-ignore tested above */
+		return this.masterNode.value;
 	 }
 	
 	/**
@@ -123,6 +129,7 @@ class DOMViewStrategy extends ViewStrategyInterface {
 	  */
 	 setContent(value) {
 	 	if (this.#isTextInput())
+			/** @ts-ignore tested above */
 	 		this.masterNode.value = value;
 	 	else
 	 		this.setNodeContent(value);
@@ -133,6 +140,7 @@ class DOMViewStrategy extends ViewStrategyInterface {
 	  */
 	 getContent() {
 	 	if (this.#isTextInput())
+			/** @ts-ignore tested above */
 	 		return this.masterNode.value;
 	 	else
 	 		return this.getTextContent(); 
@@ -176,41 +184,42 @@ class DOMViewStrategy extends ViewStrategyInterface {
 		this.wrappingNode.innerHTML = '';
 	}
 	
-	 /**
-	  * @param {string[]} contentAsArray
-	  */
-	 getMultilineContent(contentAsArray) {
-	 	return this.getFragmentFromContent(contentAsArray, this.templateNodeName);
-	 }
+	//  /**
+	//   * @param {string[]} contentAsArray
+	//   */
+	//  getMultilineContent(contentAsArray) {
+	//  	return this.getFragmentFromContent(contentAsArray, this.templateNodeName);
+	//  }
 	
-	 /**
-	  * @param {string[]} contentAsArray
-	  * @param {string} templateNodeName
-	  */
-	 getFragmentFromContent(contentAsArray, templateNodeName) {
-	 	const fragment = document.createDocumentFragment();
-	 	contentAsArray.forEach(
-	 		/** @param {HTMLElement|string} val */
-	 		function(val) {
-	 			const elem = document.createElement(templateNodeName);
-	 			// elem.id = 'targetSubViewElem-' + UIDGenerator.newUID();
-	 			if (val instanceof HTMLElement) {
-	 				elem.appendChild(val);
-	 				fragment.appendChild(elem);
-	 				return;
-	 			}
+	//  /**
+	//   * @param {string[]} contentAsArray
+	//   * @param {string} templateNodeName
+	//   */
+	//  getFragmentFromContent(contentAsArray, templateNodeName) {
+	//  	const fragment = document.createDocumentFragment();
+	//  	contentAsArray.forEach(
+	//  		/** @param {HTMLElement|string} val */
+	//  		function(val) {
+	//  			const elem = document.createElement(templateNodeName);
+	//  			// elem.id = 'targetSubViewElem-' + UIDGenerator.newUID();
+	//  			if (val instanceof HTMLElement) {
+	//  				elem.appendChild(val);
+	//  				fragment.appendChild(elem);
+	//  				return;
+	//  			}
 				
-	 			elem.innerHTML = val;
-	 			fragment.appendChild(elem);
-	 		}
-	 	);
-	 	return fragment;
-	 }
-	/** @param {string[]} contentAsArray*/
-	setContentFromArray(contentAsArray) {
-	 	this.empty();
-	 	this.wrappingNode.appendChild(this.getMultilineContent(contentAsArray));
-	}
+	//  			elem.innerHTML = val;
+	//  			fragment.appendChild(elem);
+	//  		}
+	//  	);
+	//  	return fragment;
+	//  }
+
+	// /** @param {string[]} contentAsArray*/
+	// setContentFromArray(contentAsArray) {
+	//  	this.empty();
+	//  	this.wrappingNode.appendChild(this.getMultilineContent(contentAsArray));
+	// }
 	
 	/** @param {string} color */
 	updateBGColor(color) {

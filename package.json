@@ -1,0 +1,30 @@
+{
+  "name": "Formant-core",
+  "version": "0.1.0",
+  "description": "An easy, fast, vanilla JS Frontend framework",
+  "main": "main.mjs",
+  "type": "module",
+  "keywords": [],
+  "scripts": {
+    "build": "rollup -c rollup.config.core.mjs",
+    "lint": "eslint .",
+    "test": "vitest"
+  },
+  "author": "Kinegraphx",
+  "license": "MIT",
+  "peerDependencies": {
+    "rollup": "^4.0.0"
+  },
+  "dependencies": {
+	"ulid" : "^3.0.1"
+  },
+  "devDependencies": {
+    "rollup": "^4.0.0",
+    "eslint": "^9.0.0",
+    "vitest": "^1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kinegraph-X/formantCore/tree/rewrite_Core_types"
+  }
+}

@@ -3,14 +3,21 @@
  */
 
 /**
+ * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
+ * @typedef {import('../reactivity/EffectCtx.js')} EffectCtx
+ */
+
+/**
  * @typedef {object} ReactivityQueryDef
  * @property {boolean} [cbOnly]		// backwards compatibility
  * @property {string} from
  * @property {string} [to]
  * @property {function} [filter]
  * @property {function} [map]
- * @property {((ctx: EffectCtx) => {})|null} [effect]
+ * @property {((ctx: EffectCtx) => void)|null} [effect]
  */
+
+import {ComponentError } from '../error/Error.js';
 
 class ReactivityQuery {
 	/** @type {boolean} */
@@ -25,7 +32,7 @@ class ReactivityQuery {
 	filter = null;
 	/** @type {function|null} */
 	map = null;
-	/** @type {((ctx: EffectCtx) => {})|null} */
+	/** @type {((ctx: EffectCtx) => void)|null} */
 	effect = null;
 	/** @type {string} @readonly */
 	objectType = 'ReactivityQuery';
@@ -74,7 +81,7 @@ class ReactivityQueryArray extends Array {
 	}
 }
 
-export default {
+export {
 	ReactivityQuery,
 	ReactOnParent,
 	ReactOnSelf,

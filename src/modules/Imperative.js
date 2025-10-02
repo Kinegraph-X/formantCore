@@ -2,9 +2,9 @@
  * @module Imperative
  */
 
-const {ComponentError} = require('../error/Error');
-const {Stream} = require('../reactivity/Stream');
-const registries = require('../Registries');
+import {ComponentError} from './error/Error';
+import Stream from './reactivity/Stream';
+import registries from './Registries';
 
 class Imperative{
     /** @type {string} */
@@ -13,7 +13,7 @@ class Imperative{
     uuid;
     /** @type {string} */
     streamName;
-    /** @type {InstanceType<Stream>|null} */
+    /** @type {Stream<any>|null} */
     stream = null;
     /**
      * @param {string} uuid 
@@ -33,7 +33,7 @@ class Imperative{
         else 
             stream = this.stream;
         if (!stream || !this.getPayload)
-            throw new ComponentError(this, 'Failed bundling: an Imperative hasn\'t been bound to a stream. Stream name:', this.streamName, 'templateUID', this.templateUID)
+            throw new ComponentError(this, 'Failed bundling: an Imperative hasn\'t been bound to a stream. Stream name:', this.streamName, 'uuid', this.uuid)
         
         stream.value = this.getPayload();
         this.stream = stream;
@@ -55,7 +55,7 @@ class ImperativeLocator {
             const registry = registries.imperatives.get(UID);
             for (const n in registry) {
                 const imperative = registry.get(n);
-                if (name === n && imperative.streamName === streamName)
+                if (name === n && imperative && imperative.streamName === streamName)
                     return imperative;
             }
         }
@@ -63,7 +63,7 @@ class ImperativeLocator {
 }
 
 
-export default {
+export {
     Imperative,
     ImperativeLocator
 }

@@ -112,7 +112,7 @@ class PropArray extends AbstractProp {
 
 
 
-export default { 
+export { 
 	AbstractProp,
 	Attribute,
 	Prop,

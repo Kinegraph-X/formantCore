@@ -9,7 +9,8 @@
  */
 
 
-import { Logger, ComponentError } from '../error/Error&Log.js';
+import {ComponentError } from '../error/Error.js';
+import {Logger} from '../logger/Log.js';
 import StreamToDomInterface from '../reactivity/StreamToDomInterface.js';
 import { tryParseBoolean } from '../nativeTypesUtilities/BooleanUtilities.js';
 

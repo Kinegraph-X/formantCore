@@ -1,20 +1,29 @@
 /**
  * @module ComponentView
  */
-import config from '../../config';
-import { viewStrategyTrap } from '../proxies/proxyTraps';
-import createRootComponentTemplate from '../templates/rootComponentTemplate';
-import viewStrategy from config.viewStrategyPath;
-import {viewStrategyTrap} from 'proxyTraps.js';
+import config from '../config.js';
+const viewStrategy = config.viewStrategyPath;
+
+import {ComponentError } from '../error/Error.js';
+
+import { viewStrategyTrap } from '../proxies/proxyTraps.js';
+import createRootComponentTemplate from '../templates/rootComponentTemplate.js';
 
 /**
+ * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
+ * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  * @typedef {import('./stdTagNameType').stdTagNameType} stdTagName
+ * 
+ * @typedef {import('./ViewStrategyInterface')} ViewStrategyInterface
  */
 
+/**
+ * @typedef {import('../DOM/Factories').HTMLCustomElement<string>} HTMLCustomElement
+ */
 /**
  * @template {stdTagName|string} tagName
  */
-class BaseComponentView {
+class BaseComponentView {	/* implements ViewStrategyInterface */
 	/** @type {string} */
 	static objectType = 'BaseComponentView';
 	/** @type {string} */
@@ -30,7 +39,7 @@ class BaseComponentView {
 	// /** @type {StyleHook} // TODO: styleHook.s refers to the AbstractStylesheet => change that, it's not at all explicit*/
 	/** @type {{ [key: string]: string; }[] | null} */
 	sOverride;
-	/** @type {DOMViewAPI<tagName>} */
+	/** @type {ViewStrategyInterface} */
 	#currentViewStrategy;
 	/**
 	 * @param {ViewTemplate} vTemplate
@@ -60,14 +69,6 @@ class BaseComponentView {
 		// this.styleHook = new SWrapperInViewManipulator(this);
 	}
 	
-	/**
-	 * Main access the effective implementation of the View
-	 * @param {string} methodName
-	 * @param {...unknown} args
-	 */
-	currentViewStrategy(methodName, ...args) {
-		return this.#currentViewStrategy[methodName](...args);
-	}
 	
 	/**
 	 * Shorthand method on the currentViewAPI
@@ -278,7 +279,7 @@ class ComponentSubView extends ComponentView {
 }
 
 
-export default {
+export {
 	RootComponentView,
 	ComponentView
 }

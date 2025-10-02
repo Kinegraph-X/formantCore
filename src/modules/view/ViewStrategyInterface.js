@@ -16,7 +16,7 @@ class ViewStrategyInterface {
 	 * @param {any} tpl
 	 */
 	constructor(tpl) {
-		this.nodeName = /** @type {unknown}*/ (tpl.nodeName);
+		this.nodeName = /** @type {string}*/ (tpl.nodeName);
 	}
 	/**
 	 * @param {boolean} bool
@@ -31,6 +31,7 @@ class ViewStrategyInterface {
 	}
 	
 	get masterNode() {
+		return this.#masterNode;
 	}
 	/**
 	 * @param {any} node
@@ -49,12 +50,14 @@ class ViewStrategyInterface {
 	 * @return {boolean}
 	 */
 	#isTextInput() {
+		return false;
 	}
 	
 	/**
 	 * @return {string}
 	 */
 	getTextInputValue() {
+		return '';
 	}
 	
 	/**
@@ -68,6 +71,7 @@ class ViewStrategyInterface {
 	 * @return {string}
 	 */
 	getTextContent() {
+		return '';
 	}
 	
 	/**
@@ -80,6 +84,7 @@ class ViewStrategyInterface {
 	 * @return {string}
 	 */
 	getContent() {
+		return '';
 	}
 	
 	/**

@@ -2,6 +2,7 @@
  * @module ComponentFactory
  */
 
+import {ComponentError } from '../error/Error.js';
 import registries from '../Registries.js';
 import { RootComponent, ComponentWithView } from './Component.js';
 import ViewFactory from '../view/ViewFactory.js';
@@ -31,7 +32,7 @@ class ComponentFactory {
             newComponent = new ComponentWithView(parentComponent, subSection)
         }
 
-        newComponent.viewRef = ViewFactory.newView(cTemplate.view, parentComponent.view, newComponent.regUID)
+        newComponent.view = ViewFactory.newView(cTemplate.view, parentComponent.view, newComponent.regUID)
         registries.component.set(newComponent.regUID, newComponent);
 
         return newComponent;

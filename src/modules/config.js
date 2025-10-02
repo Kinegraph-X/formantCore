@@ -2,6 +2,8 @@
  * @module config
  */
 
-export default {
-	viewStrategyPath : 'src/modules/DOM/DOMViewStrategy',
+const viewStrategyPath = 'src/modules/DOM/DOMViewStrategy'
+
+export {
+	viewStrategyPath,
 }

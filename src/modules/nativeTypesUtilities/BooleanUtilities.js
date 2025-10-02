@@ -1,7 +1,11 @@
 /**
  * @module BooleanUtilities
  */
-
+/**
+ * @template Val
+ * @param {Val} val 
+ * @returns {boolean|Val}
+ */
 const tryParseBoolean = (val) => {
 	if (typeof val !== 'string')
 		return val;

@@ -115,16 +115,22 @@ GeneratorFor16bitsInt.prototype.numberFromInt = function(int16AsArray) {
 }
 
 
+const styleUIDGenerator = new GeneratorForStyles();
+const defUIDGenerator = new GeneratorForDef();
+const templateUIDGenerator = new GeneratorForTemplates();
+const viewUIDGenerator = new GeneratorForViews();
+const listUIDGenerator = new GeneratorForLists();
+const nodeUIDGenerator = new GeneratorForLayoutNodes();
+const tweenUIDGenerator = GeneratorForTweens;
+const generatorFor16bitsInt = new GeneratorFor16bitsInt();
 
-
-export default {
-	UIDGenerator : new Generator(),
-	styleUIDGenerator : new GeneratorForStyles(),
-	defUIDGenerator : new GeneratorForDef(),
-	templateUIDGenerator : new GeneratorForTemplates(),
-	viewUIDGenerator : new GeneratorForViews(),
-	listUIDGenerator : new GeneratorForLists(),
-	nodeUIDGenerator : new GeneratorForLayoutNodes(),
-	tweenUIDGenerator : GeneratorForTweens,
-	generatorFor16bitsInt : new GeneratorFor16bitsInt()
+export {
+	styleUIDGenerator,
+	defUIDGenerator,
+	templateUIDGenerator,
+	viewUIDGenerator,
+	listUIDGenerator,
+	nodeUIDGenerator,
+	tweenUIDGenerator,
+	generatorFor16bitsInt,
 }

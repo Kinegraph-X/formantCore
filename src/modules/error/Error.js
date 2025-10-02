@@ -1,7 +1,7 @@
 /**
  * @module Error
  */
-
+import {Logger} from '../log/Logger.js'
 
 /**
  * 
@@ -29,4 +29,6 @@ class ComponentError extends Error {
     }
 }
 
-export default ComponentError
+export {
+    ComponentError,
+}

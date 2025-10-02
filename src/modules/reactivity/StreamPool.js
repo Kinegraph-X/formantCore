@@ -2,8 +2,12 @@
  * @module StreamPool
  */
 
+// @ts-nocheck
+// FIXME: the semantic isn't clear, search where it was used
+
 /**
- * @typedef {import('./IndexedStream)} IndexedStream
+ * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
+ * @typedef {import('./IndexedStream.js')} IndexedStream
  */
 
 /**
@@ -13,7 +17,7 @@ class StreamPool {
 	/** @type {string} */
 	static objectType ='StreamPool';
 	/** @type {number} */
-	_key = 0;
+	key = 0;
 	/** @type {ComponentWithView} */
 	_component;
 	/** @type {IndexedStream[]} */
@@ -28,7 +32,7 @@ class StreamPool {
 		return this._streamsArray[0];
 	}
 	/**
-	 * @param {number} idx : the _key of the member Stream
+	 * @param {number} idx : the key of the member Stream
 	 */
 	getStreamAt(idx) {
 		return this._streamsArray[idx];
@@ -40,8 +44,8 @@ class StreamPool {
 	 * @param {IndexedStream} child : an instance of a Stream
 	 */
 	pushStream(child) {
-		child._parent = this;
-		child._key = this._streamsArray.length;
+		child.parent = this;
+		child.key = this._streamsArray.length;
 		this._streamsArray.push(child);
 	}
 	/**
@@ -49,8 +53,8 @@ class StreamPool {
 	 * @param {number} atIndex : the required index to splice at
 	 */
 	addStreamAt(child, atIndex) {
-		child._parent = this;
-		child._key = atIndex;
+		child.parent = this;
+		child.key = atIndex;
 		this._streamsArray.splice(atIndex, 0, child);
 		this.#generateKeys(atIndex);
 	}
@@ -79,11 +83,11 @@ class StreamPool {
 		this._streamsArray.length = 0;
 	}
 	/**
-	 * @param {number} atIndex : the first _key we need to invalidate
+	 * @param {number} atIndex : the first key we need to invalidate
 	 */
 	#generateKeys(atIndex) {
 		for (let i = atIndex || 0, l = this._streamsArray.length; i < l; i++) {
-			this._streamsArray[i]._key = i;
+			this._streamsArray[i].key = i;
 		}
 	}
 }

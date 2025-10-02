@@ -6,6 +6,7 @@
  * @template {keyof HTMLElementTagNameMap|string} tagName
  * @typedef {import('../view/ComponentView.js').ComponentView} ComponentView
  * @typedef {import('../reactivity/Stream.js').Stream<unknown>} Stream
+ * @typedef {import('../tooling/ToolingEvents')} ToolingEvents
  */
 
 import {elementTrap, viewTrap, viewArrayTrap, streamTrap} from 'proxyTraps.js';
@@ -14,7 +15,7 @@ import {elementTrap, viewTrap, viewArrayTrap, streamTrap} from 'proxyTraps.js';
 /** 
  * @template effectCtxVal
  * @param {string} regUID
- * @param {keyof toolingEvents} type
+ * @param {keyof ToolingEvents<any>} type
  * @param {effectCtxVal} value 
  */
 export default (regUID, type, value) => {

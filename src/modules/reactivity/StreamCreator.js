@@ -2,7 +2,6 @@
  * @module StreamCreator
  */
 
-import {ComponentError} from '../error/Error';
 import registries from '../Registries';
 import Stream from './Stream';
 

@@ -3,14 +3,16 @@
  */
 
 /**
- * @typedef {import('../view/ComponentView.js').ComponentView} ComponentView
- * @typedef {import('../reactivity/Stream.js').Stream<unknown>} Stream
+ * @typedef {import('../view/ComponentView.js').ComponentView<string>} ComponentView
+ * @typedef {import('../reactivity/Stream.js')<unknown>} Stream
  * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
- * @typedef {import('../DOM/Factories.js').HTMLCustomElement} HTMLCustomElement
+ * @typedef {import('../DOM/Factories.js').HTMLCustomElement<string>} HTMLCustomElement
  */
-import {Logger, ComponentError} from 'src/coreTest/Error&Log';
-import registries from 'src/coreTest/Registries';
+import {ComponentError } from '../error/Error.js';
+import {Logger} from '../log/Logger.js';
+import registries from '../Registries.js';
 
+/** @param {unknown[]} values */
 function stringify(...values) {
     let ret = '';
     values.forEach((value) => {
@@ -57,10 +59,8 @@ class BaseToolingEvent {
 class ElementAccessEvent extends BaseToolingEvent {
     /** @type {string} */
     static objectType = 'BaseToolingEvent';
-    /** @type {HTMLElementTagNameMap[K]|HTMLCustomElement} */
+    /** @type {HTMLElement} */
     element;
-    /** @type {ComponentWithView} */
-    component;
     /** 
      * @param {string} regUID
      * @param {string} prop
@@ -68,7 +68,7 @@ class ElementAccessEvent extends BaseToolingEvent {
      */
     constructor(regUID, prop, ...values) {
         super(regUID, prop, ...values);
-        this.element = this.component.viewRef.node;
+        this.element = this.component.view.node;
     }
     toString() {
         return `element-${this.regUID}-${this.element.nodeName}-${this.prop}-${stringify(this.values)}`;   
@@ -108,7 +108,7 @@ class ViewStrategyAccessEvent extends BaseToolingEvent {
      */
     constructor(regUID, prop, ...values) {
         super(regUID, prop, ...values);
-        this.view = this.component.viewRef;
+        this.view = this.component.view;
     }
     toString() {
         return `view-strategy-${this.regUID}-${this.prop}-${stringify(this.values)}`;   
@@ -127,7 +127,7 @@ class ViewAccessEvent extends BaseToolingEvent {
      */
     constructor(regUID, prop, ...values) {
         super(regUID, prop, ...values);
-        this.view = this.component.viewRef;
+        this.view = this.component.view;
     }
     toString() {
         return `view-${this.regUID}-${this.prop}-${stringify(this.values)}`;   
@@ -184,19 +184,31 @@ class StreamAccessEvent extends BaseToolingEvent {
      */
     constructor(regUID, prop, ...values) {
         super(regUID, prop, ...values);
-        this.stream = streamRegistry[prop];
+        const streamRegistry = registries.streams.get(regUID);
+        if (!streamRegistry)
+            throw new Error('Logging error: streams not found in registry');
+        this.stream = streamRegistry.get(prop);
     }
     toString() {
         return `stream-${this.regUID}-${this.prop}-${stringify(this.values)}`;   
     }
 }
 
-export default {
-    element : ElementAccessEvent,
-    shadowRoot : ShadowRootAccessEvent,
-    view : ViewAccessEvent,
-    viewStrategy : ViewStrategyAccessEvent,
-    subViews : SubViewsAccessEvent,
-    memberViews : MemberViewsAccessEvent,
-    streams : StreamAccessEvent,
+const element = ElementAccessEvent;
+// const shadowRoot = ShadowRootAccessEvent,
+const view = ViewAccessEvent;
+const viewStrategy = ViewStrategyAccessEvent;
+const subViews = SubViewsAccessEvent;
+const memberViews = MemberViewsAccessEvent;
+const streams = StreamAccessEvent;
+
+export {
+    BaseToolingEvent,
+    element,
+    // shadowRoot,
+    view,
+    viewStrategy,
+    subViews,
+    memberViews,
+    streams,
 }

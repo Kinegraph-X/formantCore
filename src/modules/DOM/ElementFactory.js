@@ -2,8 +2,8 @@
  * @module ElementFactory
  */
 /**
- * @typedef {import('src/coreTest/TemplateFactory').AbstractPropArray} AbstractPropArray
- * @typedef {import('src/coreTest/CoreTypes').Stream<unknown>} Stream
+ * @typedef {import('../template/TemplateFactory').AbstractPropArray} AbstractPropArray
+ * @typedef {import('../reactivity/Stream')<unknown>} Stream
  */
 
 import { HTMLCustomElement, HTMLCustomElementFactory } from './Factories.js';

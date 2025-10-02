@@ -173,7 +173,7 @@ class EventEmitter {
 }
 
 
-export default {
+export {
     FrameworkEvent,
     EventEmitter
 }

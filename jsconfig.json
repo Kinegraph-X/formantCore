@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "checkJs": true,              
+    "maxNodeModuleJsDepth": 2,    
+    "module": "commonjs",         
+    "target": "es2020",           
+    "moduleResolution": "node",
+    "baseUrl": ".",               
+    "paths": {                    
+      "@/*": ["src/*"],
+      "@node_modules/*" : ["../../node_modules/*"]
+    },
+    "strict": true,               
+    "esModuleInterop": true,      
+    "allowSyntheticDefaultImports": true
+  },
+  "exclude": [
+    "node_modules",               
+    "coverage"                    
+  ],
+  "include": [
+    "src/modules/**/*",
+    "src/main.js"
+  ]
+}

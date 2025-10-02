@@ -5,7 +5,7 @@
 /**
  * @typedef {import('../template/TemplateFactory').ReactivityQuery} ReactivityQuery 
  * @typedef {import('../template/TemplateFactory').EventSubscription} EventSubscription 
- * @typedef {import('../reactivity').Stream<unknown>} Stream 
+ * @typedef {import('../reactivity/Stream')<unknown>} Stream 
  * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  */
 
@@ -21,7 +21,7 @@ class ReactivityBinder {
     /**
      * @param {string} regUID 
      */
-    bindReactivity(regUID) {
+    static bindReactivity(regUID) {
         const component = registries.component.get(regUID);
         if (!component)
             throw new ComponentError(this, 'Component not found in registry. regUID is', regUID);
@@ -34,7 +34,7 @@ class ReactivityBinder {
      * @param {ComponentWithView} component 
      * @param {string} regUID 
      */
-    bindReactOnParent(component, regUID) {
+    static bindReactOnParent(component, regUID) {
         registries.reactOnParent.get(regUID)?.forEach((reactivityQuery) => {
             this.bindReactOnUpStream(component, reactivityQuery);
         });
@@ -43,7 +43,7 @@ class ReactivityBinder {
      * @param {ComponentWithView} component
      * @param {ReactivityQuery} reactivityQuery
      */
-    bindReactOnUpStream(component, reactivityQuery) {
+    static bindReactOnUpStream(component, reactivityQuery) {
         let upStream, downStream;
         const parentRegUID = component.parent.regUID;
         const regUID = component.regUID;
@@ -75,7 +75,7 @@ class ReactivityBinder {
      * @param {ComponentWithView} component 
      * @param {string} regUID 
      */
-    bindReactOnSelf(component, regUID) {
+    static bindReactOnSelf(component, regUID) {
         registries.reactOnParent.get(regUID)?.forEach((reactivityQuery) => {
             this.bindReactOnSelfStream(component, reactivityQuery);
         });
@@ -84,7 +84,7 @@ class ReactivityBinder {
      * @param {ComponentWithView} component
      * @param {ReactivityQuery} reactivityQuery
      */
-    bindReactOnSelfStream(component, reactivityQuery) {
+    static bindReactOnSelfStream(component, reactivityQuery) {
         let stream, targetStream;
         const regUID = component.regUID;
         if (typeof (stream = registries.streams.get(regUID)?.get(reactivityQuery.from)) === 'undefined')
@@ -115,7 +115,7 @@ class ReactivityBinder {
      * @param {ComponentWithView} component 
      * @param {string} regUID 
      */
-    bindSubscribeOnSelf(component, regUID) {
+    static bindSubscribeOnSelf(component, regUID) {
         registries.subscribeOnSelf.get(regUID)?.forEach((eventSubscription) => {
             this.bindSubscribeOnSelfStream(component, eventSubscription);
         });
@@ -124,7 +124,7 @@ class ReactivityBinder {
      * @param {ComponentWithView} component
      * @param {EventSubscription} eventSubscription
      */
-    bindSubscribeOnSelfStream(component, eventSubscription) {
+    static bindSubscribeOnSelfStream(component, eventSubscription) {
         if (!component[eventSubscription.on])
             throw new ComponentError(component, 'Missing event on component.', eventSubscription.on);
         component[eventSubscription.on].addEventListener(eventSubscription.subscribe.bind(component));
@@ -134,16 +134,16 @@ class ReactivityBinder {
      * @param {ComponentWithView} component 
      * @param {string} regUID 
      */
-    bindSubscribeOnChild(component, regUID) {
+    static bindSubscribeOnChild(component, regUID) {
         registries.subscribeOnChild.get(regUID)?.forEach((eventSubscription) => {
-            this.bindSubscribeOnDownStream(component.parent, eventSubscription);
+            this.bindSubscribeOnDownStream(/** @type {ComponentWithView} */ (component.parent), eventSubscription);
         });
     }
     /**
      * @param {ComponentWithView} component
      * @param {EventSubscription} eventSubscription
      */
-    bindSubscribeOnDownStream(component, eventSubscription) {
+    static bindSubscribeOnDownStream(component, eventSubscription) {
         component.children.forEach((child) => {
             if (!(child[eventSubscription.on] instanceof EventEmitter))
                 throw new ComponentError(child, 'Missing event emitter on component.', eventSubscription.on);

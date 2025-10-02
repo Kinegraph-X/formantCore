@@ -2,16 +2,21 @@
  * @module MemberComponentsFactory
  */
 
-
-import ComponentError from '../error/Error.js';
+/**
+ * @typedef {import('../component/Component').RootComponent} RootComponent
+ * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../view/ComponentView').ComponentView<string>} ComponentView
+ */
+import {ComponentError} from '../error/Error.js';
 import { ComponentTemplate, ViewTemplate } from '../template/TemplateFactory.js';
 import ViewFactory from '../view/ViewFactory.js';
-import {newComp} from './ComponentFactory.js'
+import ComponentFactory from './ComponentFactory.js'
+const newComponent = ComponentFactory.newComponent;
 
 
-class ComponentFactory {
+class ComponentCreator {
     /** @type {ComponentWithView[]} */
-    subComponents = [];
+    static subComponents = [];
 
     constructor() {
         throw new Error("MemberComponentsFactory is static-only; do not instantiate.");
@@ -19,7 +24,7 @@ class ComponentFactory {
     /**
      * Recursive template processor
      * subSection templates must not have multiple hierarchical levels
-     * (may be views or single-level components, but not mixed)
+     * (may be views or single-level components, but not mixed, so we test that via "this.firstSubSectionType")
      * member templates are handled recursively if needed
      * @param {ComponentWithView|RootComponent} parentComponent
      * @param {ComponentTemplate} cTemplate
@@ -29,9 +34,9 @@ class ComponentFactory {
         this.subComponents.length = 0;
         if (cTemplate.subSections.length) {
             this.firstSubSectionType = cTemplate.subSections[0].constructor;
-            this.handleSubSections(cTemplate.subSections, parentComponent);
+            this.handleSubSections(cTemplate.subSections, /** @type {ComponentWithView} */ (parentComponent));
         }
-        this.handleMembers(cTemplate.members, parentComponent);
+        this.handleMembers(cTemplate.members, /** @type {ComponentWithView} */ (parentComponent));
     }
     
     /** 
@@ -39,10 +44,11 @@ class ComponentFactory {
      * @param {ComponentWithView} parentComponent
      * */
 	static handleSubSections(subSections, parentComponent) {
-        let newComp;
+        let newComp, targetView;
 		subSections.forEach((subSection) => {
             if (subSection.constructor !== this.firstSubSectionType)
                 throw new ComponentError(parentComponent, 'Mixed subSection types is forbidden: please define subSections as being all ComponentTemplate or ViewTemplate', subSection);
+            
 			if (subSection instanceof ComponentTemplate) {
                 this.subComponents.push((newComp = newComponent(subSection, parentComponent)));
                 
@@ -51,7 +57,7 @@ class ComponentFactory {
                 }
 			}
             else {
-                parentComponent.subViews.push(ViewFactory.newView(subSection, targetView, parentComponent.regUID));
+                parentComponent.subViews.push(ViewFactory.newView(subSection, parentComponent.view, parentComponent.regUID));
             }
 		})
 	}
@@ -60,7 +66,7 @@ class ComponentFactory {
      * @param {(ComponentTemplate|ViewTemplate)[]} members
      * @param {ComponentWithView} parentComponent
      * */
-	static handleMembers(ComponentWithView, members, parentComponent) {
+	static handleMembers(members, parentComponent) {
         let targetComponent, newComp, targetView;
 		members.forEach((member) => {
             targetView = parentComponent.view, targetComponent = parentComponent;
@@ -110,4 +116,4 @@ class ComponentFactory {
     }
 }
 
-export default ComponentFactory;
+export default ComponentCreator;

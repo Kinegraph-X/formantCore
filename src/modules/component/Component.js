@@ -161,19 +161,6 @@ class HierarchicalObject extends BaseHierarchicalObject {
 		this.parent = /** @type {HierarchicalObject} */ parent;
 	}
 
-	// /**
-	//  * @virtual
-	//  * @param {HierarchicalObject} child
-	//  * @param {number} atIndex
-	//  */
-	// onAddChild(child, atIndex) {}	// virtual
-	
-	// /**
-	//  * @virtual
-	//  * @param {HierarchicalObject} child
-	//  */
-	// onRemoveChild(child) {} 		// virtual
-	
 	getSelfDepth() {
 		let depth = 0, currentParent = this.parent;
 		while (currentParent) {
@@ -189,20 +176,7 @@ class HierarchicalObject extends BaseHierarchicalObject {
 
 
 
-class ExtensibleObject extends HierarchicalObject {
-	/** @type {string} */
-	static objectType = 'ExtensibleObject';
-	/**
-	 * @param {ExtensibleObject} parent 
-	 */
-	constructor(parent) {
-		super(parent);
-	}
-}
-
-
-
-class AsyncActivableObject extends ExtensibleObject {
+class AsyncActivableObject extends HierarchicalObject {
 	/** @type {string} */
 	static objectType = 'AsyncActivableObject';
 	/** @type {TaskDefinition[]} */
@@ -247,67 +221,9 @@ class AsyncActivableObject extends ExtensibleObject {
 
 
 
-class ComponentWithObservables extends AsyncActivableObject {
-	/**@type {string} */
-	static objectType = 'ComponentWithObservables';
-	/** @type {Subscription[]} */
-	_subscriptions = [];
-	/** @type {{[key : string]: Stream}} */
-	streams = {};
-
-	/**
-	 * @param {AsyncActivableObject} parent
-	 */
-	constructor(parent) {
-		super(parent);
-	}
-	
-	/**
-	 * @param {ReactivityQueryArray} reactOnParent
-	 * @param {String} subscriptionType 
-	 */
-	reactOnParentBinding(reactOnParent, subscriptionType) {
-		const parentComponent = /** @type {ComponentWithObservables} */ (this.parent);
-		let subscribtion;
-		reactOnParent.forEach(
-			(query, key) => {
-				subscribtion = query.subscribeToStream(parentComponent.streams[query.from], this);
-				if (subscribtion)
-					subscribtion.unAnonymize(this._UID, this.getType());
-			}
-		);
-	}
-	
-	/**
-	 * @param {ReactivityQueryArray} reactOnSelf
-	 * @param {String} subscriptionType 
-	 */
-	reactOnSelfBinding(reactOnSelf, subscriptionType) {
-		let subscribtion;
-		reactOnSelf.forEach(
-			(query, key) => {
-				subscribtion = query.subscribeToStream(this.streams[query.from || query.to], this);
-				if (subscribtion)
-					subscribtion.unAnonymize(this._UID, this.getType());
-			}
-		);
-	
-	}
-}
 
 
-
-
-
-
-
-
-
-
-
-
-
-class BaseComponentWithView extends ComponentWithObservables {
+class BaseComponentWithView extends AsyncActivableObject {
 	/** @type {string} */
 	static objectType = 'BaseComponentWithView';
 	/** @type {string|null} */
@@ -316,8 +232,17 @@ class BaseComponentWithView extends ComponentWithObservables {
 	_defaultTemplateUID = '';
 	/** @type {string} */
 	regUID = '';
-	/** @type {unknown} */
-	view;
+	/** @type {unknown} */ 		// parsing bug, seemingly
+	#view;
+	
+	get view() {
+		if (!this.#view) throw new Error();
+		return this.#view;
+	}
+	/** @param {ComponentView} view */
+	set view(view) {
+		this.#view = view;
+	}
 
 	/**
 	 * @virtual
@@ -332,7 +257,11 @@ class RootComponent extends RootHierarchicalObject {
 	/** @type {string} */
 	regUID = '';
 	/** @type {InstanceType<typeof RootComponentView>} */	// parsing bug, seemingly
-	view = new RootComponentView();
+	#view;
+	constructor() {
+		super();
+		this.view = new RootComponentView();
+	}
 }
 
 
@@ -344,12 +273,39 @@ class ComponentWithView extends BaseComponentWithView {
 	children = [];
 	/** @type {RootComponent|ComponentWithView} */
 	parent;
-	/** @type {InstanceType<ComponentView>|InstanceType<RootComponentView>} RootComponentView is a fallback for this to be always non-null */		// parsing bug, seemingly
-	viewRef = viewRef.create();
+	/** @type {InstanceType<ComponentView>} */ 		// parsing bug, seemingly
+	#view;
 	/** @type {InstanceType<ComponentView>[]} */	// parsing bug, seemingly (TODO: find out why)
 	subViews = [];
 	/** @type {InstanceType<ComponentView>[]} */	// parsing bug, seemingly (TODO: find out why)
 	memberViews = [];
+
+	/** 
+	 * Outputs could be declared on the component template, by the user,
+	 * but we chose to mimic the behavior of the Angular compiler
+	 * which reflects @output annotations to the @component object
+	 * @see below
+	 * @see rollup-plugin-formant-annotations
+	*/
+	/** @type {string[]} */
+	static _outputs = [];
+	/**
+	 * @param {ComponentWithView} type
+	 * @param {string} outputName
+	 */
+	static pushOutput = (type, outputName) => {
+		if (!type.hasOwnProperty('outputs'))
+			type._outputs = [];
+		type._outputs.push(outputName);
+		return true;
+	}
+	/*
+	 * @example:
+	 * 	@output output = new EventEmitter<any>('eventName');
+	 * 	will be transformed at build time to
+	 * 	`output = ComponentWithView.pushOutput(${typeName}, ${outputName)} && new EventEmitter<any>();`
+	 */
+	@output update = new EventEmitter<unknown>('update');
 
 	/**
 	 * @param {BaseComponentWithView} parent
@@ -358,7 +314,7 @@ class ComponentWithView extends BaseComponentWithView {
 	constructor(parent, cTemplate) {
 		super(parent);
 		
-		if (!(parent instanceof ComponentWithView && parent.parent))  {
+		if (!(parent instanceof ComponentWithView) || !parent.parent)  {
 			throw new ComponentError(
 				this,
 				'parent isn\'t instance of ComponentWithView or has not parent.',
@@ -367,8 +323,8 @@ class ComponentWithView extends BaseComponentWithView {
 		}
 		this.parent = parent;
 		this.parent.pushChild(this);
-		this.update = new EventEmitter('update');
 		
+		// Reconciliation is the only template manipulation made here (maybe improve)
 		const {template,
 				cTemplateUID,
 				defaultTemplateUID
@@ -378,8 +334,12 @@ class ComponentWithView extends BaseComponentWithView {
 					Object.getPrototypeOf(this).objectType
 				);
 
-		template.outputs.forEach(
-			(output) => {
+		// EventEmitters don't have a propoer trigger function when defining them
+		// (EventEmitter has the ability to bind on DOM events, and the handler gets refs to "regUID" and "key")
+		// Define here the correct trigger function
+		const thisArg = /** @type {unknown} */(this);
+		/** @type {typeof ComponentWithView} */(thisArg)._outputs.forEach(
+			(/**@type{string}*/output) => {
 				const prop = /** @type {keyof this} */ (output);
 				const emitter = this[prop];
 				if (!(emitter instanceof EventEmitter))
@@ -393,8 +353,7 @@ class ComponentWithView extends BaseComponentWithView {
 		this._templateUID = cTemplateUID;	// may be null
 		this._defaultTemplateUID = this.regUID = defaultTemplateUID;
 	}
-
-
+	
 
 	/**
 	 * @param {ComponentWithView} child
@@ -418,7 +377,7 @@ class ComponentWithView extends BaseComponentWithView {
 		}
 		child.view.node.remove();
 		// remove a child
-		// TODO: should call super(), as the ComponentWithView should neither handle streams, nor subscriptions 
+		// TODO: the ComponentWithView should neither handle streams, nor subscriptions 
 		child._subscriptions.forEach(function(subscription) {
 			subscription.unsubscribe();
 		});
@@ -432,19 +391,6 @@ class ComponentWithView extends BaseComponentWithView {
 		HierarchicalObject.prototype.addChildAt.call(this, child, atIndex);
 		child.parent.view.addChildAt(child.view, atIndex);
 	}
-	
-	// /**
-	//  * @param {number} y
-	//  */
-	// getViewOfChildBasedOnYpos(y) {
-	// 	var self = this;
-	// 	this.styleHook.getBoundingBox().then(function(boundingBox) {
-	// 		self.children.forEach(function(child) {
-	// 			// boundingBox.offsetX, y, boundingBox.offsetX, boundingBox.offsetY + boundingBox.h
-	// //			Geometry.ComponentHitTest(child._key > 1 ? this._children[child._key - 1] : null, child, this._children[child._key + 1]);
-	// 		}, self);
-	// 	});
-	// }
 	
 	/**
 	 * @param {number} targetIdx
@@ -462,22 +408,6 @@ class ComponentWithView extends BaseComponentWithView {
 		}
 	}
 	
-	// /**
-	//  * @param {number} targetIdx
-	//  * @param {'asc'|'desc'} order
-	//  */
-	// childButtonsSortedLoop = function(targetIdx, order) {
-	// 	this._children.forEach(function(child) {
-	// 		if (child._key === targetIdx) {
-	// 			child.streams['sorted' + order].value = 'sorted';
-	// 			child.streams['sorted' + (order === 'asc' ? 'desc' : 'asc')].value = null;
-	// 		}
-	// 		else {
-	// 			child.streams.sortedasc.value = null;
-	// 			child.streams.sorteddesc.value = null;
-	// 		}
-	// 	});
-	// }
 }
 
 
@@ -493,10 +423,8 @@ class ComponentWithView extends BaseComponentWithView {
 
 
 
-module.exports = {
-	ExtensibleObject,
+export {
 	HierarchicalObject,
-	ComponentWithObservables,
 	RootComponent,
 	ComponentWithView,
 };

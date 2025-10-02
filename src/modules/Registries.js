@@ -11,9 +11,9 @@
  * @typedef {import('./template/TemplateFactory.js').EventSubscriptionArray} EventSubscriptionArray
  * @typedef {import('./component/TemplateReconcilier').DomEventBindings} DomEventBindings
  * @typedef {import('./DOM/CachedNode.js')} CachedNode
- * @typedef {import('./view/ComponentView.js').ComponentView} ComponentView
- * @typedef {import('./view/ComponentView.js').RootComponentView} RootComponentView
- * @typedef {import('./reactivity/Stream.js').Stream<any>} Stream
+ * @typedef {import('./view/ComponentView.js').ComponentView<any>} ComponentView
+ * @typedef {import('./view/ComponentView.js').RootComponentView<any>} RootComponentView
+ * @typedef {import('./reactivity/Stream.js')<any>} Stream
  * @typedef {import('./component/Component.js').ComponentWithView} ComponentWithView
  * @typedef {import('./Imperative.js').Imperative} Imperative
  * typedef {import('./reactivity/StreamCtxProvider.js').StreamCtxProvider} StreamCtxProvider;
@@ -83,20 +83,20 @@ export default {
 	node : new Map(),
 	/** @type {Map<string, DOMRect>} */
 	boundingBox : new Map(),
-	/** @type {Map<string, NaiveDomNode>} */
-	naiveElement : new Map(),
-	/** @type {Map<string, Style>} */
+	// /** @type {Map<string, NaiveDomNode>} */
+	// naiveElement : new Map(),
+	/** @type {Map<string, Stylesheet>} */
 	style : new Map(),
-	/** @type {Map<string, LayoutNode>} */
-	layoutNode : new Map(),
-	/** @type {Map<string, textLayoutNode>} */
-	textLayoutNode : new Map(),
-	/** @type {Map<string, Shape>} */
-	rasterShape : new Map(),
-	/** @type {Map<string, FlexCtx>} */
-	flexCtx : new Map(),
+	// /** @type {Map<string, LayoutNode>} */
+	// layoutNode : new Map(),
+	// /** @type {Map<string, textLayoutNode>} */
+	// textLayoutNode : new Map(),
+	// /** @type {Map<string, Shape>} */
+	// rasterShape : new Map(),
+	// /** @type {Map<string, FlexCtx>} */
+	// flexCtx : new Map(),
 	/** @type {Map<string, function>} */
 	layoutCallback : new Map(),
-	/** @type {Map<string, FontSizeBuffer>} */
-	fontSizeBuffer : new Map(),
+	// /** @type {Map<string, FontSizeBuffer>} */
+	// fontSizeBuffer : new Map(),
 };

@@ -2,6 +2,12 @@
  * @module WorkerWrapper
  */
 
+/**
+ * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ */
+
+import {defUIDGenerator} from '../UIDGenerator.js';
+import {EventEmitter} from '../reactivity/EventEmitter.js';
 
 const workerExceptionMessage = 'Worker MessageType normalization failed';
 
@@ -105,7 +111,7 @@ class WorkerWrapper {
 	 * @param {string} [url] 
 	 */
 	constructor(workerName, stringifiedWorker, url) {
-		/*dummy for Component compat*/ this.regUID = UIDGenerator.defUIDGenerator.newUID();
+		/*dummy for Component compat*/ this.regUID = defUIDGenerator.newUID();
 		this.name = workerName;
 		this.message = new EventEmitter('message');
 		const thisProp = /**@type{unknown}*/(this);
@@ -225,7 +231,7 @@ class WorkerWrapper {
 	}
 }
 
-export default {
+export {
 	WorkerWrapper,
 	WorkerMessage
 }

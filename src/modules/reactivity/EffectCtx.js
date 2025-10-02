@@ -3,14 +3,15 @@
  */
 
 /**
- * @typedef {import('src/coreTest/CoreTypes.js').stdTagName|string} tagName
+ * @template {import('../view/stdTagNameType').stdTagNameType|string} tagName
  */
 
 /**
+ * @typedef {import('../DOM/Factories.js').HTMLCustomElement<tagName>} HTMLCustomElement
  * @typedef {import('../view/ComponentView').ComponentView<tagName>} ComponentView
- * @typedef {import('../reactivity/Stream.js').Stream<unknown>} Stream
+ * @typedef {import('../reactivity/Stream.js')} Stream
  */
-import ComponentError from '../error/Error';
+import {ComponentError} from '../error/Error';
 import registries from '../Registries';
 import getToolingProxy from '../tooling/getToolingProxy.js';
 
@@ -20,15 +21,15 @@ import getToolingProxy from '../tooling/getToolingProxy.js';
 class EffectCtx {
     /** @type {string} */
     static objectType = 'EffectCtx';
-    /** @type {() => ComponentView} */
+    /** @type {ComponentView} */
     view;
-    /** @type {() => ComponentView[]} */
+    /** @type {ComponentView[]} */
     subViews;
-    /** @type {() => ComponentView[]} */
+    /** @type {ComponentView[]} */
     memberViews;
-    /** type {() => HTMLElement} */
+    /** @type {HTMLElement} */
     element;
-    /** @type {() => Map<string, Stream<any>} */
+    /** @type {Map<string, Stream>} */
     streams;
 
     /* @debug-build start */
@@ -40,29 +41,37 @@ class EffectCtx {
         if (!component)
             throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
         
-        this.element = getToolingProxy(regUID, 'element', component.viewRef.node);
-        this.view = getToolingProxy(regUID, 'view', component.viewRef);
-        this.subViews = getToolingProxy(regUID, 'subViews', component.subViews);
-        this.memberViews = getToolingProxy(regUID, 'memberViews', component.memberViews);
+        this.element = /** @type {HTMLElement|HTMLCustomElement} */ (getToolingProxy(regUID, 'element', component.view.node));
+        this.view = /** @type {ComponentView} */ (getToolingProxy(regUID, 'view', component.view));
+        this.subViews = /** @type {ComponentView[]} */ (getToolingProxy(regUID, 'subViews', component.subViews));
+        this.memberViews = /** @type {ComponentView[]} */ (getToolingProxy(regUID, 'memberViews', component.memberViews));
 
         const streamRegistry = registries.streams.get(regUID);
         if (!streamRegistry)
             throw new ComponentError(component, 'EffectCtx: Component instance not found in streams registry. UID is', regUID);
 
-        this.streams = getToolingProxy(regUID, 'streams', streamRegistry);
+        this.streams = /** @type {Map<string, Stream>} */ (getToolingProxy(regUID, 'streams', streamRegistry));
     }
     /* @debug-build end */
 
     /* @production-build start
     constructor(regUID) {
         const component = registries.component.get(regUID);
-        this.element = component.viewRef.node;
-        this.view = component.viewRef;
+        this.element = component.view.node;
+        this.view = component.view;
         this.subViews = component.subViews;
         this.memberViews = component.memberViews;
         this.streams = registries.streams.get(regUID);;
     }
     @production-build end */
+    /**
+     * 
+     * @param {string} regUID 
+     * @param {(val : EffectCtx) => void} effect 
+     */
+    static getEffectFunction(regUID, effect) {
+        return effect.bind(null, new EffectCtx(regUID));
+    }
 }
 
 export default EffectCtx;

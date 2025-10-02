@@ -2,7 +2,7 @@
  * @module tollingEventsStack
  */
 
-/** @typedef {import('./toolingEvents').BaseToolingEvent} BaseToolingEvent */
+/** @typedef {import('./ToolingEvents.js').BaseToolingEvent} BaseToolingEvent */
 
 /** @type {BaseToolingEvent[]} */
 export default [];

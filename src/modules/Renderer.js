@@ -4,11 +4,15 @@
 import registries from './Registries';
 import {ComponentTemplate} from './template/TemplateFactory';
 import {ListDefinition} from './template/TemplateFactory';
-import {renderDOM} from './view/ViewsRenderer';
+import ViewsRender from './view/ViewsRenderer';
+const renderDOM = ViewsRender.renderDOM;
 import ComponentFactory from './component/ComponentFactory';
-import {bindListItem} from './reactivity/ListBinder';
-import {createStreams} from './reactivity/StreamCreator';
-import {bindReactivity} from './reactivity/ReactivityBinder';
+import ListBinder from './reactivity/ListBinder';
+const bindListItem = ListBinder.bindListItem;
+import StreamCreator from './reactivity/StreamCreator';
+const createStreams = StreamCreator.createStreams;
+import ReactivityBinder from './reactivity/ReactivityBinder';
+const bindReactivity = ReactivityBinder.bindReactivity;
 
 class Orchestrator {
     constructor() {

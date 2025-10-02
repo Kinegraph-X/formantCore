@@ -2,16 +2,23 @@
  * @module IndexedStream
  */
 
+// @ts-nocheck
+// FIXME: the semantic isn't clear, search where it was used
+
 /**
- * IndexedStream should be part of a StreamPool
+ * @typedef {import('./StreamPool.js')} StreamPool
+ */
+
+/**
+ * IndexedStream is meant to be part of a StreamPool
  */
 class IndexedStream {
 	/** @type {string} */
 	static objectType ='IndexedStream';
 	/** @type {number} */
-	_key = 0;
+	key = 0;
 	/** @type {StreamPool} */
-	_parent;
+	parent;
 	/**
 	 * @param {number} key 
 	 * @param {StreamPool} component 
@@ -19,12 +26,12 @@ class IndexedStream {
 	 * @param {string|number} value 
 	 */
 	constructor(key, component, name, value) {
-		this._key = key;
-		this._parent = component;
+		this.key = key;
+		this.parent = component;
 	}
 	set() {}
 	remove() {
-		return this._parent.removeStream(this._key);
+		return this.parent.removeStream(this.key);
 	}
 }
 

@@ -2,14 +2,19 @@
  * @file TemplateFactory
  */
 /**
+ * @typedef {import('./Prop').AttributeDef} AttributeDef
+ * @typedef {import('./Prop').PropDef} PropDef
+ * @typedef {import('./Prop').StateDef} StateDef
+ * @typedef {import('./ReactivityQuery').ReactivityQueryDef} ReactivityQueryDef
+ * @typedef {import('./EventSubscription').EventSubscriptionDef} EventSubscriptionDef
+ * @typedef {import('./ListTemplate').ListTemplateDef} ListTemplateDef
+ * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  * @typedef {import('../reactivity/EffectCtx')} EffectCtx
  * @typedef {import('../style/Stylesheet')} Stylesheet
- * @typedef {import('../reactivity/EventEmitter').EventEmitter<unknown>} EventEmitter
  */
-import {ComponentError} from '../error/Error';
-import {templateUIDGenerator, viewUIDGenerator} from '../UIDGenerator';
-import registries from '../Registries';
-import {Imperative} from '../Imperative'; 
+import {templateUIDGenerator, viewUIDGenerator} from '../UIDGenerator.js';
+import registries from '../Registries.js';
+import {Imperative} from '../Imperative.js'; 
 
 
 import { 
@@ -152,7 +157,7 @@ class ViewTemplate {
  * @property {string[]} [outputs]
  * @property {(ComponentTemplate|ViewTemplate)[]} [members]
  * @property {(ComponentTemplate|ViewTemplate)[]} [subSections]
- * @property {ListDefinitonDef} [list]
+ * @property {ListTemplateDef} [list]
  */
 
  class ComponentTemplate {
@@ -197,19 +202,6 @@ class ViewTemplate {
 			/** @readonly */ this.type = obj.type || null;
 			/** @readonly */ if (obj.outputs) this.outputs = obj.outputs;
 
-			if (Array.isArray(obj.imperatives)) {
-				obj.imperatives.forEach((imperative) => {
-					if (!registries.imperatives.has(this.UID))
-						registries.imperatives.set(this.UID, new Map());
-					// get(UID) can be undefined (tested above)
-					/** @ts-ignore  */
-					(registries.imperatives.get(this.UID)).set(
-						imperative[0],
-						new Imperative(this.UID, imperative[0], imperative[1])
-					);
-				})
-			}
-			
 			if (Array.isArray(obj.props)) {
 				obj.props.forEach(
 					/** @param {PropDef} propObj */
@@ -343,8 +335,7 @@ class ViewTemplate {
  
  
 
- 
- export default {
+ const exports = {
 	ViewTemplate,
  	ComponentTemplate,
  	ListTemplate,
@@ -363,3 +354,5 @@ class ViewTemplate {
 	ReactivityQueryArray,
 	EventSubscriptionArray,
  }
+ export default exports;
+

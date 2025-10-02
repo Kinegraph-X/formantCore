@@ -45,7 +45,7 @@ class EventSubscriptionArray extends Array {
 	}
 }
 
-export default {
+export {
 	EventSubscription,
 	SubscribeOnSelf,
 	SubscribeOnChild,

@@ -3,6 +3,11 @@
  */
 
 import {listUIDGenerator} from  '../UIDGenerator';
+import { ComponentTemplate } from '../template/TemplateFactory.js';
+
+/**
+ * @typedef {import('./TemplateFactory').ComponentTemplateDef} ComponentTemplateDef
+ */
 
 /**
  * @typedef {Object} ListTemplateDef
@@ -28,7 +33,7 @@ class ListTemplate {
 	objectType = 'ListDefiniton';
 	
 	/**
-	 * @param {ListDefinitonDef|null} obj
+	 * @param {ListTemplateDef|null} obj
 	 */
 	constructor(obj) {
 		/** @readonly */ this.UID = listUIDGenerator.newUID();

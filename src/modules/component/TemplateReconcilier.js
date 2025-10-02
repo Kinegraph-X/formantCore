@@ -7,7 +7,8 @@
  * @typedef {import('src/coreTest/TemplateFactory').DomEventType} DomEventType
  * @typedef {import('src/coreTest/TemplateFactory').DomEventBindings} DomEventBindings
  */
-import {Logger, ComponentError} from 'src/coreTest/Error&Log';
+import {ComponentError } from '../error/Error.js';
+import {Logger} from '../logger/Log.js';
 import {ComponentTemplate} from 'src/coreTest/TemplateFactory';
 import registries from 'src/coreTest/Registries';
 

@@ -4,7 +4,8 @@
 
 /**
  * @typedef {import('../template/TemplateFactory').ComponentTemplate} ComponentTemplate
- * @typedef {import('../reactivity/Dataset').ReactiveDatasetItem} ReactiveDatasetItem
+ * @typedef {import('../reactivity/Stream')} Stream
+ * typedef {import('../reactivity/Dataset').ReactiveDatasetItem} ReactiveDatasetItem
  */
 
 
@@ -13,21 +14,29 @@ class ListBinder {
         throw new Error("ListBinder is static-only; do not instantiate.");
     }
     /**
-     * @param {ComponentWithView} component 
-     * @param {ReactiveDatasetItem} itemFromDataset 
+     * @param {Map<string, Stream>} streams 
+     * @param {{[keu: string]: unknown}} itemFromDataset (ReactiveDatasetItem)
      */
-    bindListItem(component, itemFromDataset) {
+    static bindListItem(streams, itemFromDataset) {
         for (var prop in itemFromDataset) {
-            if (!component.streams[prop])
+            if (!streams.get(prop))
                 continue;
             Object.defineProperty(
                 itemFromDataset,
                 prop,
                 {
-                    get : function() {return this.value}.bind(component.streams[prop]),
-                    set : function(val) {this.value = val}.bind(component.streams[prop])
+                    get : (() => {
+                        const thisArg = /** @type {Stream} */ (this);
+                        return thisArg.next;
+                    }).bind(streams.get(prop)),
+                    set : (
+                        /**@param {unknown} val */
+                        (val) => {this.value = val}).bind(streams.get(prop)
+                    )
                 }
             );
         }
     }
 }
+
+export default ListBinder;

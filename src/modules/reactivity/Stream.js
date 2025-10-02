@@ -2,6 +2,11 @@
  * @module Stream
  */
 
+/**
+ * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../reactivity/Subscription')} Subscription
+ */
+
  /**
  * @template StreamValue
  */
@@ -20,7 +25,7 @@ class Stream {
 	#_value;
 	/** @type {boolean} @default false*/
 	#lazy = false;
-	/** @type {Subscription<StreamValue>[]} @default []*/
+	/** @type {Subscription[]} @default []*/
 	subscriptions = [];
 	
 	/**
@@ -60,7 +65,7 @@ class Stream {
 	}
 	#update() {
 		this.subscriptions.forEach(
-			/** @param {Subscription<StreamValue>} subscription */
+			/** @param {InstanceType<Subscription>} subscription */
 			(subscription) => {
 				subscription.execute(this.#_value);
 			}
@@ -82,7 +87,7 @@ class Stream {
 	 * 
 	 * @param {Stream<StreamValue>|null} downStream
 	 * @param {function|null} effect 
-	 * @returns {Subscription<StreamValue>}
+	 * @returns {Subscription}
 	 */
 	addSubscription(downStream = null, effect = null) {
 		this.subscriptions.push(new Subscription(downStream, effect));
@@ -90,7 +95,7 @@ class Stream {
 	}
 	/**
 	 * 
-	 * @param {Subscription<StreamValue>|Stream<StreamValue>} subscriptionOrStream 
+	 * @param {Subscription|Stream<StreamValue>} subscriptionOrStream 
 	 */
 	unsubscribe(subscriptionOrStream) {
 		for(let i = this.subscriptions.length - 1; i >= 0; i--) {
