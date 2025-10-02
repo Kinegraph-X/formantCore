@@ -335,7 +335,7 @@ class ViewTemplate {
  
  
 
- const exports = {
+ export {
 	ViewTemplate,
  	ComponentTemplate,
  	ListTemplate,
@@ -354,5 +354,3 @@ class ViewTemplate {
 	ReactivityQueryArray,
 	EventSubscriptionArray,
  }
- export default exports;
-

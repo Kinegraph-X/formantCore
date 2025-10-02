@@ -2,6 +2,10 @@
  * @module ComponentFactory
  */
 
+/**
+ * @typedef {import('../template/TemplateFactory').ComponentTemplate} ComponentTemplate 
+ */
+
 import {ComponentError } from '../error/Error.js';
 import registries from '../Registries.js';
 import { RootComponent, ComponentWithView } from './Component.js';
@@ -29,7 +33,7 @@ class ComponentFactory {
                 new ComponentError(parentComponent, 'Unknown component type declared in template:', cTemplate.type, cTemplate);
         }
         else {
-            newComponent = new ComponentWithView(parentComponent, subSection)
+            newComponent = new ComponentWithView(parentComponent, cTemplate)
         }
 
         newComponent.view = ViewFactory.newView(cTemplate.view, parentComponent.view, newComponent.regUID)

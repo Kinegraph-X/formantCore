@@ -67,7 +67,8 @@ class EffectCtx {
     /**
      * 
      * @param {string} regUID 
-     * @param {(val : EffectCtx) => void} effect 
+     * @param {(ctx : EffectCtx) => void} effect
+     * @returns {(ctx : EffectCtx) => void}
      */
     static getEffectFunction(regUID, effect) {
         return effect.bind(null, new EffectCtx(regUID));

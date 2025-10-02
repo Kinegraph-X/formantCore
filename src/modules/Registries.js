@@ -13,7 +13,7 @@
  * @typedef {import('./DOM/CachedNode.js')} CachedNode
  * @typedef {import('./view/ComponentView.js').ComponentView<any>} ComponentView
  * @typedef {import('./view/ComponentView.js').RootComponentView<any>} RootComponentView
- * @typedef {import('./reactivity/Stream.js')<any>} Stream
+ * @typedef {import('./reactivity/Stream.js').default<any>} Stream
  * @typedef {import('./component/Component.js').ComponentWithView} ComponentWithView
  * @typedef {import('./Imperative.js').Imperative} Imperative
  * typedef {import('./reactivity/StreamCtxProvider.js').StreamCtxProvider} StreamCtxProvider;

@@ -125,9 +125,9 @@ class ReactivityBinder {
      * @param {EventSubscription} eventSubscription
      */
     static bindSubscribeOnSelfStream(component, eventSubscription) {
-        if (!component[eventSubscription.on])
+        if (!component[/** @type {keyof ComponentWithView} */ (eventSubscription.on)])
             throw new ComponentError(component, 'Missing event on component.', eventSubscription.on);
-        component[eventSubscription.on].addEventListener(eventSubscription.subscribe.bind(component));
+        component[/** @type {keyof ComponentWithView} */ (eventSubscription.on)].addEventListener(eventSubscription.subscribe.bind(component));
     }
 
     /**
@@ -145,10 +145,10 @@ class ReactivityBinder {
      */
     static bindSubscribeOnDownStream(component, eventSubscription) {
         component.children.forEach((child) => {
-            if (!(child[eventSubscription.on] instanceof EventEmitter))
+            if (!(child[/** @type {keyof ComponentWithView} */ (eventSubscription.on)] instanceof EventEmitter))
                 throw new ComponentError(child, 'Missing event emitter on component.', eventSubscription.on);
             
-            child[eventSubscription.on].addEventListener(eventSubscription.subscribe);
+            child[/** @type {keyof ComponentWithView} */ (eventSubscription.on)].addEventListener(eventSubscription.subscribe);
         });
     }
 }

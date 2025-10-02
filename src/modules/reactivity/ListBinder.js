@@ -4,7 +4,7 @@
 
 /**
  * @typedef {import('../template/TemplateFactory').ComponentTemplate} ComponentTemplate
- * @typedef {import('../reactivity/Stream')} Stream
+ * @typedef {import('../reactivity/Stream').default<unknown>} Stream
  * typedef {import('../reactivity/Dataset').ReactiveDatasetItem} ReactiveDatasetItem
  */
 
@@ -25,14 +25,18 @@ class ListBinder {
                 itemFromDataset,
                 prop,
                 {
-                    get : (() => {
-                        const thisArg = /** @type {Stream} */ (this);
-                        return thisArg.next;
-                    }).bind(streams.get(prop)),
+                    get : (
+                        () => {
+                            const thisArg = /** @type {unknown} */ (this);
+                            return /** @type {Stream} */ (thisArg).next;
+                        }
+                    ).bind(streams.get(prop)),
                     set : (
                         /**@param {unknown} val */
-                        (val) => {this.value = val}).bind(streams.get(prop)
-                    )
+                        (val) => {
+                            this.value = val;
+                        }
+                    ).bind(streams.get(prop))
                 }
             );
         }

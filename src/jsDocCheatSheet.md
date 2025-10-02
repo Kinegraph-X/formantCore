@@ -135,4 +135,12 @@ Then just use `getTemplate()` everywhere.
 
 ---
 
+# Another important subject
+
+by design:
+
+import("../x") in JSDoc = value type (constructor, module object).
+
+import("../x").default or import("../x").SomeType = the instance/type you actually want.
+
 

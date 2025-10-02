@@ -1,7 +1,6 @@
 /**
  * @module main
  */
-import TemplateFactory from './modules/template/TemplateFactory.js'
 import CreateStyle from './modules/style/CreateStyle.js'
 import {ComponentWithView} from './modules/component/Component.js';
 import EffectCtx from './modules/reactivity/EffectCtx';
@@ -11,10 +10,9 @@ import {Logger} from './modules/log/Logger.js';
 import StringUtilities from './modules/nativeTypesUtilities/StringUtilities.js';
 import Boolean from './modules/nativeTypesUtilities/BooleanUtilities.js';
 
+export * from './modules/template/TemplateFactory.js'
 
-
-export default {
-    TemplateFactory,
+export  {
     CreateStyle,
     ComponentWithView,
     EffectCtx,

@@ -4,7 +4,7 @@
 
 /**
  * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
- * @typedef {import('../reactivity/EffectCtx.js')} EffectCtx
+ * @typedef {import('../reactivity/EffectCtx.js').default} EffectCtx
  */
 
 /**
