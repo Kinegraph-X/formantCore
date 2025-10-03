@@ -11,7 +11,7 @@ const camelToHyphens = function(str) {
     });
 }
 
-export default {
+export {
     camelToHyphens,
     
 }

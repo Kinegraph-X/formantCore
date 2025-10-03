@@ -5,22 +5,19 @@
 var TypeManager = require('src/core/TypeManager');
 var MemoryBufferStack= require('src/core/MemoryBufferStack');
 
-var MemoryMapBuffer = function(itemSize, initialContent) {
+var MemoryMapBuffer = function(itemSize, length) {
 	this.objectType = 'MemoryMapBuffer';
 	
-	var propsCount = this.propertiesStaticArray.length;
-	this.propAddresses = (new Uint8Array(propsCount)).fill(255);
+	this.propAddresses = (new Uint8Array(length)).fill(255);
 	this.itemSize = itemSize;
-	this._buffer = new Uint8Array(propsCount * itemSize);
+	this._buffer = new Uint8Array(length * itemSize);
 	
 	this.traverseAndJumpFunction = this.setLogicForTraverseAndJump();
 	this.branchlessLoop = this.getBranchlessLoop();
 	
 }
-MemoryMapBuffer.prototype = {};
 MemoryMapBuffer.prototype.objectType = 'MemoryMapBuffer';
 
-MemoryMapBuffer.prototype.propertiesStaticArray= [];				// virtual
 MemoryMapBuffer.prototype.propertiesAccessGroupsBoudaries = {};		// virtual
 
 MemoryMapBuffer.prototype.setLogicForTraverseAndJump = MemoryBufferStack.prototype.setLogicForTraverseAndJump;

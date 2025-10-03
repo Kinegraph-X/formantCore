@@ -6,7 +6,7 @@
  */
 
 import StyleRule from './StyleRule.js';
-import AdvancedAttributesList from './SplittedAttributes.js';
+import CSSRuleAsBuffer from './CSSStyleRuleAsBuffer.js';
 
 	
 class Stylesheet {
@@ -54,7 +54,7 @@ class Stylesheet {
 		}, this);
 	}
 	newRule(rawRule) {
-		if (rawRule instanceof AdvancedAttributesList) {
+		if (rawRule instanceof CSSRuleAsBuffer) {
 			var selector = rawRule.selector;
 			delete rawRule.selector;
 			return StyleRule.fromAdvancedStyleAttributes(this.length++, selector, rawRule);

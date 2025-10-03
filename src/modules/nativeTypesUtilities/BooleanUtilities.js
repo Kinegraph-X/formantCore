@@ -19,6 +19,6 @@ const tryParseBoolean = (val) => {
 	}
 }
 
-export default {
+export {
     tryParseBoolean,
 }

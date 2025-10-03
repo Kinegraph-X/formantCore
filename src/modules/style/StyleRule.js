@@ -2,48 +2,66 @@
  * @module StyleRule
  */
 
-import Style from './Style.js';
-import AdvancedAttributesList from './SplittedAttributes.js';
+import StyleIFace from './StyleIFace.js';
+import CSSRuleAsBuffer from './CSSStyleRuleAsBuffer.js';
 
 /**
  * @typedef {{[key: string]: string}} RawRule
  */
 
+/**
+ * A class representing a CSS style rule with structured attribute management.
+ * It encapsulates selector-based styling data and provides methods 
+ * to manipulate, merge, and serialize style properties efficiently.
+ * 
+ * Separating the selector from its associated style attributes,
+ * it uses internal buffers (CSSRuleAsBuffer) to manage style declarations 
+ * and supports advanced operations like safe merging and override application.
+ * 
+ * In practice, StyleRule is used by Stylesheet to manage collections of CSS rules. 
+ * It supports both direct instantiation and creation from advanced buffer objects.
+ * 
+ * @example
+ * Stylesheet.js #L60-64
+ * newRule(rawRule) {
+ *    if (rawRule instanceof CSSRuleAsBuffer) {
+ *        var selector = rawRule.selector;
+ *        delete rawRule.selector;
+ *        return StyleRule.fromAdvancedStyleAttributes(this.length++, selector, rawRule);
+ *    } else
+ *        return new StyleRule(this.length++, rawRule);
+ * }
+ * 
+ * 
+ */
 class StyleRule {
+	static objectType = 'StyleRule';
 	/**
- 	* @constructor StyleRule
 	* @param {number} ruleIdx  
 	* @param {RawRule} rawRule
 	* @returns self
 	*/
 	constructor(ruleIdx, rawRule) {
-		this.objectType = 'StyleRule';
-
-		if (Object.prototype.toString.call(rawRule) !== '[object Object]') {
-			console.warn(this.objectType, 'rawRule isn\'t an Object or no ruleIdx given : ' + rawRule + '. Returning...');
-			return;
-		}
-
 		this.ruleIdx = ruleIdx || 0;
 		this.selector = rawRule.selector;
 		this.hasOverride = false;
-		this.styleIFace = new Style(null, this.selector, this.getAttributes(rawRule));
-		this.attrIFace = this.styleIFace.attrIFace;
+		this.styleIFace = new StyleIFace(null, this.selector, this.getAttributes(rawRule));
+		this.styleRuleAsBuffer = this.styleIFace.styleRuleAsBuffer;
 		this.additionalAttributes = {};
-		this.strRule = this.attrIFace.linearize();
+		this.strRule = this.styleRuleAsBuffer.linearize();
 	}
 	/**
 	 * @static
 	 * @param {number} ruleIdx
 	 * @param {string} selector
-	 * @param {AdvancedAttributesList} attrIFace
+	 * @param {CSSRuleAsBuffer} styleRuleAsBuffer
 	 * @returns {StyleRule}
 	 */
-	static fromAdvancedStyleAttributes(ruleIdx, selector, attrIFace) {
+	static fromAdvancedStyleAttributes(ruleIdx, selector, styleRuleAsBuffer) {
 		var styleRule = new StyleRule(ruleIdx, { selector: selector });
-		styleRule.styleIFace.attrIFace = attrIFace;
-		styleRule.attrIFace = attrIFace;
-		styleRule.strRule = styleRule.attrIFace.linearize();
+		styleRule.styleIFace.styleRuleAsBuffer = styleRuleAsBuffer;
+		styleRule.styleRuleAsBuffer = styleRuleAsBuffer;
+		styleRule.strRule = styleRule.styleRuleAsBuffer.linearize();
 		return styleRule;
 	}
 	/**
@@ -69,14 +87,14 @@ class StyleRule {
 	setAttributes(rawRule) {
 		for (let prop in rawRule) {
 			if (prop !== 'selector')
-				this.attrIFace.set(prop, rawRule[prop]);
+				this.styleRuleAsBuffer.set(prop, rawRule[prop]);
 		}
 	}
 	/**
-	 * @returns {AdvancedAttributesList}
+	 * @returns {{[key: string]: string}}
 	 */
 	cloneAttributes() {
-		return (new AdvancedAttributesList(this.attrIFace.getAllDefinedAttributes())).getAllDefinedAttributes();
+		return (new CSSRuleAsBuffer(this.selector, this.styleRuleAsBuffer.getAllDefinedAttributes())).getAllDefinedAttributes();
 	}
 	/**
 	 * Populates the strRule property with the linearized style rule.
@@ -89,14 +107,14 @@ class StyleRule {
 	 * @returns {string}
 	 */
 	getAttr(attr) {
-		return this.attrIFace.get(attr);
+		return this.styleRuleAsBuffer.get(attr);
 	}
 	/**
 	 * @param {string} attr
 	 * @param {string} value
 	 */
 	setAttr(attr, value) {
-		this.attrIFace.set(attr, value);
+		this.styleRuleAsBuffer.set(attr, value);
 	}
 	/**
 	 * @param {RawRule} rawRule
@@ -113,7 +131,7 @@ class StyleRule {
 	applyAdditionnalStyleAsOverride() {
 		if (this.hasOverride) {
 			for (let attr in this.additionalAttributes) {
-				this.attrIFace.set(attr, this.additionalAttributes[attr]);
+				this.styleRuleAsBuffer.set(attr, this.additionalAttributes[attr]);
 			}
 		}
 	}

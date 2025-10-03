@@ -2,16 +2,29 @@
  * @constructor CSSPropertyDescriptors
  */
 
+/**
+ * @typedef {{[key: string]: string|string[]|boolean|number}} CSSPropertyDescriptorType
+ */
 
+/** @type {{[key: string]: CSSPropertyDescriptorType}} */
 var CSSPropertyDescriptors = {};
+
+/** @type {{[key: string]: {[key: string]: CSSPropertyDescriptorType}}} */
 var SplittedCSSPropertyDescriptors = {};
 
-var CSSPropertyDescriptorFactory = function(attrName, initialValue, isShorthand, expandedPropNames, mayBeAbbreviated, isAlias) {
+/**
+ * @param {string} attrName
+ * @param {string|number} initialValue
+ * @param {boolean} isShorthand
+ * @param {string[]} expandedPropNames
+ * @param {boolean} mayBeAbbreviated
+ * @param {boolean} [isAlias]
+ * @returns {CSSPropertyDescriptorType}
+ */
+var CSSPropertyDescriptorFactory = function(attrName, initialValue, isShorthand, expandedPropNames, mayBeAbbreviated, isAlias = false) {
 	
-	var CSSPropertyDescriptor = function(value) {
-		
-	};
-	CSSPropertyDescriptor.prototype = {
+	/** @type {CSSPropertyDescriptorType} */
+	const CSSPropertyDescriptor = {
 		propName : attrName,
 		isShorthand : isShorthand,
 		mayBeAbbreviated : mayBeAbbreviated,
@@ -19,6 +32,7 @@ var CSSPropertyDescriptorFactory = function(attrName, initialValue, isShorthand,
 		initialValue : initialValue,
 		expandedPropNames : expandedPropNames
 	};
+
 	CSSPropertyDescriptors[attrName] = CSSPropertyDescriptor;
 	
 	return CSSPropertyDescriptor;
@@ -242,8 +256,10 @@ SplittedCSSPropertyDescriptors.strictlyLocalAttributes = {
 
 
 
-
-var boundaries = {}, c = 0, l = 0;
+/** @type {{[key: string]: object}} */
+var boundaries = {},
+	c = 0,
+	l = 0;
 for (var groupName in SplittedCSSPropertyDescriptors) {
 	l = Object.keys(SplittedCSSPropertyDescriptors[groupName]).length;
 	boundaries[groupName] = {
@@ -260,8 +276,32 @@ boundaries.stdAttributes = {
 
 
 
-export default {
-	all : CSSPropertyDescriptors,
-	splitted : SplittedCSSPropertyDescriptors,
-	boundaries : boundaries
+/** @typedef {'inheritedAttributes'|'locallyEffectiveAttributes'|'boxModelAttributes'|'strictlyLocalAttributes'} CSSCategory enumeration of CSS property groups*/
+
+/** 
+ *  runtime enumeration of CSS property groups
+ * @type {{[key: string]: CSSCategory}}
+ */
+const categories = {
+	inheritedAttributes : 'inheritedAttributes',
+	locallyEffectiveAttributes : 'locallyEffectiveAttributes',
+	boxModelAttributes : 'boxModelAttributes',
+	strictlyLocalAttributes : 'strictlyLocalAttributes',
+}
+
+/** @type {Map<CSSCategory, string[]>} */
+const knownAttributesMapByCagegory = new Map();
+knownAttributesMapByCagegory.set(categories.inheritedAttributes, Object.keys(SplittedCSSPropertyDescriptors.inheritedAttributes));
+knownAttributesMapByCagegory.set(categories.locallyEffectiveAttributes, Object.keys(SplittedCSSPropertyDescriptors.locallyEffectiveAttributes));
+knownAttributesMapByCagegory.set(categories.boxModelAttributes, Object.keys(SplittedCSSPropertyDescriptors.boxModelAttributes));
+knownAttributesMapByCagegory.set(categories.strictlyLocalAttributes, Object.keys(SplittedCSSPropertyDescriptors.strictlyLocalAttributes));
+
+
+
+export {
+	categories,
+	CSSPropertyDescriptors as allCSSPropertyDescriptors,
+	SplittedCSSPropertyDescriptors as splittedCSSPropertyDescriptors,
+	boundaries,
+	knownAttributesMapByCagegory,
 };
