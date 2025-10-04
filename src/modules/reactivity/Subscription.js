@@ -2,8 +2,9 @@
  * @module Subscription
  */
 
+/** @typedef {import('../reactivity/Stream.js').default<unknown>} Stream */
+
 import {ComponentError } from '../error/Error.js';
-import Stream from '../reactivity/Stream';
 
  /**
  * A Class to be used by the Streams

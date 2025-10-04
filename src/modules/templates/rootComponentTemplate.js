@@ -5,10 +5,14 @@
  * @CSSifyTheme themeName : basic-dark
  * 
  */
-// const {TemplateFactory, CreateStyle} = require('formantjs');
 import {ComponentTemplate} from '../template/TemplateFactory';
 
-
+/**
+ * 
+ * @param {{[key: string]: any}} options 
+ * @param {any} model 
+ * @returns 
+ */
 const rootComponentDef = function(options, model) {
     /**@CSSify DEBUG */		// Remove the whitespace between @CSSify and the word DEBUG to log the stylesheet definition
         

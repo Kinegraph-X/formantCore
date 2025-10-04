@@ -3,14 +3,14 @@
  */
 
 /**
- * @typedef {import('src/coreTest/Component').ComponentWithView} ComponentWithView
- * @typedef {import('src/coreTest/TemplateFactory').DomEventType} DomEventType
- * @typedef {import('src/coreTest/TemplateFactory').DomEventBindings} DomEventBindings
+ * @typedef {import('./Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../template/TemplateFactory').DomEventType} DomEventType
+ * @typedef {import('../template/TemplateFactory').DomEventBindings} DomEventBindings
  */
 import {ComponentError } from '../error/Error.js';
-import {Logger} from '../logger/Log.js';
-import {ComponentTemplate} from 'src/coreTest/TemplateFactory';
-import registries from 'src/coreTest/Registries';
+import {Logger} from '../log/Logger.js';
+import {ComponentTemplate} from '../template/TemplateFactory.js';
+import registries from '../Registries.js';
 
 class TemplateReconcilier {
 	static objectType = 'TemplateReconcilier';

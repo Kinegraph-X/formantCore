@@ -1,16 +1,8 @@
 /**
- * @constructor CSSPropertyBuffer
- */
-
-
-import BinarySchemaFactory from '../buffer/BinarySchema.js';
-import parser from '../../third-party/css-parser_forked_normalized.js';
-import {generatorFor16bitsInt} from '../UIDGenerator.js'
-/**
  * CSSPropertyBuffer is a binary-backed container 
  * for storing and manipulating individual CSS property values
  * 
- * It is used in CSSPropertySetBuffer to store the value of a CSS property.
+ * It is used in CSSStyleRuleSliceAsBuffer to store the value of a CSS property.
  * 
  * It uses a fixed-size Uint8Array buffer to represent 
  * CSS values (like 12px, red, bold) as structured binary data, 
@@ -34,25 +26,128 @@ import {generatorFor16bitsInt} from '../UIDGenerator.js'
  * 
  * - Initial Value: Tracks whether the property is set to its initial value
  * 
- * Used primarily within CSSPropertySetBuffer to manage collections of CSS properties 
+ * Used primarily within CSSStyleRuleSliceAsBuffer to manage collections of CSS properties 
  * It is instantiated both during initialization and runtime style updates
  * 
- * *Real Example*: Setting a CSS Property in SplittedAttributes.js
- * SplittedAttributes.js #L111-119
- * packedCSSProperty = new CSSPropertyBuffer(null, attrName);
- * packedCSSProperty.setValue(attributes[attrName]);
- * packedCSSProperty._buffer.set([0], CSSPropertyBuffer.prototype.bufferSchema.isInitialValue.start);
- * self.CSSPropertySetBuffer.setPropFromShorthand(attrName, packedCSSProperty);
- * 
- * *Real Example*: Retrieving a Property in CSSPropertySetBuffer.getProp
- * CSSPropertySetBuffer.js #L84-88
- * var propAsBuffer = new CSSPropertyBuffer(
- *     this._buffer.slice(posForProp, posForProp + this.itemSize),
- *     propName
- * );
-return propAsBuffer;
  */
-class CSSPropertyBuffer {
+
+
+import {capitalizeFirstLetter, getNcharsAsCharCodesArray} from '../nativeTypesUtilities/StringUtilities.js';
+import BinarySchemaFactory from '../buffer/BinarySchema.js';
+import {parseAListOfComponentValues} from '../../third-party/css-parser_forked_normalized.js';
+import {generatorFor16bitsInt} from '../UIDGenerator.js'
+
+import {allCSSPropertyDescriptors} from './CSSPropertyDescriptors.js';
+
+
+/**
+ * Correspondance between parser types and buffer types
+ * 
+| Parser `tokenType` (string)   | Parser class                          | Buffer `TokenTypes` key                                             | Notes / Value normalization                                                                                              |
+| ----------------------------- | ------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `IDENT`                       | `IdentToken`                          | `IdentToken`                                                        | Parser: `.repr` is identifier. Buffer: expects type=`string`.                                                            |
+| `FUNCTION`                    | `FunctionToken`                       | `FunctionToken`                                                     | Special-cased: `rgb()`/`rgba()` collapsed into `HASH`; `url()` becomes `UrlToken`; unsupported funcs → `UndefinedToken`. |
+| `ATKEYWORD`                   | `AtKeywordToken`                      | `AtkeywordToken`                                                    | Note casing mismatch (`ATKEYWORD` vs `AtkeywordToken`).                                                                  |
+| `HASH`                        | `HashToken`                           | `HashToken`                                                         | Parser `.type` = `"id"` or `"unrestricted"`. Buffer coerces into type=`hash`.                                            |
+| `STRING`                      | `StringToken`                         | `StringToken`                                                       | Parser: `.repr` is quoted string. Buffer: type=`string`.                                                                 |
+| `URL`                         | `URLToken`                            | `UrlToken`                                                          | Naming mismatch (`URL` vs `UrlToken`). Buffer stores `.repr` directly.                                                   |
+| `NUMBER`                      | `NumberToken`                         | `NumberToken`                                                       | Parser `.type` = `"integer"` or `"number"`. Buffer maps to ValueTypes: `integer` or `float`. Parser `.repr` kept.        |
+| `PERCENTAGE`                  | `PercentageToken`                     | `PercentageToken`                                                   | Parser: `.value`, `.repr` (no `%` suffix). Buffer ensures `repr` ends with `%` and type=`percentage`.                    |
+| `DIMENSION`                   | `DimensionToken`                      | `DimensionToken`                                                    | Parser: `{ value, type, repr, unit }`. Buffer: coerced to ValueTypes `integer`/`float` + unit index from `Units`.        |
+| `DELIM`                       | `DelimToken`                          | `DelimToken`                                                        | Parser `.value` is the single char. Buffer stores `.repr`.                                                               |
+| `WHITESPACE`                  | `WhitespaceToken`                     | `WhitespaceToken`                                                   | Collapses to space in concat.                                                                                            |
+| `COMMA`                       | `CommaToken`                          | `CommaToken`                                                        | Collapses to `,`.                                                                                                        |
+| `COLON`                       | `ColonToken`                          | `ColonToken`                                                        | Punctuation only.                                                                                                        |
+| `SEMICOLON`                   | `SemicolonToken`                      | `SemicolonToken`                                                    | Punctuation only.                                                                                                        |
+| `CDO`, `CDC`                  | `CDOToken`, `CDCToken`                | `CdoToken`, `CdcToken`                                              | Rarely used.                                                                                                             |
+| `OPENPAREN`/`CLOSEPAREN`      | `OpenParenToken`, `CloseParenToken`   | `OpenparenToken`, `CloseparenToken`                                 | Used in concatenation.                                                                                                   |
+| `OPENCURLY`/`CLOSECURLY`      | `OpenCurlyToken`, `CloseCurlyToken`   | `OpencurlyToken`, `ClosecurlyToken`                                 | Used in blocks.                                                                                                          |
+| `OPENSQUARE`/`CLOSESQUARE`    | `OpenSquareToken`, `CloseSquareToken` | `OpensquareToken`, `ClosesquareToken`                               | Used in blocks.                                                                                                          |
+| `EOF`                         | `EOFToken`                            | `EOFToken`                                                          | End of stream.                                                                                                           |
+| `BADSTRING`                   | `BadStringToken`                      | `BadstringToken`                                                    | Error tokens.                                                                                                            |
+| `BADURL`                      | `BadURLToken`                         | `BadurlToken`                                                       | Error tokens.                                                                                                            |
+| `*MATCH` (e.g. `PREFIXMATCH`) | `PrefixMatchToken`, etc.              | `PrefixmatchToken`, `SuffixmatchToken`, `SubstringmatchToken`, etc. | Direct mapping, just casing differences.                                                                                 |
+| `COLUMN`                      | `ColumnToken`                         | `ColumnToken`                                                       | Direct mapping.                                                                                                          |
+ */
+
+
+
+
+/**
+ * Compact binary representation of a single CSS property value.
+ *
+ * What this is
+ * - A fixed-size typed-array buffer specialized to store ONE CSS property’s value.
+ * - Optimized to avoid allocations while shuttling values between parsing, shorthand expansion,
+ *   resolution, and string/number serialization.
+ *
+ * Where it’s used
+ * - Instantiated but not-owned by `CSSStyleRuleSliceAsBuffer` to represent each property slot within a rule slice.
+ * - Built on initialization in `CSSStyleRuleSliceAsBuffer.fromCategory()` using descriptor initial values.
+ * - Created transiently at many call sites to set/override a property via
+ *   `CSSStyleRuleSliceAsBuffer.setPropFromBuffer()`.
+ *
+ * Data model (bufferSchema)
+ * - tokenType: one of `TokenTypes` (e.g. NumberToken, DimensionToken, PercentageToken, IdentToken, StringToken, HashToken, FunctionToken)
+ * - propertyValue: 16-bit numeric payload (only meaningful for NUMBER/DIMENSION/PERCENTAGE)
+ * - propertyType: one of `ValueTypes` (e.g. 'integer', 'number', 'percentage', 'hash', 'string', etc.)
+ * - repr: compact string representation (up to `stdStrLength` chars, e.g. '10px', 'center', '#fff', 'url(x.png)')
+ * - reprLength: byte-length of `repr`
+ * - unit: unit index (e.g. 'px', '%', 'em', '', see `Units`)
+ * - isInitialValue: 1 if buffer stores the descriptor initial value, 0 otherwise
+ *
+ * Choosing APIs
+ * - setValue(value: string): Raw-first setter for strings. It:
+ *   1) Splits comma-lists and keeps the first item.
+ *   2) If the property is a shorthand (per descriptors), it DOES NOT parse; it creates a mock STRING token and calls [setFromParsedToken()](cci:1://file:///./CSSPropertyAsBuffer.js:161:1-173:2).
+ *   3) If not a shorthand, it parses the first item (to preserve functions like url(), rgb(), var(), calc()) and calls [setFromParsedToken()](cci:1://file:///./CSSPropertyAsBuffer.js:161:1-173:2) with the first real token.
+ *   Use this when you have a CSS string and want fast, correct behavior without duplicating shorthand logic.
+ *
+ * - setFromParsedToken(parsedToken): Token-first setter. Expects a token from the embedded parser (or a mocked one) and normalizes it into the buffer.
+ *   Use this inside shorthand handlers where tokens are already available to avoid reparsing strings.
+ *
+ * - normalizeTokenForBuffer(parsedToken): Fast-Canonicalizes parser tokens into the buffer’s schema.
+ * - fullNormalizeTokenForBuffer(parsedToken): Full-Canonicalizes parser tokens into the buffer’s schema.
+ *   - Infers `type` ('integer'|'number'|'percentage'|'hash'|'string').
+ *   - Normalizes `repr` for special tokens (e.g., '0'+'%' -> '0%'; 'fff' -> '#fff').
+ *   - Sets numeric `value` only for NUMBER/DIMENSION/PERCENTAGE; defaults to 0 otherwise.
+ *
+ * Common flows
+ * - Initialization:
+ *   `CSSStyleRuleSliceAsBuffer.fromCategory()` creates a [CSSPropertyAsBuffer](cci:2://file:///./CSSPropertyAsBuffer.js:92:0-480:1) 
+ * 		for each property and calls [setValue(initialValue)](cci:1://file:///./CSSPropertyAsBuffer.js:125:1-158:2) once.
+ *
+ * - Setting a property:
+ *   - Call sites construct a [CSSPropertyAsBuffer(null, propName)](cci:2://file:///./CSSPropertyAsBuffer.js:92:0-480:1), 
+ * 		then call [setValue(...)](cci:1://file:///./CSSPropertyAsBuffer.js:125:1-158:2), set `isInitialValue = 0`,
+ *     and pass it to `CSSStyleRuleSliceAsBuffer.setPropFromBuffer(propName, propBuffer)`.
+ *   - Shorthands are detected at the slice level and expanded into longhands as needed, often reusing tokens to avoid reparsing.
+ *
+ * Performance notes
+ * - String parsing is avoided for shorthands on purpose; expansion happens in `CSSStyleRuleSliceAsBuffer`.
+ * - For non-shorthands, minimal parsing is performed to allow function canonicalization.
+ * - `repr` is capped by `stdStrLength` to keep buffers compact and predictable.
+ *
+ * See also
+ *  @see [CSSStyleRuleSliceAsBuffer.js](cci:7://file:///./CSSStyleRuleSliceAsBuffer.js:0:0-0:0):
+ *  @see `CSSStyleRuleSliceAsBuffer.fromCategory()` – initializes property slots.
+ *  @see `CSSStyleRuleSliceAsBuffer.setPropFromBuffer()` – integrates a property buffer and expands shorthands.
+ *  @see `CSSStyleRuleSliceAsBuffer.setValuesFromShorthand()` and helpers – token-first shorthand handling.
+ *  @see CSSPropertyDescriptors.js – metadata for properties (initial values, shorthand expansions).
+ *
+ * @example
+ * // Mirror longhand string for background-size (preserves multi-token string, avoids reparsing if shorthand)
+ * tmp.setProp('backgroundSize');
+ * tmp.setValue('10px auto');
+ * slice.setPropFromBuffer('backgroundSize', tmp);
+ *
+ * @example
+ * // Token-first path inside shorthand handler:
+ * tmp.setProp('backgroundPositionX');
+ * tmp.setFromParsedToken({tokenType:'PERCENTAGE', repr:'50%', value:50});
+ * slice.setPropFromBuffer('backgroundPositionX', tmp);
+ */
+class CSSPropertyAsBuffer {
 	static objectType = 'CSSPropertyBuffer';
 	static bufferSchema = BinarySchemaFactory.createSchema(
 		'compactedViewOnProperty',
@@ -69,7 +164,7 @@ class CSSPropertyBuffer {
 			1,
 			2,
 			1,
-			CSSPropertyBuffer.prototype.stdStrLength,		// defining a tight limit to the size of the representation of a string is obviously a strong opinion: lets keep some neurons on it)
+			CSSPropertyAsBuffer.prototype.stdStrLength,		// defining a tight limit to the size of the representation of a string is obviously a strong opinion)
 			1,
 			1,
 			1
@@ -84,106 +179,100 @@ class CSSPropertyBuffer {
 		this.propName = propName;
 		this._buffer = new Uint8Array(initialLoad || this.constructor.bufferSchema.size);
 	}
+
 	/**
-	 * @param {string} value 
+	 * Raw-first string setter:
+	 * Sets a raw CSS property value, avoiding full parsing as performance is critical.
+	 * Handles both shorthand and longhand CSS properties by either mocking a parsed token or parsing the value,
+	 * depending on the property type, to avoid redundant work.
+	 * Downstream normalization and shorthand handlers will take over.
+	 * 
+	 * @see CSSStyleRuleSliceAsBuffer.fromCategory() for initialization with descriptor initial values.
+	 * Called by shorthand handlers to avoid reparsing strings:
+	 * @see CSSStyleRuleSliceAsBuffer.setValueFromBackgroundShorthand() where single-longhand mirrors call setValue().
+	 * 
+	 * @example:
+	 *   tmp.setProp('backgroundSize'); tmp.setValue('10px auto'); // preserves multi-token strings and reparses string only if not shorthand
+	 * @param {string} value
 	 */
 	setValue(value) {
-
-		// For now, we haven't yet populated the initlaValue for each CSSPropertyDescriptor.
-		// So this function is very frequently called with an empty array
-		if (!value.length)
+		// Keep first item before comma; heuristic is acceptable here for perf
+		const first = value.split(',')[0].trim();
+		if (!first.length)
 			return;
-
-		var valueAsParsed, tokenType, concatVal;
-		// if the property is a shorthand property, or if the property may be abbreviated,
-		// we concatenate back
-		// => shorthands are then handled (expanded) in CSSPropertySetBuffer.setPropFromShorthand()
-		// => abbreviated props are also handled (in a branch) of CSSPropertySetBuffer.setPropFromShorthand()
-		if (!/\s/.test(value.trim())) {
-			var parsedValue = parser.parseAListOfComponentValues(value.trim());
-			if (!parsedValue.length)
-				return;
-			tokenType = Object.getPrototypeOf(parsedValue[0]).tokenType.capitalizeFirstChar() + 'Token';
-
-			if (tokenType === 'FunctionToken') {
-				valueAsParsed = this.functionToCanonical(parsedValue[0]);
-			}
-
-			else
-				valueAsParsed = parsedValue[0];
+		const desc = allCSSPropertyDescriptors[this.propName] || null;
+		
+		// If shorthand (or fake shorthand), do not parse here to avoid double work.
+		if (desc && desc.isShorthand) {
+			const mock = { tokenType: 'STRING', value : 0, propertyType: 'string', repr: first, unit: ''};
+			this.setFromParsedToken(mock);
+			return;
 		}
-		else {
-			concatVal = value.trim();
-			tokenType = 'NonparsedToken';
-
-			// Concatenated values are typed as "Non Parsed",
-			// and then, the valueAsParsed only has a repr property.
-			valueAsParsed = new (
-				LocalTokenFromParserFactory(null, 'NONPARSED')
-			)(
-				tokenType,
-				null,
-				null,
-				'string',
-				concatVal
-			);
-		}
-
-		this.populate(tokenType, valueAsParsed);
+		
+		// Not a shorthand: parse to preserve functions when at start of value (url(), rgb(), var(), calc(), ...).
+		const tokens = parseAListOfComponentValues(first);
+		const tok = tokens.find(t => t && t.tokenType !== 'WHITESPACE' && t.tokenType !== 'COMMA')
+					|| { tokenType: 'STRING', value : 0, propertyType: 'string', repr: first, unit: ''};
+		this.setFromParsedToken(tok);
 	}
-	// WON'T WORK FOR RELATIVE DIMENSIONS,
-	// as, for example, we have no clue of the value of the inherited font-size property for the current property
-	//CSSPropertyBuffer.prototype.unitToCanonical = function(valueAsParsed) {
-	//	switch(valueAsParsed.unit) {
-	//		case 'em' : 
-	//			console.log("EM FOUND");
-	//			break;
-	//		default :
-	//			break;
-	//	}
-	//	
-	//	return valueAsParsed;
-	//}
+
+
 	/**
-	 * param is token from parser
-	 * @param {object} valueAsParsed 
+	 * Token-first setter:
+	 * for callers that already have parser tokens (e.g., shorthand handlers).
+	 * Normalizes via [normalizeTokenForBuffer()](cci:1://file:///./CSSPropertyAsBuffer.js:284:1-316:2) 
+ 	 * then writes into the buffer with [populate()](cci:1://file:///./CSSPropertyAsBuffer.js:214:1-267:2).
+	 * 
+	 * @param {object} parsedToken 
 	 */
-	functionToCanonical(valueAsParsed) {
-		var value, tokenTypeFromParser;
+	setFromParsedToken(parsedToken) {
+		// if the property is a shorthand property, or if the property may be abbreviated,
+		// we resolve canonical values, or set the original value (for now, url's aren't really handled)
+		// Shorthands are handled in CSSStyleRuleSliceAsBuffer
+		const tokenType = `${capitalizeFirstLetter(parsedToken.tokenType)}Token`;
+		const normalized = tokenType === 'FunctionToken'
+			? this.normalizeTokenForBuffer(this.functionToCanonical(parsedToken, parsedToken.repr || ''))
+			: this.normalizeTokenForBuffer(parsedToken);
+		this.populate(normalized.tokenType, normalized);
+	}
+
+	/**
+	 * valueAsParsed is token from parser
+	 * @param {object} valueAsParsed 
+	 * @param {string} trimedOriginalValue 
+	 */
+	functionToCanonical(valueAsParsed, trimedOriginalValue) {
+		var tokenTypeFromParser;
 		if (valueAsParsed.name === 'rgb' || valueAsParsed.name === 'rgba') {
-			//		console.log('rgb found');
-			value = new (LocalTokenFromParserFactory(null, 'HASH'))();
-			value.type = 'hash';
-			value.repr = '#';
-			valueAsParsed.value.forEach(function (val) {
-				tokenTypeFromParser = Object.getPrototypeOf(val).tokenType;
+			const tmpArray = [];
+			valueAsParsed.value.forEach((val) => {
+				tokenTypeFromParser = val.tokenType;
 				if (tokenTypeFromParser === "WHITESPACE" || tokenTypeFromParser === "COMMA")
 					return;
-
 				else
-					value.repr += parseInt(val.value).toString(16).padStart(2, '0');
-			}, this);
-			//		console.log(value)
-			return value;
+					tmpArray.push(parseInt(val.value).toString(16).padStart(2, '0'));
+			});
+			valueAsParsed.repr = `#${tmpArray.join('')}`;
+			return valueAsParsed;
 		}
 		else {
 			// As for now, "format" and "local" are seen as unsupported functions
 			if ((valueAsParsed.name === 'format' || valueAsParsed.name === 'local')
 				|| (valueAsParsed.name === 'animation' || valueAsParsed.name === 'animationName' || valueAsParsed.name === 'animationDuration' || valueAsParsed.name === 'animationIterationCount' || valueAsParsed.name === 'animationIterationFunction' || valueAsParsed.name === 'animationDelay'))
-				return new (LocalTokenFromParserFactory(null, 'UNDEFINED'))();
+				return valueAsParsed;
 			else if (valueAsParsed.name === 'url') {
-				value = new (LocalTokenFromParserFactory(null, 'URL'))();
-				value.type = 'url';
-				value.repr = 'url("';
-				valueAsParsed.value.forEach(function (val) {
-					value.repr += val.repr;
-				});
-				value.repr += '")';
-				return value;
+				valueAsParsed.repr = trimedOriginalValue;
+				// TODO: find why we were concatenating back
+				// value.repr = 'url("';
+				// valueAsParsed.value.forEach(function (val) {
+				// 	value.repr += val.repr;
+				// });
+				// value.repr += '")';
+				return valueAsParsed;
 			}
 
 			console.warn('CSSPropertyBuffer->functionToCanonical: unsupported function given (' + valueAsParsed.name + ').');
-			return new (LocalTokenFromParserFactory(null, 'UNDEFINED'))();
+			return valueAsParsed;
 		}
 	}
 	/**
@@ -191,27 +280,30 @@ class CSSPropertyBuffer {
 	 * @param {object} value 
 	 */
 	populate(tokenType, value) {
-		// the buffer size : 64 bytes buffers shall align well on a 2048KB L2 CPU cache
-		// 16 bits values have to be declared as byte-tuples ([1, 0] would then represent 1, as all CPU's are now little-endian) 
+		// the buffer size : 64 bytes buffers shall align on a L2 CPU cache
+		// 16 bits values have to be declared as byte-tuples 
+		// ([1, 0] would then represent 1, as all CPU's are now little-endian) 
 		// (generatorFor16bitsInt, responsible for the UID, shall return an array)
 
 		var normalizedValue = value; 
 		if (typeof normalizedValue.repr === 'undefined')
 			console.error('normalizedValue', normalizedValue);
-		var strVal = normalizedValue.repr, strLength = strVal.length, strBuf = strVal.getNcharsAsCharCodesArray(this.stdStrLength, 0)[1], valueBuf = generatorFor16bitsInt.intFromNumber(normalizedValue.value);
+		var strVal = normalizedValue.repr,
+			strLength = strVal.length,
+			strBuf = getNcharsAsCharCodesArray(strVal, this.stdStrLength, 0)[1],
+			valueBuf = generatorFor16bitsInt.intFromNumber(normalizedValue.value);
 
-		//	console.log('POPULATE', strVal, strBuf, value);
-		// this.TokenTypes[tokenType] is the TokenType from the parser
+		// this.TokenTypes[tokenType] is the TokenType from the parser (remapped to our types)
 		// represented as a numeric constant
 		this._buffer.set(
 			[this.TokenTypes[tokenType]],
-			this.bufferSchema.tokenType.start
+			this.constructor.bufferSchema.tokenType.start
 		);
 		// value type
 		var valueTypeAsConst = this.ValueTypes[value.type];
 		this._buffer.set(
 			[valueTypeAsConst],
-			this.bufferSchema.propertyType.start
+			this.constructor.bufferSchema.propertyType.start
 		);
 		// value
 		// FIXME: floats are NOT handled by our CSSPropertyBuffer type,
@@ -219,22 +311,22 @@ class CSSPropertyBuffer {
 		// For now, it acts like if we had parseInt the number
 		this._buffer.set(
 			valueBuf,
-			this.bufferSchema.propertyValue.start
+			this.constructor.bufferSchema.propertyValue.start
 		);
 		// representation
 		this._buffer.set(
 			strBuf,
-			this.bufferSchema.repr.start
+			this.constructor.bufferSchema.repr.start
 		);
 		// representation string length
 		this._buffer.set(
-			[strVal.length],
-			this.bufferSchema.reprLength.start
+			[strLength],
+			this.constructor.bufferSchema.reprLength.start
 		);
 		// unit
 		this._buffer.set(
 			[value.unit ? this.Units[value.unit].idx : 0],
-			this.bufferSchema.unit.start
+			this.constructor.bufferSchema.unit.start
 		);
 	}
 	/**
@@ -244,29 +336,47 @@ class CSSPropertyBuffer {
 	parseAndSetValue(singleValueAsString) {
 		var parsedValue;
 		if ((parsedValue = this.parseValue(singleValueAsString)).length)
-			this.setValue(parsedValue);
+			this.setFromParsedToken(parsedValue);
 	}
 	/**
 	 * 
 	 * @param {string} singleValueAsString 
 	 */
 	parseValue(singleValueAsString) {
-		return parser.parseAListOfComponentValues(singleValueAsString);
+		return parseAListOfComponentValues(singleValueAsString);
 	}
 	/**
-	 * parsed value is token from parser
-	 * @param {object} parsedValue 
+	 * Shim: normalize parser tokens into CSSPropertyBuffer-compatible objects.
+	 * We try to do the least checks possible, for perf concerns.
+	 * So there's a strong contract with the parser (but the contract already exists
+	 * on the shape of the tokens, and we can't avoid it)
+	 * @param {object} parsedToken - Token from css-parser_forked_normalized
+	 * @returns {object} normalized token (with .tokenType, .repr, .value, .type, .unit)
 	 */
-	fixValueFromParser(parsedValue) {
-		return (new (LocalTokenFromParserFactory(parsedValue, Object.getPrototypeOf(parsedValue).tokenType))(
-			null,
-			parsedValue.value,
-			parsedValue.name,
-			parsedValue.type,
-			parsedValue.repr,
-			parsedValue.unit
-		)
-		);
+	normalizeTokenForBuffer(parsedToken) {
+		if (!parsedToken) {
+			throw new Error('CSSPropertyAsBuffer normalizeTokenForBuffer: parsedToken is undefined');
+		}
+		if (typeof parsedToken.repr !== 'string') {
+			throw new Error(`CSSPropertyAsBuffer normalizeTokenForBuffer: parsedToken.repr is not a string ${parsedToken}`);
+		}
+		if(typeof parsedToken.value !== 'number') {
+			throw new Error(`CSSPropertyAsBuffer normalizeTokenForBuffer: parsedToken.value is not a number ${parsedToken}`);
+		}
+		if (parsedToken.tokenType === 'HASH' && !parsedToken.repr.startsWith('#')) {
+			throw new Error(`CSSPropertyAsBuffer normalizeTokenForBuffer: parsedToken.repr does not start with # ${parsedToken}`);
+		}
+
+		// Derived from parser token // e.g. "IDENT", "URL", "NUMBER"
+		const tokenType = this.typeMap[parsedToken.tokenType] || "UndefinedToken";
+
+		return { 
+			tokenType,
+			repr: parsedToken.repr,
+			value: parsedToken.value,
+			type: parsedToken.type,
+			unit: parsedToken.unit
+		};
 	}
 	/**
 	 * parsed value is token from parser
@@ -305,51 +415,51 @@ class CSSPropertyBuffer {
 	}
 	/**
 	 * 
-	 * @returns {number}
+	 * @returns {boolean}
 	 */
 	getIsInitialValue() {
-		return this._buffer[this.bufferSchema.isInitialValue.start];
+		return !!this._buffer[this.constructor.bufferSchema.isInitialValue.start];
 	}
 	/**
 	 * 
 	 * @returns {boolean}
 	 */
 	getIsInitialValueAsBool() {
-		return !!this._buffer[this.bufferSchema.isInitialValue.start];
+		return !!this._buffer[this.constructor.bufferSchema.isInitialValue.start];
 	}
 	/**
 	 * 
 	 */
 	setIsInitialValue() {
-		this._buffer.set([1], this.bufferSchema.isInitialValue.start);
+		this._buffer.set([1], this.constructor.bufferSchema.isInitialValue.start);
 	}
 	/**
 	 * 
 	 * @returns {string}
 	 */
 	tokenTypeToString() {
-		return Object.keys(this.TokenTypes)[this._buffer[this.bufferSchema['tokenType'].start]];
+		return this.TokenTypesAsArray[this._buffer[this.constructor.bufferSchema['tokenType'].start]];
 	}
 	/**
 	 * 
 	 * @returns {number}
 	 */
 	tokenTypeToNumber() {
-		return this._buffer[this.bufferSchema['tokenType'].start];
+		return this._buffer[this.constructor.bufferSchema['tokenType'].start];
 	}
 	/**
 	 * 
 	 * @returns {string}
 	 */
 	getValueTypeAsString() {
-		return Object.keys(this.ValueTypes)[this._buffer[this.bufferSchema['propertyType'].start]];
+		return this.ValueTypesAsArray[this._buffer[this.constructor.bufferSchema['propertyType'].start]];
 	}
 	/**
 	 * 
 	 * @returns {number}
 	 */
 	getValueTypeAsNumber() {
-		return this._buffer[this.bufferSchema['propertyType'].start];
+		return this._buffer[this.constructor.bufferSchema['propertyType'].start];
 	}
 	/**
 	 * 
@@ -363,21 +473,21 @@ class CSSPropertyBuffer {
 	 * @returns {string}
 	 */
 	getTokenTypeAsString() {
-		return this.TokenTypesAsArray[this._buffer[this.bufferSchema['tokenType'].start]];
+		return this.TokenTypesAsArray[this._buffer[this.constructor.bufferSchema['tokenType'].start]];
 	}
 	/**
 	 * 
 	 * @returns {number}
 	 */
 	getTokenTypeAsNumber() {
-		return this._buffer[this.bufferSchema['tokenType'].start];
+		return this._buffer[this.constructor.bufferSchema['tokenType'].start];
 	}
 	/**
 	 * 
 	 * @returns {string}
 	 */
 	unitToString() {
-		return this.UnitsAsArray[this._buffer[this.bufferSchema['unit'].start]];
+		return this.UnitsAsArray[this._buffer[this.constructor.bufferSchema['unit'].start]];
 	}
 	/**
 	 * 
@@ -387,51 +497,40 @@ class CSSPropertyBuffer {
 		var idxOfUnit = this.UnitsAsArray.indexOf(unit);
 		if (idxOfUnit === -1)
 			return;
-		this._buffer.set([idxOfUnit], this.bufferSchema.unit.start);
+		this._buffer.set([idxOfUnit], this.constructor.bufferSchema.unit.start);
 	}
-	// getValueAsString() is an alias for bufferedValueToString()
-	// TODO: unify
 	/**
-	 * 
+	 * getValueAsString() is an alias for bufferedValueToString()
+	 * TODO: unify
 	 * @returns {string}
 	 */
 	getValueAsString() {
 		return this.bufferedValueToString();
 	}
-	//CSSPropertyBuffer.prototype.getValueAsHash = function() {
-	//	return '#' + this.bufferedValueToString();
-	//}
-	// getValueAsNumber() is an alias for bufferedValueToNumber()
-	// TODO: unify
 	/**
-	 * 
+	 * getValueAsNumber() is an alias for bufferedValueToNumber()
+	 * TODO: unify
 	 * @returns {number}
 	 */
 	getValueAsNumber() {
 		return this.bufferedValueToNumber();
 	}
-	// bufferedValueToString() is an alias for getValueAsString()
-	// TODO: unify
 	/**
-	 * 
+	 * bufferedValueToString() is an alias for getValueAsString()
+	 * TODO: unify
 	 * @returns {string}
 	 */
 	bufferedValueToString() {
-		var start = this.bufferSchema.repr.start, end = start + this.bufferSchema.repr.length, strLengthIdx = this.bufferSchema.reprLength.start;
-		//	console.log(start, end, this._buffer.slice(start, end));
-		//	var test = this._buffer.slice(start, end).bufferToString(this._buffer[strLengthIdx]);
-		//	if (test.slice(0, 1) === '#')
-		//		console.log(test);
+		var start = this.constructor.bufferSchema.repr.start, end = start + this.constructor.bufferSchema.repr.length, strLengthIdx = this.constructor.bufferSchema.reprLength.start;
 		return this._buffer.slice(start, end).bufferToString(this._buffer[strLengthIdx]);
 	}
-	// bufferedValueToNumber() is an alias for getValueAsNumber()
-	// TODO: unify
 	/**
-	 * 
+	 * bufferedValueToNumber() is an alias for getValueAsNumber()
+	 * TODO: unify
 	 * @returns {number}
 	 */
 	bufferedValueToNumber() {
-		var start = this.bufferSchema['propertyValue'].start, end = start + this.bufferSchema['propertyValue'].length;
+		var start = this.constructor.bufferSchema['propertyValue'].start, end = start + this.constructor.bufferSchema['propertyValue'].length;
 		return this.byteTuppleTo16bits(this._buffer.slice(start, end));
 	}
 	/**
@@ -463,61 +562,6 @@ class CSSPropertyBuffer {
 //console.log(countTokenTypes);
 
 
-const LocalTokenFromParserFactory = function(parsedValue, tokenTypeFromParser) {
-	
-	if (tokenTypeFromParser && LocalTokenFromParserCache[tokenTypeFromParser])
-		return LocalTokenFromParserCache[tokenTypeFromParser];
-	else {
-		tokenTypeFromParser = parsedValue ? Object.getPrototypeOf(parsedValue).tokenType : tokenTypeFromParser;
-		
-		const LocalTokenFromParser = function(tokenType, value, name, type, repr, unit) {
-			var localValue = 0, localType = 'string', localRepr = '';
-			if (tokenTypeFromParser === 'IDENT' || tokenTypeFromParser === 'NONPARSED') {
-				localRepr  = repr || (value ? value.toString() : '');
-				localType = 'string';
-//				countTokenTypes['IDENT']++;
-			}
-			else if (tokenTypeFromParser === 'NUMBER' || tokenTypeFromParser === 'DIMENSION') {	// typeof value !== 'undefined' && Object.getPrototypeOf(value) === Number.prototype
-				localRepr = (value || localValue).toString() + (unit || '');
-				localValue = value || localValue;
-				localType = 'number';
-//				countTokenTypes['NUMBER']++;
-			}
-			else if (type === 'hash' || type === 'id' || type === 'unrestricted' || (tokenTypeFromParser === 'FUNCTION' && name === 'rgb')) {
-				localRepr  = repr || '#' + (value || localValue).toString();
-				localType = 'hash';
-//				countTokenTypes['COLORorFUNCTION']++;
-			}
-			else if (tokenTypeFromParser === 'PERCENTAGE') {
-				localValue = value || localValue;
-				localRepr  = (repr ? (repr.slice(-1) === '%' ? repr : repr + '%') : (value ? value.toString() : '0')  + '%');
-				localType = 'percentage';
-//				countTokenTypes['PERCENTAGE']++;
-			}
-			else if (typeof type === 'undefined') {
-				localRepr  = value ? value.toString() : '';
-//				countTokenTypes['un_defined']++;
-			}
-			
-			this.localTokenType = tokenType ? tokenType : tokenTypeFromParser.capitalizeFirstChar() + 'Token';
-			this.value = localValue;
-			this.type = localType;
-			this.repr = localRepr;
-			this.reprLength = this.repr.length;
-			this.unit = unit || '';
-		}
-		LocalTokenFromParser.prototype = {
-			tokenType : tokenTypeFromParser || 'NONE'
-		}
-		LocalTokenFromParserCache[LocalTokenFromParser] = LocalTokenFromParser;
-		
-		return LocalTokenFromParser
-	}
-}
-
-var LocalTokenFromParserCache = {
-	
-}
 
 
 
@@ -528,9 +572,7 @@ var LocalTokenFromParserCache = {
 
 
 
-
-
-Object.defineProperty(CSSPropertyBuffer.prototype, 'TokenTypes', {
+Object.defineProperty(CSSPropertyAsBuffer.prototype, 'TokenTypes', {
 	value : {
 			UndefinedToken : 0, 
 			BadstringToken : 1,
@@ -568,23 +610,66 @@ Object.defineProperty(CSSPropertyBuffer.prototype, 'TokenTypes', {
 			}
 });
 
-Object.defineProperty(CSSPropertyBuffer.prototype, 'stdStrLength', {
+// --- tokenType mapping between parser and buffer ---
+Object.defineProperty(CSSPropertyAsBuffer.prototype, 'typeMap', {
+	value : {
+		IDENT: "IdentToken",
+		FUNCTION: "FunctionToken",
+		ATKEYWORD: "AtkeywordToken",
+		HASH: "HashToken",
+		STRING: "StringToken",
+		URL: "UrlToken",
+		NUMBER: "NumberToken",
+		PERCENTAGE: "PercentageToken",
+		DIMENSION: "DimensionToken",
+		DELIM: "DelimToken",
+		WHITESPACE: "WhitespaceToken",
+		COMMA: "CommaToken",
+		COLON: "ColonToken",
+		SEMICOLON: "SemicolonToken",
+		CDO: "CdoToken",
+		CDC: "CdcToken",
+		OPENPAREN: "OpenparenToken",
+		CLOSEPAREN: "CloseparenToken",
+		OPENCURLY: "OpencurlyToken",
+		CLOSECURLY: "ClosecurlyToken",
+		OPENSQUARE: "OpensquareToken",
+		CLOSESQUARE: "ClosesquareToken",
+		EOF: "EOFToken",
+		BADSTRING: "BadstringToken",
+		BADURL: "BadurlToken",
+		INCLUDEMATCH: "IncludeMatchToken",
+		DASHMATCH: "DashmatchToken",
+		PREFIXMATCH: "PrefixmatchToken",
+		SUFFIXMATCH: "SuffixmatchToken",
+		SUBSTRINGMATCH: "SubstringmatchToken",
+		COLUMN: "ColumnToken",
+  }
+});
+
+Object.defineProperty(CSSPropertyAsBuffer.prototype, 'stdStrLength', {
 	value : 89
 });
 
-Object.defineProperty(CSSPropertyBuffer.prototype, 'ValueTypes', {
-	value : {
-		integer : 0,
-		percentage : 1,
-		float : 2,
-		string : 3,
-		hash : 4,
-		numericalArray : 5,
-		'' : 6
-	}
+const valueTypes = {
+	integer : 0,
+	percentage : 1,
+	number : 2,
+	string : 3,
+	hash : 4,
+	numericalArray : 5,
+	'' : 6
+};
+
+Object.defineProperty(CSSPropertyAsBuffer.prototype, 'ValueTypes', {
+	value : valueTypes
 });
 
-Object.defineProperty(CSSPropertyBuffer.prototype, 'Units', {
+Object.defineProperty(CSSPropertyAsBuffer.prototype, 'ValueTypesAsArray', {
+	value : Object.keys(valueTypes)
+});
+
+Object.defineProperty(CSSPropertyAsBuffer.prototype, 'Units', {
 	value : {
 		'' : {
 			idx : 0,
@@ -661,19 +746,19 @@ Object.defineProperty(CSSPropertyBuffer.prototype, 'Units', {
 	}
 });
 
-Object.defineProperty(CSSPropertyBuffer.prototype, 'UnitsAsArray', {
+Object.defineProperty(CSSPropertyAsBuffer.prototype, 'UnitsAsArray', {
 	value : (function() {
 		var ret = [];
-		for (var unitDef in CSSPropertyBuffer.prototype.Units)  {
-			ret.push(CSSPropertyBuffer.prototype.Units[unitDef].unit)
+		for (var unitDef in CSSPropertyAsBuffer.prototype.Units)  {
+			ret.push(CSSPropertyAsBuffer.prototype.Units[unitDef].unit)
 		}
 		return ret;
 	})()
 });
 
-Object.defineProperty(CSSPropertyBuffer.prototype, 'TokenTypesAsArray', {
+Object.defineProperty(CSSPropertyAsBuffer.prototype, 'TokenTypesAsArray', {
 	value : (function() {
-		return Object.keys(CSSPropertyBuffer.prototype.TokenTypes);
+		return Object.keys(CSSPropertyAsBuffer.prototype.TokenTypes);
 	})()
 });
 
@@ -693,4 +778,4 @@ Object.defineProperty(CSSPropertyBuffer.prototype, 'TokenTypesAsArray', {
 
 
 
-export default CSSPropertyBuffer;
+export default CSSPropertyAsBuffer;

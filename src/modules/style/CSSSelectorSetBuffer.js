@@ -3,10 +3,10 @@
  */
 
 
-import CSSSelectorsList from '.editing/CSSSelectorsList.js';
+import CSSSelectorsList from './CSSSelectorsList.js';
 import MemoryMapBuffer from '../buffer/MemoryMapBuffer.js';
 import MemorySingleBuffer from '../buffer/MemorySingleBuffer.js';
-import {GeneratorFor16bitsInt} from '../UIDGenerator.js';
+import {generatorFor16bitsInt} from '../UIDGenerator.js';
 
 
 /**

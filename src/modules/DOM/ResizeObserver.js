@@ -3,21 +3,7 @@
  * 
  */
 
-import TemplateFactory from 'src/modules/template/TemplateFactory'
-import EventEmitter from 'src/modules/reactivity/EventEmitter'
-/**
- * @constructor EventEmitter
- */
-var EventEmitter = function() {
-	this.objectType = 'EventEmitter';
-	this._eventHandlers = {};
-	this._one_eventHandlers = {};
-	this._identified_eventHandlers = {};
-	
-	this.createEvents();
-}
-EventEmitter.prototype = {};
-EventEmitter.prototype.objectType = 'EventEmitter';
+import {EventEmitter} from '../reactivity/EventEmitter.js'
 
 
 

@@ -1,6 +1,3 @@
-/**
- * constructor BinarySchemaFactory
- */
 
 import BinarySlice from './BinarySlice';
 

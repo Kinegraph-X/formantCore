@@ -20,6 +20,6 @@
   ],
   "include": [
     "src/modules/**/*",
-    "src/main.js"
+    "src/main.mjs"
   ]
 }

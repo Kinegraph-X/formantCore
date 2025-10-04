@@ -1,8 +1,10 @@
 import { fileURLToPath } from 'node:url';
+import annotations from 'rollup-plugin-formant-annotations';
 import resolve from '@rollup/plugin-node-resolve';
 import alias from '@rollup/plugin-alias';
 import autoRequirePlugin from 'rollup-plugin-import-paths';
-import cssifyFromDB from 'rollup-plugin-cssifyFromDB';
+import debugLoadId from 'rollup-plugin-debug-load';
+import cssifyFromDB from 'rollup-plugin-cssifyfromdb';
 
 const formantCoreBundleName = 'formantCore';
 const codebaseFolder = 'codebase/';
@@ -11,7 +13,7 @@ const distFolder = 'dist/';
 export default function () {
 
   return {
-    input: 'src/main.js',
+    input: 'src/main.mjs',
     
     output: {
       file: distFolder + formantCoreBundleName + '.js',  // Output file
@@ -22,9 +24,10 @@ export default function () {
     plugins: [
       alias({
         entries : [
-          {find : 'src/_LayoutEngine', replacement : fileURLToPath(new URL(codebaseFolder + 'formantCore/src/_LayoutEngine', import.meta.url))},
         ]
       }),
+      debugLoadId(),
+      annotations(),
       resolve(),  // Resolves node_modules
       autoRequirePlugin({
       	// root : process.cwd(),	// default

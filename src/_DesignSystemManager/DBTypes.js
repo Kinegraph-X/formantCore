@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 mongoose.pluralize(function(name) { return name; });
 //mongoose.set('debug', true);
 const Schema = mongoose.Schema;
@@ -337,9 +337,7 @@ var BorderSet = new Schema({
 	
 	
 	
-	
-
-module.exports = {
+const exports = {
 	ComponentStyle: mongoose.model('componentStyle', ComponentStyle),
 	Theme: mongoose.model('theme', Theme),
 	DesignContext : mongoose.model('design_context', DesignContext),
@@ -349,4 +347,6 @@ module.exports = {
 	ColorSet : mongoose.model('colorSet', ColorSet),
 	FontSet : mongoose.model('fontSet', FontSet),
 	BorderSet : mongoose.model('borderSet', BorderSet)
-}
+};
+
+export default exports;

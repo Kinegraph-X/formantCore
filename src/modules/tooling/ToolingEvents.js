@@ -216,3 +216,16 @@ export {
     memberViews,
     streams,
 }
+
+const exports = {
+    BaseToolingEvent,
+    element,
+    // shadowRoot,
+    view,
+    viewStrategy,
+    subViews,
+    memberViews,
+    streams,
+}
+
+export default exports

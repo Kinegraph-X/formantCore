@@ -1,8 +1,7 @@
 /**
  * @module ComponentView
  */
-import config from '../config.js';
-const viewStrategy = config.viewStrategyPath;
+import {currentViewStrategy} from '../config.js';
 
 import {ComponentError } from '../error/Error.js';
 
@@ -54,7 +53,7 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 
 		/* @debug-build start */
 		this.#currentViewStrategy = new Proxy(
-			new viewStrategy(vTemplate),
+			new currentViewStrategy(vTemplate),
 			{
 				get : viewStrategyTrap.get.bind(null, this.regUID, 'viewStrategy'),
 				set : viewStrategyTrap.set
@@ -63,7 +62,7 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 		/* @debug-build end */
 		
 		/* @production-build start 
-		this.#currentViewStrategy = new viewStrategy(vTemplate);
+		this.#currentViewStrategy = new currentViewStrategy(vTemplate);
 		@production-build end */
 		
 		// this.styleHook = new SWrapperInViewManipulator(this);

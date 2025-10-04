@@ -98,10 +98,10 @@ class StyleIFace {
 	 * @param {StyleIFace} styleObj 
 	 * @returns {CSSRuleAsBuffer}
 	 */
-	// TODO: OPTIMIZE
+	// not implemented
 	copyAndMergeWithStyle(styleObj) {
 		var styleRuleAsBufferCopy = new CSSRuleAsBuffer('FIXME:noType', this.styleRuleAsBuffer.getAllDefinedAttributes());
-		styleRuleAsBufferCopy.setApply(styleObj);
+		// styleRuleAsBufferCopy.setApply(styleObj);
 		return styleRuleAsBufferCopy;
 	}
 }

@@ -6,7 +6,7 @@ function defer([first, ...rest]) {
   return (...values) => rest.reduce((acc, str, i) => acc + values[i] + str, first);
 }
 
-module.exports = [
+export default [
 		defer`
 	var ${null}Styles = [
 /**@CSSifySlot styleSlotName : ${null} */
@@ -21,4 +21,4 @@ module.exports = [
 						${null}StylesUseCache.use ? ${null}StylesUseCache.nameInCache : null,
 						${null}Styles
 					)`
-	]
+]

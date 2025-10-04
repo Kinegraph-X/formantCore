@@ -1,14 +1,30 @@
-(function (root, factory) {
-    // Universal Module Definition (UMD) to support AMD, CommonJS/Node.js,
-    // Rhino, and plain browser loading.
-    if (typeof define === 'function' && define.amd) {
-        define(['exports'], factory);
-    } else if (typeof exports !== 'undefined') {
-        factory(exports);
-    } else {
-        factory(root);
-    }
-}(this, function (exports) {
+/*
+The code in this repository is licensed under the CC0 license.
+http://creativecommons.org/publicdomain/zero/1.0/
+It is free to use for any purpose.  No attribution, permission, or reproduction of this license is required.
+
+Forked from:
+ "name": "parse-css",
+  "version": "0.1.0",
+  "description": "Standards-based CSS parser, based on the CSS Syntax spec.",
+  "author": "Tab Atkins <jackalmage@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tabatkins/parse-css.git"
+  },
+*/
+
+// (function (root, factory) {
+//     // Universal Module Definition (UMD) to support AMD, CommonJS/Node.js,
+//     // Rhino, and plain browser loading.
+//     if (typeof define === 'function' && define.amd) {
+//         define(['exports'], factory);
+//     } else if (typeof exports !== 'undefined') {
+//         factory(exports);
+//     } else {
+//         factory(root);
+//     }
+// }(this, function (exports) {
 
 var between = function (num, first, last) { return num >= first && num <= last; }
 function digit(code) { return between(code, 0x30,0x39); }
@@ -548,7 +564,7 @@ function tokenize(str) {
 function CSSParserToken() {
 	this.value = 0;
 	this.repr = '';
-	this.type = "unrestricted";
+	this.type = "string";
 	this.unit = "";
 }//throw "Abstract Base Class"; }
 CSSParserToken.prototype.toJSON = function() {
@@ -702,6 +718,7 @@ IdentToken.prototype.toSource = function() {
 // DONE: normalize type
 function FunctionToken(val) {
 	StringValuedToken.call(this);
+	this.name = '';
 //	this.value = val;
 	this.repr = val;
 	this.mirror = ")";
@@ -733,7 +750,7 @@ function HashToken(val) {
 	StringValuedToken.call(this);
 //	this.value = val;
 	this.repr = val;
-	this.type = "unrestricted";
+	this.type = "hash";
 }
 HashToken.prototype = Object.create(StringValuedToken.prototype);
 HashToken.prototype.tokenType = "HASH";
@@ -774,7 +791,7 @@ StringToken.prototype.toString = function() {
 // DONE: normalize type
 function URLToken(val) {
 	StringValuedToken.call(this);
-//	this.value = val;
+	// this.value = val;
 	this.repr = val;
 }
 URLToken.prototype = Object.create(StringValuedToken.prototype);
@@ -942,40 +959,78 @@ function escapeString(string) {
 }
 
 // Exportation.
-exports.tokenize = tokenize;
-exports.IdentToken = IdentToken;
-exports.FunctionToken = FunctionToken;
-exports.AtKeywordToken = AtKeywordToken;
-exports.HashToken = HashToken;
-exports.StringToken = StringToken;
-exports.BadStringToken = BadStringToken;
-exports.URLToken = URLToken;
-exports.BadURLToken = BadURLToken;
-exports.DelimToken = DelimToken;
-exports.NumberToken = NumberToken;
-exports.PercentageToken = PercentageToken;
-exports.DimensionToken = DimensionToken;
-exports.IncludeMatchToken = IncludeMatchToken;
-exports.DashMatchToken = DashMatchToken;
-exports.PrefixMatchToken = PrefixMatchToken;
-exports.SuffixMatchToken = SuffixMatchToken;
-exports.SubstringMatchToken = SubstringMatchToken;
-exports.ColumnToken = ColumnToken;
-exports.WhitespaceToken = WhitespaceToken;
-exports.CDOToken = CDOToken;
-exports.CDCToken = CDCToken;
-exports.ColonToken = ColonToken;
-exports.SemicolonToken = SemicolonToken;
-exports.CommaToken = CommaToken;
-exports.OpenParenToken = OpenParenToken;
-exports.CloseParenToken = CloseParenToken;
-exports.OpenSquareToken = OpenSquareToken;
-exports.CloseSquareToken = CloseSquareToken;
-exports.OpenCurlyToken = OpenCurlyToken;
-exports.CloseCurlyToken = CloseCurlyToken;
-exports.EOFToken = EOFToken;
-exports.CSSParserToken = CSSParserToken;
-exports.GroupingToken = GroupingToken;
+// exports.tokenize = tokenize;
+// exports.IdentToken = IdentToken;
+// exports.FunctionToken = FunctionToken;
+// exports.AtKeywordToken = AtKeywordToken;
+// exports.HashToken = HashToken;
+// exports.StringToken = StringToken;
+// exports.BadStringToken = BadStringToken;
+// exports.URLToken = URLToken;
+// exports.BadURLToken = BadURLToken;
+// exports.DelimToken = DelimToken;
+// exports.NumberToken = NumberToken;
+// exports.PercentageToken = PercentageToken;
+// exports.DimensionToken = DimensionToken;
+// exports.IncludeMatchToken = IncludeMatchToken;
+// exports.DashMatchToken = DashMatchToken;
+// exports.PrefixMatchToken = PrefixMatchToken;
+// exports.SuffixMatchToken = SuffixMatchToken;
+// exports.SubstringMatchToken = SubstringMatchToken;
+// exports.ColumnToken = ColumnToken;
+// exports.WhitespaceToken = WhitespaceToken;
+// exports.CDOToken = CDOToken;
+// exports.CDCToken = CDCToken;
+// exports.ColonToken = ColonToken;
+// exports.SemicolonToken = SemicolonToken;
+// exports.CommaToken = CommaToken;
+// exports.OpenParenToken = OpenParenToken;
+// exports.CloseParenToken = CloseParenToken;
+// exports.OpenSquareToken = OpenSquareToken;
+// exports.CloseSquareToken = CloseSquareToken;
+// exports.OpenCurlyToken = OpenCurlyToken;
+// exports.CloseCurlyToken = CloseCurlyToken;
+// exports.EOFToken = EOFToken;
+// exports.CSSParserToken = CSSParserToken;
+// exports.GroupingToken = GroupingToken;
+
+// Exportation.
+export {
+	tokenize,
+	IdentToken,
+	FunctionToken,
+	AtKeywordToken,
+	HashToken,
+	StringToken,
+	BadStringToken,
+	URLToken,
+	BadURLToken,
+	DelimToken,
+	NumberToken,
+	PercentageToken,
+	DimensionToken,
+	IncludeMatchToken,
+	DashMatchToken,
+	PrefixMatchToken,
+	SuffixMatchToken,
+	SubstringMatchToken,
+	ColumnToken,
+	WhitespaceToken,
+	CDOToken,
+	CDCToken,
+	ColonToken,
+	SemicolonToken,
+	CommaToken,
+	OpenParenToken,
+	CloseParenToken,
+	OpenSquareToken,
+	CloseSquareToken,
+	OpenCurlyToken,
+	CloseCurlyToken,
+	EOFToken,
+	CSSParserToken,
+	GroupingToken,
+  };
 
 function TokenStream(tokens) {
 	// Assume that tokens is an array.
@@ -1488,22 +1543,42 @@ var CSSGrammar = {
 
 
 // Exportation.
-exports.CSSParserRule = CSSParserRule;
-exports.Stylesheet = Stylesheet;
-exports.AtRule = AtRule;
-exports.QualifiedRule = QualifiedRule;
-exports.Declaration = Declaration;
-exports.SimpleBlock = SimpleBlock;
-exports.Func = Func;
-exports.parseAStylesheet = parseAStylesheet;
-exports.parseAListOfRules = parseAListOfRules;
-exports.parseARule = parseARule;
-exports.parseADeclaration = parseADeclaration;
-exports.parseAListOfDeclarations = parseAListOfDeclarations;
-exports.parseAComponentValue = parseAComponentValue;
-exports.parseAListOfComponentValues = parseAListOfComponentValues;
-exports.parseACommaSeparatedListOfComponentValues = parseACommaSeparatedListOfComponentValues;
-exports.canonicalizeRule = canonicalize;
-exports.CSSGrammar = CSSGrammar;
+// exports.CSSParserRule = CSSParserRule;
+// exports.Stylesheet = Stylesheet;
+// exports.AtRule = AtRule;
+// exports.QualifiedRule = QualifiedRule;
+// exports.Declaration = Declaration;
+// exports.SimpleBlock = SimpleBlock;
+// exports.Func = Func;
+// exports.parseAStylesheet = parseAStylesheet;
+// exports.parseAListOfRules = parseAListOfRules;
+// exports.parseARule = parseARule;
+// exports.parseADeclaration = parseADeclaration;
+// exports.parseAListOfDeclarations = parseAListOfDeclarations;
+// exports.parseAComponentValue = parseAComponentValue;
+// exports.parseAListOfComponentValues = parseAListOfComponentValues;
+// exports.parseACommaSeparatedListOfComponentValues = parseACommaSeparatedListOfComponentValues;
+// exports.canonicalizeRule = canonicalize;
+// exports.CSSGrammar = CSSGrammar;
 
-}));
+export {
+	CSSParserRule,
+	Stylesheet,
+	AtRule,
+	QualifiedRule,
+	Declaration,
+	SimpleBlock,
+	Func,
+	parseAStylesheet,
+	parseAListOfRules,
+	parseARule,
+	parseADeclaration,
+	parseAListOfDeclarations,
+	parseAComponentValue,
+	parseAListOfComponentValues,
+	parseACommaSeparatedListOfComponentValues,
+	canonicalize as canonicalizeRule,
+	CSSGrammar,
+}
+
+// }));

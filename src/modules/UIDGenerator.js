@@ -44,7 +44,13 @@ GeneratorForTemplates.prototype.newUID = function() {
 	return 'Def_' + (this.nextUID++).toString();
 }
 
-
+const GeneratorForComponents = function() {
+	this.nextUID = 0;
+}
+/** @returns {string} */
+GeneratorForComponents.prototype.newUID = function() {
+	return 'Def_' + (this.nextUID++).toString();
+}
 
 const GeneratorForViews = function() {
 	this.nextUID = 0;
@@ -118,6 +124,7 @@ GeneratorFor16bitsInt.prototype.numberFromInt = function(int16AsArray) {
 const styleUIDGenerator = new GeneratorForStyles();
 const defUIDGenerator = new GeneratorForDef();
 const templateUIDGenerator = new GeneratorForTemplates();
+const compUIDGenerator = new GeneratorForComponents();
 const viewUIDGenerator = new GeneratorForViews();
 const listUIDGenerator = new GeneratorForLists();
 const nodeUIDGenerator = new GeneratorForLayoutNodes();
@@ -128,6 +135,7 @@ export {
 	styleUIDGenerator,
 	defUIDGenerator,
 	templateUIDGenerator,
+	compUIDGenerator,
 	viewUIDGenerator,
 	listUIDGenerator,
 	nodeUIDGenerator,

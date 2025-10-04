@@ -4,7 +4,7 @@
 */
 
 import {defUIDGenerator} from '../UIDGenerator.js';
-import NodeResizeObserver from 'src/modules/DOM/ResizeObserver'
+import NodeResizeObserver from './ResizeObserver'
 
 
 class TextSizeGetter {

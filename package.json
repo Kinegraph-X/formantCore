@@ -2,7 +2,7 @@
   "name": "Formant-core",
   "version": "0.1.0",
   "description": "An easy, fast, vanilla JS Frontend framework",
-  "main": "main.mjs",
+  "main": "src/main.mjs",
   "type": "module",
   "keywords": [],
   "scripts": {
@@ -28,7 +28,8 @@
     "dep-case-verify": "2.1.0",
     "highlighted-sources": "0.0.1",
     "rollup-plugin-copy": "3.5.0",
-    "rollup-plugin-cssifyfromdb": "0.0.1",
+    "rollup-plugin-cssifyfromdb": "0.0.2",
+    "rollup-plugin-formant-annotations": "^0.1.0",
     "rollup-plugin-debug-load": "file:../perso_node_modules/rollup-plugin-debug-load",
     "rollup-plugin-import-css": "3.5.0",
     "rollup-plugin-import-paths": "0.0.1",

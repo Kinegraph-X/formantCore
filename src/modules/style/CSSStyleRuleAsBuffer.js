@@ -1,12 +1,30 @@
 /**
- * Constructor AttributesList
+ * High-level CSS rule facade over four category slices.
  * 
+ * Data flow:
+ * - External attributes map  
+ *  -> category slice ([CSSRuleSliceIFaceBase](cci:2://file:///./CSSStyleRuleAsBuffer.js:23:0-77:1)) 
+ *  -> per-prop buffer([CSSPropertyBuffer](cci:2://file://./CSSPropertyAsBuffer.js:92:0-478:1))
+ *  -> Shorthands resolved in [CSSPropertySetBuffer.setPropFromBuffer()] (cci:1://file:///./CSSStyleRuleSliceAsBuffer.js:129:1-148:2).
+ * 
+ * flowchart LR
+ * A[attributes map] --> B[CSSRuleSliceIFaceBase (per category)]
+ * B --> C[CSSPropertyAsBuffer.setValue(value)]
+ * C --> D[CSSStyleRuleSliceAsBuffer.setPropFromBuffer()]
+ * D --> E[TypedArray storage]
+ * D --> F[Shorthand expansion/aliasing]
+ * 
+ * @see style/CSSStyleRuleSliceAsBuffer.js (CSSPropertySetBuffer: compact set of properties, shorthand parsing)
+ * @see style/CSSPropertyAsBuffer.js (CSSPropertyBuffer: compact per-property binary representation)
+ * @see style/CSSPropertyDescriptors.js (metadata: initial values, shorthand expansions, aliases)
  */
+
+
 /**
  * @typedef {import('./CSSPropertyDescriptors.js').CSSCategory} CSSCategory
  */
-import CSSPropertyBuffer from './CSSPropertyAsBuffer.js';
-import {categories, knownAttributesMapByCagegory, allCSSPropertyDescriptors, splittedCSSPropertyDescriptors} from './CSSPropertyDescriptors.js';
+import CSSPropertyAsBuffer from './CSSPropertyAsBuffer.js';
+import {categories, propToCategory, knownAttributesMapByCagegory, allCSSPropertyDescriptors} from './CSSPropertyDescriptors.js';
 import CSSStyleRuleSliceAsBuffer from './CSSStyleRuleSliceAsBuffer.js';
 import {InitialPropertySetBuffers} from './CSSStyleRuleSliceAsBuffer.js';
 import {camelToHyphens} from '../nativeTypesUtilities/StringUtilities.js';
@@ -17,9 +35,17 @@ import {camelToHyphens} from '../nativeTypesUtilities/StringUtilities.js';
 
 
 /**
- * Construct. BaseClass SplittedAttributesListBaseClass
- * 
- * @param attributes Object : partial AttributesList-Like (only significative keys defined)
+ * CSSRuleSliceIFaceBase manages a slice of CSS properties for a given category
+ * (e.g., `inheritedAttributes`, `locallyEffectiveAttributes`, `boxModelAttributes`, `strictlyLocalAttributes`).
+ *
+ * Responsibilities:
+ * - Constructs a `CSSPropertySetBuffer` for its category using `CSSStyleRuleSliceAsBuffer.fromCategory()` and `InitialPropertySetBuffers`.
+ * - Filters an incoming attribute map to the category's known properties.
+ * - For each kept property, creates a `CSSPropertyBuffer`, calls `setValue(value)` (raw-first path),
+ *   marks it as non-initial, then delegates to `CSSPropertySetBuffer.setPropFromBuffer()` which resolves shorthands and aliases.
+ *
+ * @see CSSStyleRuleSliceAsBuffer.js (`CSSPropertySetBuffer`) for the underlying buffer layout and shorthand expansion.
+ * @see CSSPropertyAsBuffer.js (`CSSPropertyBuffer`) for the compact per-property binary representation.
  */
 class CSSRuleSliceIFaceBase {
 	static objectType = 'SplittedAttributesListBaseClass';
@@ -39,8 +65,13 @@ class CSSRuleSliceIFaceBase {
 	}
 
 	/**
+	 * Converts incoming attribute map to CSSPropertyBuffer instances:
 	 * Ignores attributes depending on if they pertain to the self-handled category of CSS props  :
 	 * and assign the filtered ones to the embedded CSSRuleAsBufferIFace
+	 * 
+	 * - Uses new CSSPropertyBuffer(null, attrName) then setValue(attributes[attrName])
+	 * - Passes to setPropFromBuffer(), which resolves shorthands/aliases.
+	 * @see CSSPropertySetBuffer.setPropFromBuffer()
 	 * 
 	 * It also logs a warning if we encounter a non-supported CSS prop
 	 * (for now, we're not aimed at supporting the entire spec)
@@ -61,11 +92,11 @@ class CSSRuleSliceIFaceBase {
 			else if ((knownAttributes).indexOf(attrName) < 0)
 				continue;
 				
-			packedCSSProperty = new CSSPropertyBuffer(null, attrName);
+			packedCSSProperty = new CSSPropertyAsBuffer(null, attrName);
 			packedCSSProperty.setValue(attributes[attrName]);
 
 			// Set the isInitialValue flag to false
-			packedCSSProperty._buffer.set([0], CSSPropertyBuffer.bufferSchema.isInitialValue.start);
+			packedCSSProperty._buffer.set([0], CSSPropertyAsBuffer.bufferSchema.isInitialValue.start);
 			
 			this.CSSRuleAsBufferIFace.setPropFromBuffer(attrName, packedCSSProperty);
 		}
@@ -95,7 +126,25 @@ class StrictlyLocalAttributesList extends CSSRuleSliceIFaceBase {
 }
 
 
-
+/**
+ * CSSRuleAsBuffer is a high-level façade over four category slices:
+ * - `inheritedAttributes`
+ * - `locallyEffectiveAttributes`
+ * - `boxModelAttributes`
+ * - `strictlyLocalAttributes`
+ *
+ * It orchestrates initialization and routing of get/set operations:
+ * - On construction, it creates one `CSSRuleSliceIFaceBase` per category, each backed by a `CSSPropertySetBuffer` initialized
+ *   from `InitialPropertySetBuffers` (pre-populated with descriptor initial values).
+ * - `set(attr, value)`: builds a `CSSPropertyBuffer`, calls `setValue(value)` (raw-first; preserves composite values), marks non-initial,
+ *   and forwards to the correct slice's `setPropFromBuffer()` which resolves shorthands/aliases and stores into the typed-array buffer.
+ * - `get(attr)`: reads back the string representation via the owning slice.
+ * - `linearize()`: serializes defined properties to CSS text.
+ *
+ * See also:
+ * @see CSSStyleRuleSliceAsBuffer.js for buffer management and shorthand parsing.
+ * @see CSSPropertyDescriptors.js for property metadata (initial values, shorthand expansions, aliases).
+ */
 class CSSRuleAsBuffer {
 	selector;
 	inheritedAttributes;
@@ -120,12 +169,10 @@ class CSSRuleAsBuffer {
 	 * @returns 
 	 */
 	get(attr) {
-		var propBuffer;
-		for (var propGroup in splittedCSSPropertyDescriptors) {
-			if (splittedCSSPropertyDescriptors[propGroup][attr]) {
-				return this[propGroup].CSSRuleAsBufferIFace.bufferedValueToString(attr);
-			}
-		}
+		if (!propToCategory.has(attr))
+			throw new Error('Unsupported CSS Property: ' + attr);
+			
+		return this[propToCategory.get(attr)].CSSRuleAsBufferIFace.bufferedValueToString(attr);
 	}
 	/**
 	 * 
@@ -133,16 +180,13 @@ class CSSRuleAsBuffer {
 	 * @param {string|number} value 
 	 */
 	set(attr, value) {
-		const val = value.toString();
-		var propBuffer;
-		for (var propGroup in splittedCSSPropertyDescriptors) {
-			if (splittedCSSPropertyDescriptors[propGroup][attr]) {
-				propBuffer = new CSSPropertyBuffer();
-				propBuffer.setValue(val);
-				propBuffer.setIsInitialValue();
-				this[propGroup].CSSRuleAsBufferIFace.setPropFromBuffer(attr, propBuffer);
-			}
-		}
+		if (!propToCategory.has(attr))
+			throw new Error('Unsupported CSS Property: ' + attr);
+			
+		const propBuffer = new CSSPropertyAsBuffer(null, attr);
+		propBuffer.setValue(value);
+		propBuffer._buffer.set([0], CSSPropertyAsBuffer.bufferSchema.isInitialValue.start);
+		this[propToCategory.get(attr)].CSSRuleAsBufferIFace.setPropFromBuffer(attr, propBuffer);
 	}
 	
 	// FIXME: should update all partial lists down the object
@@ -153,18 +197,10 @@ class CSSRuleAsBuffer {
 	}
 
 	linearize() {
-		const attributes = this.getAllDefinedAttributes();
-		var str = '', current = '', attrCount = Object.keys(attributes).length, c = 0;
-		for (var prop in attributes) {
-			c++;
-			current = attributes[prop];
-
-			str += camelToHyphens(prop) + ' : ' + current + ';';
-
-			if (c !== attrCount)
-				str += '\n';
-		};
-		return str;
+		const defs = this.getAllDefinedAttributes();
+		const lines = [];
+		for (const k in defs) lines.push(`${camelToHyphens(k)} : ${defs[k]};`);
+		return lines.join('\n');
 	}
 	/**
 	 * 
@@ -191,7 +227,7 @@ class CSSRuleAsBuffer {
 		return allAttributes;
 	}
 
-	fromAST(ast) {
+	static fromAST(ast) {
 		var name, attrList = {};
 		// ast is an array of declarations
 		ast.forEach(function(declaration) {
@@ -202,7 +238,8 @@ class CSSRuleAsBuffer {
 				attrList[name] = declaration.value.reduce(CSSRuleAsBuffer.flattenDeclarationValues, '');
 			}
 		});
-		return new CSSRuleAsBuffer(attrList);
+		// FIXME: selector is first param, but where do we get it?
+		return new CSSRuleAsBuffer('', attrList);
 	}
 
 	// A callback for the Reducer we use as a hacky serializer for the objects we get from the CSS ast

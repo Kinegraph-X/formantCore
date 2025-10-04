@@ -2,8 +2,8 @@
  * @module config
  */
 
-const viewStrategyPath = 'src/modules/DOM/DOMViewStrategy'
+import currentViewStrategy from './DOM/DOMViewStrategy.js'
 
 export {
-	viewStrategyPath,
+	currentViewStrategy,
 }

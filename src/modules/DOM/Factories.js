@@ -3,14 +3,14 @@
  */
 
 /**
- * @typedef {import('src/coreTest/TemplateFactory').AbstractPropArray} AbstractPropArray
- * @typedef {import('src/coreTest/TemplateFactory').State} State
- * @typedef {import('src/coreTest/CoreTypes').Stream<unknown>} Stream
+ * @typedef {import('../template/TemplateFactory').AbstractPropArray} AbstractPropArray
+ * @typedef {import('../template/TemplateFactory').State} State
+ * @typedef {import('../reactivity/Stream').default<unknown>} Stream
  */
 
 
 import {ComponentError } from '../error/Error.js';
-import {Logger} from '../logger/Log.js';
+import {Logger} from '../log/Logger.js';
 import StreamToDomInterface from '../reactivity/StreamToDomInterface.js';
 import { tryParseBoolean } from '../nativeTypesUtilities/BooleanUtilities.js';
 
@@ -69,7 +69,8 @@ class HTMLCustomElement extends HTMLElement {
                 if (!HTMLElement.prototype[name]) {
                     let stream;
                     if (!(stream = this.#streams.get(stateName))) {
-                        throw new ComponentError(this, 'Unknown custom-element creation error: a State doesn\'t correspond to a Stream', /** @type {typeof HTMLCustomElement}*/ (this).observedStates, this.#streams);
+                        const thisArg = /** @type {unknown}*/ (this)
+                        throw new ComponentError(this, 'Unknown custom-element creation error: a State doesn\'t correspond to a Stream', /** @type {typeof HTMLCustomElement}*/ (thisArg).observedStates, this.#streams);
                     }
                     Object.defineProperty(this, stateName, StreamToDomInterface.getPropertyDescriptor.bind(this, stream));
                 }
@@ -105,7 +106,7 @@ class HTMLCustomElement extends HTMLElement {
     /** @param {AbstractPropArray} attributes */
     setAttributes(attributes) {
         attributes.forEach(
-            (attrObject) {
+            (attrObject) => {
                 const name = (attrObject.getName());
                 if (this.#nonProtectedobservedStates.includes(name)) {
                     this[/** @type {keyof HTMLElement}*/ (name)] = attrObject.getValue();
@@ -134,7 +135,7 @@ class HTMLCustomElement extends HTMLElement {
  * @param {AbstractPropArray|[]} states 
  * @param {Map<string, Stream>} streams 
  */
-const defineCustomElem = (nodeName, states, streams) {
+const defineCustomElem = (nodeName, states, streams) => {
     const observedStates = states.map(
         /** @param {State} state */
         (state) => state.name

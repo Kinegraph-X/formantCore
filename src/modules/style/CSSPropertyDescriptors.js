@@ -206,18 +206,20 @@ SplittedCSSPropertyDescriptors.boxModelAttributes = {
 }
 
 SplittedCSSPropertyDescriptors.strictlyLocalAttributes = {
-	background : CSSPropertyDescriptorFactory('background', '', true, ['backgroundColor', 'backgroundImage', 'backgroundRepeat', 'backgroundAttachment', 'backgroundPositionTop', 'backgroundPositionLeft'], false, false),
+	background : CSSPropertyDescriptorFactory('background', 'transparent', true, ['backgroundColor', 'backgroundImage', 'backgroundRepeat', 'backgroundPosition', 'backgroundAttachment', 'backgroundOrigin', 'backgroundClip'], false, false),
 	backgroundColor : CSSPropertyDescriptorFactory('backgroundColor', 'transparent', false, [], false, false),
 	objectFit : CSSPropertyDescriptorFactory('objectFit', 'fill', false, [], false, false),
 	
 	// CSSOM properties are not supported by Browsers for now : change the "isShorthand" (first) flag to true when available
-	backgroundPosition : CSSPropertyDescriptorFactory('backgroundPosition', '0% 0%', false, ['backgroundPositionTop', 'backgroundPositionLeft'], false, false),
-	backgroundSize : CSSPropertyDescriptorFactory('backgroundSize', 'auto auto', false, [], false, false),
-	backgroundPositionTop : CSSPropertyDescriptorFactory('backgroundPositionTop', '0%', false, [], false, false),
-	backgroundPositionLeft : CSSPropertyDescriptorFactory('backgroundPositionLeft', '0%', false, [], false, false),
+	backgroundPosition : CSSPropertyDescriptorFactory('backgroundPosition', '0% 0%', true, ['backgroundPositionY', 'backgroundPositionX'], false, false),
+	backgroundPositionX : CSSPropertyDescriptorFactory('backgroundPositionLeft', '0%', false, [], false, false),
+	backgroundPositionY : CSSPropertyDescriptorFactory('backgroundPositionTop', '0%', false, [], false, false),
+	backgroundSize : CSSPropertyDescriptorFactory('backgroundSize', 'auto auto', true, [], false, false),
 	backgroundImage : CSSPropertyDescriptorFactory('backgroundImage', 'none', false, [], false, false),
 	backgroundAttachment : CSSPropertyDescriptorFactory('backgroundAttachment', '', false, [], false, false),
 	backgroundRepeat : CSSPropertyDescriptorFactory('backgroundRepeat', 'repeat', false, [], false, false),
+	backgroundOrigin : CSSPropertyDescriptorFactory('backgroundOrigin', 'repeat', false, [], false, false),
+	backgroundClip : CSSPropertyDescriptorFactory('backgroundClip', 'repeat', false, [], false, false),
 	boxShadow : CSSPropertyDescriptorFactory('boxShadow', 'none', false, [], false, false),
 	
 	// CSSOM properties are not supported by Browsers for now : change the "isShorthand" (first) flag to true when available
@@ -263,10 +265,10 @@ var boundaries = {},
 for (var groupName in SplittedCSSPropertyDescriptors) {
 	l = Object.keys(SplittedCSSPropertyDescriptors[groupName]).length;
 	boundaries[groupName] = {
-		start : c,
+		start : 0,
 		length : l
 	};
-	c += l;
+	// c += l;
 }
 // DEBUG: stdAttributes is the complete list of attributes for a given CSS rule (to be deleted)
 boundaries.stdAttributes = {
@@ -296,10 +298,13 @@ knownAttributesMapByCagegory.set(categories.locallyEffectiveAttributes, Object.k
 knownAttributesMapByCagegory.set(categories.boxModelAttributes, Object.keys(SplittedCSSPropertyDescriptors.boxModelAttributes));
 knownAttributesMapByCagegory.set(categories.strictlyLocalAttributes, Object.keys(SplittedCSSPropertyDescriptors.strictlyLocalAttributes));
 
+const propToCategory = new Map(Object.entries(SplittedCSSPropertyDescriptors).flatMap(([cat, map]) => Object.keys(map).map(p => [p, cat])));
+
 
 
 export {
 	categories,
+	propToCategory,
 	CSSPropertyDescriptors as allCSSPropertyDescriptors,
 	SplittedCSSPropertyDescriptors as splittedCSSPropertyDescriptors,
 	boundaries,

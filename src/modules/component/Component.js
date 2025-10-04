@@ -15,11 +15,11 @@ import {
     ComponentTemplate,
     ViewTemplate,
 } from '../template/TemplateFactory.js';
-import { UIDGenerator } from '../UIDGenerator.js';
+import { compUIDGenerator } from '../UIDGenerator.js';
 
 import { FrameworkEvent, EventEmitter } from '../reactivity/EventEmitter.js';
 import Stream from '../reactivity/Stream.js';
-import { ComponentView, ComponentRootView as RootComponentView } from '../view/ComponentView.js';
+import { ComponentView, RootComponentView } from '../view/ComponentView.js';
 import viewRef from '../view/viewRef.js';
 import TemplateReconcilier from './TemplateReconcilier.js';
 // import ViewFactory from '../view/ViewFactory.js';
@@ -47,7 +47,7 @@ class BaseHierarchicalObject {
 	children = [];
 
 	constructor() {
-		this._UID = UIDGenerator.newUID();
+		this._UID = compUIDGenerator.newUID();
 	}
 
 	/**
@@ -293,7 +293,7 @@ class ComponentWithView extends BaseComponentWithView {
 	 * @param {ComponentWithView} type
 	 * @param {string} outputName
 	 */
-	static pushOutput = (type, outputName) => {
+	static declareOutput = (type, outputName) => {
 		if (!type.hasOwnProperty('outputs'))
 			type._outputs = [];
 		type._outputs.push(outputName);
@@ -301,9 +301,9 @@ class ComponentWithView extends BaseComponentWithView {
 	}
 	/*
 	 * @example:
-	 * 	@output output = new EventEmitter<any>('eventName');
+	 * 	@ output output = new EventEmitter<any>('eventName');
 	 * 	will be transformed at build time to
-	 * 	`output = ComponentWithView.pushOutput(${typeName}, ${outputName)} && new EventEmitter<any>();`
+	 * 	`output = ComponentWithView.declareOutput(${typeName}, ${outputName)} && new EventEmitter<any>();`
 	 */
 	@output update = new EventEmitter<unknown>('update');
 
