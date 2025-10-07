@@ -7,7 +7,7 @@ class ViewStrategyInterface {
 	/** @type {string} */
 	static objectType = 'ViewStrategyInterface';
 	/** @type {string}*/
-	nodeName;
+	#nodeName;
 	/** @type {any} @default null */
 	#masterNode = null;
 	/** @type {any} @default null */
@@ -16,7 +16,7 @@ class ViewStrategyInterface {
 	 * @param {any} tpl
 	 */
 	constructor(tpl) {
-		this.nodeName = /** @type {string}*/ (tpl.nodeName);
+		this.#nodeName = /** @type {string}*/ (tpl.nodeName);
 	}
 	/**
 	 * @param {boolean} bool
@@ -28,6 +28,10 @@ class ViewStrategyInterface {
 	 * @param {(e: any) => void} handler
 	 */
 	addEventListener(eventName, handler) {
+	}
+
+	get nodeName() {
+		return this.#nodeName;
 	}
 	
 	get masterNode() {
@@ -44,6 +48,12 @@ class ViewStrategyInterface {
 	 */
 	get wrappingNode() {
 		return this.#wrappingNode || /**@type {any}*/ (this.#masterNode);
+	}
+	/**
+	 * @returns {boolean}
+	 */
+	isShadowHost() {
+		return false;
 	}
 	
 	/**

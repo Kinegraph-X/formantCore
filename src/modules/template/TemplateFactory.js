@@ -11,7 +11,7 @@
  * @typedef {import('./ReactivityQuery').ReactivityQueryDef} ReactivityQueryDef
  * @typedef {import('./EventSubscription').EventSubscriptionDef<EventPayload>} EventSubscriptionDef
  * @typedef {import('./ListTemplate').ListTemplateDef} ListTemplateDef
- * @typedef {import('../component/Component').ComponentWithView<string>} ComponentWithView
+ * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  * @typedef {import('../reactivity/EffectCtx')} EffectCtx
  * @typedef {import('../style/Stylesheet')} Stylesheet
  */

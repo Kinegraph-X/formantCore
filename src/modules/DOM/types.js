@@ -2,6 +2,9 @@
  * @definitions
  */
 
+ /**
+ * @typedef {keyof HTMLElementTagNameMap} stdTagNameType
+ */
  /** 
  * @template {keyof HTMLElementTagNameMap} TagNameMapEntry
  * @typedef {keyof HTMLElementTagNameMap[TagNameMapEntry]} ElementProperty

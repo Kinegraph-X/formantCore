@@ -3,7 +3,7 @@
  */
 /**
  * @typedef {import('../template/TemplateFactory').AbstractPropArray} AbstractPropArray
- * @typedef {import('../reactivity/Stream')<unknown>} Stream
+ * @typedef {import('../reactivity/Stream').default<unknown>} Stream
  */
 
 import { HTMLCustomElement, HTMLCustomElementFactory } from './Factories.js';
@@ -19,8 +19,9 @@ class ElementFactory {
      * @returns {HTMLElementTagNameMap[K]}
      */
     static createElement(nodeName) {
-		return document.createElement(nodeName);
-	}
+      return document.createElement(nodeName);
+    }
+
     /**
      * @template customTagName
      * @param {customTagName} nodeName 
@@ -29,8 +30,8 @@ class ElementFactory {
      * @returns {HTMLCustomElement<customTagName>}
      */
     static createCustomElement(nodeName, states = [], streams = new Map()) {
-		return HTMLCustomElementFactory.createElement(nodeName, states, streams);
-	}
+      return HTMLCustomElementFactory.createElement(nodeName, states, streams);
+    }
     
 }
 

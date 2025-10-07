@@ -5,13 +5,15 @@
 /** 
  * @template EventPayload
  * @typedef {import('../reactivity/EventEmitter').FrameworkEvent<EventPayload>} FrameworkEvent 
+ * @typedef {import('../reactivity/EventEmitter').FrameworkEventCtx} FrameworkEventCtx 
+ * @typedef {import('../reactivity/EventEmitter').FrameworkEventMeta} FrameworkEventMeta 
  * */
 
 /**
  * @template EventPayload
  * @typedef {object} EventSubscriptionDef
  * @property {string} on
- * @property {(e : FrameworkEvent<EventPayload>) => void} subscribe
+ * @property {(e : FrameworkEvent<EventPayload>, ctx: FrameworkEventCtx<EventPayload>, meta: FrameworkEventMeta<EventPayload>) => void} subscribe
  */
 /**
  * @template EventPayload

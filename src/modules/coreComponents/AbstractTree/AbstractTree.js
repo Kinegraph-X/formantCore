@@ -6,8 +6,11 @@
  */
 /**
  * @typedef {import('../../template/TemplateFactory').ComponentTemplate} ComponentTemplate
+ * @typedef {import('../../view/ComponentView').ComponentView<string>} ComponentView
  */
 /** @template EventPayload */
+
+import {Output} from '../../decorators.js';
 import {ComponentWithView} from '../../component/Component.js'
 import ListTemplate from '../../template/ListTemplate.js'
 import {EventEmitter} from '../../reactivity/EventEmitter.js'
@@ -38,39 +41,57 @@ import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
  */
 class AbstractTree extends ComponentWithView {
     static objectType = 'AbstractTree';
-    pseudoModel = [];
-    branchTemplate = createBranchTemplateDef();
-    leafTemplate = createLeafTemplateDef();
-    listTemplate = new ListTemplate(null);
-    expanded = true;
+    expanded = false;
+
+    /** - JSON data to render. */
+    jsonData = '';
+    /** 
+     * Optional node transform callback.
+     * @type {(node: TreeNode) => TreeNode}
+     */
+    nodeTransformFunction = (node) => node;
+	
 	/**
 	 * 
 	 * @param {ComponentWithView} parent - Parent component.
      * @param {ComponentTemplate} cTemplate - Tree definition.
-	 * @param {Object|string} [jsonData] - JSON data to render.
-	 * @param {(node: TreeNode) => TreeNode} [nodeFilterFunction] - Optional node filter callback.
+	 * @param {ComponentView} view 
 	 */
-	constructor(parent, cTemplate, jsonData, nodeFilterFunction) {
-		const stdTemplate = createAbstractTreeDef();
+	constructor(parent, cTemplate, view) {
+		super(parent, cTemplate, view);
 
-		if (cTemplate.view.sOverride) {
-			stdTemplate.view.sOverride = cTemplate.view.sOverride;
-		}
-
-		super(parent, stdTemplate);
-
-		this.listTemplate.each = this.pseudoModel;
-
-		this.update.addEventListener(e => {
-			this.streams.selected.value = e.data.self_UID;
+		this.update.addEventListener((e, ctx, meta) => {
+			ctx.streams.get('selected').next = meta.regUID;
 		});
 
-		if (jsonData && typeof jsonData === 'object') {
-			this.renderJSON(jsonData, nodeFilterFunction);
+		if (this.jsonData) {
+			this.renderJSON(cTemplate, this.jsonData, this.nodeTransformFunction);
 		}
 	}
 
-    @output exportData = new EventEmitter<EventPayload>();
+	static createDefaultDef() {
+		return createAbstractTreeDef();
+	}
+
+    @Output() exportData = new EventEmitter('exportData');
+
+
+	/**
+    * Public API: renders a JSON tree.
+	* @param {ComponentTemplate} rootTemplate - Root template.
+    * @param {object|string} jsonData - JSON data or string.
+    * @param {(node: TreeNode) => TreeNode} [filter] - Optional node filter.
+    * @returns {TreeNode} Root data node.
+    */
+    renderJSON(rootTemplate, jsonData, filter) {
+        const dataTree = this.buildTree(jsonData);
+        this.instantiateTree(rootTemplate, dataTree, filter);
+        this.render(); // Delegate to UI layer
+        return dataTree;
+    }
+
+
+
 
     /**
      * Converts JSON data to an internal tree structure.
@@ -126,63 +147,47 @@ class AbstractTree extends ComponentWithView {
 	}
 
 
+
+
     /**
      * Creates the full component tree from a data tree.
+	 * @param {ComponentTemplate} rootTemplate - Root template.
      * @param {TreeNode} root - Root data node.
      * @param {(node: TreeNode) => TreeNode} [filter] - Optional node transform/filter.
      */
-    instantiateTree(root, filter) {
-        this.walkTree(
-            root,
-            this,
-            /** @param {TreeNode} node @param {ComponentWithView} parentComponent */
-            (node, parentComponent) => {
-                const nodeData = filter ? filter(node) : node;
-                const component = this.createMember(nodeData, parentComponent);
-                this.wireEvents(nodeData, component);
-                return component;
-            }
-        );
-    }
-    /**
-     * Traverses a data tree and executes a callback for each node.
-     * @param {TreeNode} node
-     * @param {ComponentWithView} parentComponent
-     * @param {function} callback
-     */
-    walkTree(node, parentComponent, callback) {
-        const comp = callback(node, parentComponent);
-        for (const child of node.children) {
-            this.walkTree(child, comp, callback);
-        }
+    instantiateTree(rootTemplate, root, filter) {
+		// Build ComponentTemplate children
+		const nodes = filter ? root.children.map(filter) : root.children;
+		const childTemplates = nodes.map((n) => this.createMember(n));
+
+		// Attach them to the host template created in the ctor
+		childTemplates.forEach((tpl) => rootTemplate.members.push(tpl));
+
+		return rootTemplate;
     }
 	/**
 	 * Creates a member component (branch or leaf).
 	 * @param {TreeNode} spec - Node specification.
-	 * @param {Object} parent - Parent component.
-	 * @returns {Object} The created component.
+	 * @returns {ComponentTemplate} The created component.
 	 */
-	createMember(spec, parent) {
-		const { type, children } = spec;
-		let component;
+	createMember(spec) {
+		const isBranch = spec.children && spec.children.length > 0;
 
-		if (children.length > 0) {
-			let branchTemplate = this.branchTemplate;
-			component = new components[branchTemplate.type](parent, branchTemplate);
-			this.pseudoModel.push(this.getHeaderTitle(spec));
-		} else {
-            let leafTemplate = this.leafTemplate;
-			component = new components[leafTemplate.type](parent, leafTemplate);
-			this.pseudoModel.push(this.getKeyValueObj(spec));
+		if (isBranch) {
+			// append recursively-built children after header
+			const branchTpl = createBranchTemplateDef();
+			const childTpls = spec.children.map((c) => this.createMember(c));
+			branchTpl.members.push(...childTpls);
+			return branchTpl;
 		}
-
-		registries.dataStoreRegistry.set(component.regUID, this.pseudoModel.length);
-		return component;
+	
+		// Leaf node: we return a fresh leaf template
+		return createLeafTemplateDef();
 	}
 
 	/**
 	 * Returns a header title object for branches.
-	 * @param {Object} spec - Node specification.
+	 * @param {TreeNode} spec - Node specification.
 	 * @returns {Object} Header object.
 	 */
 	getHeaderTitle(spec) {
@@ -197,7 +202,7 @@ class AbstractTree extends ComponentWithView {
 
 	/**
 	 * Returns a key-value object for leaves.
-	 * @param {Object} spec - Node specification.
+	 * @param {TreeNode} spec - Node specification.
 	 * @returns {Object} Key-value pair descriptor.
 	 */
 	getKeyValueObj(spec) {
@@ -208,20 +213,6 @@ class AbstractTree extends ComponentWithView {
 			displayedas: spec.type
 		};
 	}
-
-	/**
-    * Public API: renders a JSON tree.
-    * @param {object|string} jsonData - JSON data or string.
-    * @param {(node: TreeNode) => TreeNode} [filter] - Optional node filter.
-    * @returns {TreeNode} Root data node.
-    */
-    renderJSON(jsonData, filter) {
-        const dataTree = this.buildTree(jsonData);
-        this.instantiateTree(dataTree, filter);
-        this.render(); // Delegate to UI layer
-        return dataTree;
-    }
-
 
 	/** Clears the tree. */
 	reset() {
@@ -234,11 +225,11 @@ class AbstractTree extends ComponentWithView {
 
 	/**
 	 * Handles click event wiring (override-friendly).
-	 * @param {Object} node - Node descriptor.
-	 * @param {Object} component - Component instance.
+	 * @param {TreeNode} node - Node descriptor.
+	 * @param {ComponentWithView} component - Component instance.
 	 */
 	wireEvents(node, component) {
-		this.affectClickEvents_Base(node, component);
+		// this.affectClickEvents_Base(node, component);
 	}
 
 	/**
@@ -246,37 +237,34 @@ class AbstractTree extends ComponentWithView {
 	 * @param {TreeNode} node - Node descriptor.
 	 * @param {ComponentWithView} component - Component instance.
 	 */
-	affectClickEvents_Base(node, component) {
-		if (node.children.length) {
-			const header = component.children[0];
-			header.clicked_ok.addEventListener(e => {
-				const clickedNode = e?.data?.target;
-				const span = header.view.getWrappingNode().children[2];
-				if (!clickedNode || clickedNode === span) {
-					component.exportdata.trigger(node.projectedData);
-				} else {
-					component.streams.expanded.value =
-						component.streams.expanded.value ? null : 'expanded';
-				}
-			});
-		} else {
-			component.registerClickEvents = function () {
-				if (!component.clicked_ok)
-					component.clicked_ok = new EventEmitter<unknown>();
+	// affectClickEvents_Base(node, component) {
+	// 	if (node.children.length) {
+	// 		const header = component.children[0];
+	// 		header.clicked_ok.addEventListener(function(e, ctx, meta) {
+	// 			const clickedNode = e?.payload.target;
+	// 			const span = header.view.wrappingNode.children[2];
+	// 			if (!clickedNode || clickedNode === span) {
+	// 				component.exportdata.emit(node.projectedData);
+	// 			} else {
+	// 				ctx.streams.get('expanded').next =
+	// 					ctx.streams.get('expanded').next ? null : 'expanded';
+	// 			}
+	// 		});
+	// 	} else {
+	// 		component.registerClickEvents = function () {
+	// 			if (!component.clicked_ok)
+	// 				component.clicked_ok = new EventEmitter('clicked_ok');
 
-				Object.getPrototypeOf(this).registerClickEvents.call(this);
-				const valueNode = component.memberViews[1].wrappingNode;
+	// 			Object.getPrototypeOf(this).registerClickEvents.call(this);
 
-				valueNode.addEventListener('click', e => component.clicked_ok.trigger(e));
-
-				component.clicked_ok.addEventListener(e => {
-					component.streams.selected.next = 'selected';
-					component.update.trigger(true);
-					component.exportdata.trigger(node.projectedData);
-				});
-			};
-		}
-	}
+	// 			component.clicked_ok.addEventListener((e, ctx,  meta) => {
+	// 				ctx.streams.get('selected').next = 'selected';
+	// 				ctx.emitters['update'].emit(true);
+	// 				ctx.emitters['exportdata'].emit(node.projectedData);
+	// 			});
+	// 		};
+	// 	}
+	// }
 }
 
 coreComponents.AbstractTree = AbstractTree;

@@ -2,8 +2,9 @@
  * @module Component
  */
 
-
+import {Output} from '../decorators.js'
 import {ComponentError } from '../error/Error.js';
+import registries from '../Registries.js';
 import {
     ReactOnSelf,
     ReactOnParent,
@@ -18,21 +19,14 @@ import {
 import { compUIDGenerator } from '../UIDGenerator.js';
 
 import { FrameworkEvent, EventEmitter } from '../reactivity/EventEmitter.js';
-import Stream from '../reactivity/Stream.js';
 import { ComponentView, RootComponentView } from '../view/ComponentView.js';
-import viewRef from '../view/viewRef.js';
 
-// import ViewFactory from '../view/ViewFactory.js';
-// import registries from '../Registries.js';
 
 
 
 
 /** 
- * @typedef {{child: HierarchicalObject | null}} ComponentTransportObject
- * @typedef {{childKey: Number | null}} ComponentPathObject
- * @typedef {{name: String | null, children : Array<ComponentPathTreeObject>}} ComponentPathTreeObject
- * @typedef {{String : Array<ComponentPathKeyValueObject>}} ComponentPathKeyValueObject
+ * @typedef {import('../DOM/types').stdTagNameType} stdTagName
 */
 
 
@@ -226,88 +220,31 @@ class AsyncActivableObject extends HierarchicalObject {
 class BaseComponentWithView extends AsyncActivableObject {
 	/** @type {string} */
 	static objectType = 'BaseComponentWithView';
-	/** @type {string|null} */
-	_templateUID = '';
-	/** @type {string} */
-	_defaultTemplateUID = '';
-	/** @type {string} */
-	regUID = '';
-
-	/**
-	 * @virtual
-	 * @returns {ComponentTemplate}
-	 */
-	static createDefaultDef() {return new ComponentTemplate(null);}
-}
-
-/** @template {string} tagName */
-class RootComponent extends RootHierarchicalObject {
-	/** @type {string} */
-	static objectType = 'RootComponent';
-	/** @type {string} */
-	regUID = '';
-	/** @type {RootComponentView<tagName>} */	
-	#view;
-	constructor() {
-		super();
-		this.#view = new RootComponentView();
-	}
-}
-
-
-/** @template {string} tagName */
-class ComponentWithView extends BaseComponentWithView {
-	/** @type {string} */
-	static objectType = 'ComponentWithView';
-	/** @type {ComponentWithView<tagName>[]} */
+	/** @type {ComponentWithView[]} */
 	children = [];
-	/** @type {RootComponent<tagName>|ComponentWithView<tagName>} */
+	/** @type {RootComponent|ComponentWithView} */
 	parent;
-	/** @type {ComponentView<tagName>[]} */	
-	subViews = [];
-	/** @type {ComponentView<tagName>[]} */	
-	memberViews = [];
-	/** @type {ComponentView<tagName>} */
+	// /** @type {string|null} */
+	// _templateUID = '';
+	// /** @type {string} */
+	// _defaultTemplateUID = '';
+	/** @type {string} */
+	regUID = '';
+
+	/** @type {ComponentView<stdTagName|string>} */
 	#view;
-	
 	get view() {
 		return this.#view;
 	}
-	/** @param {ComponentView<tagName>} view */
+	/** @param {ComponentView<stdTagName|string>} view */
 	set view(view) {
 		throw new Error('The View of a Component can\'t be overriden');
 	}
 
-	/** 
-	 * We chose to mimic the behavior of the Angular compiler
-	 * which reflects @output annotations to the @component object
-	 * @see below
-	 * @see rollup-plugin-formant-annotations
-	*/
-	/** @type {string[]} */
-	static _outputs = [];
-	/**
-	 * @param {typeof ComponentWithView<string>} type
-	 * @param {string} outputName
-	 */
-	static declareOutput = (type, outputName) => {
-		if (!type.hasOwnProperty('outputs'))
-			type._outputs = [];
-		type._outputs.push(outputName);
-		return true;
-	}
-	/*
-	 * @example:
-	 * 	@ output() output = new EventEmitter<EventPayload>('eventName');
-	 * 	will be transformed at build time to
-	 * 	`output = ComponentWithView.declareOutput(${typeName}, ${outputName)} && new EventEmitter<EventPayload>();`
-	 */
-	@output() update = new EventEmitter<unknown>('update');
-
 	/**
 	 * @param {BaseComponentWithView} parent
 	 * @param {ComponentTemplate} cTemplate
-	 * @param {ComponentView<tagName>} view
+	 * @param {ComponentView<stdTagName|string>} view
 	 */
 	constructor(parent, cTemplate, view) {
 		super(parent);
@@ -322,61 +259,140 @@ class ComponentWithView extends BaseComponentWithView {
 		this.parent = parent;
 		this.parent.pushChild(this);
 		this.#view = view;
+	}
+
+	/**
+	 * @virtual
+	 * @returns {ComponentTemplate}
+	 */
+	static createDefaultDef() {return new ComponentTemplate(null);}
+}
+
+class RootComponent extends RootHierarchicalObject {
+	/** @type {string} */
+	static objectType = 'RootComponent';
+	/** @type {string} */
+	regUID = '';
+	/** @type {RootComponentView} */	
+	#view;
+	get view() {
+		return this.#view;
+	}
+	/** @param {RootComponentView} view */
+	set view(view) {
+		throw new Error('The View of a Component can\'t be overriden');
+	}
+	constructor() {
+		super();
+		this.#view = new RootComponentView();
+	}
+}
+
+
+
+
+
+class ComponentWithView extends BaseComponentWithView {
+	/** @type {string} */
+	static objectType = 'ComponentWithView';
+	/** @type {ComponentView<stdTagName|string>[]} */	
+	subViews = [];
+	/** @type {ComponentView<stdTagName|string>[]} */	
+	memberViews = [];
+
+	/** 
+	 * We chose to mimic the behavior of the Angular compiler
+	 * which reflects @output annotations to the @component object
+	 * @see below
+	 * @see rollup-plugin-formant-annotations
+	*/
+	/** @type {string[]} */
+	static _outputs = [];
+
+	/**
+	 * @param {typeof ComponentWithView} type
+	 * @param {string} outputName
+	 */
+	static declareOutput = (type, outputName) => {
+		if (!type.hasOwnProperty('_outputs'))
+			type._outputs = [];
+		type._outputs.push(outputName);
+		return true;
+	}
+
+	/**
+	 * @param {BaseComponentWithView} parent
+	 * @param {ComponentTemplate} cTemplate
+	 * @param {ComponentView<stdTagName|string>} view
+	 */
+	constructor(parent, cTemplate, view) {
+		super(parent, cTemplate, view);
 		
 		// EventEmitters don't have a propoer "emit()" function when defining them
 		// (EventEmitter has the ability to bind on DOM events, and the handler gets refs to "regUID" and "key")
 		// Define here the correct emit function
-		const thisArg = /** @type {unknown} */(this);
-		/** @type {typeof ComponentWithView} */(thisArg)._outputs.forEach(
+		const ctor = /** @type {unknown} */(this.constructor);
+		/** @type {typeof ComponentWithView} */(ctor)._outputs.forEach(
 			(/**@type{string}*/output) => {
 				const prop = /** @type {keyof this} */ (output);
 				const emitter = this[prop];
 				if (!(emitter instanceof EventEmitter))
-					throw new ComponentError(this, 'An output declared in the template has no corresponding EventEmitter. output is', output);
+					throw new ComponentError(this, 'An output declared on a component isn\'t an EventEmitter. output is', output);
 				
 				emitter.emit = EventEmitter.getTriggerFunction(this, emitter);
 		})
 		
 		this.regUID = cTemplate.UID;
 	}
+
+	/*
+	 * @example:
+	 * 	@ Output() output = new EventEmitter<EventPayload>('eventName');
+	 * 	will be transformed at build time to
+	 * 	`output = ComponentWithView.declareOutput(${typeName}, ${outputName)} && new EventEmitter<EventPayload>();`
+	 */
+	@Output() update = new EventEmitter('update');
 	
 
 	/**
-	 * @param {ComponentWithView<tagName>} child
+	 * @param {ComponentWithView} child
 	 */
 	removeChild(child) {
 		if (child.subViews.length) {
 			child.subViews.forEach(
 				function(subView, key) {
-				while (subView.node.firstChild) {
-					subView.node.removeChild(subView.node.lastChild);
+					while (subView.node.lastChild) {
+						subView.node.removeChild(subView.node.lastChild);
+					}
 				}
-			}, child);
+			);
 		}
 		child.children.forEach(function(childOfChild, key) {
 			childOfChild.view.node.remove();
-		}, child);
+		});
+
 		if (child.memberViews.length) {
 			child.memberViews.forEach(function(member, key) {
 				member.node.remove();
-			}, child);
+			});
 		}
 		child.view.node.remove();
-		// remove a child
-		// TODO: the ComponentWithView should neither handle streams, nor subscriptions 
-		// child._subscriptions.forEach(function(subscription) {
-		// 	subscription.unsubscribe();
-		// });
+		
+		const streams = registries.streams.get(child.regUID);
+		if (streams) {
+			for(const streamName in streams) {
+				const stream = streams.get(streamName);
+				/** @debug-build start */
+				if (!stream)
+					throw new ComponentError(child, 'Reflection');
+				/** @debug-build end */
+				stream.subscriptions.forEach((sub) => {
+					sub.unsubscribe();
+				});
+			}
+		}
 	}
 	
-	/**
-	 * @param {ComponentWithView<tagName>} child
-	 * @param {number} atIndex
-	 */
-	addChildAt(child, atIndex) {
-		HierarchicalObject.prototype.addChildAt.call(this, child, atIndex);
-		child.parent.view.addChildAt(child.view, atIndex);
-	}
 }
 
 

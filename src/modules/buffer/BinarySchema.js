@@ -16,22 +16,32 @@ import BinarySlice from './BinarySlice';
  */
 class BinarySchemaFactory {
 	static objectType = 'BinarySchemaFactory';
+	/** @type {{[key: string]: typeof {[key: string]: BinarySlice}}} */
 	static schemas = {};
 	constructor() {
 		throw new Error('BinarySchemaFactory is a static class');
 	}
-		
+	/**
+	 * 
+	 * @param {string} name 
+	 * @param {string[]} propsList 
+	 * @param {number[]} sizes 
+	 * @returns 
+	 */
 	static createSchema	(name, propsList, sizes) {
 		if (!BinarySchemaFactory.schemas[name]) {
 			var objectSize = 0;
+			
 			propsList.forEach(function(propName, key) {
 				objectSize += sizes[key];
 			}, this);
-				
+			
+			/** @param {string[]} propertiesList @param {number[]} sizesFromSchema  */
 			var schema = function(propertiesList, sizesFromSchema) {
 				var size = 0;
 				propertiesList.forEach(function(propName, key) {
-					this[propName] = new BinarySlice(size, sizesFromSchema[key]);
+					/** @ts-ignore old-school reflection */
+					(this[propName]) = new BinarySlice(size, sizesFromSchema[key]);
 					size += sizesFromSchema[key];
 				}, this);
 			}

@@ -3,7 +3,7 @@
  */
 
 /**
- * @template {import('../view/stdTagNameType').stdTagNameType|string} tagName
+ * @template {import('../DOM/types').stdTagNameType|string} tagName
  * @template StreamValue
  */
 
@@ -16,9 +16,6 @@ import {ComponentError} from '../error/Error';
 import registries from '../Registries';
 import getToolingProxy from '../tooling/getToolingProxy.js';
 
-/**
- * template {string} tagName
-*/
 
 class EffectCtx {
     /** @type {string} */
@@ -46,22 +43,23 @@ class EffectCtx {
             throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
         
         this.regUID = regUID;
-        this.element = /** @type {HTMLElement|HTMLCustomElement} */ (getToolingProxy(regUID, 'element', component.view.node));
-        this.view = /** @type {ComponentView} */ (getToolingProxy(regUID, 'view', component.view));
-        this.subViews = /** @type {ComponentView[]} */ (getToolingProxy(regUID, 'subViews', component.subViews));
-        this.memberViews = /** @type {ComponentView[]} */ (getToolingProxy(regUID, 'memberViews', component.memberViews));
+        this.element =  (getToolingProxy(regUID, 'element', component.view.node));
+        this.view =  (getToolingProxy(regUID, 'view', component.view));
+        this.subViews =  (getToolingProxy(regUID, 'subViews', component.subViews));
+        this.memberViews =  (getToolingProxy(regUID, 'memberViews', component.memberViews));
 
         const streamRegistry = registries.streams.get(regUID);
         if (!streamRegistry)
             throw new ComponentError(component, 'EffectCtx: Component instance not found in streams registry. UID is', regUID);
 
-        this.streams = /** @type {Map<string, Stream>} */ (getToolingProxy(regUID, 'streams', streamRegistry));
+        this.streams = (getToolingProxy(regUID, 'streams', streamRegistry));
     }
     /* @debug-build end */
 
     /* @production-build start
     constructor(regUID) {
         const component = registries.component.get(regUID);
+        this.regUID = regUID;
         this.element = component.view.node;
         this.view = component.view;
         this.subViews = component.subViews;
@@ -72,7 +70,7 @@ class EffectCtx {
     /**
      * 
      * @param {string} regUID 
-     * @param {(ctx : EffectCtx) => void} effect
+     * @param {(ctx : EffectCtx, value: unknown) => void} effect // ReactivityQuery isn't generic, so value type unknown for now
      * @returns {(ctx : EffectCtx, value: unknown) => void}
      */
     static getEffectFunction(regUID, effect) {

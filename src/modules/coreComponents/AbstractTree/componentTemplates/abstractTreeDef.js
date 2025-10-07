@@ -11,7 +11,7 @@ import {ComponentTemplate, ViewTemplate} from '../../../template/TemplateFactory
 import CreateStyle from '../../../style/CreateStyle.js'
 
 
-/** @param {unknown} options @param {unknown} model */
+/** @param {unknown} [options] @param {unknown} [model] */
 var abstractTreeDef = function(options, model) {
 	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos
 		

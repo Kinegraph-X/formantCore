@@ -5,7 +5,7 @@
 /**
  * @typedef {import('../view/ComponentView.js').ComponentView<string>} ComponentView
  * @typedef {import('../reactivity/Stream.js').default<unknown>} Stream
- * @typedef {import('../component/Component.js').ComponentWithView<keyof HTMLElementTagNameMap|string>} ComponentWithView
+ * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
  * @typedef {import('../DOM/Factories.js').HTMLCustomElement<string>} HTMLCustomElement
  */
 import {ComponentError } from '../error/Error.js';

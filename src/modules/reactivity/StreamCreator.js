@@ -2,8 +2,13 @@
  * @module StreamCreator
  */
 
+import {ComponentError} from '../error/Error';
 import registries from '../Registries';
 import Stream from './Stream';
+
+/**
+ * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
+ */
 
 class StreamCreator {
     constructor() {
@@ -15,12 +20,19 @@ class StreamCreator {
         const regUID = component.regUID;
         const registry = new Map();
         registries.streams.set(regUID, registry);
-        
-        registries.prop.get(regUID).forEach((prop) => {
-            registry.set(prop.getName(), new Stream(prop.getName(), prop.getValue(), component));
+
+        const props = registries.prop.get(regUID);
+        if (!props)
+            throw new ComponentError(component, 'StreamCreator unknown error: props entry not found in props registry. UID is', regUID);
+        props.forEach((prop) => {
+            registry.set(prop.getName(), new Stream(prop.getName(), prop.getValue()));
         });
-        registries.state.get(regUID).forEach((state) => {
-            registry.set(state.getName(), new Stream(state.getName(), state.getValue(), component));
+
+        const states = registries.state.get(regUID);
+        if (!states)
+            throw new ComponentError(component, 'StreamCreator unknown error: states entry not found in states registry. UID is', regUID);
+        states.forEach((state) => {
+            registry.set(state.getName(), new Stream(state.getName(), state.getValue()));
         });
     }
 }

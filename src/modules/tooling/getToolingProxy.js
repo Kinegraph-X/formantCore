@@ -46,12 +46,14 @@ export default (regUID, type, value) => {
                 }
             );
         case 'streams' :
+            const val = /** @type {Map<string, Stream<any>>} */ (value);
             const proxifiedStreams = new Map();
-            for (const streamName in value) {
+            for (const streamName in val) {
                 proxifiedStreams.set(
                     streamName,
                     new Proxy(
-                        value.get(streamName),
+                        /** @ts-ignore reflection */
+                        val.get(streamName),
                         {
                             get : streamTrap.get.bind(null, regUID, type),
                             set : streamTrap.set.bind(null, regUID, type)
@@ -61,7 +63,7 @@ export default (regUID, type, value) => {
             }
             return proxifiedStreams;
         default : 
-            throw new Error('Normally unreachable code path: Unknown effect-target type to allocate on EffectCtx:', type, 'component UID is:', regUID);
+            throw new Error(`Normally unreachable code path: Unknown effect-target type to allocate on EffectCtx: ${type}, component UID is: ${regUID}`);
     }
     
 }

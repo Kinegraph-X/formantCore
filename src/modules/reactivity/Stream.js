@@ -87,7 +87,13 @@ class Stream {
 	 * @returns {Subscription<StreamValue>}
 	 */
 	addSubscription(downStream = null, effect = null) {
-		this.subscriptions.push(new Subscription(downStream, effect));
+		const subscription = new Subscription(downStream, effect);
+		subscription.unsubscribe = function() {
+			/** @ts-ignore bound function */
+			this.unsubscribe(subscription);
+		}.bind(this);
+
+		this.subscriptions.push(subscription);
 		return this.subscriptions[this.subscriptions.length - 1];
 	}
 	/**

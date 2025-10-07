@@ -6,7 +6,7 @@ import ViewStrategyInterface from '../view/ViewStrategyInterface.js';
 import { HTMLCustomElement } from '../DOM/Factories.js';
  
 /**
- * @typedef {import('../view/stdTagNameType.js').stdTagNameType} stdTagName
+ * @typedef {import('../DOM/types.js').stdTagNameType} stdTagName
  * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
  */
 
@@ -17,9 +17,9 @@ class DOMViewStrategy {		/* implements ViewStrategyInterface */
 	/** @type {string} */
 	static objectType = 'DOMViewAPI';
 	/** @type {boolean} @default false*/
-	isShadowHost = false;
+	#isShadowHost = false;
 	/** @type {stdTagName|tagName}*/
-	nodeName;
+	#nodeName;
 	/** @type {HTMLElementTagNameMap[stdTagName]|HTMLCustomElement<tagName>|null} @default null */
 	#masterNode = null;
 	/** @type {ShadowRoot|null} @default null */
@@ -30,8 +30,8 @@ class DOMViewStrategy {		/* implements ViewStrategyInterface */
 	 * @param {ViewTemplate} def
 	 */
 	constructor(def) {
-		this.isShadowHost = def.isCustomElem;
-		this.nodeName = /** @type {stdTagName|tagName}*/ (def.nodeName);
+		this.#isShadowHost = def.isCustomElem;
+		this.#nodeName = /** @type {stdTagName|tagName}*/ (def.nodeName);
 	}
 	/**
 	 * @param {boolean} bool
@@ -45,6 +45,10 @@ class DOMViewStrategy {		/* implements ViewStrategyInterface */
 	 */
 	addEventListener(eventName, handler) {
 		this.masterNode.addEventListener(eventName, handler);
+	}
+
+	get nodeName() {
+		return this.#nodeName;
 	}
 	
 	
@@ -79,12 +83,19 @@ class DOMViewStrategy {		/* implements ViewStrategyInterface */
 		// masterNode shall be acquired later
 		return this.#wrappingNode || /**@type {HTMLElement|HTMLCustomElement<tagName>}*/ (this.#masterNode);
 	}
+
+	/**
+	 * @returns {boolean}
+	 */
+	isShadowHost() {
+		return this.#isShadowHost;
+	}
 	
 	/**
 	 * @return {boolean}
 	 */
 	#isTextInput() {
-		return this.nodeName.toUpperCase() === 'INPUT' || this.nodeName.toUpperCase() === 'TEXTAREA';
+		return this.#nodeName.toUpperCase() === 'INPUT' || this.#nodeName.toUpperCase() === 'TEXTAREA';
 	}
 	
 	 /**

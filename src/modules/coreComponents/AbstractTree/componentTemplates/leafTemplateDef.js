@@ -7,12 +7,13 @@
  * @CSSifyRule rule : div_2ndChild pointer
  */
 
+/** @typedef {import('../../../reactivity/Stream').default<string|null>} Stream */
 
 import {ComponentTemplate, ViewTemplate} from '../../../template/TemplateFactory.js';
 import CreateStyle from '../../../style/CreateStyle.js'
 
 
-/** @param {unknown} options @param {unknown} model */
+/** @param {unknown} [options] @param {unknown} [model] */
 var treeLeafTemplateDef = function(options, model) {
 	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos
 		
@@ -34,7 +35,7 @@ var treeLeafTemplateDef = function(options, model) {
 		reactOnParent : [
 			{
 				from : 'selected',
-				effect : function(ctx, value) {ctx.streams.get('selected').next = value === ctx.regUID ? 'selected' : null;}
+				effect : function(ctx, value) {/** @type {Stream}*/ (ctx.streams.get('selected')).next = value === ctx.regUID ? 'selected' : null;}
 			}
 		]/**@CSSifyStyle componentStyle : AbstractTreeLeaf */
 	});

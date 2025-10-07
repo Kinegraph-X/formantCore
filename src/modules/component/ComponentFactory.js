@@ -22,8 +22,8 @@ class ComponentFactory {
     /**
      * 
      * @param {ComponentTemplate} cTemplate 
-     * @param {ComponentWithView<string>} parentComponent 
-     * @returns {ComponentWithView<string>}
+     * @param {ComponentWithView} parentComponent 
+     * @returns {ComponentWithView}
      */
     static newComponent(cTemplate, parentComponent) {
         let newComponent, view;

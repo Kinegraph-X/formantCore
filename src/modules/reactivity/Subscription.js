@@ -2,7 +2,10 @@
  * @module Subscription
  */
 
-/** @typedef {import('../reactivity/Stream.js').default<unknown>} Stream */
+/** 
+ * @template StreamValue
+ * @typedef {import('../reactivity/Stream.js').default<StreamValue>} Stream 
+ */
 
 import {ComponentError } from '../error/Error.js';
 
@@ -130,6 +133,11 @@ class Subscription {
 		this._subscriberUID = subscriberUID;
 		this._subscriberType = subscriberType;
 		return this;
+	}
+
+	/** @virtual hot-assigned by the Stream Instance */
+	unsubscribe() {
+
 	}
 }
 

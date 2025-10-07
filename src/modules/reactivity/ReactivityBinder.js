@@ -3,8 +3,11 @@
  */
 
 /**
+ * @template EventPayload
+ */
+/**
  * @typedef {import('../template/TemplateFactory').ReactivityQuery} ReactivityQuery 
- * @typedef {import('../template/TemplateFactory').EventSubscription} EventSubscription 
+ * @typedef {import('../template/TemplateFactory').EventSubscription<EventPayload>} EventSubscription 
  * @typedef {import('../reactivity/Stream')<unknown>} Stream 
  * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  */
@@ -131,7 +134,8 @@ class ReactivityBinder {
     static bindSubscribeOnSelfStream(component, eventSubscription) {
         if (!component[/** @type {keyof ComponentWithView} */ (eventSubscription.on)])
             throw new ComponentError(component, 'Missing EventEmitter on component.', eventSubscription.on);
-        component[/** @type {keyof ComponentWithView} */ (eventSubscription.on)].addEventListener(eventSubscription.subscribe.bind(component));
+        /** @ts-ignore : cannot index, can be null : tested above */
+        (component[eventSubscription.on]).addEventListener(eventSubscription.subscribe);
     }
 
     /**
@@ -148,12 +152,14 @@ class ReactivityBinder {
      * @param {EventSubscription} eventSubscription
      */
     static bindSubscribeOnDownStream(component, eventSubscription) {
-        component.children.forEach((child) => {
-            if (!(child[/** @type {keyof ComponentWithView} */ (eventSubscription.on)] instanceof EventEmitter))
-                throw new ComponentError(child, 'Missing EventEmitter on component.', eventSubscription.on);
-            
-            child[(eventSubscription.on)].addEventListener(eventSubscription.subscribe.bind(component));
-        });
+        component.children.forEach(
+            (child) => {
+                if (!(child[/** @type {keyof ComponentWithView} */ (eventSubscription.on)] instanceof EventEmitter))
+                    throw new ComponentError(child, 'Missing EventEmitter on component.', eventSubscription.on);
+                /** @ts-ignore : cannot index, can be null : tested above */
+                (child[eventSubscription.on]).addEventListener(eventSubscription.subscribe);
+            }
+        );
     }
 }
 

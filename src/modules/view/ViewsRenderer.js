@@ -3,13 +3,14 @@
  */
 
 /**
- * @typedef {import('./ComponentView').ComponentView} ComponentView
+ * @typedef {import('./ComponentView').ComponentView<string>} ComponentView
  * @typedef {import('./ComponentView').RootComponentView} RootComponentView
  */
 import {ComponentError} from '../error/Error';
 import {camelToHyphens} from '../nativeTypesUtilities/StringUtilities';
-import elementFactories from '../DOM/Factories';
-import {createElement, createCustomElement} from '../DOM/ElementFactory';
+import ElementFactory from '../DOM/ElementFactory';
+const createElement = ElementFactory.createElement;
+const createCustomElement = ElementFactory.createElement;
 import registries from '../Registries';
 import { EventEmitter } from '../reactivity/EventEmitter';
 const views = registries.views;
@@ -17,6 +18,8 @@ const nodes = registries.node;
 const attributesCache = registries.attribute;
 
 class Renderer {
+    static objectType = 'ViewsRenderer';
+
     constructor() {
         throw new Error("Renderer is static-only; do not instantiate.");
     }
@@ -36,7 +39,7 @@ class Renderer {
                 this.setAttributes(view, node);
             this.setStyle(view);
             this.bindDomEvents(view);
-            view.parentView.wrappingNode.append(view.masterNode);
+            view.parentView.wrappingNode.append(view.node);
         });
         views.length = 0;
     }
@@ -45,22 +48,21 @@ class Renderer {
      */
     static getNode(view) {
         const cachedNode = nodes.get(view.viewUID);
-        /* @debug-build */
+        /* @debug-build start */
         if (!cachedNode)
             throw new ComponentError(this, 'Unknown View instanciation error: Unable to retrieve a node from the cache', view);
+        /* @debug-build end */
+
         if (cachedNode.cloneMother) {
             view.node = cachedNode.cloneMother.cloneNode(true);
-            view.factoryType = elementFactories[cachedNode.nodeName];
             return null;
         }
         else {
             if (view.isCustomElem) {
                 cachedNode.cloneMother = createCustomElement(cachedNode.nodeName, registries.state.get(view.regUID), registries.streams.get(view.regUID));
-                view.factoryType = elementFactories['customElement'];
             }
             else {
                 cachedNode.cloneMother = createElement(/** @type {keyof HTMLElementTagNameMap} */ (cachedNode.nodeName));
-                view.factoryType = elementFactories[cachedNode.nodeName];
             }
             view.node = cachedNode.cloneMother.cloneNode(true);
         }
@@ -76,8 +78,8 @@ class Renderer {
             if (tplAttr.getName().indexOf('aria') === 0)
 					node.setAttribute(camelToHyphens(tplAttr.getName()), tplAttr.getValue());
             else {
-                if (tplAttr.getName() === 'textContent' && view.callCurrentViewAPI('isShadowHost'))
-                    console.warn('DOM rendering shall fail: textContent on a DOM custom-element shall be appended outside of the shadowRoot. nodeName is ' + view.currentViewAPI.nodeName + ' & _defUID is ' + view._defUID + '. Consider using a reactive prop instead. For example, the SimpleText Component can handle that case.')
+                if (tplAttr.getName() === 'textContent' && view.isShadowHost())
+                    console.warn('DOM rendering shall fail: textContent on a DOM custom-element shall be appended outside of the shadowRoot. nodeName is ' + view.nodeName + ' & _defUID is ' + view._defUID + '. Consider using a reactive prop instead. For example, the SimpleText Component can handle that case.')
                 node[tplAttr.getName()] = tplAttr.getValue();
             }
         })
@@ -94,9 +96,10 @@ class Renderer {
      */
     static bindDomEvents(view) {
         const component = registries.component.get(view.regUID);
-        /* @debug-build */
+        /* @debug-build start */
         if (!component)
-            throw new ComponentError(null, 'Component not found in registry. Unknown error');
+            throw new ComponentError(this, 'Component not found in registry. Unknown error');
+        /* @debug-build end */
 
         const domListens = registries.domListens.get(view.regUID);
         if (!domListens)
@@ -106,7 +109,7 @@ class Renderer {
                 throw new ComponentError(component, 'A view is listening to a DOM event without a handler being defined on the component. View is ', view, 'Component is ', component);
 
             const handler = EventEmitter.getDOMTriggerFunction(component, component[domListens[eventType]]);
-            view.masterNode.addEventListener(eventType, handler);
+            view.node.addEventListener(eventType, handler);
         }   
 
     }

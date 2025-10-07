@@ -10,9 +10,9 @@
  * @typedef {import('./template/TemplateFactory.js').ReactivityQueryArray} ReactivityQueryArray
  * @typedef {import('./template/TemplateFactory.js').EventSubscriptionArray} EventSubscriptionArray
  * @typedef {import('./component/TemplateReconcilier').DomEventBindings} DomEventBindings
- * @typedef {import('./DOM/CachedNode.js')} CachedNode
+ * @typedef {import('./DOM/CachedNode.js').default} CachedNode
  * @typedef {import('./view/ComponentView.js').ComponentView<any>} ComponentView
- * @typedef {import('./view/ComponentView.js').RootComponentView<any>} RootComponentView
+ * @typedef {import('./view/ComponentView.js').RootComponentView} RootComponentView
  * @typedef {import('./reactivity/Stream.js').default<any>} Stream
  * @typedef {import('./component/Component.js').ComponentWithView} ComponentWithView
  * @typedef {import('./Imperative.js').Imperative} Imperative

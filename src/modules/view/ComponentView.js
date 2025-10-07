@@ -8,9 +8,9 @@ import createRootComponentTemplate from '../templates/rootComponentTemplate.js';
 
 
 /**
- * @typedef {import('./stdTagNameType').stdTagNameType} stdTagName
+ * @typedef {import('../DOM/types').stdTagNameType} stdTagName
  * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
- * @typedef {import('../component/Component').ComponentWithView<keyof HTMLElementTagNameMap|string>} ComponentWithView
+ * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  * @typedef {import('./ViewStrategyInterface').default} ViewStrategyInterface
  */
 
@@ -66,6 +66,9 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 		// this.styleHook = new SWrapperInViewManipulator(this);
 	}
 	
+	get nodeName() {
+		return this.#currentViewStrategy.nodeName;
+	}
 	
 	/**
 	 * Shorthand method on the currentViewAPI
@@ -85,6 +88,10 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 	 */
 	get wrappingNode() {
 		return this.#currentViewStrategy.wrappingNode;
+	}
+
+	isShadowHost() {
+		return this.#currentViewStrategy.isShadowHost();
 	}
 	
 	/**
@@ -210,8 +217,7 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 }
 
 /**
- * @template {stdTagName|string} tagName
- * @extends BaseComponentView<tagName>
+ * @extends BaseComponentView<string>
  */
 class RootComponentView extends BaseComponentView {
 	/** @type {string} */
@@ -238,11 +244,11 @@ class ComponentView extends BaseComponentView {
 	_templateUID;
 	/** @type {ComponentWithView} */
 	_parentComponent;
-	/** @type {ComponentView<tagName>|RootComponentView<tagName>} */
+	/** @type {ComponentView<tagName>|RootComponentView} */
 	parentView;
 	/**
 	 * @param {ViewTemplate} vTemplate
-	 * @param {ComponentView<tagName>|RootComponentView<tagName>} parentView
+	 * @param {ComponentView<tagName>|RootComponentView} parentView
 	 * @param {string} parentUID
 	 */
 	constructor(vTemplate, parentView, parentUID) {

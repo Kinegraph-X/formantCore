@@ -2,9 +2,59 @@
  * @module EventEmitter
  */
 
+import {ComponentError} from '../error/Error';
+import registries from '../Registries';
+
 /**
- * @typedef {import('../component/Component').ComponentWithView<string>} ComponentWithView
+ * typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../reactivity/Stream.js').default<unknown>} Stream
  */
+
+import { ComponentWithView } from '../component/Component.js';
+
+class FrameworkEventCtx {
+    /** @type {Object<string, EventEmitter<unknown>>} */
+    emitters = {};
+    /** @type {Map<string, Stream>} */
+    streams;
+    /**
+     * 
+     * @param {string} regUID 
+     */
+    constructor(regUID) {
+        const component = registries.component.get(regUID);
+        if (!component)
+            throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
+
+        const ctor = /** @type {unknown} */ (component.constructor);
+        /** @type {typeof ComponentWithView} */ (ctor)._outputs.forEach((output) => {
+            this.emitters[output] = /** @ts-ignore reflection */ 
+                component[output];
+        });
+
+        const streamRegistry = registries.streams.get(regUID);
+        if (!streamRegistry)
+            throw new ComponentError(component, 'FrameworkEventCtx: Component instance not found in streams registry. UID is', regUID);
+
+        this.streams = streamRegistry;
+    }
+}
+
+class FrameworkEventMeta {
+    /** @type {string} */
+    regUID;
+    /** @type {number} */
+    key;
+
+    /**
+     * @param {string} regUID
+     * @param {number} key
+     */
+    constructor(regUID, key) {
+        this.regUID = regUID;
+        this.key = key;
+    }
+}
 
 /**
  * @template EventPayload
@@ -14,24 +64,17 @@ class FrameworkEvent {
     type;
     /** @type {Event|null} */
     nativeEvent;
-    /** @type {string} */
-    regUID;
-    /** @type {number} */
-    key;
+    
     /** @type {EventPayload} */
     payload;
     /**
      * @param {string} type
-     * @param {string} regUID
-     * @param {number} key
      * @param {EventPayload} data
      * @param {boolean} bubble
      * @param {Event|null} nativeEvent
      */
-    constructor(type, regUID, key, data, bubble = false, nativeEvent = null) {
+    constructor(type, data, bubble = false, nativeEvent = null) {
         this.type = type;
-        this.regUID = regUID;
-        this.key = key;
         this.payload = data;
         this.bubble = bubble;
         this.nativeEvent = nativeEvent;
@@ -68,7 +111,7 @@ class EventEmitter {
 	}
 	
 	/**
-	 * @param {function} handler : the handler to add 
+	 * @param {(e : FrameworkEvent<EventPayload>, ctx: FrameworkEventCtx, meta: FrameworkEventMeta) => void} handler : the handler to add 
 	 */
 	addEventListener(handler) {
 		this.eventHandlers.push(handler);
@@ -103,28 +146,35 @@ class EventEmitter {
      * @param {string} regUID
      * @param {number} key
 	 * @param {EventPayload} [payload]
+     * @param {FrameworkEventMeta} [metaOverride]
 	 * @param {boolean} [bubble]
 	 */ 
-	trigger(nativeEvent = null, regUID, key, payload, bubble) {
+	trigger(nativeEvent = null, regUID, key, payload, metaOverride, bubble) {
 		for(let i = 0, l = this.eventHandlers.length; i < l; i++) {
 				this.eventHandlers[i](
                     new FrameworkEvent(
                         this.eventType,
-                        regUID,
-                        key,
                         payload,
                         bubble,
                         nativeEvent
+                    ),
+                    new FrameworkEventCtx(
+                        regUID
+                    ),
+                    metaOverride || new FrameworkEventMeta(
+                        regUID,
+                        key,
                     )
                 );
 		}
 	}
     /**
-     * Virtual implem: shall be hot-overridden via "@output() myEvent = new Eventtriggerter<unknown>('name)" declaration in component class
+     * Virtual implem: shall be hot-overridden via "@ Output() myEvent = new Eventtriggerter<unknown>('name)" declaration in component class
      * @param {EventPayload} [payload]
+     * @param {FrameworkEventMeta} [metaOverride]
      * @param {boolean} [bubble]
      */
-    emit(payload, bubble) {
+    emit(payload, metaOverride, bubble) {
         throw new Error('Unknown Event binding error: Probable missing "outputs" declaration in template. Default implementation of event-emitter hasn\'t been bound to a component.')
     }
 
@@ -158,14 +208,16 @@ class EventEmitter {
          */
         /**
          * @param {EventPayload} [payload]
+         * @param {FrameworkEventMeta} [metaOverride]
          * @param {boolean} [bubble]
          */
-        return function(payload, bubble = false) {
+        return function(payload, metaOverride, bubble = false) {
             eventEmitter.trigger(
                 null,
                 component.regUID,
                 component.key,
                 payload,
+                metaOverride,
                 bubble
             );
         }
@@ -175,5 +227,7 @@ class EventEmitter {
 
 export {
     FrameworkEvent,
+    FrameworkEventCtx,
+    FrameworkEventMeta,
     EventEmitter
 }
