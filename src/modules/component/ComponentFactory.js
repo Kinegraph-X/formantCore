@@ -9,6 +9,7 @@
 import {ComponentError } from '../error/Error.js';
 import registries from '../Registries.js';
 import { RootComponent, ComponentWithView } from './Component.js';
+import TemplateReconcilier from './TemplateReconcilier.js';
 import ViewFactory from '../view/ViewFactory.js';
 /** @ts-ignore Virtual modules can't be statically resolved */
 import {componentTypes} from 'virtual:auto-import.js'
@@ -25,15 +26,34 @@ class ComponentFactory {
      * @returns {ComponentWithView}
      */
     static newComponent(cTemplate, parentComponent) {
-        let newComponent;
+        let newComponent, view;
         if (cTemplate.type) {
-            if (cTemplate.type in knownTypes)
-                (newComponent = new knownTypes[cTemplate.type](parentComponent, cTemplate));
+            if (cTemplate.type in knownTypes) {
+                const {template,
+                        cTemplateUID,
+                        defaultTemplateUID
+                    } = TemplateReconcilier.reconcile(
+                            knownTypes[cTemplate.type].createDefaultDef,
+                            cTemplate,
+                            knownTypes[cTemplate.type].objectType
+                        );
+                view = ViewFactory.newView(template.view, parentComponent.view, template.UID)
+                newComponent = new knownTypes[cTemplate.type](parentComponent, template, view);
+            }
             else
                 new ComponentError(parentComponent, 'Unknown component type declared in template:', cTemplate.type, cTemplate);
         }
         else {
-            newComponent = new ComponentWithView(parentComponent, cTemplate)
+            const {template,
+                    cTemplateUID,
+                    defaultTemplateUID
+                } = TemplateReconcilier.reconcile(
+                        ComponentWithView.createDefaultDef,
+                        cTemplate,
+                        ComponentWithView.objectType
+                    );
+            view = ViewFactory.newView(template.view, parentComponent.view, template.UID)
+            newComponent = new ComponentWithView(parentComponent, template, view);
         }
 
         newComponent.view = ViewFactory.newView(cTemplate.view, parentComponent.view, newComponent.regUID)

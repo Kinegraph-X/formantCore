@@ -2,8 +2,8 @@
  * @module ListTemplate
  */
 
-/** @typedef {import('../template/TemplateFactory.js').ComponentTemplate} ComponentTemplate */
 /** @template ReactiveDatasetItem */
+/** @typedef {import('../template/TemplateFactory.js').ComponentTemplate} ComponentTemplate */
 
 import {listUIDGenerator} from  '../UIDGenerator';
 

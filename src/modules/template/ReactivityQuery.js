@@ -14,7 +14,7 @@
  * @property {string} [to]
  * @property {function} [filter]
  * @property {function} [map]
- * @property {((ctx: EffectCtx) => void)|null} [effect]
+ * @property {((ctx: EffectCtx, value: unknown) => void)|null} [effect]
  */
 
 import {ComponentError } from '../error/Error.js';
@@ -32,7 +32,7 @@ class ReactivityQuery {
 	filter = null;
 	/** @type {function|null} */
 	map = null;
-	/** @type {((ctx: EffectCtx) => void)|null} */
+	/** @type {((ctx: EffectCtx, value: unknown) => void)|null} */
 	effect = null;
 	/** @type {string} @readonly */
 	objectType = 'ReactivityQuery';

@@ -6,16 +6,22 @@
 import {defUIDGenerator} from '../UIDGenerator.js';
 import NodeResizeObserver from './ResizeObserver'
 
+/** @typedef {import('../reactivity/EventEmitter').FrameworkEvent<unknown>} FrameworkEvent*/
+
+/**
+ * @typedef {Object<'boundingBox', DOMRect>} EventData 
+ */
+
 
 class TextSizeGetter {
 	static objectType = 'TextSizeGetter';
 	resizeObserver = new NodeResizeObserver();
 	sampleNode = document.createElement('span');
 	/**
+	 * Some methods are available without setting the font-style upfront
 	 * @param {string} fontStyle 
-	 * @returns 
 	 */
-	constructor(fontStyle) {
+	constructor(fontStyle = '') {
 		if (typeof document === 'undefined' || typeof document.ownerDocument === 'undefined')
 			return;
 
@@ -70,9 +76,14 @@ class TextSizeGetter {
 
 		this.lineHeight = Number(style.lineHeight.slice(0, -2));
 
-		this.textWidthCanvasCtx.font = this.fontStyle;
+		/** @debug-buld start  already tested in ctor */	
+		if (!this.textWidthCanvasCtx)
+			throw new Error('unsupported canvas type in this browser');
+		/** @debug-buld end */	
 
-		if (e.data.boundingBox.h > 0) {
+		this.textWidthCanvasCtx.font = this.fontStyle;
+		
+		if (/** @type {EventData} */ (e.data).boundingBox.h > 0) {
 			if (this.initCb)
 				this.initCb(this.fontStyle);
 			this.resizeObserver.unobserve(this.sampleNode);
@@ -86,6 +97,11 @@ class TextSizeGetter {
 	getTextWidth(str) {
 		if (typeof str === 'undefined')
 			return;
+		/** @debug-buld start  already tested in ctor */	
+		if (!this.textWidthCanvasCtx)
+			throw new Error('unsupported canvas type in this browser');
+		/** @debug-buld endr*/
+
 		return this.textWidthCanvasCtx.measureText(str).width;
 	}
 	/**
@@ -97,8 +113,15 @@ class TextSizeGetter {
 	getTextSizeDependingOnStyle(str, fontStyle) {
 		if (typeof str === 'undefined')
 			return;
-		if (fontStyle)
+		
+		/** @debug-buld start  already tested in ctor */	
+		if (!this.textWidthCanvasCtx)
+			throw new Error('unsupported canvas type in this browser');
+		/** @debug-buld endr*/	
+
+		if (fontStyle) {
 			this.textWidthCanvasCtx.font = fontStyle;
+		}
 
 		var textSize = this.textWidthCanvasCtx.measureText(str);
 

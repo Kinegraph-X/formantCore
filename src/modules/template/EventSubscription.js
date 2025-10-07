@@ -2,10 +2,19 @@
  * @module EventSubscription
  */
 
+/** 
+ * @template EventPayload
+ * @typedef {import('../reactivity/EventEmitter').FrameworkEvent<EventPayload>} FrameworkEvent 
+ * */
+
 /**
+ * @template EventPayload
  * @typedef {object} EventSubscriptionDef
  * @property {string} on
- * @property {function} subscribe
+ * @property {(e : FrameworkEvent<EventPayload>) => void} subscribe
+ */
+/**
+ * @template EventPayload
  */
 class EventSubscription {
 	/** @type {string} */
@@ -15,7 +24,7 @@ class EventSubscription {
 	/** @type {string} @readonly */
 	objectType = 'EventSubscription';
 	/**
-	 * @param {EventSubscriptionDef} obj
+	 * @param {EventSubscriptionDef<EventPayload>} obj
 	 */
 	constructor(obj) {
 		/** @readonly */ this.on = obj.on;
@@ -23,10 +32,19 @@ class EventSubscription {
 	}
 }
 
+/**
+ * @template EventPayload
+ * @extends EventSubscription<EventPayload> 
+ */
 class SubscribeOnChild extends EventSubscription {
 	/** @readonly  */
 	objectType = 'SubscribeOnChild';
 }
+
+/**
+ * @template EventPayload
+ * @extends EventSubscription<EventPayload> 
+ */
 class SubscribeOnSelf extends EventSubscription {
 	/** @readonly  */
 	objectType = 'SubscribeOnSelf';

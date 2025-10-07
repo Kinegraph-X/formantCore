@@ -2,12 +2,11 @@ import { fileURLToPath } from 'node:url';
 import annotations from 'rollup-plugin-formant-annotations';
 import resolve from '@rollup/plugin-node-resolve';
 import alias from '@rollup/plugin-alias';
-import autoRequirePlugin from 'rollup-plugin-import-paths';
+import importPaths from 'rollup-plugin-import-paths';
 import debugLoadId from 'rollup-plugin-debug-load';
 import cssifyFromDB from 'rollup-plugin-cssifyfromdb';
 
 const formantCoreBundleName = 'formantCore';
-const codebaseFolder = 'codebase/';
 const distFolder = 'dist/';
 
 export default function () {
@@ -16,7 +15,7 @@ export default function () {
     input: 'src/main.mjs',
     
     output: {
-      file: distFolder + formantCoreBundleName + '.js',  // Output file
+      file: distFolder + formantCoreBundleName + '.js',
       format: 'esm',
       sourcemap : true,
       exports : 'auto'
@@ -29,13 +28,13 @@ export default function () {
       debugLoadId(),
       annotations(),
       resolve(),  // Resolves node_modules
-      autoRequirePlugin({
+      importPaths({
       	// root : process.cwd(),	// default
         debug : 0,				// could be 1, 2 or 3
         format : 'esm',			// defaults to cjs
         targets : [
           {
-            dir : codebaseFolder + formantCoreBundleName + '/src/modules/coreComponents',
+            dir : '/src/modules/coreComponents',
             name : 'coreComponentLib',
             filter : '!(_Base)/*.js'
           },

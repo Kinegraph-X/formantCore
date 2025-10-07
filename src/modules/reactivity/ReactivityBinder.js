@@ -152,7 +152,7 @@ class ReactivityBinder {
             if (!(child[/** @type {keyof ComponentWithView} */ (eventSubscription.on)] instanceof EventEmitter))
                 throw new ComponentError(child, 'Missing EventEmitter on component.', eventSubscription.on);
             
-            child[/** @type {keyof ComponentWithView} */ (eventSubscription.on)].addEventListener(eventSubscription.subscribe);
+            child[(eventSubscription.on)].addEventListener(eventSubscription.subscribe.bind(component));
         });
     }
 }

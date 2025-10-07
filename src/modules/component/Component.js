@@ -21,7 +21,7 @@ import { FrameworkEvent, EventEmitter } from '../reactivity/EventEmitter.js';
 import Stream from '../reactivity/Stream.js';
 import { ComponentView, RootComponentView } from '../view/ComponentView.js';
 import viewRef from '../view/viewRef.js';
-import TemplateReconcilier from './TemplateReconcilier.js';
+
 // import ViewFactory from '../view/ViewFactory.js';
 // import registries from '../Registries.js';
 
@@ -185,7 +185,7 @@ class AsyncActivableObject extends HierarchicalObject {
 	_asyncRegisterTasks = [];
 	
 	/**
-	 * @param {ExtensibleObject} parent
+	 * @param {HierarchicalObject} parent
 	 */
 	constructor(parent) {
 		super(parent);
@@ -232,16 +232,19 @@ class BaseComponentWithView extends AsyncActivableObject {
 	_defaultTemplateUID = '';
 	/** @type {string} */
 	regUID = '';
-	/** @type {unknown} */ 		// parsing bug, seemingly
-	#view;
+	/** @type {ComponentView<string>|null} lazy initializaton */
+	#view = null;
 	
 	get view() {
-		if (!this.#view) throw new Error();
+		/** @debug-build start */
+		if (!this.#view) throw new ComponentError(this, 'Lazy initializaton error: the view must be defined at this point. Component is:', this);
+		/** @debug-build end */
 		return this.#view;
 	}
-	/** @param {ComponentView} view */
+	/** @param {ComponentView<string>} view */
 	set view(view) {
-		this.#view = view;
+		throw new Error('The View of a Component can\'t be overriden');
+		// this.#view = view;
 	}
 
 	/**
@@ -251,38 +254,38 @@ class BaseComponentWithView extends AsyncActivableObject {
 	static createDefaultDef() {return new ComponentTemplate(null);}
 }
 
+/** @template {string} tagName */
 class RootComponent extends RootHierarchicalObject {
 	/** @type {string} */
 	static objectType = 'RootComponent';
 	/** @type {string} */
 	regUID = '';
-	/** @type {InstanceType<typeof RootComponentView>} */	// parsing bug, seemingly
+	/** @type {RootComponentView<tagName>} */	// parsing bug, seemingly
 	#view;
 	constructor() {
 		super();
-		this.view = new RootComponentView();
+		this.#view = new RootComponentView();
 	}
 }
 
 
-
+/** @template {string} tagName */
 class ComponentWithView extends BaseComponentWithView {
 	/** @type {string} */
 	static objectType = 'ComponentWithView';
-	/** @type {ComponentWithView[]} */
+	/** @type {ComponentWithView<tagName>[]} */
 	children = [];
-	/** @type {RootComponent|ComponentWithView} */
+	/** @type {RootComponent<tagName>|ComponentWithView<tagName>} */
 	parent;
-	/** @type {InstanceType<ComponentView>} */ 		// parsing bug, seemingly
+	/** @type {ComponentView<tagName>} */ 		// parsing bug, seemingly
 	#view;
-	/** @type {InstanceType<ComponentView>[]} */	// parsing bug, seemingly (TODO: find out why)
+	/** @type {ComponentView<tagName>[]} */	// parsing bug, seemingly (TODO: find out why)
 	subViews = [];
-	/** @type {InstanceType<ComponentView>[]} */	// parsing bug, seemingly (TODO: find out why)
+	/** @type {ComponentView<tagName>[]} */	// parsing bug, seemingly (TODO: find out why)
 	memberViews = [];
 
 	/** 
-	 * Outputs could be declared on the component template, by the user,
-	 * but we chose to mimic the behavior of the Angular compiler
+	 * We chose to mimic the behavior of the Angular compiler
 	 * which reflects @output annotations to the @component object
 	 * @see below
 	 * @see rollup-plugin-formant-annotations
@@ -290,7 +293,7 @@ class ComponentWithView extends BaseComponentWithView {
 	/** @type {string[]} */
 	static _outputs = [];
 	/**
-	 * @param {ComponentWithView} type
+	 * @param {ComponentWithView<string>} type
 	 * @param {string} outputName
 	 */
 	static declareOutput = (type, outputName) => {
@@ -305,13 +308,14 @@ class ComponentWithView extends BaseComponentWithView {
 	 * 	will be transformed at build time to
 	 * 	`output = ComponentWithView.declareOutput(${typeName}, ${outputName)} && new EventEmitter<any>();`
 	 */
-	@output update = new EventEmitter<unknown>('update');
+	@output() update = new EventEmitter<unknown>('update');
 
 	/**
 	 * @param {BaseComponentWithView} parent
-	 * @param {ComponentTemplate|null} cTemplate
+	 * @param {ComponentTemplate} cTemplate
+	 * @param {ComponentView<tagName>} view
 	 */
-	constructor(parent, cTemplate) {
+	constructor(parent, cTemplate, view) {
 		super(parent);
 		
 		if (!(parent instanceof ComponentWithView) || !parent.parent)  {
@@ -323,20 +327,11 @@ class ComponentWithView extends BaseComponentWithView {
 		}
 		this.parent = parent;
 		this.parent.pushChild(this);
+		this.#view = view;
 		
-		// Reconciliation is the only template manipulation made here (maybe improve)
-		const {template,
-				cTemplateUID,
-				defaultTemplateUID
-			} = TemplateReconcilier.reconcile(
-					/** @type {typeof ComponentWithView} */ (this.constructor).createDefaultDef,
-					cTemplate,
-					Object.getPrototypeOf(this).objectType
-				);
-
-		// EventEmitters don't have a propoer trigger function when defining them
+		// EventEmitters don't have a propoer "emit()" function when defining them
 		// (EventEmitter has the ability to bind on DOM events, and the handler gets refs to "regUID" and "key")
-		// Define here the correct trigger function
+		// Define here the correct emit function
 		const thisArg = /** @type {unknown} */(this);
 		/** @type {typeof ComponentWithView} */(thisArg)._outputs.forEach(
 			(/**@type{string}*/output) => {
@@ -345,18 +340,15 @@ class ComponentWithView extends BaseComponentWithView {
 				if (!(emitter instanceof EventEmitter))
 					throw new ComponentError(this, 'An output declared in the template has no corresponding EventEmitter. output is', output);
 				
-				emitter.trigger = EventEmitter.getTriggerFunction(this, emitter);
+				emitter.emit = EventEmitter.getTriggerFunction(this, emitter);
 		})
 		
-		// Debug props: the TemplateReconcilier registers the default template (reconciliated if needed)
-		// We keep track of what's been passed.
-		this._templateUID = cTemplateUID;	// may be null
-		this._defaultTemplateUID = this.regUID = defaultTemplateUID;
+		this.regUID = cTemplate.UID;
 	}
 	
 
 	/**
-	 * @param {ComponentWithView} child
+	 * @param {ComponentWithView<tagName>} child
 	 */
 	removeChild(child) {
 		if (child.subViews.length) {
@@ -384,7 +376,7 @@ class ComponentWithView extends BaseComponentWithView {
 	}
 	
 	/**
-	 * @param {ComponentWithView} child
+	 * @param {ComponentWithView<tagName>} child
 	 * @param {number} atIndex
 	 */
 	addChildAt(child, atIndex) {

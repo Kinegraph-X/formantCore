@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component').ComponentWithView<string>} ComponentWithView
  */
 
 /**
@@ -19,7 +19,7 @@ class FrameworkEvent {
     /** @type {number} */
     key;
     /** @type {EventPayload} */
-    data;
+    payload;
     /**
      * @param {string} type
      * @param {string} regUID
@@ -32,7 +32,7 @@ class FrameworkEvent {
         this.type = type;
         this.regUID = regUID;
         this.key = key;
-        this.data = data;
+        this.payload = data;
         this.bubble = bubble;
         this.nativeEvent = nativeEvent;
     }
@@ -105,7 +105,7 @@ class EventEmitter {
 	 * @param {EventPayload} [payload]
 	 * @param {boolean} [bubble]
 	 */ 
-	eventTrigger(nativeEvent = null, regUID, key, payload, bubble) {
+	trigger(nativeEvent = null, regUID, key, payload, bubble) {
 		for(let i = 0, l = this.eventHandlers.length; i < l; i++) {
 				this.eventHandlers[i](
                     new FrameworkEvent(
@@ -120,11 +120,11 @@ class EventEmitter {
 		}
 	}
     /**
-     * Default implem: shall be hot-overridden via "outputs: string[]" declaration in template
+     * Virtual implem: shall be hot-overridden via "@output() myEvent = new Eventtriggerter<unknown>('name)" declaration in component class
      * @param {EventPayload} [payload]
      * @param {boolean} [bubble]
      */
-    trigger(payload, bubble) {
+    emit(payload, bubble) {
         throw new Error('Unknown Event binding error: Probable missing "outputs" declaration in template. Default implementation of event-emitter hasn\'t been bound to a component.')
     }
 
@@ -140,7 +140,7 @@ class EventEmitter {
          * @param {Event} nativeEvent
          */
         return function(nativeEvent) {
-            eventEmitter.eventTrigger(
+            eventEmitter.trigger(
                 nativeEvent,
                 component.regUID,
                 component.key,
@@ -160,8 +160,8 @@ class EventEmitter {
          * @param {EventPayload} [payload]
          * @param {boolean} [bubble]
          */
-        return function(payload, bubble) {
-            eventEmitter.eventTrigger(
+        return function(payload, bubble = false) {
+            eventEmitter.trigger(
                 null,
                 component.regUID,
                 component.key,

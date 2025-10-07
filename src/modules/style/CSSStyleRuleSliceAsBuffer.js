@@ -57,9 +57,10 @@ class CSSStyleRuleSliceAsBuffer extends MemoryMapBuffer {
 			initialContent = new Uint8Array(props.length * itemSize);
 			let offset = 0;
 
+			const initialValueIdx = allCSSPropertyDescriptors[attrName].initialValue;
 			props.forEach((attrName) => {
 				const packed = new CSSPropertyAsBuffer(null, attrName);
-				packed.setValue(allCSSPropertyDescriptors[attrName].initialValue);
+				packed.setValue(initialValueIdx);
 				initialContent.set(packed._buffer, offset);
 				// mark as initial value
 				initialContent.set([1], offset + CSSPropertyAsBuffer.bufferSchema.isInitialValue.start);
@@ -133,17 +134,20 @@ class CSSStyleRuleSliceAsBuffer extends MemoryMapBuffer {
 		var resolvedPropName = propName,
 			posForProp;
 
+		if (allCSSPropertyDescriptors[resolvedPropName].isAlias)
+			resolvedPropName = allCSSPropertyDescriptors[resolvedPropName].expandedPropNames[0];
+		
 		// abbreviated are handled in setPropFromShorthand()
 		if (allCSSPropertyDescriptors[resolvedPropName].isShorthand) {
 			this.setPropFromShorthand(resolvedPropName, propBuffer.getValueAsString());
+			return;
 		}
-		else {
-			if (allCSSPropertyDescriptors[resolvedPropName].isAlias)
-				resolvedPropName = allCSSPropertyDescriptors[resolvedPropName].expandedPropNames[0];
-			if ((posForProp = this.getPosForProp(resolvedPropName) * this.itemSize) < 0)
-				return;
-			this._buffer.set(propBuffer._buffer, posForProp);
-		}
+		
+		// Direct write for longhands
+		if ((posForProp = this.getPosForProp(resolvedPropName) * this.itemSize) < 0)
+			return;
+
+		this._buffer.set(propBuffer._buffer, posForProp);
 	}
 	/**
 	 * Sets a property from a shorthand value

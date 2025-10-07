@@ -4,12 +4,13 @@
 
 /**
  * @template {import('../view/stdTagNameType').stdTagNameType|string} tagName
+ * @template StreamValue
  */
 
 /**
  * @typedef {import('../DOM/Factories.js').HTMLCustomElement<tagName>} HTMLCustomElement
  * @typedef {import('../view/ComponentView').ComponentView<tagName>} ComponentView
- * @typedef {import('../reactivity/Stream.js')} Stream
+ * @typedef {import('../reactivity/Stream.js').default<StreamValue>} Stream
  */
 import {ComponentError} from '../error/Error';
 import registries from '../Registries';
@@ -18,9 +19,12 @@ import getToolingProxy from '../tooling/getToolingProxy.js';
 /**
  * template {string} tagName
 */
+
 class EffectCtx {
     /** @type {string} */
     static objectType = 'EffectCtx';
+    /** @type {string} */
+    regUID;
     /** @type {ComponentView} */
     view;
     /** @type {ComponentView[]} */
@@ -41,6 +45,7 @@ class EffectCtx {
         if (!component)
             throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
         
+        this.regUID = regUID;
         this.element = /** @type {HTMLElement|HTMLCustomElement} */ (getToolingProxy(regUID, 'element', component.view.node));
         this.view = /** @type {ComponentView} */ (getToolingProxy(regUID, 'view', component.view));
         this.subViews = /** @type {ComponentView[]} */ (getToolingProxy(regUID, 'subViews', component.subViews));
@@ -68,7 +73,7 @@ class EffectCtx {
      * 
      * @param {string} regUID 
      * @param {(ctx : EffectCtx) => void} effect
-     * @returns {(ctx : EffectCtx) => void}
+     * @returns {(ctx : EffectCtx, value: unknown) => void}
      */
     static getEffectFunction(regUID, effect) {
         return effect.bind(null, new EffectCtx(regUID));

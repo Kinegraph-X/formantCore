@@ -2,13 +2,16 @@
  * @file TemplateFactory
  */
 /**
+ * @template EventPayload
+ */
+/**
  * @typedef {import('./Prop').AttributeDef} AttributeDef
  * @typedef {import('./Prop').PropDef} PropDef
  * @typedef {import('./Prop').StateDef} StateDef
  * @typedef {import('./ReactivityQuery').ReactivityQueryDef} ReactivityQueryDef
- * @typedef {import('./EventSubscription').EventSubscriptionDef} EventSubscriptionDef
+ * @typedef {import('./EventSubscription').EventSubscriptionDef<EventPayload>} EventSubscriptionDef
  * @typedef {import('./ListTemplate').ListTemplateDef} ListTemplateDef
- * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component').ComponentWithView<string>} ComponentWithView
  * @typedef {import('../reactivity/EffectCtx')} EffectCtx
  * @typedef {import('../style/Stylesheet')} Stylesheet
  */
@@ -73,7 +76,8 @@ import ListTemplate from './ListTemplate';
  * |'touchend'
  * |'touchmove'
  * } DomEventType
- * @typedef {{DomEventType: string}} DomEventBindings
+ * 
+ * @typedef {Object<DomEventType, string>} DomEventBindings
  */
 
 
@@ -143,7 +147,7 @@ class ViewTemplate {
 
  /**
  * @typedef {object} ComponentTemplateDef
- * @property {ViewTemplateDef} view
+ * @property {ViewTemplateDef|ViewTemplate} view
  * @property {string} [type]
  * @property {[string, string][]} [imperatives]
  * @property {PropDef[]} [props]
@@ -151,10 +155,9 @@ class ViewTemplate {
  * property {Command} [command]
  * @property {ReactivityQueryDef[]} [reactOnParent]
  * @property {ReactivityQueryDef[]} [reactOnSelf]
- * @property {EventSubscriptionDef[]} [subscribeOnParent]
  * @property {EventSubscriptionDef[]} [subscribeOnChild]
  * @property {EventSubscriptionDef[]} [subscribeOnSelf]
- * @property {string[]} [outputs]
+ * property {string[]} [outputs]
  * @property {(ComponentTemplate|ViewTemplate)[]} [members]
  * @property {(ComponentTemplate|ViewTemplate)[]} [subSections]
  * @property {ListTemplateDef} [list]
@@ -181,8 +184,6 @@ class ViewTemplate {
 	subscribeOnChild = new EventSubscriptionArray();
 	/** @type {EventSubscriptionArray} @readonly */
 	subscribeOnSelf = new EventSubscriptionArray();
-	/** @type {string[]} */
-	outputs = ['update'];
 	/** @type {(ComponentTemplate|ViewTemplate)[]} @readonly */
 	members = [];
 	/** @type {(ComponentTemplate|ViewTemplate)[]} @readonly */
@@ -198,9 +199,8 @@ class ViewTemplate {
 	constructor(obj) {
 		/** @readonly */ this.UID = templateUIDGenerator.newUID();
 		if (obj) {
-			/** @readonly */ this.view = new ViewTemplate(obj.view);
+			/** @readonly */ this.view = obj.view instanceof ViewTemplate ? obj.view : new ViewTemplate(obj.view);
 			/** @readonly */ this.type = obj.type || null;
-			/** @readonly */ if (obj.outputs) this.outputs = obj.outputs;
 
 			if (Array.isArray(obj.props)) {
 				obj.props.forEach(
