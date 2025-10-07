@@ -232,20 +232,6 @@ class BaseComponentWithView extends AsyncActivableObject {
 	_defaultTemplateUID = '';
 	/** @type {string} */
 	regUID = '';
-	/** @type {ComponentView<string>|null} lazy initializaton */
-	#view = null;
-	
-	get view() {
-		/** @debug-build start */
-		if (!this.#view) throw new ComponentError(this, 'Lazy initializaton error: the view must be defined at this point. Component is:', this);
-		/** @debug-build end */
-		return this.#view;
-	}
-	/** @param {ComponentView<string>} view */
-	set view(view) {
-		throw new Error('The View of a Component can\'t be overriden');
-		// this.#view = view;
-	}
 
 	/**
 	 * @virtual
@@ -260,7 +246,7 @@ class RootComponent extends RootHierarchicalObject {
 	static objectType = 'RootComponent';
 	/** @type {string} */
 	regUID = '';
-	/** @type {RootComponentView<tagName>} */	// parsing bug, seemingly
+	/** @type {RootComponentView<tagName>} */	
 	#view;
 	constructor() {
 		super();
@@ -277,12 +263,20 @@ class ComponentWithView extends BaseComponentWithView {
 	children = [];
 	/** @type {RootComponent<tagName>|ComponentWithView<tagName>} */
 	parent;
-	/** @type {ComponentView<tagName>} */ 		// parsing bug, seemingly
-	#view;
-	/** @type {ComponentView<tagName>[]} */	// parsing bug, seemingly (TODO: find out why)
+	/** @type {ComponentView<tagName>[]} */	
 	subViews = [];
-	/** @type {ComponentView<tagName>[]} */	// parsing bug, seemingly (TODO: find out why)
+	/** @type {ComponentView<tagName>[]} */	
 	memberViews = [];
+	/** @type {ComponentView<tagName>} */
+	#view;
+	
+	get view() {
+		return this.#view;
+	}
+	/** @param {ComponentView<tagName>} view */
+	set view(view) {
+		throw new Error('The View of a Component can\'t be overriden');
+	}
 
 	/** 
 	 * We chose to mimic the behavior of the Angular compiler
@@ -293,7 +287,7 @@ class ComponentWithView extends BaseComponentWithView {
 	/** @type {string[]} */
 	static _outputs = [];
 	/**
-	 * @param {ComponentWithView<string>} type
+	 * @param {typeof ComponentWithView<string>} type
 	 * @param {string} outputName
 	 */
 	static declareOutput = (type, outputName) => {
@@ -304,9 +298,9 @@ class ComponentWithView extends BaseComponentWithView {
 	}
 	/*
 	 * @example:
-	 * 	@ output output = new EventEmitter<any>('eventName');
+	 * 	@ output() output = new EventEmitter<EventPayload>('eventName');
 	 * 	will be transformed at build time to
-	 * 	`output = ComponentWithView.declareOutput(${typeName}, ${outputName)} && new EventEmitter<any>();`
+	 * 	`output = ComponentWithView.declareOutput(${typeName}, ${outputName)} && new EventEmitter<EventPayload>();`
 	 */
 	@output() update = new EventEmitter<unknown>('update');
 
@@ -321,7 +315,7 @@ class ComponentWithView extends BaseComponentWithView {
 		if (!(parent instanceof ComponentWithView) || !parent.parent)  {
 			throw new ComponentError(
 				this,
-				'parent isn\'t instance of ComponentWithView or has not parent.',
+				'constructor: parent isn\'t instance of ComponentWithView or the component has no declared parent.',
 				parent
 			);
 		}
@@ -370,9 +364,9 @@ class ComponentWithView extends BaseComponentWithView {
 		child.view.node.remove();
 		// remove a child
 		// TODO: the ComponentWithView should neither handle streams, nor subscriptions 
-		child._subscriptions.forEach(function(subscription) {
-			subscription.unsubscribe();
-		});
+		// child._subscriptions.forEach(function(subscription) {
+		// 	subscription.unsubscribe();
+		// });
 	}
 	
 	/**
@@ -383,30 +377,7 @@ class ComponentWithView extends BaseComponentWithView {
 		HierarchicalObject.prototype.addChildAt.call(this, child, atIndex);
 		child.parent.view.addChildAt(child.view, atIndex);
 	}
-	
-	/**
-	 * @param {number} targetIdx
-	 */
-	childButtonsHighlightLoop(targetIdx) {
-		if (this.children.length === 1)
-			this.children[0].streams.highlighted.next = null;
-		else {
-			this.children.forEach(function(child) {
-				if (child.key === targetIdx)
-					child.streams.highlighted.next = 'highlighted';
-				else
-					child.streams.highlighted.next = null;
-			});
-		}
-	}
-	
 }
-
-
-
-
-
-
 
 
 

@@ -22,21 +22,18 @@ class ComponentFactory {
     /**
      * 
      * @param {ComponentTemplate} cTemplate 
-     * @param {ComponentWithView} parentComponent 
-     * @returns {ComponentWithView}
+     * @param {ComponentWithView<string>} parentComponent 
+     * @returns {ComponentWithView<string>}
      */
     static newComponent(cTemplate, parentComponent) {
         let newComponent, view;
         if (cTemplate.type) {
             if (cTemplate.type in knownTypes) {
-                const {template,
-                        cTemplateUID,
-                        defaultTemplateUID
-                    } = TemplateReconcilier.reconcile(
-                            knownTypes[cTemplate.type].createDefaultDef,
-                            cTemplate,
-                            knownTypes[cTemplate.type].objectType
-                        );
+                const {template} = TemplateReconcilier.reconcile(
+                        knownTypes[cTemplate.type].createDefaultDef,
+                        cTemplate,
+                        knownTypes[cTemplate.type].objectType
+                    );
                 view = ViewFactory.newView(template.view, parentComponent.view, template.UID)
                 newComponent = new knownTypes[cTemplate.type](parentComponent, template, view);
             }
@@ -44,21 +41,16 @@ class ComponentFactory {
                 new ComponentError(parentComponent, 'Unknown component type declared in template:', cTemplate.type, cTemplate);
         }
         else {
-            const {template,
-                    cTemplateUID,
-                    defaultTemplateUID
-                } = TemplateReconcilier.reconcile(
-                        ComponentWithView.createDefaultDef,
-                        cTemplate,
-                        ComponentWithView.objectType
-                    );
+            const {template} = TemplateReconcilier.reconcile(
+                    ComponentWithView.createDefaultDef,
+                    cTemplate,
+                    ComponentWithView.objectType
+                );
             view = ViewFactory.newView(template.view, parentComponent.view, template.UID)
             newComponent = new ComponentWithView(parentComponent, template, view);
         }
 
-        newComponent.view = ViewFactory.newView(cTemplate.view, parentComponent.view, newComponent.regUID)
         registries.component.set(newComponent.regUID, newComponent);
-
         return newComponent;
     }
 }

@@ -9,8 +9,8 @@ import {ComponentTemplate} from '../template/TemplateFactory';
 
 /**
  * 
- * @param {{[key: string]: any}} options 
- * @param {any} model 
+ * @param {{[key: string]: any}} [options] 
+ * @param {any} [model] 
  * @returns 
  */
 const rootComponentDef = function(options, model) {

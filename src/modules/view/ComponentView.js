@@ -2,18 +2,16 @@
  * @module ComponentView
  */
 import {currentViewStrategy} from '../config.js';
-
 import {ComponentError } from '../error/Error.js';
-
 import { viewStrategyTrap } from '../proxies/proxyTraps.js';
 import createRootComponentTemplate from '../templates/rootComponentTemplate.js';
 
+
 /**
- * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
- * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  * @typedef {import('./stdTagNameType').stdTagNameType} stdTagName
- * 
- * @typedef {import('./ViewStrategyInterface')} ViewStrategyInterface
+ * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
+ * @typedef {import('../component/Component').ComponentWithView<keyof HTMLElementTagNameMap|string>} ComponentWithView
+ * @typedef {import('./ViewStrategyInterface').default} ViewStrategyInterface
  */
 
 /**
@@ -143,7 +141,7 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 	 * @param {string} text
 	 */
 	setTextContent(text) {
-		return this.#currentViewStrategy.getContent(text);
+		return this.#currentViewStrategy.getContent();
 	}
 	
 	/**

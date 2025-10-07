@@ -22,7 +22,7 @@ export default (regUID, type, value) => {
     switch(type) {
         case 'element' :
             return new Proxy(
-                value,
+                /** @type {object} */ (value),
                 {
                     get : elementTrap.get.bind(null, regUID, type),
                     set : elementTrap.set.bind(null, regUID, type)
