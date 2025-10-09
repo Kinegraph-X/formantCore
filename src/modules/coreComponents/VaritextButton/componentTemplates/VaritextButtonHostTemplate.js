@@ -1,9 +1,10 @@
 /**
  * 
  */
-import { ComponentTemplate, ViewTemplate } from '../../template/TemplateFactory.js';
+import { ComponentTemplate, ViewTemplate } from '../../../template/TemplateFactory.js';
 import CreateStyle from '../../../style/CreateStyle.js';
 
+/** @param {unknown} [options] @param {unknown} [model] */
 const varitextButtonTemplate = function(options, model) {
     return new ComponentTemplate({
         view: new ViewTemplate({

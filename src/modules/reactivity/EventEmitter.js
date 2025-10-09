@@ -6,11 +6,11 @@ import {ComponentError} from '../error/Error';
 import registries from '../Registries';
 
 /**
- * typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  * @typedef {import('../reactivity/Stream.js').default<unknown>} Stream
  */
 
-import { ComponentWithView } from '../component/Component.js';
+// import { ComponentWithView } from '../component/Component.js';
 
 class FrameworkEventCtx {
     /** @type {Object<string, EventEmitter<unknown>>} */

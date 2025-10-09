@@ -2,11 +2,12 @@ import { fileURLToPath } from 'node:url';
 import annotations from 'rollup-plugin-formant-annotations';
 import resolve from '@rollup/plugin-node-resolve';
 import alias from '@rollup/plugin-alias';
+import copy from 'rollup-plugin-copy';
 import importPaths from 'rollup-plugin-import-paths';
 import debugLoadId from 'rollup-plugin-debug-load';
 import cssifyFromDB from 'rollup-plugin-cssifyfromdb';
 
-const formantCoreBundleName = 'formantCore';
+const formantCoreBundleName = 'formantJS';
 const distFolder = 'dist/';
 
 export default function () {
@@ -16,6 +17,7 @@ export default function () {
     
     output: {
       file: distFolder + formantCoreBundleName + '.js',
+      inlineDynamicImports: true,
       format: 'esm',
       sourcemap : true,
       exports : 'auto'
@@ -28,13 +30,13 @@ export default function () {
       debugLoadId(),
       annotations(),
       resolve(),  // Resolves node_modules
-      importPaths({
+      importPaths({   // creates a virtual module with an entry for each "name"
       	// root : process.cwd(),	// default
         debug : 0,				// could be 1, 2 or 3
         format : 'esm',			// defaults to cjs
         targets : [
           {
-            dir : '/src/modules/coreComponents',
+            dir : 'src/modules/coreComponents',
             name : 'coreComponentLib',
             filter : '!(_Base)/*.js'
           },
@@ -44,6 +46,13 @@ export default function () {
         dbURL: 'mongodb://localhost:27017/themed_components',
         include: '**/*.js',
         exclude: 'node_modules/**',
+      }),
+      copy({
+        hook : 'writeBundle',
+        targets: [
+          { src: 'dist/formantCore.js', dest: '../../node_modules/formantjs' },
+          { src: 'dist/formantCore.js.map', dest: '../../node_modules/formantjs' }
+        ]
       }),
     ]
   };

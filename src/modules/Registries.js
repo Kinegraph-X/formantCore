@@ -49,6 +49,79 @@
  */
 
 
+// /**
+//  * Hacked type-checker: forcing return type to be not-null
+//  */
+// /**
+//  * @template T
+//  */
+// class UnSafeMap {
+// 	/** @type {Map<keyof T, T[keyof T]>} */ 
+//     map = new Map();
+// 	/** @param {keyof T} key @returns {T[keyof T]*/
+//     get(key) {return ( /**@type {T[keyof T]}*/ (this.map.get(key)))};
+// 	/** @param {keyof T} key @param {T[keyof T]} value @returns void*/
+//     set(key, value) {this.map.set(key, value)};
+// }
+
+// /**
+//  * Hacked type-checker: typing Object<string, value> preserves type-inference
+//  * and disables "potentially undefined when accessing unknown keys"
+//  */
+// export default {
+// 	/** @type {UnSafeMap<Object<string, AbstractPropArray>>} */
+// 	attribute : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, AbstractPropArray>>} */
+// 	state : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, AbstractPropArray>>} */
+// 	prop: new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, ReactivityQueryArray>>} */
+// 	reactOnParent : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, ReactivityQueryArray>>} */
+// 	reactOnSelf : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, EventSubscriptionArray>>} */
+// 	subscribeOnParent : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, EventSubscriptionArray>>} */
+// 	subscribeOnChild : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, EventSubscriptionArray>>} */
+// 	subscribeOnSelf : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, DomEventBindings|null>>} */
+// 	domListens : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, ComponentTemplate>>} */
+// 	componentTemplate : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, Stylesheet>>} */
+// 	sWrapper : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, ComponentWithView>>} */
+// 	component : new UnSafeMap(),
+// 	/** @type {(ComponentView)[]} */
+// 	views : [],
+// 	/** @type {UnSafeMap<Object<string, Map<string, Stream>>>} */
+// 	streams : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, Map<string, Imperative>>>} */
+// 	imperatives : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, CachedNode>>} */
+// 	node : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, DOMRect>>} */
+// 	boundingBox : new UnSafeMap(),
+// 	// /** @type {UnSafeMap<Object<string, NaiveDomNode>>} */
+// 	// naiveElement : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, Stylesheet>>} */
+// 	style : new UnSafeMap(),
+// 	// /** @type {UnSafeMap<Object<string, LayoutNode>>} */
+// 	// layoutNode : new UnSafeMap(),
+// 	// /** @type {UnSafeMap<Object<string, textLayoutNode>>} */
+// 	// textLayoutNode : new UnSafeMap(),
+// 	// /** @type {UnSafeMap<Object<string, Shape>>} */
+// 	// rasterShape : new UnSafeMap(),
+// 	// /** @type {UnSafeMap<Object<string, FlexCtx>>} */
+// 	// flexCtx : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, function>>} */
+// 	layoutCallback : new UnSafeMap(),
+// 	/** @type {UnSafeMap<Object<string, FontSizeBuffer>>} */
+// 	fontSizeBuffer : new UnSafeMap(),
+// };
+
+
 export default {
 	/** @type {Map<string, AbstractPropArray>} */
 	attribute : new Map(),

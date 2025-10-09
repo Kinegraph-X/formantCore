@@ -10,6 +10,7 @@
  */
 /** @template EventPayload */
 
+import {ComponentError} from '../../error/Error';
 import {Output} from '../../decorators.js';
 import {ComponentWithView} from '../../component/Component.js'
 import ListTemplate from '../../template/ListTemplate.js'
@@ -33,7 +34,7 @@ import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
 /**
  * jsonData
  *   ↓
- * buildTree()              → creates data nodes
+ * buildTree()              → creates data nodes (may be bypassed)
  *   ↓
  * instantiateTree()        → creates UI components for each node
  *   ↓
@@ -43,13 +44,11 @@ class AbstractTree extends ComponentWithView {
     static objectType = 'AbstractTree';
     expanded = false;
 
-    /** - JSON data to render. */
-    jsonData = '';
     /** 
      * Optional node transform callback.
-     * @type {(node: TreeNode) => TreeNode}
+     * @type {((node: TreeNode) => TreeNode)|null}
      */
-    nodeTransformFunction = (node) => node;
+    nodeTransformFunction = null;
 	
 	/**
 	 * 
@@ -61,12 +60,15 @@ class AbstractTree extends ComponentWithView {
 		super(parent, cTemplate, view);
 
 		this.update.addEventListener((e, ctx, meta) => {
-			ctx.streams.get('selected').next = meta.regUID;
+            const stream = ctx.streams.get('selected');
+            /** @debug-build start */
+            if (!stream)
+                throw new ComponentError(this, 'unknwown stream error (not declared?): streams entry not found in streams registry. UID is', meta.regUID);
+            /** @debug-build end */
+			stream.next = meta.regUID;
 		});
 
-		if (this.jsonData) {
-			this.renderJSON(cTemplate, this.jsonData, this.nodeTransformFunction);
-		}
+        // this.renderJSON(cTemplate, this.jsonData);
 	}
 
 	static createDefaultDef() {
@@ -80,13 +82,11 @@ class AbstractTree extends ComponentWithView {
     * Public API: renders a JSON tree.
 	* @param {ComponentTemplate} rootTemplate - Root template.
     * @param {object|string} jsonData - JSON data or string.
-    * @param {(node: TreeNode) => TreeNode} [filter] - Optional node filter.
     * @returns {TreeNode} Root data node.
     */
-    renderJSON(rootTemplate, jsonData, filter) {
+    renderJSON(rootTemplate, jsonData) {
         const dataTree = this.buildTree(jsonData);
-        this.instantiateTree(rootTemplate, dataTree, filter);
-        this.render(); // Delegate to UI layer
+        this.instantiateTree(rootTemplate, dataTree);
         return dataTree;
     }
 
@@ -120,6 +120,10 @@ class AbstractTree extends ComponentWithView {
      */
     populateSubnodes(data, parent) {
         if (typeof data !== 'object' || data === null) return;
+        
+        if (this.nodeTransformFunction)
+            data = this.nodeTransformFunction(data);
+
         for (const [key, value] of Object.entries(data)) {
             const child = {
                 key,
@@ -174,7 +178,7 @@ class AbstractTree extends ComponentWithView {
 		const isBranch = spec.children && spec.children.length > 0;
 
 		if (isBranch) {
-			// append recursively-built children after header
+            // append recursively-built children after header
 			const branchTpl = createBranchTemplateDef();
 			const childTpls = spec.children.map((c) => this.createMember(c));
 			branchTpl.members.push(...childTpls);

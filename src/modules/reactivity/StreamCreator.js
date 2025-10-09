@@ -22,15 +22,21 @@ class StreamCreator {
         registries.streams.set(regUID, registry);
 
         const props = registries.prop.get(regUID);
+        /** @debug-build start */
         if (!props)
             throw new ComponentError(component, 'StreamCreator unknown error: props entry not found in props registry. UID is', regUID);
+        /** @debug-build end */
+
         props.forEach((prop) => {
             registry.set(prop.getName(), new Stream(prop.getName(), prop.getValue()));
         });
 
         const states = registries.state.get(regUID);
+        /** @debug-build start */
         if (!states)
             throw new ComponentError(component, 'StreamCreator unknown error: states entry not found in states registry. UID is', regUID);
+        /** @debug-build end */
+
         states.forEach((state) => {
             registry.set(state.getName(), new Stream(state.getName(), state.getValue()));
         });

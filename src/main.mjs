@@ -13,12 +13,17 @@ export * from './modules/template/TemplateFactory.js';
 export * from './modules/nativeTypesUtilities/StringUtilities.js';
 export * from './modules/nativeTypesUtilities/BooleanUtilities.js';
 
+/** @ts-ignore Virtual modules can't be statically resolved */
+import autoImport from 'virtual:auto-import.js'
+const componentTypes = autoImport.coreComponentLib;
+
 const decorators = {Component, View, Output, Imperative};
 
 export  {
     decorators,
     CreateStyle,
     ComponentWithView,
+    componentTypes,
     EffectCtx,
     WorkerWrapper,
     ComponentError,
