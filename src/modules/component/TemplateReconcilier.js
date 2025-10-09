@@ -20,19 +20,17 @@ class TemplateReconcilier {
 	}
 	/**
 	 * 
-	 * @param {() => ComponentTemplate | void} staticDefaultTemplateGetter 
+	 * @param {(() => ComponentTemplate)|undefined} staticDefaultTemplateGetter 
 	 * @param {ComponentTemplate|null} cTemplate
 	 * @param {string} objectType
 	 */
 	static reconcile(staticDefaultTemplateGetter, cTemplate, objectType) {
-		let template, cTemplateUID = null;
+		let template,
+			cTemplateUID = null;
 		
-		const defaultTemplate = staticDefaultTemplateGetter();
+		const defaultTemplate = staticDefaultTemplateGetter ? staticDefaultTemplateGetter() : new ComponentTemplate();
 
-		if (!defaultTemplate) {
-			throw new ComponentError(this, 'Components must provide a template by default', objectType, cTemplate);
-		}
-		else if (registries.componentTemplate.has(defaultTemplate.UID)) {
+		if (registries.componentTemplate.has(defaultTemplate.UID)) {
 			throw new ComponentError(this, 'A component must provide unique instances of its default template.', objectType, defaultTemplate);
 		}
 		
@@ -43,9 +41,6 @@ class TemplateReconcilier {
 		}
 		else {
 			// Let's allow not passing a template.
-			// This signature is used in the documentation
-			// (although we had chosen until now to excplicitely mock the def
-			//  and to pass it to the specialized constructor)
 			template = defaultTemplate;
 		}
 
@@ -67,18 +62,19 @@ class TemplateReconcilier {
 		// streams declarations can override the default declaration
 		const defaultPropsAsArray = defaultTemplate.propsAreArrayOfProps;
 		cTemplate.propsAreArrayOfProps.forEach(
-			function(templateEntry, key) {
+			(templateEntry, key) => {
 				templateEntry.forEach(
-					function(templateValue) {
+					(templateValue) => {
 						let val;
 						if (!(val = defaultPropsAsArray[key].findObjectByName(templateValue.name))) {
 							defaultPropsAsArray[key].push(templateValue);
 						}
 						else {
-							// debug log override
+							/* @debug-build start */
+							Logger.debugWarn(this, 'A prop declared by the default template has been overridden by the explicit template. Found for', objectType, templateValue.value);
+							/* @debug-build end */
 							val[templateValue.name] = templateValue.value;
 						}
-
 					}
 				)
 			}
@@ -92,11 +88,13 @@ class TemplateReconcilier {
 				templateEntry.forEach(
 					(templateValue, propKey) => {
 						if (defaultPropsAsReactivityQueries[key].checkDuplicate(templateValue.from, templateValue.to)) {
-							throw new ComponentError(this, 'Overriding stream definition (from & to) in explicit template isn\'t allowed', objectType, templateEntry);
+							throw new ComponentError(this, 'Overriding stream definition (from & to) in explicit template isn\'t allowed. Found for', objectType, templateEntry);
 						}
 					}
 				)
-				// debug log addition
+				/* @debug-build start */
+				Logger.debugWarn(this, 'A reactivity query has been added to the default template by the explicit template. Found for', objectType, templateEntry);
+				/* @debug-build end */
 				defaultPropsAsReactivityQueries[key].push(...templateEntry);
 			}
 		);
@@ -112,9 +110,11 @@ class TemplateReconcilier {
 		
 		const defaultTemplatePorpsAsPrimitives = defaultTemplate.propsArePrimitives;
 		cTemplate.propsArePrimitives.forEach(
-			function(prop, key) {
+			(prop, key) => {
 				if (prop !== null) {
-					// debug log override
+					/* @debug-build start */
+					Logger.debugWarn(this, 'A primitive prop of the deafault template has been overridden by the explicit template. Found for', objectType, prop);
+					/* @debug-build end */
 					defaultTemplatePorpsAsPrimitives[key] = prop;
 				}
 			}
@@ -128,9 +128,11 @@ class TemplateReconcilier {
 			defaultViewTemplate.listens[eventType] = viewTemplate.listens[eventType];
 		}
 		
-		if (viewTemplate.sWrapper === null) {
-			// debug log not recommanded
-			viewTemplate.sWrapper = defaultViewTemplate.sWrapper;
+		if (viewTemplate.sWrapper !== null) {
+			/* @debug-build start */
+			Logger.debugWarn(this, 'Overriding the default stylesheet via the explicit template is highly discouraged. Found for', objectType, viewTemplate.sWrapper);
+			/* @debug-build end */
+			defaultViewTemplate.sWrapper = viewTemplate.sWrapper;
 		}
 
 		// Style overrides should not be defined in the default view template:
@@ -153,15 +155,17 @@ class TemplateReconcilier {
 		// if a default implementation relies on certain views being present.
 		//		Let's allow adding member-views or member-components.
 		if (cTemplate.subSections.length) {
-			// debug log addition
+			/* @debug-build start */
+			Logger.debugWarn(this, 'The explicit template added subSections. Found for', objectType, cTemplate.subSections);
+			/* @debug-build end */
 			defaultTemplate.subSections.push(...cTemplate.subSections);
 		}
 		if (cTemplate.members.length) {
-			// debug log addition
+			/* @debug-build start */
+			Logger.debugWarn(this, 'The explicit template added members. Found for', objectType, cTemplate.members);
+			/* @debug-build end */
 			defaultTemplate.members.push(...cTemplate.members);
 		}
-
-		// test subSection additon, debug log as not allowed
 
 		return defaultTemplate;
 	}

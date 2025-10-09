@@ -229,7 +229,7 @@ class BaseComponentWithView extends AsyncActivableObject {
 	// /** @type {string} */
 	// _defaultTemplateUID = '';
 	/** @type {string} */
-	regUID = '';
+	regUID;
 
 	/** @type {ComponentView<stdTagName|string>} */
 	#view;
@@ -249,20 +249,21 @@ class BaseComponentWithView extends AsyncActivableObject {
 	constructor(parent, cTemplate, view) {
 		super(parent);
 		
-		if (!(parent instanceof ComponentWithView) || !parent.parent)  {
+		if (!(parent instanceof ComponentWithView || parent instanceof RootComponent) || !parent)  {
 			throw new ComponentError(
 				this,
-				'constructor: parent isn\'t instance of ComponentWithView or the component has no declared parent.',
+				`constructor: parent isn't instance of Component or the component has not been passed a parent. regUID is ${cTemplate.UID}`,
 				parent
 			);
 		}
+		this.regUID = cTemplate.UID;
 		this.parent = parent;
 		this.parent.pushChild(this);
 		this.#view = view;
 	}
 
 	/**
-	 * @virtual
+	 * @virtual  the TemplateReconcilier shall provide a template by default
 	 * @returns {ComponentTemplate}
 	 */
 	static createDefaultDef() {return new ComponentTemplate(null);}
@@ -341,8 +342,6 @@ class ComponentWithView extends BaseComponentWithView {
 				
 				emitter.emit = EventEmitter.getTriggerFunction(this, emitter);
 		})
-		
-		this.regUID = cTemplate.UID;
 	}
 
 	/*
