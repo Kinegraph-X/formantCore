@@ -3,35 +3,7 @@
  * ------------
  * A flexible tree renderer that can take JSON data and turn it into a visual tree of components.
  * Supports branch and leaf templates, event propagation, and dynamic filtering.
- */
-/**
- * @typedef {import('../../template/TemplateFactory').ComponentTemplate} ComponentTemplate
- * @typedef {import('../../view/ComponentView').ComponentView<string>} ComponentView
- */
-/** @template EventPayload */
-
-import {ComponentError} from '../../error/Error';
-import {Output} from '../../decorators.js';
-import {ComponentWithView} from '../../component/Component.js'
-import ListTemplate from '../../template/ListTemplate.js'
-import {EventEmitter} from '../../reactivity/EventEmitter.js'
-
-/** @typedef {{
-  key: string|null;
-  value: any;
-  type: string|null;
-  parent: TreeNode | null;
-  children: TreeNode[];
-  isExpanded: boolean,
-  depth: number|0;
-  projectedData: any;
-}} TreeNode */
-
-import createAbstractTreeDef from './componentTemplates/abstractTreeDef';
-import createBranchTemplateDef from './componentTemplates/branchTemplateDef';
-import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
-
-/**
+ * 
  * jsonData
  *   ↓
  * buildTree()              → creates data nodes (may be bypassed)
@@ -39,7 +11,74 @@ import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
  * instantiateTree()        → creates UI components for each node
  *   ↓
  * render()                 → actual visual rendering
+ * 
+ * @CSSify styleName : AbstractTreeHost
+ * @CSSify styleName : AbstractTreeHeader
  */
+
+import {
+    ComponentError,
+    Output,
+    Component,
+    ComponentTemplate,
+    ViewTemplate,
+    CreateStyle,
+    ComponentWithView,
+    EventEmitter
+} from '../../component/ComponentBoilerplate.js';
+import createBranchTemplateDef from './componentTemplates/branchTemplateDef';
+import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
+
+/**
+ * @typedef {import('../../view/ComponentView').ComponentView<string>} ComponentView
+ */
+
+/** 
+ * @typedef {{
+        key: string|null;
+        value: any;
+        type: string|null;
+        parent: TreeNode | null;
+        children: TreeNode[];
+        isExpanded: boolean,
+        depth: number|0;
+        projectedData: any;
+    }} TreeNode 
+ */
+
+
+
+@Component({
+    view : new ViewTemplate({
+        nodeName : 'folded-tree',
+    }),
+    props : [
+        {selected : undefined},
+        {expanded : true}
+    ]/**@CSSifyStyle componentStyle : AbstractTreeHost */,
+    members : [
+        new ComponentTemplate({
+            type : 'VaritextButton',
+            view : new ViewTemplate({
+                nodeName : 'header',
+            }),
+            states : [
+                {role : "heading"},
+                {expanded : undefined} 
+            ],
+            props : [
+                {headerTitle : undefined}
+            ],
+            reactOnSelf : [
+                {
+                    from : 'headerTitle',
+                    to : 'content'
+                }
+            ]/**@CSSify Style componentStyle : AbstractTreeHeader */
+        })
+    ]
+})
+
 class AbstractTree extends ComponentWithView {
     static objectType = 'AbstractTree';
     expanded = false;
@@ -69,10 +108,6 @@ class AbstractTree extends ComponentWithView {
 		});
 
         // this.renderJSON(cTemplate, this.jsonData);
-	}
-
-	static createDefaultDef() {
-		return createAbstractTreeDef();
 	}
 
     @Output() exportData = new EventEmitter('exportData');

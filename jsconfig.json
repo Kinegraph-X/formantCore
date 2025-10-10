@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "checkJs": true,              
-    "maxNodeModuleJsDepth": 2,    
-    "module": "commonjs",         
+    "maxNodeModuleJsDepth": 2,
+    "experimentalDecorators": true,
+    "module": "esnext",         
     "target": "es2020",           
     "moduleResolution": "node",
     "baseUrl": ".",               

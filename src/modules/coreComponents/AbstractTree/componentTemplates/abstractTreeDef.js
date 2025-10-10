@@ -1,11 +1,9 @@
 /**
- * @def AbstractTree
- * @isGroup true
+ * Template for AbstractTree
  * 
- * @CSSify styleName : AbstractTreeHost/true
- * @CSSify styleName : AbstractTreeHeader/true
+ * @CSSify styleName : AbstractTreeHost
+ * @CSSify styleName : AbstractTreeHeader
  */
-
 
 import {ComponentTemplate, ViewTemplate} from '../../../template/TemplateFactory.js';
 import CreateStyle from '../../../style/CreateStyle.js'
@@ -13,25 +11,24 @@ import CreateStyle from '../../../style/CreateStyle.js'
 
 /** @param {unknown} [options] @param {unknown} [model] */
 var abstractTreeDef = function(options, model) {
-	/**@CSSify DEBUG */		// DEBUG must be stuck (RED and bold) to trigger debug infos
+	/**@CSSify DEBUG */		// DEBUG: remove the space to trigger debug infos
 		
 	// Some CSS stuff (styles are directly injected in the main def below)
 	/**@CSSifySlots placeholder */
 	
-	
 	return new ComponentTemplate({
 		view : new ViewTemplate({
-			nodeName : 'folded-tree',
+			nodeName : 'folded-tree' /**@CSSifyStyle componentStyle : AbstractTreeHost */
 		}),
 		props : [
 			{selected : undefined},
 			{expanded : true}
-		]/**@CSSifyStyle componentStyle : AbstractTreeHost */,
+		],
 		members : [
 			new ComponentTemplate({
 				type : 'VaritextButtonWithPicto',
 				view : new ViewTemplate({
-					nodeName : 'header',
+					nodeName : 'header' /**@CSSify Style componentStyle : AbstractTreeHeader */
 				}),
 				states : [
 					{role : "heading"},
@@ -45,10 +42,10 @@ var abstractTreeDef = function(options, model) {
 						from : 'headerTitle',
 						to : 'content'
 					}
-				]/**@CSSify Style componentStyle : AbstractTreeHeader */
+				]
 			})
 		]
-	});
+	})
 	
 }
 

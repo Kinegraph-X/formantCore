@@ -82,7 +82,9 @@ import ListTemplate from './ListTemplate';
 
 
 /**
+ * uuid is dynamically added by rollup-plugin-formant-annotations (if @View () decorator is used)
  * @typedef {object} ViewTemplateDef
+ * @property {string} [uuid] 
  * @property {string} nodeName
  * @property {AttributeDef[]} [attributes]
  * @property {DomEventBindings} [listens]
@@ -92,6 +94,8 @@ import ListTemplate from './ListTemplate';
  */
 
 class ViewTemplate {
+	/** @type {string|null} */
+	uuid = null;
 	/** @type {string} defined in ctor*/
 	UID;
 	/** @type {string}*/
@@ -117,6 +121,8 @@ class ViewTemplate {
 	constructor(obj) {
 		/** @readonly */ this.UID = viewUIDGenerator.newUID();
 		if (obj) {
+			if (obj.uuid)
+				/** @readonly */ this.uuid = obj.uuid;
 			if (obj.nodeName)
 				/** @readonly */ this.nodeName = obj.nodeName;
 			if (typeof obj.section !== 'undefined') 
@@ -146,7 +152,9 @@ class ViewTemplate {
 
 
  /**
+  * uuid is dynamically added by rollup-plugin-formant-annotations (if @Component () decorator is used)
  * @typedef {object} ComponentTemplateDef
+ * @property {string} [uuid] 
  * @property {ViewTemplateDef|ViewTemplate} view
  * @property {string} [type]
  * @property {[string, string][]} [imperatives]
@@ -164,6 +172,8 @@ class ViewTemplate {
  */
 
  class ComponentTemplate {
+	/** @type {string|null} */
+	uuid = null;
 	/** @type {string} defined in ctor*/
 	UID;
 	/** @type {ViewTemplate} */
@@ -199,6 +209,9 @@ class ViewTemplate {
 	constructor(obj) {
 		/** @readonly */ this.UID = templateUIDGenerator.newUID();
 		if (obj) {
+			if (obj.uuid)
+				/** @readonly */ this.uuid = obj.uuid;
+
 			/** @readonly */ this.view = obj.view instanceof ViewTemplate ? obj.view : new ViewTemplate(obj.view);
 			/** @readonly */ this.type = obj.type || null;
 
