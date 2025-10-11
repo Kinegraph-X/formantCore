@@ -4,8 +4,8 @@
 
 
 import CSSSelectorsList from './CSSSelectorsList.js';
-import MemoryMapBuffer from '../buffer/MemoryMapBuffer.js';
-import MemorySingleBuffer from '../buffer/MemorySingleBuffer.js';
+import MemoryMapBuffer from '../buffer/MemoryMapBuffer';
+import MemorySingleBuffer from '../buffer/MemorySingleBuffer';
 import {generatorFor16bitsInt} from '../UIDGenerator.js';
 
 

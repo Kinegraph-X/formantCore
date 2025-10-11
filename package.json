@@ -6,7 +6,7 @@
   "type": "module",
   "keywords": [],
   "scripts": {
-    "build": "rollup -c rollup.config.core.mjs",
+    "build": "npx tsc && rollup -c rollup.config.core.mjs",
     "lint": "eslint .",
     "test": "vitest"
   },
@@ -19,6 +19,7 @@
 	"ulid" : "^3.0.1"
   },
   "devDependencies": {
+    "typescript" : "^5.9.3",
     "rollup": "^4.18.0",
     "eslint": "^9.0.0",
     "vitest": "^1.0.0",
@@ -28,7 +29,7 @@
     "dep-case-verify": "2.1.0",
     "highlighted-sources": "0.0.1",
     "rollup-plugin-copy": "3.5.0",
-    "rollup-plugin-cssifyfromdb": "0.0.2",
+    "rollup-plugin-cssifyfromdb": "^0.0.7",
     "rollup-plugin-formant-annotations": "^0.1.0",
     "rollup-plugin-debug-load": "file:../perso_node_modules/rollup-plugin-debug-load",
     "rollup-plugin-import-css": "3.5.0",

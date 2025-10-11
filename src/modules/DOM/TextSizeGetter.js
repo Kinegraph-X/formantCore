@@ -83,7 +83,7 @@ class TextSizeGetter {
 
 		this.textWidthCanvasCtx.font = this.fontStyle;
 		
-		if (/** @type {EventData} */ (e.data).boundingBox.h > 0) {
+		if (/** @type {EventData} */ (e.payload).boundingBox.h > 0) {
 			if (this.initCb)
 				this.initCb(this.fontStyle);
 			this.resizeObserver.unobserve(this.sampleNode);
@@ -95,8 +95,6 @@ class TextSizeGetter {
 	 * @returns 
 	 */
 	getTextWidth(str) {
-		if (typeof str === 'undefined')
-			return;
 		/** @debug-buld start  already tested in ctor */	
 		if (!this.textWidthCanvasCtx)
 			throw new Error('unsupported canvas type in this browser');

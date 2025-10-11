@@ -130,10 +130,10 @@ import {allCSSPropertyDescriptors} from './CSSPropertyDescriptors.js';
  *
  * See also
  *  @see [CSSStyleRuleSliceAsBuffer.js](cci:7://file:///./CSSStyleRuleSliceAsBuffer.js:0:0-0:0):
- *  @see `CSSStyleRuleSliceAsBuffer.fromCategory()` – initializes property slots.
- *  @see `CSSStyleRuleSliceAsBuffer.setPropFromBuffer()` – integrates a property buffer and expands shorthands.
- *  @see `CSSStyleRuleSliceAsBuffer.setValuesFromShorthand()` and helpers – token-first shorthand handling.
- *  @see CSSPropertyDescriptors.js – metadata for properties (initial values, shorthand expansions).
+ *  @see CSSStyleRuleSliceAsBuffer.fromCategory() – initializes property slots.
+ *  @see CSSStyleRuleSliceAsBuffer.setPropFromBuffer() – integrates a property buffer and expands shorthands.
+ *  @see CSSStyleRuleSliceAsBuffer.setValuesFromShorthand() and helpers – token-first shorthand handling.
+ *  @see CSSPropertyDescriptors.js  metadata for properties (initial values, shorthand expansions).
  *
  * @example
  * // Mirror longhand string for background-size (preserves multi-token string, avoids reparsing if shorthand)
@@ -177,7 +177,7 @@ class CSSPropertyAsBuffer {
 	constructor(initialLoad, propName) {
 		this.objectType = 'CSSPropertyBuffer';
 		this.propName = propName;
-		this._buffer = new Uint8Array(initialLoad || this.constructor.bufferSchema.size);
+		this._buffer = new Uint8Array(initialLoad || CSSPropertyAsBuffer.bufferSchema.size);
 	}
 
 	/**

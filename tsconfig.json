@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./transpiled",
+    "declarationMap": true,
+    "removeComments": false,
+    "declaration": true,
+    "emitDeclarationOnly": false,
+    "checkJs": true,
+    "allowJs": true,
+    "maxNodeModuleJsDepth": 2,
+    "experimentalDecorators": true,
+    "module": "esnext",
+    "target": "es2022",           
+    "moduleResolution": "node",
+    "baseUrl": ".",        
+    "strict": true,               
+    "esModuleInterop": true,      
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "dist/**/*",
+    "transpiled/**/*",
+    "node_modules/**/*",               
+    "coverage",
+    "src/_DesignSystemManager/**/*",
+    "src/_LayoutEngine/**/*",
+    "src/modules/animation/**/*",
+    "src/modules/branchless/**/*",
+    "src/modules/buffer/**/*",
+    "src/modules/coreComponents/**/*",
+    "src/modules/DOM/ResizeObserver.js",
+    "src/modules/DOM/TextSizeGetter.js",
+    "src/modules/request/**/*",
+    "src/modules/style/**/*",
+    "src/modules/Imperative.js",
+    "src/third-party/**/*",
+    "test",
+    "rollup*"
+  ]
+
+}

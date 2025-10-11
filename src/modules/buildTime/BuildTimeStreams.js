@@ -2,11 +2,11 @@
  * @module BuildTimeStreams
  */
 
-const {Stream} = require('src/coreTest/CoreTypes');
-const registries = require('src/coreTest/Registries');
+import Stream from  '../reactivity/Stream.js';
+import registries from '../Registries.js';
 
 const streams = {};
 
-registries.streams.get('UID123').push(new Stream('action123', undefined));
+//registries.streams.get('UID123').push(new Stream('action123', undefined));
 
 module.exports = streams;

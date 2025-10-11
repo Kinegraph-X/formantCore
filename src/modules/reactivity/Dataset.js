@@ -5,11 +5,12 @@
  * 		Rendering coupled with [push(), pushApply()]
  */
 /**
- * @typedef {import('src/coreTest/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  */
-import {ComponentTemplate, ListDefinition} from '../template/TemplateFactory';
-import registries from '../Registries';
-import {processList} from '../Renderer';
+import {ComponentTemplate, ListTemplate} from '../template/TemplateFactory.js';
+import registries from '../Registries.js';
+import Renderer from '../Renderer.js';
+const processList = Renderer.processList;
 
 /**
  * @template {{[key : string]: unknown}} ReactiveDatasetItem
@@ -19,8 +20,8 @@ class ReactiveDataset {
 	data = [];
 	/** @type {ComponentWithView} */
 	trackedComponent;
-	/** @type {ListDefinition} */
-	listDef = new ListDefinition(null);
+	/** @type {ListTemplate} */
+	listDef = new ListTemplate(null);
 	/** @type {string} */
 	activeStateItemProp = 'active';
 	/** @type {{[key: string]: (value: any, index: number, array: any[]) => unknown}} */
@@ -108,6 +109,7 @@ class ReactiveDataset {
 		/** @param {(string|number|null)[]} values */
 		const factory = function(values) {
 			values.forEach((arg, key) => {
+				/** @ts-ignore reflection */
 				this[arrayCopy[key]] = arg;
 			});
 		}
@@ -129,20 +131,20 @@ class ReactiveDataset {
 	 */
 	updateDatasetState() {
 		if (this.filterStream)
-			this.filterStream.value = this.data.filter(this.arrayFunctions.filter);
+			this.filterStream.next = this.data.filter(this.arrayFunctions.filter);
 		if (this.filterNotStream)
-			this.filterNotStream.value = this.data.filter(this.arrayFunctions.filterNot);
+			this.filterNotStream.next = this.data.filter(this.arrayFunctions.filterNot);
 		if (this.everyStream)
-			this.everyStream.value = this.data.every(this.arrayFunctions.every);
+			this.everyStream.next = this.data.every(this.arrayFunctions.every);
 		if (this.someStream)
-			this.someStream.value = this.data.some(this.arrayFunctions.some);
+			this.someStream.next = this.data.some(this.arrayFunctions.some);
 		if (this.someNotStream)
-			this.someNotStream.value = this.data.some(this.arrayFunctions.someNot);
+			this.someNotStream.next = this.data.some(this.arrayFunctions.someNot);
 		if (this.noneStream)
-			this.noneStream.value = this.data.filter(this.arrayFunctions.none);
+			this.noneStream.next = this.data.filter(this.arrayFunctions.none);
 
 		if (this.lengthStream)
-			this.lengthStream.value = this.data.length;
+			this.lengthStream.next = this.data.length;
 	}
 	/**
 	 * @param {ReactiveDatasetItem} item 
@@ -225,7 +227,7 @@ class ReactiveDataset {
 			for (let i = this.trackedComponent.children.length - 1; i >= 0; i--) {
 				module = this.trackedComponent.children[i];
 				const stream = registries.streams.get(module.regUID)?.get(prop);
-				if (stream && stream.value === value) {
+				if (stream && stream.next === value) {
 					this.trackedComponent.removeChildAt(i);
 					this.data.splice(i, 1);
 				}
@@ -248,7 +250,7 @@ class ReactiveDataset {
 			for (let i = this.trackedComponent.children.length - 1; i >= 0; i--) {
 				instance = this.trackedComponent.children[i];
 				const stream = registries.streams.get(instance.regUID)?.get(prop);
-				if (stream && stream.value !== value) {
+				if (stream && stream.next !== value) {
 					this.trackedComponent.removeChildAt(i);
 					this.data.splice(i, 1);
 				}

@@ -30,7 +30,7 @@ class NodeResizeObserver {
 	}
 
 	getSize(observerEntries) {
-		let boundingBox = new DOMRect{};
+		let boundingBox = new DOMRect();
 		observerEntries.forEach((entry) => {
 			if (!this[entry.target.id]) {
 				// throw here
@@ -56,7 +56,7 @@ class NodeResizeObserver {
 	}
 
 	observe(node, cb, forceObserve) {
-		if (!node.id || this.[node.id]) {
+		if (!node.id || this[node.id]) {
 			node.id = node.id + '-asStyleSource-' + defUIDGenerator.newUID();
 	//		console.warn('resizeObserver: ambiguous observed node : ' + node.id + '. Please give it a unique DOM id to disambiguate the event callback.' + (!node.id ? '  Given node is: ' : ''), (!node.id ? node : ''));
 	//		return;

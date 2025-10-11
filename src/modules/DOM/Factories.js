@@ -109,7 +109,11 @@ class HTMLCustomElement extends HTMLElement {
             (attrObject) => {
                 const name = (attrObject.getName());
                 if (this.#nonProtectedobservedStates.includes(name)) {
-                    this[/** @type {keyof HTMLElement}*/ (name)] = attrObject.getValue();
+                    // We've avoided here to check at runtime for some read-only properties, like "document": 
+                    // so typed any, as keyof HTMLElement containes those read-only props
+                    // and wouldn't allow assignation
+                    const thisArg = /** @type {unknown} */ (this);
+                    /** @type {{[key: string]: unknown}} */ (thisArg)[name] = attrObject.getValue();
                 }
             }
         );
@@ -121,7 +125,11 @@ class HTMLCustomElement extends HTMLElement {
      */
     attributeChangedCallback(attrName, oldVal, newVal) {
         if (this.#nonProtectedobservedStates.includes(attrName)) {
-            this[/** @type {keyof HTMLElement}*/ (attrName)] = this.#getTypedValue(newVal);
+            // We've avoided here to check at runtime for some read-only properties, like "document":
+            // so typed any, as keyof HTMLElement containes those read-only props
+            // and wouldn't allow assignation
+            const thisArg = /** @type {unknown} */ (this);
+            /** @type {{[key: string]: unknown}} */ (thisArg)[attrName] = this.#getTypedValue(newVal);
         }
     }
 }

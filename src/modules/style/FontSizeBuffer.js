@@ -7,12 +7,14 @@ import TextSizeGetter from '../DOM/TextSizeGetter.js';
 
 class FontSizeBuffer {
 	static objectType = 'FontSizeBuffer';
+	// We need to cache values until 340 to catch "oe"
+	static maxCharCode = 340;
 	/**
 	 * @param {string} fontSize
 	 * @param {string} fontFamily
 	 */
 	constructor(fontSize, fontFamily) {
-		this._buffer = new Float64Array(new ArrayBuffer(341 * 8));
+		this._buffer = new Float64Array(new ArrayBuffer(FontSizeBuffer.maxCharCode + 1 * 8));
 		this.objectType = 'FontSizeBuffer';
 		
 		// For now, we assume we won't have to fall back on the second typeface of the family
@@ -24,9 +26,8 @@ class FontSizeBuffer {
 	}
 
 	populateInitialValues() {
-		// We need to cache values until 340 tio catch "oe"
-		for (var i = 32, l = 340; i < l; i++) {
-	//		console.log(i, String.fromCharCode(i), this.textSizeGetter.getTextWidth(String.fromCharCode(i)))
+		// We need to cache values until 340 to catch "oe"
+		for (var i = 32, l = FontSizeBuffer.maxCharCode; i < l; i++) {
 			this._buffer.set([this.textSizeGetter.getTextWidth(String.fromCharCode(i))], i);
 		}
 	}
@@ -40,9 +41,15 @@ class FontSizeBuffer {
 	 * @returns 
 	 */
 	getWidthOfWord(str) {
-		var width = 0;
+		let width = 0,
+			charCode;
 		for (var i = 0, l = str.length; i < l; i++) {
-			width += this._buffer.at(str.charCodeAt(i));
+			charCode = str.charCodeAt(i);
+			if (charCode >= 340 || !this._buffer.at(charCode))
+				throw new Error('FontSizeBuffer: unknown charCode accessed for size. Code is ' + charCode);
+
+			/** @ts-ignore possibly undefined: tested above */
+			width += this._buffer.at(charCode);
 		}
 		return width;
 	}
