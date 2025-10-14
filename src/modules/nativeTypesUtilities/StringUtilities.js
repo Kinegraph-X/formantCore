@@ -38,6 +38,7 @@ const lowercaseFirstLetter = function(str) {
  * @param {string} str
  * @param {number} length
  * @param {number} offset
+ * @returns {[number, number[]]}
  */
 const getNcharsAsCharCodesArray = (str, length, offset) => {
     if (offset >= str.length) {

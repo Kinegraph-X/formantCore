@@ -2,6 +2,7 @@
  * @module CSSSelectorSetBuffer
  */
 
+// @ts-noCheck
 
 import CSSSelectorsList from './CSSSelectorsList.js';
 import MemoryMapBuffer from '../buffer/MemoryMapBuffer';

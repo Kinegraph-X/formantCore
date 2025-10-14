@@ -2,6 +2,8 @@
  * @module StyleRule
  */
 
+// @ts-noCheck
+
 import StyleIFace from './StyleIFace.js';
 import CSSRuleAsBuffer from './CSSStyleRuleAsBuffer.js';
 

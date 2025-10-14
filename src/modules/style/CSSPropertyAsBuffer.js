@@ -33,12 +33,15 @@
 
 
 import {capitalizeFirstLetter, getNcharsAsCharCodesArray} from '../nativeTypesUtilities/StringUtilities.js';
+import {bufferToString} from '../nativeTypesUtilities/Uint8ArrayUtilities.js'
 import {BinarySchemaFactory} from '../buffer/BinarySchema.js';
+import {allCSSPropertyDescriptors} from './CSSPropertyDescriptors';
 import {parseAListOfComponentValues} from '../../third-party/css-parser_forked_normalized.js';
 // import type ParserToken from './ParserTokenType'
 import {generatorFor16bitsInt} from '../UIDGenerator.js'
 
 /** @typedef {import("./ParserTokenType.ts").ParserToken} ParserToken */
+/** @typedef {import("./CSSPropertyDescriptors").AllCSSPropertyName} AllCSSPropertyName*/
 
 // import {allCSSPropertyDescriptors} from './CSSPropertyDescriptors.js';
 
@@ -93,7 +96,7 @@ import {generatorFor16bitsInt} from '../UIDGenerator.js'
  * Data model (bufferSchema)
  * - tokenType: one of `TokenTypes` (e.g. NumberToken, DimensionToken, PercentageToken, IdentToken, StringToken, HashToken, FunctionToken)
  * - propertyValue: 16-bit numeric payload (only meaningful for NUMBER/DIMENSION/PERCENTAGE)
- * - propertyType: one of `ValueTypes` (e.g. 'integer', 'number', 'percentage', 'hash', 'string', etc.)
+ * - type: one of `ValueTypes` (e.g. 'integer', 'number', 'percentage', 'hash', 'string', etc.)
  * - repr: compact string representation (up to `stdStrLength` chars, e.g. '10px', 'center', '#fff', 'url(x.png)')
  * - reprLength: byte-length of `repr`
  * - unit: unit index (e.g. 'px', '%', 'em', '', see `Units`)
@@ -157,7 +160,7 @@ class CSSPropertyAsBuffer {
 		[
 			'tokenType',
 			'propertyValue',
-			'propertyType',
+			'type',
 			'repr',
 			'reprLength',
 			'unit',
@@ -173,21 +176,59 @@ class CSSPropertyAsBuffer {
 			1
 		]
 	);
+	static propsAcceptListOfValues = ['background', 'fontFamily', 'animation', 'transition', 'textShadow', 'cursor', 'boxShadow'];
 	/**
 	 * @param {Uint8Array|null} [initialLoad] 
-	 * @param {string} [propName]
+	 * @param {AllCSSPropertyName} [propName]
 	 */
 	constructor(initialLoad = null, propName) {
 		this.objectType = 'CSSPropertyBuffer';
 		this.propName = propName;
-		this._buffer = new Uint8Array(initialLoad ?? CSSPropertyAsBuffer.bufferSchema.size);
+		/** @ts-ignore TS being a subset of JS, the ctor doesn't accept number type */
+		this._buffer = new Uint8Array(initialLoad ?? (CSSPropertyAsBuffer.bufferSchema.size));
 	}
 
 	/**
-	 * @param {string} propName 
+	 * @param {AllCSSPropertyName} propName 
 	 */
 	setProp(propName) {
 		this.propName = propName;
+	}
+	/**
+	 * 
+	 * @param {string} propName 
+	 * @returns {boolean}
+	 */
+	propAcceptList(propName) {
+		return CSSPropertyAsBuffer.propsAcceptListOfValues
+			.filter((sample) => propName.includes(sample))
+			.length !== 0;
+	}
+
+	/**
+	 * @param {ParserToken} token 
+	 */
+	tokenIsValidFunction(token) {
+		const tokenType = `${capitalizeFirstLetter(token.tokenType)}Token`;
+		return tokenType === 'FunctionToken' && Array.isArray(token.value)
+	}
+
+	/**
+	 * @param {ParserToken} token
+	 */
+	tokenIsHash(token) {
+		return token.tokenType === 'HASH' || token.tokenType === this.typeMap['HASH'];
+	}
+
+	/**
+	 * 
+	 * @param {ParserToken[]} tokens 
+	 */
+	reconstructTokenFromComponents(tokens) {
+		return tokens.reduce(
+			(acc, val, key) => {acc.repr += val.repr; return acc;},
+			{ tokenType: 'STRING', value : 0, type: tokens[0].type, repr: '', unit: ''}
+		)
 	}
 
 	/**
@@ -206,23 +247,33 @@ class CSSPropertyAsBuffer {
 	 * @param {string} value
 	 */
 	setValue(value) {
-		// Keep first item before comma; heuristic is acceptable here for perf
-		const first = value.split(',')[0].trim();
-		if (!first.length)
-			return;
+		if (!this.propName)
+			throw new Error('Wrong usage of a CSSPropertyAsBuffer: propName is falsy');
+		
+		// For now, value lists aren't supported
+		if (this.propAcceptList(this.propName))
+			value = value.split(',')[0].trim();
+		else
+			value = value.trim();
+
+		// An empty string is generally handled silently by the browser
+		if (!value.length) {
+			console.error('A CSS property has been found with empty value. propName is', this.propName);
+			return
+		}
+
 		const desc = allCSSPropertyDescriptors[this.propName] || null;
 		
 		// If shorthand (or fake shorthand), do not parse here to avoid double work.
 		if (desc && desc.isShorthand) {
-			const mock = { tokenType: 'STRING', value : 0, propertyType: 'string', repr: first, unit: ''};
+			const mock = { tokenType: 'STRING', value : 0, type: 'string', repr: value, unit: ''};
 			this.setFromParsedToken(mock);
 			return;
 		}
 		
-		// Not a shorthand: parse to preserve functions when at start of value (url(), rgb(), var(), calc(), ...).
-		const tokens = parseAListOfComponentValues(first);
-		const tok = tokens.find(t => t && t.tokenType !== 'WHITESPACE' && t.tokenType !== 'COMMA')
-					|| { tokenType: 'STRING', value : 0, propertyType: 'string', repr: first, unit: ''};
+		// Not a shorthand: parse to resolve functions when at start of value (url(), rgb(), var(), calc(), ...).
+		const tokens = parseAListOfComponentValues(value);
+		const tok = this.reconstructTokenFromComponents(tokens);
 		this.setFromParsedToken(tok);
 	}
 
@@ -239,10 +290,24 @@ class CSSPropertyAsBuffer {
 		// if the property is a shorthand property, or if the property may be abbreviated,
 		// we resolve canonical values, or set the original value (for now, url's aren't really handled)
 		// Shorthands are handled in CSSStyleRuleSliceAsBuffer
-		const tokenType = `${capitalizeFirstLetter(parsedToken.tokenType)}Token`;
-		const normalized = tokenType === 'FunctionToken'
-			? this.normalizeTokenForBuffer(this.functionToCanonical(parsedToken, parsedToken.repr || ''))
-			: this.normalizeTokenForBuffer(parsedToken);
+		
+		let normalized = parsedToken;
+		if (this.tokenIsValidFunction(parsedToken)) {
+			try {
+				normalized = this.functionToCanonical(parsedToken, parsedToken.repr || '');
+			}
+			catch (e) {
+				 /** @ts-ignore array type tested above */
+				parsedToken.value = Number((parsedToken.value[0]));
+				this.populate(parsedToken.tokenType, parsedToken);
+				return;
+			}
+		}
+		else if (this.tokenIsHash(parsedToken)) {
+			normalized = this.hashToCanonical(parsedToken);
+		}
+
+		normalized = this.normalizeTokenForBuffer(normalized);
 		this.populate(normalized.tokenType, normalized);
 	}
 
@@ -254,15 +319,28 @@ class CSSPropertyAsBuffer {
 	functionToCanonical(valueAsParsed, trimedOriginalValue) {
 		var tokenTypeFromParser;
 		if (valueAsParsed.name === 'rgb' || valueAsParsed.name === 'rgba') {
+			// We'll store the value as a hash string and a 24/32bit int
+			/** @type {string[]} */
 			const tmpArray = [];
-			valueAsParsed.value.forEach((val) => {
+			let tmpValue = 0, c = 0;
+
+			/** @type {ParserToken[]} */
+			(valueAsParsed.value).forEach((val) => {
+				if (c > 3) {
+					throw new Error('rgb/a function declaration error:' + this.propName);
+				}
 				tokenTypeFromParser = val.tokenType;
 				if (tokenTypeFromParser === "WHITESPACE" || tokenTypeFromParser === "COMMA")
 					return;
-				else
-					tmpArray.push(parseInt(val.value).toString(16).padStart(2, '0'));
+				else {
+					tmpValue = /**@type {number}*/ (val.value) & 0xff << c * 8 | tmpValue;
+					tmpArray.push(val.value.toString(16).padStart(2, '0'));
+					c++;
+				}
 			});
+			valueAsParsed.value = tmpValue;
 			valueAsParsed.repr = `#${tmpArray.join('')}`;
+			valueAsParsed.tokenType = 'HASH';
 			return valueAsParsed;
 		}
 		else {
@@ -272,12 +350,6 @@ class CSSPropertyAsBuffer {
 				return valueAsParsed;
 			else if (valueAsParsed.name === 'url') {
 				valueAsParsed.repr = trimedOriginalValue;
-				// TODO: find why we were concatenating back
-				// value.repr = 'url("';
-				// valueAsParsed.value.forEach(function (val) {
-				// 	value.repr += val.repr;
-				// });
-				// value.repr += '")';
 				return valueAsParsed;
 			}
 
@@ -285,6 +357,17 @@ class CSSPropertyAsBuffer {
 			return valueAsParsed;
 		}
 	}
+
+	/**
+	 * @param {ParserToken} token
+	 */
+	hashToCanonical(token) {
+		let tmpValue = 0, c = 0;
+		const repr = token.repr.indexOf('#') !== -1 ? token.repr.slice(1) : token.repr;
+		token.value = parseInt(repr, 16);
+		return token;
+	}
+
 	/**
 	 * @param {string} tokenType 
 	 * @param {ParserToken} value 
@@ -313,7 +396,7 @@ class CSSPropertyAsBuffer {
 		var valueTypeAsConst = this.ValueTypes[value.type];
 		this._buffer.set(
 			[valueTypeAsConst],
-			CSSPropertyAsBuffer.bufferSchema.propertyType.start
+			CSSPropertyAsBuffer.bufferSchema.type.start
 		);
 		// value
 		// FIXME: floats are NOT handled by our CSSPropertyBuffer type,
@@ -464,14 +547,14 @@ class CSSPropertyAsBuffer {
 	 * @returns {string}
 	 */
 	getValueTypeAsString() {
-		return this.ValueTypesAsArray[this._buffer[CSSPropertyAsBuffer.bufferSchema['propertyType'].start]];
+		return this.ValueTypesAsArray[this._buffer[CSSPropertyAsBuffer.bufferSchema['type'].start]];
 	}
 	/**
 	 * 
 	 * @returns {number}
 	 */
 	getValueTypeAsNumber() {
-		return this._buffer[CSSPropertyAsBuffer.bufferSchema['propertyType'].start];
+		return this._buffer[CSSPropertyAsBuffer.bufferSchema['type'].start];
 	}
 	/**
 	 * 
@@ -547,11 +630,14 @@ class CSSPropertyAsBuffer {
 	}
 	/**
 	 * 
-	 * @param {ArrayBuffer} bytesInt8Array 
+	 * @param {Uint8Array} bytesInt8Array 
 	 * @returns {number}
 	 */
 	byteTuppleTo16bits(bytesInt8Array) {
-		return generatorFor16bitsInt.numberFromInt(bytesInt8Array);
+		if (bytesInt8Array.byteLength !== 2)
+			throw new Error('byteTuppleTo16bits: given value isn\'t a 2 values tupple. Length is' + bytesInt8Array.byteLength);
+		/** @ts-ignore tested above */
+		return generatorFor16bitsInt.numberFromInt((bytesInt8Array));
 	}
 }
 
@@ -585,6 +671,7 @@ class CSSPropertyAsBuffer {
 
 
 Object.defineProperty(CSSPropertyAsBuffer.prototype, 'TokenTypes', {
+	/** @type {Object<string, number>} */
 	value : {
 			UndefinedToken : 0, 
 			BadstringToken : 1,
@@ -624,6 +711,7 @@ Object.defineProperty(CSSPropertyAsBuffer.prototype, 'TokenTypes', {
 
 // --- tokenType mapping between parser and buffer ---
 Object.defineProperty(CSSPropertyAsBuffer.prototype, 'typeMap', {
+	/** @type {Object<string, string>} */
 	value : {
 		IDENT: "IdentToken",
 		FUNCTION: "FunctionToken",
@@ -663,6 +751,7 @@ Object.defineProperty(CSSPropertyAsBuffer.prototype, 'stdStrLength', {
 	value : 89
 });
 
+/** @type {Object<string, number>} */
 const valueTypes = {
 	integer : 0,
 	percentage : 1,
@@ -681,7 +770,18 @@ Object.defineProperty(CSSPropertyAsBuffer.prototype, 'ValueTypesAsArray', {
 	value : Object.keys(valueTypes)
 });
 
+
 Object.defineProperty(CSSPropertyAsBuffer.prototype, 'Units', {
+	/**
+	 * @type {{
+	 * 	[key: string]: {
+	 * 		idx: number,
+	* 		unit : string,
+	* 		fullName: string,
+	* 		equivStr : string
+	 * 	}
+	 * }}
+	 */
 	value : {
 		'' : {
 			idx : 0,

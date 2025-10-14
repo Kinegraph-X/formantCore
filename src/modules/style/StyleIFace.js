@@ -1,6 +1,9 @@
 /**
 * Stylesheets
 */
+
+// @ts-noCheck
+
 /**
  * @typedef {import('./Stylesheet.js').default} StyleSheet
  */

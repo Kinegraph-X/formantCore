@@ -35,7 +35,9 @@ import {
 	inheritedCSSPropertyKeys,
 	otherCSSPropertyKeys,
 	allCSSPropertyKeys,
-	type AllSupportedCSSPropertyNames
+	type InheritedCSSPropertyName,
+	type OtherCSSPropertyName,
+	type AllCSSPropertyName
 } from './CSSPropertyDescriptors.js';
 import CSSStyleRuleSliceAsBuffer from './CSSStyleRuleSliceAsBuffer.js';
 import {initialCSSSliceBuffers} from './CSSStyleRuleSliceAsBuffer.js';
@@ -64,9 +66,9 @@ class CSSRuleSliceIFaceBase {
 	
 	/**
 	 * 
-	 * @param {Object<AllSupportedCSSPropertyNames, string>} attributes 
+	 * @param {Object<AllCSSPropertyName, string>} attributes 
 	 */
-	constructor(attributes: {AllSupportedCSSPropertyNames: string}) {
+	constructor(attributes: {AllCSSPropertyName: string}) {
 	}
 
 	/**
@@ -82,7 +84,7 @@ class CSSRuleSliceIFaceBase {
 	 * (for now, we're not aimed at supporting the entire spec)
 	 * 
 	 */
-	disambiguateAttributes(attributes: {AllSupportedCSSPropertyNames: string}) {
+	disambiguateAttributes(attributes: {AllCSSPropertyName: string}) {
 	}
 }
 
@@ -93,9 +95,9 @@ class InheritedPropertiesSlice extends CSSRuleSliceIFaceBase {
 	CSSRuleAsBufferIFace;
 	/**
 	 * 
-	 * @param {Object<AllSupportedCSSPropertyNames, string>} attributes 
+	 * @param {Object<AllCSSPropertyName, string>} attributes 
 	 */
-	constructor(attributes: {AllSupportedCSSPropertyNames: string}) {
+	constructor(attributes: {AllCSSPropertyName: string}) {
 		super(attributes);
 		
 		this.CSSRuleAsBufferIFace = CSSStyleRuleSliceAsBuffer.fromCategory<
@@ -110,7 +112,7 @@ class InheritedPropertiesSlice extends CSSRuleSliceIFaceBase {
 		this.disambiguateAttributes(attributes);
 	}
 
-	disambiguateAttributes(attributes: {AllSupportedCSSPropertyNames: string}) {
+	disambiguateAttributes(attributes: {AllCSSPropertyName: string}) {
 		const knownAttributes = inheritedCSSPropertyKeys;
 		let	packedCSSProperty;
 		
@@ -119,14 +121,14 @@ class InheritedPropertiesSlice extends CSSRuleSliceIFaceBase {
 			if ((knownAttributes).indexOf(attrName) < 0)
 				continue;
 				
-			packedCSSProperty = new CSSPropertyAsBuffer(null, attrName);
+			packedCSSProperty = new CSSPropertyAsBuffer(null, attrName as AllCSSPropertyName);
 			/** @ts-ignore reflection */
 			packedCSSProperty.setValue((attributes[attrName]));
 
 			// Set the isInitialValue flag to false
 			packedCSSProperty._buffer.set([0], CSSPropertyAsBuffer.bufferSchema.isInitialValue.start);
 			
-			this.CSSRuleAsBufferIFace.setPropFromBuffer(attrName, packedCSSProperty);
+			this.CSSRuleAsBufferIFace.setPropFromBuffer(attrName as InheritedCSSPropertyName, packedCSSProperty);
 		}
 	}
 }
@@ -136,9 +138,9 @@ class OtherPropertiesSlice extends CSSRuleSliceIFaceBase {
 	CSSRuleAsBufferIFace;
 	/**
 	 * 
-	 * @param {Object<AllSupportedCSSPropertyNames, string>} attributes 
+	 * @param {Object<AllCSSPropertyName, string>} attributes 
 	 */
-	constructor(attributes: {AllSupportedCSSPropertyNames: string}) {
+	constructor(attributes: {AllCSSPropertyName: string}) {
 		super(attributes);
 		
 		this.CSSRuleAsBufferIFace = CSSStyleRuleSliceAsBuffer.fromCategory<
@@ -153,7 +155,7 @@ class OtherPropertiesSlice extends CSSRuleSliceIFaceBase {
 		this.disambiguateAttributes(attributes);
 	}
 
-	disambiguateAttributes(attributes: {AllSupportedCSSPropertyNames: string}) {
+	disambiguateAttributes(attributes: {AllCSSPropertyName: string}) {
 		const knownAttributes = otherCSSPropertyKeys;
 		let	packedCSSProperty;
 		
@@ -162,14 +164,14 @@ class OtherPropertiesSlice extends CSSRuleSliceIFaceBase {
 			if ((knownAttributes).indexOf(attrName) < 0)
 				continue;
 				
-			packedCSSProperty = new CSSPropertyAsBuffer(null, attrName);
+			packedCSSProperty = new CSSPropertyAsBuffer(null, attrName as AllCSSPropertyName);
 			/** @ts-ignore reflection */
 			packedCSSProperty.setValue((attributes[attrName]));
 
 			// Set the isInitialValue flag to false
 			packedCSSProperty._buffer.set([0], CSSPropertyAsBuffer.bufferSchema.isInitialValue.start);
 			
-			this.CSSRuleAsBufferIFace.setPropFromBuffer(attrName, packedCSSProperty);
+			this.CSSRuleAsBufferIFace.setPropFromBuffer(attrName as OtherCSSPropertyName, packedCSSProperty);
 		}
 	}
 }
@@ -203,7 +205,7 @@ class CSSRuleAsBuffer {
 	 * @param {string} selector
 	 * @param {Object<string, string>} attributes 
 	 */
-	constructor(selector : string, attributes : {AllSupportedCSSPropertyNames: string}) {
+	constructor(selector : string, attributes : {AllCSSPropertyName: string}) {
 		this.selector = selector;
 
 		this.inheritedProperties = new InheritedPropertiesSlice(attributes);
@@ -211,10 +213,10 @@ class CSSRuleAsBuffer {
 	}
 	/**
 	 * 
-	 * @param {string} AllSupportedCSSPropertyNames 
+	 * @param {string} AllCSSPropertyName 
 	 * @returns 
 	 */
-	get(attr : AllSupportedCSSPropertyNames) {
+	get(attr : AllCSSPropertyName) {
 		if (!propToCategory.has(attr))
 			throw new Error('Unsupported CSS Property: ' + attr);
 		/** @ts-ignore tested above */
@@ -222,10 +224,10 @@ class CSSRuleAsBuffer {
 	}
 	/**
 	 * 
-	 * @param {string} attr 
+	 * @param {AllCSSPropertyName} attr 
 	 * @param {string|number} value 
 	 */
-	set(attr : string, value : string|number) {
+	set(attr : AllCSSPropertyName, value : string|number) {
 		if (!propToCategory.has(attr))
 			throw new Error('Unsupported CSS Property: ' + attr);
 			

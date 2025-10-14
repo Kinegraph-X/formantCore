@@ -303,7 +303,6 @@ function tokenize(str) {
 		if(wouldStartAnIdentifier(next(1), next(2), next(3))) {
 			var token = new DimensionToken();
 			token.value = num.value;
-//			token.repr = num.repr;
 			token.type = num.type;
 			token.unit = consumeAName();
 			token.repr = num.repr + token.unit;

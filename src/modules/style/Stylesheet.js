@@ -5,6 +5,8 @@
  * @returns self
  */
 
+// @ts-noCheck
+
 import StyleRule from './StyleRule.js';
 import CSSRuleAsBuffer from './CSSStyleRuleAsBuffer.js';
 

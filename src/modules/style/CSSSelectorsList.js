@@ -2,6 +2,8 @@
  * construct. CSSSelectorsList
  */
 
+// @ts-noCheck
+
 import BinarySchemaFactory from '../buffer/BinarySchema.js';
 
 

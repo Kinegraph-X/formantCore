@@ -1,5 +1,5 @@
-
-
+import {bufferToString, bufferToPartialString} from '../nativeTypesUtilities/Uint8ArrayUtilities';
+import type {ParserToken} from './ParserTokenType'
 import MemoryMapBuffer from '../buffer/MemoryMapBuffer.js';
 import registries from '../Registries.js';
 import CSSPropertyAsBuffer from './CSSPropertyAsBuffer.js';
@@ -9,6 +9,7 @@ import {
 	splittedCSSPropertyDescriptors,
 	inheritedCSSPropertyKeys,
 	allCSSPropertyKeys,
+	type AllCSSPropertyName,
 	type CSSBoundary,
 	CSSPropertyDescriptorFactory,
 } from './CSSPropertyDescriptors.js';
@@ -34,9 +35,12 @@ const textSizeGetter = new TextSizeGetter();
  * setPropFromBuffer(propName, propBuffer) -> Sets a property value from a CSSPropertyAsBuffer instance
  * setPropFromShorthand(propName, value) -> Sets a property value from a shorthand value
  */
-class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffer {
+class CSSStyleRuleSliceAsBuffer<
+		T extends Record<string, ReturnType<typeof CSSPropertyDescriptorFactory>>,
+		K extends readonly AllCSSPropertyName[]
+	> extends MemoryMapBuffer {
 	static objectType = 'CSSPropertySetBuffer';
-	static cachedCSSPropertyAsBuffer = new CSSPropertyAsBuffer(null, '');
+	static cachedCSSPropertyAsBuffer = new CSSPropertyAsBuffer(null, '' as AllCSSPropertyName);
 	static STYLE_SET = new Set(['none','hidden','dotted','dashed','solid','double','groove','ridge','inset','outset']);
 	static REPEAT_SET = new Set(['repeat','repeat-x','repeat-y','no-repeat','space','round']);
 	static ATTACH_SET = new Set(['scroll','fixed','local']);
@@ -48,6 +52,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	static STRETCH_SET = new Set(['normal','ultra-condensed','extra-condensed','condensed','semi-condensed','semi-expanded','expanded','extra-expanded','ultra-expanded']);
 	category = null;
 	propertiesStaticArray;
+	propertyDescriptors;
 	propertiesAccessGroupsBoundaries;
 	
 
@@ -60,7 +65,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
      */
 	static fromCategory<
 	 T extends Record<string, ReturnType<typeof CSSPropertyDescriptorFactory>>,
-	 K extends readonly any[]
+	 K extends readonly AllCSSPropertyName[]
 	>(
 		map : T,
 		keys : K,
@@ -74,7 +79,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 
 			for (const descName in map) {
 				const initialValue = map[descName].initialValue;
-				const packed = new CSSPropertyAsBuffer(null, descName);
+				const packed = new CSSPropertyAsBuffer(null, descName as K[number]);
 				packed.setValue(initialValue.toString());
 				initialContent.set(packed._buffer, offset);
 				// mark as initial value
@@ -83,7 +88,12 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 			}
 		}
 
-        const inst = new CSSStyleRuleSliceAsBuffer<K>(initialContent, keys, boundaries);
+        const inst = new CSSStyleRuleSliceAsBuffer<T, K>(
+			initialContent,
+			map,
+			keys,
+			boundaries
+		);
         return inst;
     }
 
@@ -95,7 +105,8 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	 */
 	constructor(
 		initialContent: Uint8Array,
-		propertiesArray : T,
+		propertyDescriptors : T,
+		propertiesArray : K,
 		boundaries : CSSBoundary
 	) {
 		super(CSSPropertyAsBuffer.bufferSchema.size, initialContent.byteLength / CSSPropertyAsBuffer.bufferSchema.size);
@@ -104,6 +115,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 			initialContent
 		);
 
+		this.propertyDescriptors = propertyDescriptors;
 		this.propertiesStaticArray = propertiesArray;
 		this.propertiesAccessGroupsBoundaries = boundaries;
 	}
@@ -114,10 +126,10 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	 * Returns -1 if not found.
 	 * Used by getProp, setPropFromBuffer, and fast accessors.
 	 *
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {number}
 	 */
-	getPosForProp(propName: string) {
+	getPosForProp(propName: K[number]) {
 		var propIdx = 0;
 
 		if ((propIdx = this.propertiesStaticArray.indexOf(propName)) !== -1) {
@@ -133,10 +145,10 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		return this.propertiesStaticArray[pos];
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {CSSPropertyAsBuffer}
 	 */
-	getProp(propName: string) {
+	getProp(propName: K[number]) {
 		var posForProp = this.getPosForProp(propName) * this.itemSize;
 		var propAsBuffer = new CSSPropertyAsBuffer(
 			this._buffer.slice(posForProp, posForProp + this.itemSize),
@@ -145,18 +157,18 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		return propAsBuffer;
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @param {CSSPropertyAsBuffer} propBuffer
 	 */
-	setPropFromBuffer(propName: string, propBuffer: CSSPropertyAsBuffer) {
+	setPropFromBuffer(propName: K[number], propBuffer: CSSPropertyAsBuffer) {
 		var resolvedPropName = propName,
 			posForProp;
 
-		if (allCSSPropertyDescriptors[resolvedPropName].isAlias)
-			resolvedPropName = allCSSPropertyDescriptors[resolvedPropName].expandedPropNames[0];
+		if (this.propertyDescriptors[resolvedPropName].isAlias)
+			resolvedPropName = this.propertyDescriptors[resolvedPropName].expandedPropNames[0] as K[number];
 		
 		// abbreviated are handled in setPropFromShorthand()
-		if (allCSSPropertyDescriptors[resolvedPropName].isShorthand) {
+		if (this.propertyDescriptors[resolvedPropName].isShorthand) {
 			this.setPropFromShorthand(resolvedPropName, propBuffer.getValueAsString());
 			return;
 		}
@@ -179,7 +191,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	 */
 	setPropFromShorthand(propName: string, value: string) {
 
-		if (allCSSPropertyDescriptors[propName].mayBeAbbreviated) {
+		if (this.propertyDescriptors[propName].mayBeAbbreviated) {
 			this.handleAbbreviatedValues(propName, value);
 			return;
 		}
@@ -194,7 +206,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	 * Parses and assigns CSS shorthand values,
 	 * calls the right classifier depending on the prop type
 	 * and assigns them to the corresponding longhand properties (like borderWidth, borderStyle, and borderColor)
-	 * based on token type and the CSS specification
+	 * based on token type and the possible values from the CSS spec
 	 * 
 	 * @see CSSPropertyAsBuffer.setFromParsedToken()
 	 * 
@@ -203,38 +215,43 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	 * @returns 
 	 */
 	setValuesFromShorthand(propName: string, value: string) {
+		// Don't evaluate all the tests if this interface
+		// isn't instanciated for these props
+		if (!(propName in this.propertiesStaticArray))
+			return;
 		const tokens = parseAListOfComponentValues(value);
 		const vals = tokens.filter(t => t.tokenType !== 'WHITESPACE' && t.tokenType !== 'COMMA');
 		
-		if (propName === 'border') {
-			this.setValueFromBorderShorthand(vals);
-			return [];
-		}
-		// Background shorthand (single layer)
-		if (propName === 'background') {
-			this.setValueFromBackgroundShorthand(vals);
-			return [];
-		}
+		// inherited
 		if (propName === 'font') {
 			this.setValueFromFontShorthand(vals);
-			return [];
+			return
+		}
+		
+		// other
+		if (propName === 'border') {
+			this.setValueFromBorderShorthand(vals);
+			return
+		}
+		// Background shorthand resolution is single layer
+		if (propName === 'background') {
+			this.setValueFromBackgroundShorthand(vals);
+			return
 		}
 		if (propName === 'backgroundPosition') {
 			this.setValueFromBackgroundPositionShorthand(vals);
-			return [];
+			return
 		}
 		if (propName === 'backgroundSize') {	// not a real shorthand, see implementation
 			this.setValueFromBackgroundSizeShorthand(vals);
-			return [];
+			return
 		}
-
-		return value.match(/[a-zA-Z0-9#\/:.,%-]+/g) || [];
 	}
 	/**
 	 * Border shorthand: width, style, color
-	 * @param {unknown[]} vals Array of tokens from the parser
+	 * @param {ParserToken[]} vals Array of tokens from the parser
 	 */
-	setValueFromBorderShorthand(vals: unknown[]) {
+	setValueFromBorderShorthand(vals: ParserToken[]) {
 		// buckets
 		let widthTok = null, styleTok = null, colorTok = null;
 		for (const t of vals) {
@@ -243,10 +260,13 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 			if (!widthTok) { widthTok = t; continue; }
 		}
 		const map = [widthTok, styleTok, colorTok];
-		const longs = allCSSPropertyDescriptors[propName].expandedPropNames; // e.g., [borderWidth, borderStyle, borderColor]
+		const longs = this.propertyDescriptors['border'].expandedPropNames as unknown as K; // e.g., [borderWidth, borderStyle, borderColor]
 		const tmp = CSSStyleRuleSliceAsBuffer.cachedCSSPropertyAsBuffer;
 		for (let i = 0; i < longs.length; i++) {
+			if (!map[i])
+				continue;
 			tmp.setProp(longs[i]);
+			/** @ts-ignore null tested above */
 			tmp.setFromParsedToken(map[i]);
 			this.setPropFromBuffer(longs[i], tmp);
 		}
@@ -258,11 +278,15 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	 * For background-position, supporting keywords + lengths should be sufficient. If you need the 3–4 value modern syntax (with slash for axes), extend similarly to the size logic.
 	 * For font, the parsing is heuristic and covers the common cases; the CSS Fonts spec has many corner cases.
 	 * 
-	 * @param {unknown[]} vals tokens (no whitespace/commas)
+	 * TODO: fail at the beginning if backgroung isn't part of the current property descriptors
+	 * TODO: finding the actual "long" propName (backgroundIamge, etc.)
+	 * is very costly
+	 * 
+	 * @param {ParserToken[]} vals tokens (no whitespace/commas)
 	 */
-	setValueFromBackgroundShorthand(vals: unknown[]) {
+	setValueFromBackgroundShorthand(vals: ParserToken[]) {
 		const tmp = CSSStyleRuleSliceAsBuffer.cachedCSSPropertyAsBuffer;
-		const longs = allCSSPropertyDescriptors.background?.expandedPropNames || [];
+		const longs = this.propertyDescriptors.background?.expandedPropNames || [];
 	
 		// buckets
 		let imageTok = null, colorTok = null, repeatTok = null, attachmentTok = null;
@@ -271,7 +295,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		let seenSlash = false;
 	
 		for (const t of vals) {
-			if (t.tokenType === 'DELIM' && (t.value === '/' || t.repr === '/')) { seenSlash = true; continue; }
+			if (t.tokenType === 'DELIM' && t.repr === '/') { seenSlash = true; continue; }
 			if (!imageTok && ((t.tokenType === 'FUNCTION' && t.name === 'url') || (t.tokenType === 'IDENT' && t.repr === 'none'))) { imageTok = t; continue; }
 			if (!repeatTok && t.tokenType === 'IDENT' && CSSStyleRuleSliceAsBuffer.REPEAT_SET.has(t.repr)) { repeatTok = t; continue; }
 			if (!attachmentTok && t.tokenType === 'IDENT' && CSSStyleRuleSliceAsBuffer.ATTACH_SET.has(t.repr)) { attachmentTok = t; continue; }
@@ -286,7 +310,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 			}
 		}
 	
-		const setTok = (propName: string, tokOrString: unknown) => {
+		const setTok = (propName: K[number] | undefined, tokOrString: string | ParserToken | null) => {
 			if (!propName || tokOrString == null) return;
 			tmp.setProp(propName);
 			if (typeof tokOrString === 'string') 
@@ -297,24 +321,24 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		};
 		const find = (name: string) => longs.find(l => l.toLowerCase().includes(name));
 	
-		setTok(find('image'), imageTok);
+		setTok('backgroundImage', imageTok);
 		if (positionTokens.length) {
-			setTok(find('position'), positionTokens.map(t => t.repr || t.value).join(' '));
+			setTok('backgroundPosition', positionTokens.map(t => t.repr).join(' '));
 			this.setValueFromBackgroundPositionShorthand(positionTokens);
 		}
 		if (sizeTokens.length) {
-			setTok(find('size'), sizeTokens.map(t => t.repr || t.value).join(' '));
+			setTok('backgroundSize', sizeTokens.map(t => t.repr).join(' '));
 			this.setValueFromBackgroundSizeShorthand(sizeTokens);
 		}
-		setTok(find('repeat'), repeatTok);
-		setTok(find('attachment'), attachmentTok);
+		setTok('backgroundRepeat', repeatTok);
+		setTok('backgroundAttachment', attachmentTok);
 	
 		// origin / clip share tokens when only one box is given
 		if (originTok && !clipTok) clipTok = originTok;
-		setTok(find('origin'), originTok);
-		setTok(find('clip'), clipTok);
+		setTok('backgroundOrigin', originTok);
+		setTok('backgroundClip', clipTok);
 	
-		setTok(find('color'), colorTok);
+		setTok('backgroundColor', colorTok);
 	}
 
 	/**
@@ -326,9 +350,9 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	 *    - If token in {top,bottom,center} => y=token, x='center'
 	 *    - Else => x=token, y='center'
 	 */
-	setValueFromBackgroundPositionShorthand(vals: unknown[]) {
+	setValueFromBackgroundPositionShorthand(vals: ParserToken[]) {
 		const tmp = CSSStyleRuleSliceAsBuffer.cachedCSSPropertyAsBuffer;
-		const longs = (allCSSPropertyDescriptors.backgroundPosition?.expandedPropNames) || [];
+		const longs = this.propertyDescriptors.backgroundPosition.expandedPropNames as unknown as  K;
 		const findLeft = () => longs.find(l => l.toLowerCase().includes('X'));
 		const findTop  = () => longs.find(l => l.toLowerCase().includes('Y'));
 	
@@ -342,34 +366,34 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		let xTok = null, yTok = null;
 	
 		if (posTokens.length >= 2) {
-		[xTok, yTok] = posTokens;
+			[xTok, yTok] = posTokens;
 		} else if (posTokens.length === 1) {
-		const t = posTokens[0];
-		const isY = t.tokenType === 'IDENT' && (t.repr === 'top' || t.repr === 'bottom' || t.repr === 'center');
+			const t = posTokens[0];
+			const isY = t.tokenType === 'IDENT' && (t.repr === 'top' || t.repr === 'bottom' || t.repr === 'center');
 		if (isY) {
 			yTok = t;
-			xTok = { tokenType: 'IDENT', repr: 'center' };
+			xTok = { tokenType: 'IDENT', type : 'string', repr: 'center', value: 0, unit: '' };
 		} else {
 			xTok = t;
-			yTok = { tokenType: 'IDENT', repr: 'center' };
+			yTok = { tokenType: 'IDENT', type : 'string', repr: 'center', value: 0, unit: '' };
 		}
 		} else {
-		// No tokens: default to initial
-		xTok = { tokenType: 'PERCENTAGE', repr: '0%', value: 0 };
-		yTok = { tokenType: 'PERCENTAGE', repr: '0%', value: 0 };
+			// No tokens: default to initial
+			xTok = { tokenType: 'PERCENTAGE', type : 'number', repr: '0%', value: 0, unit: '%' };
+			yTok = { tokenType: 'PERCENTAGE', type : 'number', repr: '0%', value: 0, unit: '%' };
 		}
 	
 		const leftName = findLeft();
 		const topName = findTop();
 		if (leftName) {
-		tmp.setProp(leftName);
-		tmp.setFromParsedToken(xTok);
-		this.setPropFromBuffer(leftName, tmp);
+			tmp.setProp(leftName);
+			tmp.setFromParsedToken(xTok);
+			this.setPropFromBuffer(leftName, tmp);
 		}
 		if (topName) {
-		tmp.setProp(topName);
-		tmp.setFromParsedToken(yTok);
-		this.setPropFromBuffer(topName, tmp);
+			tmp.setProp(topName);
+			tmp.setFromParsedToken(yTok);
+			this.setPropFromBuffer(topName, tmp);
 		}
 	}
   
@@ -382,7 +406,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	 * - If 2 tokens => join with space.
 	 * - If 1 token => append ' auto' unless keyword cover/contain already complete.
 	 */
-	setValueFromBackgroundSizeShorthand(vals: unknown[]) {
+	setValueFromBackgroundSizeShorthand(vals: ParserToken[]) {
 		const tmp = CSSStyleRuleSliceAsBuffer.cachedCSSPropertyAsBuffer;
 	
 		const sizeTokens = vals.filter(t =>
@@ -393,14 +417,14 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	
 		let out;
 		if (sizeTokens.length >= 2) {
-			out = sizeTokens.slice(0, 2).map(t => t.repr ?? String(t.value)).join(' ');
+			out = sizeTokens.slice(0, 2).join(' ');
 		} 
 		else if (sizeTokens.length === 1) {
 			const t = sizeTokens[0];
 			if (t.tokenType === 'IDENT' && (t.repr === 'cover' || t.repr === 'contain')) {
 				out = t.repr;
 			} else {
-				out = (t.repr ?? String(t.value)) + ' auto';
+				out = `${t.repr} auto`;
 		}
 		} else {
 			out = 'auto auto';
@@ -414,11 +438,11 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	/**
 	 * font shorthand: [style? variant? weight? stretch?] size [/ line-height]? family
 	 * Commented lines are properties we don't yet support
-	 * @param {unknown[]} tokens full tokens (may include whitespace)
+	 * @param {ParserToken[]} tokens full tokens (may include whitespace)
 	 */
-	setValueFromFontShorthand(tokens: unknown[]) {
+	setValueFromFontShorthand(tokens: ParserToken[]) {
 		const tmp = CSSStyleRuleSliceAsBuffer.cachedCSSPropertyAsBuffer;
-		const longs = allCSSPropertyDescriptors.font?.expandedPropNames || [];
+		const longs = this.propertyDescriptors.font?.expandedPropNames || [];
 		
 		// buckets
 		let styleTok=null, variantTok=null, weightTok=null, stretchTok=null, sizeTok=null, lineTok=null;
@@ -435,13 +459,13 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 				sizeTok = t; continue;
 			}
 		
-			if (t.tokenType === 'DELIM' && (t.value === '/' || t.repr === '/')) { slashSeen = true; continue; }
+			if (t.tokenType === 'DELIM' && t.repr === '/') { slashSeen = true; continue; }
 			// if (sizeTok && !lineTok && slashSeen) { lineTok = t; continue; }
 		
 			if (sizeTok && (!slashSeen || (slashSeen && lineTok))) familyTokens.push(t);
 		}
 	
-		const setTok = (propName: string, tokOrString: unknown) => {
+		const setTok = (propName: K[number] | undefined, tokOrString: string | ParserToken | null) => {
 			if (!propName || tokOrString == null) return;
 			tmp.setProp(propName);
 			if (typeof tokOrString === 'string') 
@@ -452,16 +476,16 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		};
 		const find = (name: string) => longs.find(l => l.toLowerCase().includes(name));
 	
-		setTok(find('style'), styleTok);
+		setTok('fontStyle', styleTok);
 		// setTok(find('variant'), variantTok);
-		setTok(find('weight'), weightTok);
+		setTok('fontWeight', weightTok);
 		// setTok(find('stretch'), stretchTok);
-		setTok(find('size'), sizeTok);
+		setTok('fontSize', sizeTok);
 		// setTok(find('line'), lineTok);
 	
 		if (familyTokens.length) {
-			const family = familyTokens.map(t => t.repr || (t.value?.toString() ?? '')).join(' ');
-			setTok(find('family'), family);
+			const family = familyTokens.map(t => t.repr).join(' ');
+			setTok('fontFamily', family);
 		}
 	}
 
@@ -474,28 +498,27 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	handleAbbreviatedValues(propName: string, value: string) {
 		const valueList = value.split(' '), 
 			tmpBuffer = CSSStyleRuleSliceAsBuffer.cachedCSSPropertyAsBuffer,
-			vals = valueList.filter(t => t.tokenType !== 'WHITESPACE' && t.tokenType !== 'COMMA');
+			longs = this.propertyDescriptors[propName].expandedPropNames as unknown as K;
 
 		if (valueList.length === 1) {
-			allCSSPropertyDescriptors[propName].expandedPropNames.forEach((expandedPropertyName, key) => {
+			longs.forEach((expandedPropertyName, key) => {
 				tmpBuffer.setProp(expandedPropertyName);
 				tmpBuffer.setValue(valueList[0]);
 				this.setPropFromBuffer(expandedPropertyName, tmpBuffer);
 			});
 		}
 		else if (valueList.length === 2) { // the property includes 1 whitespace
-			allCSSPropertyDescriptors[propName].expandedPropNames.forEach((expandedPropertyName, key) => {
+			longs.forEach((expandedPropertyName, key) => {
 				tmpBuffer.setProp(expandedPropertyName);
 				if (key === 0 || key === 2)
 					tmpBuffer.setValue(valueList[0]);
-
 				else
 					tmpBuffer.setValue(valueList[1]);
 				this.setPropFromBuffer(expandedPropertyName, tmpBuffer);
 			});
 		}
 		else if (valueList.length === 3) { // the property includes 2 whitespace
-			allCSSPropertyDescriptors[propName].expandedPropNames.forEach((expandedPropertyName, key) => {
+			longs.forEach((expandedPropertyName, key) => {
 				tmpBuffer.setProp(expandedPropertyName);
 				if (key !== 3)
 					tmpBuffer.setValue(valueList[key]);
@@ -506,7 +529,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 			});
 		}
 		else if (valueList.length === 4) { // the property includes 3 whitespace
-			allCSSPropertyDescriptors[propName].expandedPropNames.forEach((expandedPropertyName, key) => {
+			longs.forEach((expandedPropertyName, key) => {
 				tmpBuffer.setProp(expandedPropertyName);
 				tmpBuffer.setValue(valueList[key]);
 				this.setPropFromBuffer(expandedPropertyName, tmpBuffer);
@@ -516,32 +539,30 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 	/**
 	 * @param {CSSPropertyAsBuffer} overridePropBuffer
 	 * @param {boolean} isFontSizeProp
-	 * @param {string} [originalPropName]
+	 * @param {string} originalPropName
 	 */
 	setPropAfterResolvingCanonicalUnits(
 		overridePropBuffer: CSSPropertyAsBuffer,
 		isFontSizeProp: boolean,
 	) {
-		var propName = 'fontSize', fontSize = this.getPropAsNumber(propName);
+		const fontSize = this.getPropAsNumber('fontSize');
 
 		if (isFontSizeProp) {
 			overridePropBuffer.setValue(
-				String(
-					Math.floor(fontSize * overridePropBuffer.getValueAsNumber() / 100)
-				) + 'px'
+				`${Math.floor(fontSize * overridePropBuffer.getValueAsNumber() / 100)}px`
 			);
 		}
 
-		var fontFamily = this.getPropAsString('fontFamily'), fontStyle = fontSize + this.getUnitAsString(propName) + ' ' + fontFamily, sizeOfM = 0;
+		var fontFamily = this.getPropAsString('fontFamily'),
+			fontStyle = fontSize + this.getUnitAsString('fontSize') + ' ' + fontFamily,
+			sizeOfM = 0;
 
 		switch (overridePropBuffer.getUnitAsString()) {
 			case 'em':
 				sizeOfM = this.getTextDimensions('M', fontStyle);
 				//			console.log('NEW SIZE', overridePropBuffer.getValueAsNumber(), sizeOfM, fontStyle);
 				overridePropBuffer.setValue(
-					String(
-						Math.floor(overridePropBuffer.getValueAsNumber() * sizeOfM)
-					) + 'px'
+					`${Math.floor(overridePropBuffer.getValueAsNumber() * sizeOfM)}px`
 				);
 				break;
 			default:
@@ -559,7 +580,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		let ret = {} as {[key: string]: string};
 
 		for (var i = 0, end = i + this.propertiesStaticArray.length * this.itemSize; i < end; i += this.itemSize) {
-			propName = this.propertiesStaticArray[c] as string;
+			propName = this.propertiesStaticArray[c];
 			if (this._buffer[i + initialValueIdx] === 0) {
 				ret[propName] = this.fastBufferedValueToString(propName);
 			}
@@ -580,7 +601,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		var ret = {} as {[key: string]: CSSPropertyAsBuffer};
 
 		for (var i = boundaries.start * this.itemSize, end = i + boundaries.length * this.itemSize; i < end; i += this.itemSize) {
-			propName = this.propertiesStaticArray[boundaries.start + c] as string;
+			propName = this.propertiesStaticArray[boundaries.start + c];
 			ret[propName] = (new CSSPropertyAsBuffer(
 				this._buffer.slice(i, i + this.itemSize),
 				propName
@@ -601,7 +622,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		var ret = {} as {[key: string]: string};
 
 		for (var i = boundaries.start * this.itemSize, end = i + boundaries.length * this.itemSize; i < end; i += this.itemSize) {
-			propName = this.propertiesStaticArray[boundaries.start + c] as string;
+			propName = this.propertiesStaticArray[boundaries.start + c];
 			ret[propName] = this.fastBufferedValueToString(propName);
 			c++;
 		}
@@ -618,7 +639,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 
 		var ret = {} as {[key: string]: string};
 		for (var i = boundaries.start * this.itemSize, end = i + boundaries.length * this.itemSize; i < end; i += this.itemSize) {
-			propName = this.propertiesStaticArray[boundaries.start + c]  as string;
+			propName = this.propertiesStaticArray[boundaries.start + c];
 			if (this._buffer[i + initialValueIdx] === 0)
 				ret[propName] = this.fastBufferedValueToString(propName);
 			c++;
@@ -671,7 +692,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 			// TODO: is there a way to optimize this ?
 			// FIXME: 
 			if (groupBuffer[c + tokenTypeIdx] === dimensionTokenType) {
-				tmpPropertyBuffer = new CSSPropertyAsBuffer(null, '');
+				tmpPropertyBuffer = new CSSPropertyAsBuffer(null, '' as K[number]);
 				tmpPropertyBuffer._buffer.set(groupBuffer.slice(c, c + this.itemSize), 0);
 
 				this.setPropAfterResolvingCanonicalUnits(tmpPropertyBuffer, isFontSizeProp);
@@ -686,7 +707,7 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 				&& this.propertiesStaticArray[i / this.itemSize] === fontFamilyStr
 				&& groupBuffer[c + isInitialValueIdx] !== 1) {
 				//			console.error(groupName);
-				fontFamily = groupBuffer.bufferToPartialString(c + reprIdx);
+				fontFamily = bufferToPartialString(groupBuffer, c + reprIdx);
 
 				// Get the fontSize from the next Buffer in the loop, as we don't know yet if the local size is the actual size
 				// In the PropertyDescriptors, we chose to have the family before the size
@@ -751,101 +772,101 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		}
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {number}
 	 */
-	getIsInitialValue(propName: string) {
+	getIsInitialValue(propName: K[number]) {
 		var propBuffer = this.getProp(propName);
 		return propBuffer.getIsInitialValue();
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {boolean}
 	 */
-	getIsInitialValueAsBool(propName: string) {
+	getIsInitialValueAsBool(propName: K[number]) {
 		var propBuffer = this.getProp(propName);
 		return propBuffer.getIsInitialValueAsBool();
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {string}
 	 */
-	getTokenTypeForPropAsString(propName: string) {
+	getTokenTypeForPropAsString(propName: K[number]) {
 		var propBuffer = this.getProp(propName);
 		return propBuffer.tokenTypeToString();
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {number}
 	 */
-	getTokenTypeForPropAsConstant(propName: string) {
+	getTokenTypeForPropAsConstant(propName: K[number]) {
 		var propBuffer = this.getProp(propName);
 		return propBuffer.tokenTypeToNumber();
 	}
 	// getPropAsString() is an alias for bufferedValueToString()
 	// TODO: unify
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {string}
 	 */	
-	getPropAsString(propName: string) {
+	getPropAsString(propName: K[number]) {
 		return this.bufferedValueToString(propName);
 	}
 	// getPropAsNumber() is an alias for bufferedValueToNumber(propName)
 	// TODO: unify
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {number}
 	 */	
-	getPropAsNumber(propName: string) {
+	getPropAsNumber(propName: K[number]) {
 		return this.bufferedValueToNumber(propName);
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {string}
 	 */	
-	getUnitAsString(propName: string) {
+	getUnitAsString(propName: K[number]) {
 		var propBuffer = this.getProp(propName);
 		return propBuffer.getUnitAsString();
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {string}
 	 */	
-	getValueTypeAsString(propName: string) {
+	getValueTypeAsString(propName: K[number]) {
 		var propBuffer = this.getProp(propName);
 		return propBuffer.getValueTypeAsString();
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {number}
 	 */	
-	getValueTypeAsNumber(propName: string) {
+	getValueTypeAsNumber(propName: K[number]) {
 		var propBuffer = this.getProp(propName);
 		return propBuffer.getValueTypeAsNumber();
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {string}
 	 */	
-	bufferedValueToString(propName: string) {
+	bufferedValueToString(propName: K[number]) {
 		var propBuffer = this.getProp(propName);
 		return propBuffer.bufferedValueToString();
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {number}
 	 */	
-	bufferedValueToNumber(propName: string) {
+	bufferedValueToNumber(propName: K[number]) {
 		var propBuffer = this.getProp(propName);
 		//	console.log(propBuffer);
 		return propBuffer.bufferedValueToNumber();
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {string}
 	 */	
-	fastBufferedValueToString(propName: string) {
+	fastBufferedValueToString(propName: K[number]) {
 		var propIndex = this.getPosForProp(propName) * this.itemSize,
 			propLength = this._buffer[propIndex + CSSPropertyAsBuffer.bufferSchema.reprLength.start],
 			propOffset = CSSPropertyAsBuffer.bufferSchema.repr.start,
@@ -857,16 +878,16 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 		);
 	}
 	/**
-	 * @param {string} propName
+	 * @param {K[number]} propName
 	 * @returns {number}
 	 */	
-	fastBufferedValueToNumber(propName: string) {
+	fastBufferedValueToNumber(propName: K[number]) {
 		var propIndex = this.getPosForProp(propName) * this.itemSize,
 			propOffset = CSSPropertyAsBuffer.bufferSchema.propertyValue.start,
 			propStartIndex = propIndex + propOffset,
 			propEndIndex = propStartIndex + CSSPropertyAsBuffer.bufferSchema.propertyValue.length;
 		return CSSPropertyAsBuffer.prototype.byteTuppleTo16bits(
-			this._buffer.slice(propStartIndex, propEndIndex).buffer
+			this._buffer.slice(propStartIndex, propEndIndex)
 		);
 	}
 	/**
@@ -881,6 +902,10 @@ class CSSStyleRuleSliceAsBuffer<T extends readonly any[]> extends MemoryMapBuffe
 			textContent,
 			fontStyle
 		);
+		if (!textSize)
+			throw new Error('Error while retrieving text size for textContent: ' + textContent);
+
+		// As found that size returned by the canvas is a lot unreliable
 		return textSize[0] - textSize[0] / 21;
 	}
 }

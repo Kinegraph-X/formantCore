@@ -93,9 +93,9 @@ export class BinarySchemaFactory {
    * @returns A typed schema object with prototype metadata and BinarySlice properties.
    */
   static createSchema<const T extends readonly string[]>(
+    name: string,
     props: T,
-    sizes: readonly number[],
-    name: string
+    sizes: readonly number[]
   ): BinarySchemaFromTuple<T> {
     if (props.length !== sizes.length) {
       throw new Error(`BinarySchemaFactory: props and sizes arrays must have equal length`);
