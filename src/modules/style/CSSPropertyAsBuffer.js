@@ -33,11 +33,14 @@
 
 
 import {capitalizeFirstLetter, getNcharsAsCharCodesArray} from '../nativeTypesUtilities/StringUtilities.js';
-import BinarySchemaFactory from '../buffer/BinarySchema.js';
+import {BinarySchemaFactory} from '../buffer/BinarySchema.js';
 import {parseAListOfComponentValues} from '../../third-party/css-parser_forked_normalized.js';
+// import type ParserToken from './ParserTokenType'
 import {generatorFor16bitsInt} from '../UIDGenerator.js'
 
-import {allCSSPropertyDescriptors} from './CSSPropertyDescriptors.js';
+/** @typedef {import("./ParserTokenType.ts").ParserToken} ParserToken */
+
+// import {allCSSPropertyDescriptors} from './CSSPropertyDescriptors.js';
 
 
 /**
@@ -171,13 +174,20 @@ class CSSPropertyAsBuffer {
 		]
 	);
 	/**
-	 * @param {object} [initialLoad] 
+	 * @param {Uint8Array|null} [initialLoad] 
 	 * @param {string} [propName]
 	 */
-	constructor(initialLoad, propName) {
+	constructor(initialLoad = null, propName) {
 		this.objectType = 'CSSPropertyBuffer';
 		this.propName = propName;
-		this._buffer = new Uint8Array(initialLoad || CSSPropertyAsBuffer.bufferSchema.size);
+		this._buffer = new Uint8Array(initialLoad ?? CSSPropertyAsBuffer.bufferSchema.size);
+	}
+
+	/**
+	 * @param {string} propName 
+	 */
+	setProp(propName) {
+		this.propName = propName;
 	}
 
 	/**
@@ -223,7 +233,7 @@ class CSSPropertyAsBuffer {
 	 * Normalizes via [normalizeTokenForBuffer()](cci:1://file:///./CSSPropertyAsBuffer.js:284:1-316:2) 
  	 * then writes into the buffer with [populate()](cci:1://file:///./CSSPropertyAsBuffer.js:214:1-267:2).
 	 * 
-	 * @param {object} parsedToken 
+	 * @param {ParserToken} parsedToken 
 	 */
 	setFromParsedToken(parsedToken) {
 		// if the property is a shorthand property, or if the property may be abbreviated,
@@ -238,7 +248,7 @@ class CSSPropertyAsBuffer {
 
 	/**
 	 * valueAsParsed is token from parser
-	 * @param {object} valueAsParsed 
+	 * @param {ParserToken} valueAsParsed 
 	 * @param {string} trimedOriginalValue 
 	 */
 	functionToCanonical(valueAsParsed, trimedOriginalValue) {
@@ -277,7 +287,7 @@ class CSSPropertyAsBuffer {
 	}
 	/**
 	 * @param {string} tokenType 
-	 * @param {object} value 
+	 * @param {ParserToken} value 
 	 */
 	populate(tokenType, value) {
 		// the buffer size : 64 bytes buffers shall align on a L2 CPU cache
@@ -291,19 +301,19 @@ class CSSPropertyAsBuffer {
 		var strVal = normalizedValue.repr,
 			strLength = strVal.length,
 			strBuf = getNcharsAsCharCodesArray(strVal, this.stdStrLength, 0)[1],
-			valueBuf = generatorFor16bitsInt.intFromNumber(normalizedValue.value);
+			valueBuf = generatorFor16bitsInt.intFromNumber(/**@type{number}*/(normalizedValue.value));
 
 		// this.TokenTypes[tokenType] is the TokenType from the parser (remapped to our types)
 		// represented as a numeric constant
 		this._buffer.set(
 			[this.TokenTypes[tokenType]],
-			this.constructor.bufferSchema.tokenType.start
+			CSSPropertyAsBuffer.bufferSchema.tokenType.start
 		);
 		// value type
 		var valueTypeAsConst = this.ValueTypes[value.type];
 		this._buffer.set(
 			[valueTypeAsConst],
-			this.constructor.bufferSchema.propertyType.start
+			CSSPropertyAsBuffer.bufferSchema.propertyType.start
 		);
 		// value
 		// FIXME: floats are NOT handled by our CSSPropertyBuffer type,
@@ -311,47 +321,49 @@ class CSSPropertyAsBuffer {
 		// For now, it acts like if we had parseInt the number
 		this._buffer.set(
 			valueBuf,
-			this.constructor.bufferSchema.propertyValue.start
+			CSSPropertyAsBuffer.bufferSchema.propertyValue.start
 		);
 		// representation
 		this._buffer.set(
 			strBuf,
-			this.constructor.bufferSchema.repr.start
+			CSSPropertyAsBuffer.bufferSchema.repr.start
 		);
 		// representation string length
 		this._buffer.set(
 			[strLength],
-			this.constructor.bufferSchema.reprLength.start
+			CSSPropertyAsBuffer.bufferSchema.reprLength.start
 		);
 		// unit
 		this._buffer.set(
 			[value.unit ? this.Units[value.unit].idx : 0],
-			this.constructor.bufferSchema.unit.start
+			CSSPropertyAsBuffer.bufferSchema.unit.start
 		);
 	}
-	/**
-	 * 
-	 * @param {string} singleValueAsString 
-	 */
-	parseAndSetValue(singleValueAsString) {
-		var parsedValue;
-		if ((parsedValue = this.parseValue(singleValueAsString)).length)
-			this.setFromParsedToken(parsedValue);
-	}
-	/**
-	 * 
-	 * @param {string} singleValueAsString 
-	 */
-	parseValue(singleValueAsString) {
-		return parseAListOfComponentValues(singleValueAsString);
-	}
+	// /**
+	//  * The two following functions are broken
+	//  * @see setValue()
+	//  * @param {string} singleValueAsString 
+	//  */
+	// parseAndSetValue(singleValueAsString) {
+	// 	var parsedValue;
+	// 	if ((parsedValue = this.parseValue(singleValueAsString)).length)
+	// 		this.setFromParsedToken(parsedValue);
+	// }
+	// /**
+	//  * 
+	//  * @param {string} singleValueAsString 
+	//  */
+	// parseValue(singleValueAsString) {
+	// 	return /** @type {ParserToken[]} */ (parseAListOfComponentValues(singleValueAsString));
+	// }
+
 	/**
 	 * Shim: normalize parser tokens into CSSPropertyBuffer-compatible objects.
 	 * We try to do the least checks possible, for perf concerns.
 	 * So there's a strong contract with the parser (but the contract already exists
 	 * on the shape of the tokens, and we can't avoid it)
-	 * @param {object} parsedToken - Token from css-parser_forked_normalized
-	 * @returns {object} normalized token (with .tokenType, .repr, .value, .type, .unit)
+	 * @param {ParserToken} parsedToken - Token from css-parser_forked_normalized
+	 * @returns {ParserToken} normalized token (with .tokenType, .repr, .value, .type, .unit)
 	 */
 	normalizeTokenForBuffer(parsedToken) {
 		if (!parsedToken) {
@@ -378,88 +390,88 @@ class CSSPropertyAsBuffer {
 			unit: parsedToken.unit
 		};
 	}
-	/**
-	 * parsed value is token from parser
-	 * @param {object} parsedValue 
-	 */
-	concatenateBackFromParser(parsedValue) {
-		var tokenTypeFromParser;
-		var concatVal = '';
-		parsedValue.forEach(function (val) {
-			tokenTypeFromParser = Object.getPrototypeOf(val).tokenType;
-			switch (tokenTypeFromParser) {
-				case 'WHITESPACE':
-					concatVal += ' ';
-					break;
-				case 'PERCENTAGE':
-					concatVal += val.repr + '%';
-					break;
-				case 'HASH':
-					concatVal += val.value ? '#' + val.value : val.repr;
-					break;
-				case 'COMMA':
-					concatVal += ',';
-					break;
-				case 'FUNCTION':
-					concatVal += this.functionToCanonical(val).repr;
-				case 'OPENPAREN':
-					concatVal += '(';
-					break;
-				case 'CLOSEPAREN':
-					concatVal += ')';
-					break;
-				default: concatVal += typeof val.repr !== 'undefined' ? val.repr + this.Units[val.unit || ''].unit : val.value.toString() + this.Units[val.Units || ''].unit;
-			}
-		}, this);
-		return concatVal;
-	}
+	// /**
+	//  * parsed value is token from parser
+	//  * @param {ParserToken[]} parsedValue 
+	//  */
+	// concatenateBackFromParser(parsedValue) {
+	// 	var tokenTypeFromParser;
+	// 	var concatVal = '';
+	// 	parsedValue.forEach(function (val) {
+	// 		tokenTypeFromParser = Object.getPrototypeOf(val).tokenType;
+	// 		switch (tokenTypeFromParser) {
+	// 			case 'WHITESPACE':
+	// 				concatVal += ' ';
+	// 				break;
+	// 			case 'PERCENTAGE':
+	// 				concatVal += val.repr + '%';
+	// 				break;
+	// 			case 'HASH':
+	// 				concatVal += val.value ? '#' + val.value : val.repr;
+	// 				break;
+	// 			case 'COMMA':
+	// 				concatVal += ',';
+	// 				break;
+	// 			case 'FUNCTION':
+	// 				concatVal += this.functionToCanonical(val).repr;
+	// 			case 'OPENPAREN':
+	// 				concatVal += '(';
+	// 				break;
+	// 			case 'CLOSEPAREN':
+	// 				concatVal += ')';
+	// 				break;
+	// 			default: concatVal += typeof val.repr !== 'undefined' ? val.repr + this.Units[val.unit || ''].unit : val.value.toString() + this.Units[val.Units || ''].unit;
+	// 		}
+	// 	}, this);
+	// 	return concatVal;
+	// }
 	/**
 	 * 
 	 * @returns {boolean}
 	 */
 	getIsInitialValue() {
-		return !!this._buffer[this.constructor.bufferSchema.isInitialValue.start];
+		return !!this._buffer[CSSPropertyAsBuffer.bufferSchema.isInitialValue.start];
 	}
 	/**
 	 * 
 	 * @returns {boolean}
 	 */
 	getIsInitialValueAsBool() {
-		return !!this._buffer[this.constructor.bufferSchema.isInitialValue.start];
+		return !!this._buffer[CSSPropertyAsBuffer.bufferSchema.isInitialValue.start];
 	}
 	/**
 	 * 
 	 */
 	setIsInitialValue() {
-		this._buffer.set([1], this.constructor.bufferSchema.isInitialValue.start);
+		this._buffer.set([1], CSSPropertyAsBuffer.bufferSchema.isInitialValue.start);
 	}
 	/**
 	 * 
 	 * @returns {string}
 	 */
 	tokenTypeToString() {
-		return this.TokenTypesAsArray[this._buffer[this.constructor.bufferSchema['tokenType'].start]];
+		return this.TokenTypesAsArray[this._buffer[CSSPropertyAsBuffer.bufferSchema['tokenType'].start]];
 	}
 	/**
 	 * 
 	 * @returns {number}
 	 */
 	tokenTypeToNumber() {
-		return this._buffer[this.constructor.bufferSchema['tokenType'].start];
+		return this._buffer[CSSPropertyAsBuffer.bufferSchema['tokenType'].start];
 	}
 	/**
 	 * 
 	 * @returns {string}
 	 */
 	getValueTypeAsString() {
-		return this.ValueTypesAsArray[this._buffer[this.constructor.bufferSchema['propertyType'].start]];
+		return this.ValueTypesAsArray[this._buffer[CSSPropertyAsBuffer.bufferSchema['propertyType'].start]];
 	}
 	/**
 	 * 
 	 * @returns {number}
 	 */
 	getValueTypeAsNumber() {
-		return this._buffer[this.constructor.bufferSchema['propertyType'].start];
+		return this._buffer[CSSPropertyAsBuffer.bufferSchema['propertyType'].start];
 	}
 	/**
 	 * 
@@ -473,21 +485,21 @@ class CSSPropertyAsBuffer {
 	 * @returns {string}
 	 */
 	getTokenTypeAsString() {
-		return this.TokenTypesAsArray[this._buffer[this.constructor.bufferSchema['tokenType'].start]];
+		return this.TokenTypesAsArray[this._buffer[CSSPropertyAsBuffer.bufferSchema['tokenType'].start]];
 	}
 	/**
 	 * 
 	 * @returns {number}
 	 */
 	getTokenTypeAsNumber() {
-		return this._buffer[this.constructor.bufferSchema['tokenType'].start];
+		return this._buffer[CSSPropertyAsBuffer.bufferSchema['tokenType'].start];
 	}
 	/**
 	 * 
 	 * @returns {string}
 	 */
 	unitToString() {
-		return this.UnitsAsArray[this._buffer[this.constructor.bufferSchema['unit'].start]];
+		return this.UnitsAsArray[this._buffer[CSSPropertyAsBuffer.bufferSchema['unit'].start]];
 	}
 	/**
 	 * 
@@ -497,7 +509,7 @@ class CSSPropertyAsBuffer {
 		var idxOfUnit = this.UnitsAsArray.indexOf(unit);
 		if (idxOfUnit === -1)
 			return;
-		this._buffer.set([idxOfUnit], this.constructor.bufferSchema.unit.start);
+		this._buffer.set([idxOfUnit], CSSPropertyAsBuffer.bufferSchema.unit.start);
 	}
 	/**
 	 * getValueAsString() is an alias for bufferedValueToString()
@@ -521,8 +533,8 @@ class CSSPropertyAsBuffer {
 	 * @returns {string}
 	 */
 	bufferedValueToString() {
-		var start = this.constructor.bufferSchema.repr.start, end = start + this.constructor.bufferSchema.repr.length, strLengthIdx = this.constructor.bufferSchema.reprLength.start;
-		return this._buffer.slice(start, end).bufferToString(this._buffer[strLengthIdx]);
+		var start = CSSPropertyAsBuffer.bufferSchema.repr.start, end = start + CSSPropertyAsBuffer.bufferSchema.repr.length, strLengthIdx = CSSPropertyAsBuffer.bufferSchema.reprLength.start;
+		return bufferToString(this._buffer.slice(start, end), this._buffer[strLengthIdx]);
 	}
 	/**
 	 * bufferedValueToNumber() is an alias for getValueAsNumber()
@@ -530,7 +542,7 @@ class CSSPropertyAsBuffer {
 	 * @returns {number}
 	 */
 	bufferedValueToNumber() {
-		var start = this.constructor.bufferSchema['propertyValue'].start, end = start + this.constructor.bufferSchema['propertyValue'].length;
+		var start = CSSPropertyAsBuffer.bufferSchema['propertyValue'].start, end = start + CSSPropertyAsBuffer.bufferSchema['propertyValue'].length;
 		return this.byteTuppleTo16bits(this._buffer.slice(start, end));
 	}
 	/**

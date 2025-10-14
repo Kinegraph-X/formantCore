@@ -14,6 +14,8 @@ Forked from:
   },
 */
 
+// @ts-noCheck 
+
 // (function (root, factory) {
 //     // Universal Module Definition (UMD) to support AMD, CommonJS/Node.js,
 //     // Rhino, and plain browser loading.

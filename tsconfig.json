@@ -11,7 +11,10 @@
     "maxNodeModuleJsDepth": 2,
     "experimentalDecorators": true,
     "module": "esnext",
-    "target": "es2022",           
+    "target": "es2022",
+    "lib": [
+        "es6", "dom", "dom.iterable"
+    ],
     "moduleResolution": "node",
     "baseUrl": ".",        
     "strict": true,               

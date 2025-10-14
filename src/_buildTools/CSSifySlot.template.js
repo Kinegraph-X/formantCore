@@ -13,9 +13,13 @@
 /**
  * Helper: Defer the execution of a tagged template literal.
  * Returns a function that, when called, interpolates the given values.
+ * "otherStrings" is the rest of the original string-chunks-array, re-affected as an array
+ * @param {string} firstStringChunk
+ * @param {...unknown} discardedExpressions
  */
-function defer([first, ...rest]) {
-  return (...values) => rest.reduce((acc, str, i) => acc + values[i] + str, first);
+function defer(/** @type {TemplateStringsArray} */  [firstStringChunk, ...otherStrings], ...discardedExpressions) {
+	/** @param {string[]} values*/
+  return (...values) => otherStrings.reduce((acc, str, i) => acc + values[i] + str, firstStringChunk);
 }
 
 /**
@@ -31,7 +35,7 @@ function defer([first, ...rest]) {
  *
  * CSSifyTemplates[1]("mybuttonStyles_a2b4f6c1")
  * // =>
- * "\n  sWrapper : CreateStyle(\n    mybuttonStyles_a2b4f6c1\n  )"
+ * "\n  sWrapper : CreateStyle(mybuttonStyles_a2b4f6c1)"
  * 
  */
 export default [
@@ -39,9 +43,7 @@ export default [
   defer`
   	/* @CSSifySlot styleSlotName : ${null} */
     const ${null}Styles = ${null};`,
-  // Template 2: style wrapper creation
+  // Template 1: style wrapper creation
   defer`
-    sWrapper : CreateStyle(
-      ${null}Styles
-    )`
+    sWrapper : CreateStyle(${null}Styles)`
 ];

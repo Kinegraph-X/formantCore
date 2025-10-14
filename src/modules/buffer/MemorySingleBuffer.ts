@@ -3,7 +3,7 @@
  */
 
 import BinarySlice from './BinarySlice.js';
-import BinarySchema from './BinarySchema.js';
+import {BinarySchemaFactory} from './BinarySchema';
 
 
 /**
