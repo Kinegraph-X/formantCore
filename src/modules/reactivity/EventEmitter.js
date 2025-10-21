@@ -4,13 +4,13 @@
 
 import {ComponentError} from '../error/Error';
 import registries from '../Registries';
+// import {ComponentWithView} from '../component/Component'
 
 /**
  * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
  * @typedef {import('../reactivity/Stream.js').default<unknown>} Stream
  */
 
-// import { ComponentWithView } from '../component/Component.js';
 
 class FrameworkEventCtx {
     /** @type {Object<string, EventEmitter<unknown>>} */
@@ -27,7 +27,11 @@ class FrameworkEventCtx {
             throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
 
         const ctor = /** @type {unknown} */ (component.constructor);
-        /** @type {typeof ComponentWithView} */ (ctor)._outputs.forEach((output) => {
+        /** @ts-ignore weird bug on ComponentWithView being recognized as a type instead of instance-type */
+        const c = /** @type {typeof ComponentWithView} */ (ctor)
+        if (c._outputs)
+            /** @ts-ignore consequence of above ignore */
+            c._outputs.forEach((output) => {
             this.emitters[output] = /** @ts-ignore reflection */ 
                 component[output];
         });

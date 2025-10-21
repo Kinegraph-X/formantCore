@@ -3,6 +3,9 @@
  * Old code meant to be disposed/explained/rewritten
  * 
  */
+
+// @ts-noCheck
+
 import { defUIDGenerator } from '../UIDGenerator.js';
 import {EventEmitter} from '../reactivity/EventEmitter.js'
 
@@ -18,7 +21,10 @@ class NodeResizeObserver {
 			throw new Error('Unsupported browser feature: ResizeObserver');
 		}
 	}
-
+	/**
+	 * 
+	 * @param {HTMLElement} node 
+	 */
 	unobserve(node) {
 		this[node.id].clearEventListeners();
 		delete this[node.id];
@@ -61,7 +67,7 @@ class NodeResizeObserver {
 	//		console.warn('resizeObserver: ambiguous observed node : ' + node.id + '. Please give it a unique DOM id to disambiguate the event callback.' + (!node.id ? '  Given node is: ' : ''), (!node.id ? node : ''));
 	//		return;
 		}
-		this[node.id] = new EventEmitter();
+		this[node.id] = new EventEmitter('resizeEvent');
 		this[node.id].addEventListener(cb);
 		
 		// Due to some race condition the "resize" event may not be fired for already connected nodes...

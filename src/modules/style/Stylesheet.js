@@ -1,19 +1,21 @@
 /**
  * @constructor AbstractStylesheet
  * 
- * @param {object} styleRules
- * @returns self
  */
 
 // @ts-noCheck
 
 import StyleRule from './StyleRule.js';
-import CSSRuleAsBuffer from './CSSStyleRuleAsBuffer.js';
+import CSSRuleAsBuffer from './CSSStyleRuleAsBuffer';
 
 	
 class Stylesheet {
+	static objectType = 'AbstractStylesheet';
+	/**
+	 * @param {{[key: string]: string}[]} styleRules
+	 * @param {string} name
+	 */
 	constructor(styleRules, name) {
-		this.objectType = 'AbstractStylesheet';
 		if (name)
 			this.name = name;
 

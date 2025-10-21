@@ -4,6 +4,7 @@
 
 /**
  * @typedef {"viewExtend"|"lateAddChild"|"lateInit"|"lateBinding"} TaskNameType
+ * @typedef {import("./TemplateFactory").ComponentTemplate} ComponentTemplate
  */
 
 /**

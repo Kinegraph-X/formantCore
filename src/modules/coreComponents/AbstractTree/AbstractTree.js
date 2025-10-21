@@ -51,16 +51,18 @@ import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
 @Component({
     view : new ViewTemplate({
         nodeName : 'folded-tree',
+		/**@CSSifyStyle componentStyle : AbstractTreeHost */
     }),
     props : [
         {selected : undefined},
         {expanded : true}
-    ]/**@CSSifyStyle componentStyle : AbstractTreeHost */,
+    ],
     members : [
         new ComponentTemplate({
             type : 'VaritextButton',
             view : new ViewTemplate({
                 nodeName : 'header',
+				/**@CSSify Style componentStyle : AbstractTreeHeader */
             }),
             states : [
                 {role : "heading"},
@@ -74,7 +76,7 @@ import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
                     from : 'headerTitle',
                     to : 'content'
                 }
-            ]/**@CSSify Style componentStyle : AbstractTreeHeader */
+            ],
         })
     ]
 })

@@ -35,7 +35,7 @@ class Imperative{
         if (!stream || !this.getPayload)
             throw new ComponentError(this, 'Failed bundling: an Imperative hasn\'t been bound to a stream. Stream name:', this.streamName, 'uuid', this.uuid)
         
-        stream.value = this.getPayload();
+        stream.next = this.getPayload();
         this.stream = stream;
     }
     /** @type{function|null} */

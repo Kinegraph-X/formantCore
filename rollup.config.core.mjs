@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import typescript from 'rollup-plugin-typescript2';
 import annotations from 'rollup-plugin-formant-annotations';
 import resolve from '@rollup/plugin-node-resolve';
 import alias from '@rollup/plugin-alias';
@@ -28,7 +29,6 @@ export default function () {
         ]
       }),
       debugLoadId(),
-      annotations(),
       resolve(),  // Resolves node_modules
       importPaths({   // creates a virtual module with an entry for each "name"
       	// root : process.cwd(),	// default
@@ -42,6 +42,8 @@ export default function () {
           },
         ]
       }),
+      annotations(),
+      typescript(),
       cssifyFromDB({
         dbURL: 'mongodb://localhost:27017/themed_components',
         include: '**/*.js',

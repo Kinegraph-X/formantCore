@@ -38,6 +38,31 @@ export type BinarySchemaFromTuple<T extends readonly string[]> = {
   readonly [K in T[number]]: BinarySlice;
 };
 
+// export class BinarySchemaDynamicFields <T extends readonly string[]> {
+//   /** Dynamically generated binary slice properties */
+//   readonly [keys: string]: BinarySlice;
+// };
+
+// export class BinarySchema extends BinarySchemaDynamicFields<string[]> {
+//   readonly objectType = 'BinarySchema';
+//   /** Schema name identifier */
+//   readonly _name : string = '';
+//   /** Total computed byte size for all properties */
+//   readonly size : number = 0;
+
+//   // readonly [keys: string]: BinarySlice;
+// }
+
+// export class BinarySchema <Keys extends readonly string[]> {
+//   readonly objectType = 'BinarySchema';
+//   /** Schema name identifier */
+//   readonly _name : string = '';
+//   /** Total computed byte size for all properties */
+//   readonly size : number = 0;
+
+//   readonly [keys: string]: BinarySlice;
+// }
+
 /**
  * BinarySchema built from an object map of BinarySlice values.
  * T is the original mapping type (keys must be strings).

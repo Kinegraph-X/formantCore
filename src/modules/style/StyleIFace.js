@@ -7,7 +7,7 @@
 /**
  * @typedef {import('./Stylesheet.js').default} StyleSheet
  */
-import CSSSelectorsList from './CSSSelectorsList.js'
+import CSSSelectorsList from './CSSSelectorsList'
 import CSSSelectorSetBuffer from './CSSSelectorSetBuffer.js'
 import CSSRuleAsBuffer from './CSSStyleRuleAsBuffer.js'
 import registries from '../Registries.js';
@@ -33,7 +33,7 @@ class StyleIFace {
 	 */
 	constructor(type, selector, attributes) {
 		this.selectorsList = new CSSSelectorsList(attributes.selector || selector);
-		this.compactedViewOnSelectorsList = new CSSSelectorSetBuffer(null, this.selectorsList);
+		this.compactedViewOnSelectorsList = new CSSSelectorSetBuffer(this.selectorsList);
 		this.type = type;
 		this.styleRuleAsBuffer = new CSSRuleAsBuffer(selector, attributes);
 	}

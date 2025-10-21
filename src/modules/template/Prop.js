@@ -90,21 +90,18 @@ class AbstractPropArray extends Array {
 }
 
 
-/** @typedef {AbstractPropDef} AttributeDef*/
-/** extends AbstractProp<string> */
+/** extends AbstractPropArray<string> */
 class AttributeArray extends AbstractPropArray {
 	/** @type {string} */
 	objectType = 'AttributeArray';
 }
-/** @typedef {AbstractPropDef} StateDef*/
-/** extends AbstractProp<string> */
-class StateArray extends AbstractProp {
+/** extends AbstractPropArray<string> */
+class StateArray extends AbstractPropArray {
 	/** @type {string} */
 	objectType = 'StateArray';
 }
-/** @typedef {AbstractPropDef} PropDef*/
-/** extends AbstractProp<string> */
-class PropArray extends AbstractProp {
+/** extends AbstractPropArray<string> */
+class PropArray extends AbstractPropArray {
 	/** @type {string} */
 	objectType = 'PropArray';
 }

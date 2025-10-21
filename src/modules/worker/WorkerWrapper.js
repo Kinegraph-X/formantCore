@@ -115,7 +115,7 @@ class WorkerWrapper {
 		this.name = workerName;
 		this.message = new EventEmitter('message');
 		const thisProp = /**@type{unknown}*/(this);
-		this.message.trigger = EventEmitter.getTriggerFunction(/**@type {ComponentWithView}*/(thisProp), this.message)
+		this.message.emit = EventEmitter.getTriggerFunction(/**@type {ComponentWithView}*/(thisProp), this.message)
 		
 		if (stringifiedWorker) {
 			const blob = new Blob([stringifiedWorker], {type: 'application/javascript'});
@@ -177,12 +177,12 @@ class WorkerWrapper {
 		else {
 			if (normalizedMessage.type === WorkerMessageType.error || normalizedMessage.type === WorkerMessageType.warning) {
 				this.#handleMessageError(normalizedMessage);
-				this.message.trigger(normalizedMessage);
+				this.message.emit(normalizedMessage);
 				return;
 			}
 			if (normalizedMessage.id !== null && typeof this.#_responseHandler[normalizedMessage.id] === 'function') {
 				this.#_responseHandler[normalizedMessage.id](normalizedMessage.payload);
-				this.message.trigger(normalizedMessage);
+				this.message.emit(normalizedMessage);
 				return;
 			}
 			else {
@@ -190,7 +190,7 @@ class WorkerWrapper {
 			}
 		}
 		
-		this.message.trigger(response);
+		this.message.emit(response);
 	}
 	
 	/**

@@ -8,7 +8,7 @@
     "emitDeclarationOnly": false,
     "checkJs": true,
     "allowJs": true,
-    "maxNodeModuleJsDepth": 2,
+    "maxNodeModuleJsDepth": 0,
     "experimentalDecorators": true,
     "module": "esnext",
     "target": "es2022",
@@ -22,6 +22,9 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true
   },
+  "include" : [
+    "src/main.mjs"
+  ],
   "exclude": [
     "dist/**/*",
     "transpiled/**/*",

@@ -2,18 +2,22 @@
  * @module StreamToDomInterface
  */
 
+/**
+ * @typedef {import('../reactivity/Stream.js').default<unknown>} Stream
+ */
+
 class StreamToDomInterface {
 	constructor() {
 		throw new Error("ElementFactory is static-only; do not instantiate.");
 	}
 	/**
-	 * @template StreamValue
+	 * 
 	 */
-	/** @param {Stream<StreamValue>} stream */
+	/** @param {Stream} stream */
 	static getPropertyDescriptor(stream) {
 		return  {
 			get : () => stream.next,
-			/** @param {StreamValue} val*/
+			/** @param {unknown} val*/
 			set : (val) => {
 				/** @type {unknown} bound function */
 				const thisArg = this;

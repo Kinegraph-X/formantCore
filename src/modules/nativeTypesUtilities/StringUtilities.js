@@ -14,7 +14,7 @@ const camelToHyphens = function(str) {
 /**
  * @param {string} str
  */
-const hyphensToCameel = function(str) {
+const hyphensToCamel = function(str) {
     return str.replace(/\-(\w)/g, function(match, p1, offset, str) {
         return p1.toUpperCase();
     });
@@ -64,7 +64,7 @@ const getNcharsAsCharCodesArray = (str, length, offset) => {
 
 export {
     camelToHyphens,
-    hyphensToCameel,
+    hyphensToCamel,
     capitalizeFirstLetter,
     lowercaseFirstLetter,
     getNcharsAsCharCodesArray,
