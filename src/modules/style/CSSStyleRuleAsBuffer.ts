@@ -37,7 +37,10 @@ import {
 	allCSSPropertyKeys,
 	type InheritedCSSPropertyName,
 	type OtherCSSPropertyName,
-	type AllCSSPropertyName
+	type AllCSSPropertyName,
+	type AttributeList,
+	type RawRule,
+	type RawRuleKeys
 } from './CSSPropertyDescriptors.js';
 import CSSStyleRuleSliceAsBuffer from './CSSStyleRuleSliceAsBuffer.js';
 import {initialCSSSliceBuffers} from './CSSStyleRuleSliceAsBuffer.js';
@@ -68,7 +71,7 @@ class CSSRuleSliceIFaceBase {
 	 * 
 	 * @param {Object<AllCSSPropertyName, string>} attributes 
 	 */
-	constructor(attributes: {AllCSSPropertyName: string}) {
+	constructor(attributes: AttributeList) {
 	}
 
 	/**
@@ -84,7 +87,7 @@ class CSSRuleSliceIFaceBase {
 	 * (for now, we're not aimed at supporting the entire spec)
 	 * 
 	 */
-	disambiguateAttributes(attributes: {AllCSSPropertyName: string}) {
+	disambiguateAttributes(attributes: AttributeList) {
 	}
 }
 
@@ -97,7 +100,7 @@ class InheritedPropertiesSlice extends CSSRuleSliceIFaceBase {
 	 * 
 	 * @param {Object<AllCSSPropertyName, string>} attributes 
 	 */
-	constructor(attributes: {AllCSSPropertyName: string}) {
+	constructor(attributes: AttributeList) {
 		super(attributes);
 		
 		this.CSSRuleAsBufferIFace = CSSStyleRuleSliceAsBuffer.fromCategory<
@@ -112,7 +115,7 @@ class InheritedPropertiesSlice extends CSSRuleSliceIFaceBase {
 		this.disambiguateAttributes(attributes);
 	}
 
-	disambiguateAttributes(attributes: {AllCSSPropertyName: string}) {
+	disambiguateAttributes(attributes: AttributeList) {
 		const knownAttributes = inheritedCSSPropertyKeys;
 		let	packedCSSProperty;
 		
@@ -140,7 +143,7 @@ class OtherPropertiesSlice extends CSSRuleSliceIFaceBase {
 	 * 
 	 * @param {Object<AllCSSPropertyName, string>} attributes 
 	 */
-	constructor(attributes: {AllCSSPropertyName: string}) {
+	constructor(attributes: AttributeList) {
 		super(attributes);
 		
 		this.CSSRuleAsBufferIFace = CSSStyleRuleSliceAsBuffer.fromCategory<
@@ -155,7 +158,7 @@ class OtherPropertiesSlice extends CSSRuleSliceIFaceBase {
 		this.disambiguateAttributes(attributes);
 	}
 
-	disambiguateAttributes(attributes: {AllCSSPropertyName: string}) {
+	disambiguateAttributes(attributes: AttributeList) {
 		const knownAttributes = otherCSSPropertyKeys;
 		let	packedCSSProperty;
 		
@@ -203,9 +206,9 @@ class CSSRuleAsBuffer {
 	otherProperties;
 	/**
 	 * @param {string} selector
-	 * @param {Object<string, string>} attributes 
+	 * @param {{[key in AllCSSPropertyName]: string}} attributes 
 	 */
-	constructor(selector : string, attributes : {AllCSSPropertyName: string}) {
+	constructor(selector : string, attributes : {[key in AllCSSPropertyName]: string}) {
 		this.selector = selector;
 
 		this.inheritedProperties = new InheritedPropertiesSlice(attributes);
@@ -254,11 +257,10 @@ class CSSRuleAsBuffer {
 	}
 	/**
 	 * 
-	 * @returns {{[key: string]: string}}
+	 * @returns {AttributeList}
 	 */
 	getAllAttributes() {
-		/** @type {{[key: string]: string}} */
-		var allAttributes = {};
+		var allAttributes = {} as {[key in AllCSSPropertyName]: string};
 		for (var attrGroup in categories) {
 			/** @ts-ignore reflexion */
 			Object.assign(allAttributes, this[attrGroup].CSSRuleAsBufferIFace.getPropertyGroupAsAttributesList(attrGroup));
@@ -267,11 +269,10 @@ class CSSRuleAsBuffer {
 	}
 	/**
 	 * 
-	 * @returns {{[key: string]: string}}
+	 * @returns {AttributeList}
 	 */
 	getAllDefinedAttributes() {
-		/** @type {{[key: string]: string}} */
-		var allAttributes = {};
+		var allAttributes = {}  as {[key in AllCSSPropertyName]: string};
 		for (var attrGroup in categories) {
 			/** @ts-ignore */
 			Object.assign(allAttributes, this[attrGroup].CSSRuleAsBufferIFace.getDefinedPropertiesFromGroupAsAttributesList(attrGroup));

@@ -11,7 +11,7 @@
  * @typedef {import('./ReactivityQuery').ReactivityQueryDef} ReactivityQueryDef
  * @typedef {import('./EventSubscription').EventSubscriptionDef<EventPayload>} EventSubscriptionDef
  * @typedef {import('./ListTemplate').ListTemplateDef} ListTemplateDef
- * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component.js').Component} Component
  * @typedef {import('../reactivity/EffectCtx')} EffectCtx
  * @typedef {import('../style/Stylesheet')} Stylesheet
  */
@@ -102,8 +102,8 @@ class ViewTemplate {
 	nodeName = 'div';
 	/** @type {boolean} */
 	isCustomElem = false;
-	/** @type {AbstractPropArray} @readonly */
-	attributes = new AbstractPropArray();
+	/** @type {AttributeArray} @readonly */
+	attributes = new AttributeArray();
 	/** @type {DomEventBindings|null} */
 	listens = null;
 	/** @type {number|null} */
@@ -180,10 +180,10 @@ class ViewTemplate {
 	view;
 	/** @type {string|null} */
 	type = null;
-	/** @type {AbstractPropArray} @readonly */
-	props = new AbstractPropArray();
-	/** @type {AbstractPropArray} @readonly */
-	states = new AbstractPropArray();
+	/** @type {PropArray} @readonly */
+	props = new PropArray();
+	/** @type {StateArray} @readonly */
+	states = new StateArray();
 	// /** @type {Command|null} */
 	// command = null;
 	/** @type {ReactivityQueryArray} @readonly */
@@ -364,6 +364,9 @@ class ViewTemplate {
 	ReactOnParent,
 
 	AbstractPropArray,
+	AttributeArray,
+	PropArray,
+	StateArray,
 	ReactivityQueryArray,
 	EventSubscriptionArray,
  }

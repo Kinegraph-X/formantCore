@@ -267,6 +267,10 @@ const allCSSPropertyTupples = [...inheritedCSSPropertyTuples, ...otherCSSPropert
 export const allCSSPropertyDescriptors = buildCSSPropertyDescriptorMap(allCSSPropertyTupples);
 export type AllCSSPropertyName = typeof allCSSPropertyTupples[number][0];
 export const allCSSPropertyKeys = allCSSPropertyTupples.map(t => t[0]) as readonly AllCSSPropertyName[];
+export type AttributeList = {[key in AllCSSPropertyName]: string};
+export type RawRule = AttributeList & {'selector' : string};
+export type RawRuleKeys = (AllCSSPropertyName | 'selector')[];
+
 boundaries.allSupportedCSSProperties = {
 	start : 0,
 	length : boundaries.ineritedCSSPropertyDescriptors.length + boundaries.otherCSSPropertyDescriptors.length

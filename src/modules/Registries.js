@@ -2,11 +2,15 @@
  * Singletons : Registries to cache useful objects in the global scope
  */
 
+
 /**
- * @typedef {import('./style/Stylesheet.js')} Stylesheet
+ * @typedef {import('./style/StyleIFace.js').default} StyleIFace
+ * @typedef {import('./style/Stylesheet.js').default} Stylesheet
  * @typedef {import('./template/TemplateFactory.js').ComponentTemplate} ComponentTemplate
  * @typedef {import('./template/TemplateFactory.js').ViewTemplate} ViewTemplate
- * @typedef {import('./template/TemplateFactory.js').AbstractPropArray} AbstractPropArray
+ * @typedef {import('./template/TemplateFactory.js').AttributeArray} AttributeArray
+ * @typedef {import('./template/TemplateFactory.js').PropArray} PropArray
+ * @typedef {import('./template/TemplateFactory.js').StateArray} StateArray
  * @typedef {import('./template/TemplateFactory.js').ReactivityQueryArray} ReactivityQueryArray
  * @typedef {import('./template/TemplateFactory.js').EventSubscriptionArray} EventSubscriptionArray
  * @typedef {import('./component/TemplateReconcilier').DomEventBindings} DomEventBindings
@@ -14,7 +18,7 @@
  * @typedef {import('./view/ComponentView.js').ComponentView<any>} ComponentView
  * @typedef {import('./view/ComponentView.js').RootComponentView} RootComponentView
  * @typedef {import('./reactivity/Stream.js').default<any>} Stream
- * @typedef {import('./component/Component.js').ComponentWithView} ComponentWithView
+ * @typedef {import('./component/Component.js').Component} Component
  * @typedef {import('./Imperative.js').Imperative} Imperative
  * @typedef {import('./style/FontSizeBuffer.js').default} FontSizeBuffer
  * typedef {import('./reactivity/StreamCtxProvider.js').StreamCtxProvider} StreamCtxProvider;
@@ -91,7 +95,7 @@
 // 	componentTemplate : new UnSafeMap(),
 // 	/** @type {UnSafeMap<Object<string, Stylesheet>>} */
 // 	sWrapper : new UnSafeMap(),
-// 	/** @type {UnSafeMap<Object<string, ComponentWithView>>} */
+// 	/** @type {UnSafeMap<Object<string, Component>>} */
 // 	component : new UnSafeMap(),
 // 	/** @type {(ComponentView)[]} */
 // 	views : [],
@@ -123,11 +127,11 @@
 
 
 export default {
-	/** @type {Map<string, AbstractPropArray>} */
+	/** @type {Map<string, AttributeArray>} */
 	attribute : new Map(),
-	/** @type {Map<string, AbstractPropArray>} */
+	/** @type {Map<string, StateArray>} */
 	state : new Map(),
-	/** @type {Map<string, AbstractPropArray>} */
+	/** @type {Map<string, PropArray>} */
 	prop: new Map(),
 	/** @type {Map<string, ReactivityQueryArray>} */
 	reactOnParent : new Map(),
@@ -145,7 +149,7 @@ export default {
 	componentTemplate : new Map(),
 	/** @type {Map<string, Stylesheet>} */
 	sWrapper : new Map(),
-	/** @type {Map<string, ComponentWithView>} */
+	/** @type {Map<string, Component>} */
 	component : new Map(),
 	/** @type {(ComponentView)[]} */
 	views : [],
@@ -159,7 +163,7 @@ export default {
 	boundingBox : new Map(),
 	// /** @type {Map<string, NaiveDomNode>} */
 	// naiveElement : new Map(),
-	/** @type {Map<string, Stylesheet>} */
+	/** @type {Map<string, StyleIFace>} */
 	style : new Map(),
 	// /** @type {Map<string, LayoutNode>} */
 	// layoutNode : new Map(),

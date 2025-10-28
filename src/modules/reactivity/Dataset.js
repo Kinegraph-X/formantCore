@@ -5,7 +5,7 @@
  * 		Rendering coupled with [push(), pushApply()]
  */
 /**
- * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component').Component} Component
  */
 import {ComponentTemplate, ListTemplate} from '../template/TemplateFactory.js';
 import registries from '../Registries.js';
@@ -16,9 +16,10 @@ const processList = Renderer.processList;
  * @template {{[key : string]: unknown}} ReactiveDatasetItem
  */
 class ReactiveDataset {
+	static objectType = 'ReactiveDataset'; 
 	/** @type {ReactiveDatasetItem[]} */
 	data = [];
-	/** @type {ComponentWithView} */
+	/** @type {Component} */
 	trackedComponent;
 	/** @type {ListTemplate} */
 	listDef = new ListTemplate(null);
@@ -38,7 +39,7 @@ class ReactiveDataset {
 	lengthStream;
 
 	/**
-	 * @param {ComponentWithView} trackedComponent 
+	 * @param {Component} trackedComponent 
 	 * @param {ComponentTemplate} cTemplate 
 	 * @param {string[]} factoryPropsArray 
 	 * @param {function[]|null} [arrayFunctions] 
@@ -173,7 +174,7 @@ class ReactiveDataset {
 	 * @param {number} index 
 	 * @param {number} length 
 	 * @param {[]|null} [replacedBy] 
-	 * @returns {[ReactiveDatasetItem, ComponentWithView]|boolean}
+	 * @returns {[ReactiveDatasetItem, Component]|boolean}
 	 */
 	splice(index, length, replacedBy) {
 		let c1, c2, mBackup;

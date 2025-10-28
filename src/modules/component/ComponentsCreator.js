@@ -3,9 +3,9 @@
  */
 
 /**
- * @typedef {import('../component/Component').RootComponent} RootComponent
- * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
- * @typedef {import('../view/ComponentView').ComponentView<string>} ComponentView
+ * @typedef {import('../component/ComponentWithView.js').RootComponent} RootComponent
+ * @typedef {import('../component/Component.js').Component} Component
+ * @typedef {import('../view/ComponentView.js').ComponentView<string>} ComponentView
  */
 import {ComponentError} from '../error/Error.js';
 import { ComponentTemplate, ViewTemplate } from '../template/TemplateFactory.js';
@@ -15,7 +15,7 @@ const newComponent = ComponentFactory.newComponent;
 
 
 class ComponentCreator {
-    /** @type {ComponentWithView[]} */
+    /** @type {Component[]} */
     static subComponents = [];
 
     constructor() {
@@ -26,7 +26,7 @@ class ComponentCreator {
      * subSection templates must not have multiple hierarchical levels
      * (may be views or single-level components, but not mixed, so we test that via "this.firstSubSectionType")
      * member templates are handled recursively if needed
-     * @param {ComponentWithView|RootComponent} parentComponent
+     * @param {Component|RootComponent} parentComponent
      * @param {ComponentTemplate} cTemplate
      */
     static process(parentComponent, cTemplate) {
@@ -34,14 +34,14 @@ class ComponentCreator {
         this.subComponents.length = 0;
         if (cTemplate.subSections.length) {
             this.firstSubSectionType = cTemplate.subSections[0].constructor;
-            this.handleSubSections(cTemplate.subSections, /** @type {ComponentWithView} */ (parentComponent));
+            this.handleSubSections(cTemplate.subSections, /** @type {Component} */ (parentComponent));
         }
-        this.handleMembers(cTemplate.members, /** @type {ComponentWithView} */ (parentComponent));
+        this.handleMembers(cTemplate.members, /** @type {Component} */ (parentComponent));
     }
     
     /** 
      * @param {(ComponentTemplate|ViewTemplate)[]} subSections
-     * @param {ComponentWithView} parentComponent
+     * @param {Component} parentComponent
      * */
 	static handleSubSections(subSections, parentComponent) {
         let newComp, targetView;
@@ -64,7 +64,7 @@ class ComponentCreator {
 
     /** 
      * @param {(ComponentTemplate|ViewTemplate)[]} members
-     * @param {ComponentWithView} parentComponent
+     * @param {Component} parentComponent
      * */
 	static handleMembers(members, parentComponent) {
         let targetComponent, newComp, targetView;
@@ -87,8 +87,8 @@ class ComponentCreator {
 	}
     /**
      * @param {number} section 
-     * @param {ComponentWithView} parentComponent 
-     * @returns {ComponentWithView}
+     * @param {Component} parentComponent 
+     * @returns {Component}
      */
     static handleTargetComponentOnparentComponent(section, parentComponent) {
         if (!this.subComponents[section])
@@ -97,7 +97,7 @@ class ComponentCreator {
     }
     /**
      * @param {number} section 
-     * @param {ComponentWithView} parentComponent 
+     * @param {Component} parentComponent 
      * @returns {InstanceType<ComponentView>}   parsing bug, seemingly (TODO: find out why)
      */
     static handleTargetViewOnparentComponent(section, parentComponent) {

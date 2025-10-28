@@ -4,7 +4,7 @@
 
 /**
  * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
- * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component').Component} Component
  * @typedef {import('./ComponentView').RootComponentView} RootComponentView
  */
 import {ComponentView} from './ComponentView';

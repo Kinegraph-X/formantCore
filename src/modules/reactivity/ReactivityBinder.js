@@ -9,7 +9,7 @@
  * @typedef {import('../template/TemplateFactory').ReactivityQuery} ReactivityQuery 
  * @typedef {import('../template/TemplateFactory').EventSubscription<EventPayload>} EventSubscription 
  * @typedef {import('../reactivity/Stream')<unknown>} Stream 
- * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component').Component} Component
  */
 
 import {ComponentError} from '../error/Error';
@@ -22,7 +22,7 @@ class ReactivityBinder {
         throw new Error("ReactivityBinder is static-only; do not instantiate.");
     }
     /**
-     * @param {ComponentWithView} component 
+     * @param {Component} component 
      */
     static bindReactivity(component) {
         const regUID = component.regUID;
@@ -32,7 +32,7 @@ class ReactivityBinder {
         this.bindSubscribeOnChild(component, regUID);
     }
     /**
-     * @param {ComponentWithView} component 
+     * @param {Component} component 
      * @param {string} regUID 
      */
     static bindReactOnParent(component, regUID) {
@@ -41,7 +41,7 @@ class ReactivityBinder {
         });
     }
     /**
-     * @param {ComponentWithView} component
+     * @param {Component} component
      * @param {ReactivityQuery} reactivityQuery
      */
     static bindReactOnUpStream(component, reactivityQuery) {
@@ -76,7 +76,7 @@ class ReactivityBinder {
         }
     }
     /**
-     * @param {ComponentWithView} component 
+     * @param {Component} component 
      * @param {string} regUID 
      */
     static bindReactOnSelf(component, regUID) {
@@ -85,7 +85,7 @@ class ReactivityBinder {
         });
     }
     /**
-     * @param {ComponentWithView} component
+     * @param {Component} component
      * @param {ReactivityQuery} reactivityQuery
      */
     static bindReactOnSelfStream(component, reactivityQuery) {
@@ -119,7 +119,7 @@ class ReactivityBinder {
     }
 
     /**
-     * @param {ComponentWithView} component 
+     * @param {Component} component 
      * @param {string} regUID 
      */
     static bindSubscribeOnSelf(component, regUID) {
@@ -128,33 +128,33 @@ class ReactivityBinder {
         });
     }
     /**
-     * @param {ComponentWithView} component
+     * @param {Component} component
      * @param {EventSubscription} eventSubscription
      */
     static bindSubscribeOnSelfStream(component, eventSubscription) {
-        if (!component[/** @type {keyof ComponentWithView} */ (eventSubscription.on)])
+        if (!component[/** @type {keyof Component} */ (eventSubscription.on)])
             throw new ComponentError(component, 'Missing EventEmitter on component.', eventSubscription.on);
         /** @ts-ignore : cannot index, can be null : tested above */
         (component[eventSubscription.on]).addEventListener(eventSubscription.subscribe);
     }
 
     /**
-     * @param {ComponentWithView} component 
+     * @param {Component} component 
      * @param {string} regUID 
      */
     static bindSubscribeOnChild(component, regUID) {
         registries.subscribeOnChild.get(regUID)?.forEach((eventSubscription) => {
-            this.bindSubscribeOnDownStream(/** @type {ComponentWithView} */ (component.parent), eventSubscription);
+            this.bindSubscribeOnDownStream(/** @type {Component} */ (component.parent), eventSubscription);
         });
     }
     /**
-     * @param {ComponentWithView} component
+     * @param {Component} component
      * @param {EventSubscription} eventSubscription
      */
     static bindSubscribeOnDownStream(component, eventSubscription) {
         component.children.forEach(
             (child) => {
-                if (!(child[/** @type {keyof ComponentWithView} */ (eventSubscription.on)] instanceof EventEmitter))
+                if (!(child[/** @type {keyof Component} */ (eventSubscription.on)] instanceof EventEmitter))
                     throw new ComponentError(child, 'Missing EventEmitter on component.', eventSubscription.on);
                 /** @ts-ignore : cannot index, can be null : tested above */
                 (child[eventSubscription.on]).addEventListener(eventSubscription.subscribe);

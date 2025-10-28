@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component.js').Component} Component
  * @typedef {import('../reactivity/EffectCtx.js').default} EffectCtx
  */
 
@@ -20,6 +20,8 @@
 import {ComponentError } from '../error/Error.js';
 
 class ReactivityQuery {
+	/** @type {string} @readonly */
+	objectType = 'ReactivityQuery';
 	/** @type {boolean} */
 	cbOnly = false;
 	/** @type {string} */
@@ -34,8 +36,6 @@ class ReactivityQuery {
 	map = null;
 	/** @type {((ctx: EffectCtx, value: unknown) => void)|null} */
 	effect = null;
-	/** @type {string} @readonly */
-	objectType = 'ReactivityQuery';
 	
 	/**
 	 * @param {ReactivityQueryDef} obj

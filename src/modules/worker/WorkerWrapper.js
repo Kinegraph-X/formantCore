@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {import('../component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component.js').Component} Component
  */
 
 import {defUIDGenerator} from '../UIDGenerator.js';
@@ -115,7 +115,7 @@ class WorkerWrapper {
 		this.name = workerName;
 		this.message = new EventEmitter('message');
 		const thisProp = /**@type{unknown}*/(this);
-		this.message.emit = EventEmitter.getTriggerFunction(/**@type {ComponentWithView}*/(thisProp), this.message)
+		this.message.emit = EventEmitter.getTriggerFunction(/**@type {Component}*/(thisProp), this.message)
 		
 		if (stringifiedWorker) {
 			const blob = new Blob([stringifiedWorker], {type: 'application/javascript'});

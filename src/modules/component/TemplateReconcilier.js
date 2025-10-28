@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {import('./Component').ComponentWithView} ComponentWithView
+ * @typedef {import('./Component.js').Component} Component
  * @typedef {import('../template/TemplateFactory').DomEventType} DomEventType
  * @typedef {import('../template/TemplateFactory').DomEventBindings} DomEventBindings
  */

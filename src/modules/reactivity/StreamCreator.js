@@ -7,7 +7,7 @@ import registries from '../Registries';
 import Stream from './Stream';
 
 /**
- * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component.js').Component} Component
  */
 
 class StreamCreator {
@@ -15,7 +15,7 @@ class StreamCreator {
         throw new Error("StreamCreator is static-only; do not instantiate.");
     }
     
-    /** @param {ComponentWithView} component */
+    /** @param {Component} component */
     static createStreams(component) {
         const regUID = component.regUID;
         const registry = new Map();

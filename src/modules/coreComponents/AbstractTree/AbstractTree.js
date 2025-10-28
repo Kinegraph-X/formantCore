@@ -19,11 +19,11 @@
 import {
     ComponentError,
     Output,
-    Component,
+    ComponentDecorator,
     ComponentTemplate,
     ViewTemplate,
     CreateStyle,
-    ComponentWithView,
+    Component,
     EventEmitter
 } from '../../component/ComponentBoilerplate.js';
 import createBranchTemplateDef from './componentTemplates/branchTemplateDef';
@@ -48,7 +48,7 @@ import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
 
 
 
-@Component({
+@ComponentDecorator({
     view : new ViewTemplate({
         nodeName : 'folded-tree',
 		/**@CSSifyStyle componentStyle : AbstractTreeHost */
@@ -81,7 +81,7 @@ import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
     ]
 })
 
-class AbstractTree extends ComponentWithView {
+class AbstractTree extends Component {
     static objectType = 'AbstractTree';
     expanded = false;
 
@@ -93,7 +93,7 @@ class AbstractTree extends ComponentWithView {
 	
 	/**
 	 * 
-	 * @param {ComponentWithView} parent - Parent component.
+	 * @param {Component} parent - Parent component.
      * @param {ComponentTemplate} cTemplate - Tree definition.
 	 * @param {ComponentView} view 
 	 */
@@ -267,7 +267,7 @@ class AbstractTree extends ComponentWithView {
 	/**
 	 * Handles click event wiring (override-friendly).
 	 * @param {TreeNode} node - Node descriptor.
-	 * @param {ComponentWithView} component - Component instance.
+	 * @param {Component} component - Component instance.
 	 */
 	wireEvents(node, component) {
 		// this.affectClickEvents_Base(node, component);
@@ -276,7 +276,7 @@ class AbstractTree extends ComponentWithView {
 	/**
 	 * Default implementation for click event binding.
 	 * @param {TreeNode} node - Node descriptor.
-	 * @param {ComponentWithView} component - Component instance.
+	 * @param {Component} component - Component instance.
 	 */
 	// affectClickEvents_Base(node, component) {
 	// 	if (node.children.length) {

@@ -1,9 +1,9 @@
 /**
  * @module main
  */
-import {Component, View, Output, Imperative} from './modules/decorators.js';
+import {ComponentDecorator, View, Output, Imperative} from './modules/decorators.js';
 import CreateStyle from './modules/style/CreateStyle.js'
-import {ComponentWithView} from './modules/component/Component.js';
+import {Component} from './modules/component/Component.js';
 import EffectCtx from './modules/reactivity/EffectCtx.js';
 import {WorkerWrapper} from './modules/worker/WorkerWrapper.js';
 import {ComponentError} from './modules/error/Error.js';
@@ -17,12 +17,12 @@ export * from './modules/nativeTypesUtilities/BooleanUtilities.js';
 import autoImport from 'virtual:auto-import.js'
 const componentTypes = autoImport.coreComponentLib;
 
-const decorators = {Component, View, Output, Imperative};
+const decorators = {ComponentDecorator, View, Output, Imperative};
 
 export  {
     decorators,
     CreateStyle,
-    ComponentWithView,
+    Component,
     componentTypes,
     EffectCtx,
     WorkerWrapper,

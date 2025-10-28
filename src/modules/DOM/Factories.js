@@ -3,6 +3,9 @@
  */
 
 /**
+ * @typedef {import('../template/TemplateFactory').AttributeArray} AttributeArray
+ * @typedef {import('../template/TemplateFactory').PropArray} PropArray
+  * @typedef {import('../template/TemplateFactory').StateArray} StateArray
  * @typedef {import('../template/TemplateFactory').AbstractPropArray} AbstractPropArray
  * @typedef {import('../template/TemplateFactory').State} State
  * @typedef {import('../reactivity/Stream').default<unknown>} Stream

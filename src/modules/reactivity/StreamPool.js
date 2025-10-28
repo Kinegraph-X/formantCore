@@ -6,7 +6,7 @@
 // FIXME: the semantic isn't clear, search where it was used
 
 /**
- * @typedef {import('../component/Component.js').ComponentWithView} ComponentWithView
+ * @typedef {import('../component/Component.js').Component} Component
  * @typedef {import('./IndexedStream.js')} IndexedStream
  */
 
@@ -18,12 +18,12 @@ class StreamPool {
 	static objectType ='StreamPool';
 	/** @type {number} */
 	key = 0;
-	/** @type {ComponentWithView} */
+	/** @type {Component} */
 	_component;
 	/** @type {IndexedStream[]} */
 	_streamsArray  = [];
 	/**
-	 * @param {ComponentWithView} component 
+	 * @param {Component} component 
 	 */
 	constructor(component) {
 		this._component = component;

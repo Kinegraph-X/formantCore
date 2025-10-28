@@ -4,7 +4,7 @@
 
 /**
  * @typedef {import('./component/Component').RootComponent} RootComponent
- * @typedef {import('./component/Component').ComponentWithView} ComponentWithView
+ * @typedef {import('./component/Component').Component} Component
  */
 
 import {ComponentError} from './error/Error';
@@ -25,7 +25,7 @@ class Renderer {
         throw new Error("Orchestrator is static-only; do not instantiate.");
     }
     /**
-     * @param {ComponentWithView|RootComponent} parentComponent
+     * @param {Component|RootComponent} parentComponent
      * @param {ComponentTemplate} cTemplate 
      */
     static processTemplate(parentComponent, cTemplate) {
@@ -38,7 +38,7 @@ class Renderer {
         registries.component.clear();
     }
     /**
-     * @param {ComponentWithView|RootComponent} parentComponent
+     * @param {Component|RootComponent} parentComponent
      * @param {ListTemplate} listTemplate 
      */
     static processList(parentComponent, listTemplate) {

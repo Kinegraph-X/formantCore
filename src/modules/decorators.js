@@ -4,7 +4,7 @@
  */
 
 /**
- * @typedef {import('./component/Component.js').ComponentWithView} ComponentWithView
+ * typedef {import('./component/Component.js').Component} Component
  * @typedef {import('./template/TemplateFactory.js').ComponentTemplateDef} ComponentTemplateDef
  * @typedef {import('./template/TemplateFactory.js').ViewTemplateDef} ViewTemplateDef
  */
@@ -20,7 +20,7 @@ import {ComponentTemplate, ViewTemplate} from './template/TemplateFactory.js';
 /**
  * @param {ComponentTemplateDef} options 
  */
-function Component(options) {
+export function ComponentDecorator(options) {
     /** 
      * @param {any} constructor 
      */
@@ -29,6 +29,7 @@ function Component(options) {
             constructor.createDefaultDef = () => {
                 return new ComponentTemplate(options);
             }
+            constructor.declareOutput = Object.getPrototypeOf(constructor).constructor.declareOutput
         }
         return constructor;
     }
@@ -37,7 +38,7 @@ function Component(options) {
 
 
 /** @param {ViewTemplateDef} options */
-function View(options) {
+export function View(options) {
     /** 
      * @param {any} target 
      */
@@ -49,12 +50,5 @@ function View(options) {
 
 
 
-function Output() {return /** @param {any} target @param {string} propertyName */ (target, propertyName) => {}}
-function Imperative() {return /** @param {any} target */ (target) => {}}
-
-export {
-    Component,
-    View,
-    Output,
-    Imperative
-}
+export function Output() {return /** @param {any} target @param {string} propertyName */ (target, propertyName) => {}}
+export function Imperative() {return /** @param {any} target */ (target) => {}}

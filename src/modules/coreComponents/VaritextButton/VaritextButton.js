@@ -2,11 +2,11 @@
  * @module VaritextButton
  */
 import {Output} from '../../decorators.js';
-import { ComponentWithView } from '../../component/Component.js';
+import { Component } from '../../component/Component.js';
 import varitextButtonHostTemplate from './componentTemplates/VaritextButtonHostTemplate.js';
 import { EventEmitter } from '../../reactivity/EventEmitter.js';
 
-class VaritextButton extends ComponentWithView {
+class VaritextButton extends Component {
   static objectType = 'VaritextButton';
 
   // Primary click output for templates to subscribe on

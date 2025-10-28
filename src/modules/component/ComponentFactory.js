@@ -8,12 +8,13 @@
 
 import {ComponentError } from '../error/Error.js';
 import registries from '../Registries.js';
-import { RootComponent, ComponentWithView } from './Component.js';
+import { RootComponent } from './Component.js';
+import { Component } from './Component.js';
 import TemplateReconcilier from './TemplateReconcilier.js';
 import ViewFactory from '../view/ViewFactory.js';
 /** @ts-ignore Virtual modules can't be statically resolved */
 import {componentTypes} from 'virtual:auto-import.js'
-const knownTypes = Object.assign(componentTypes, {RootComponent, ComponentWithView });
+const knownTypes = Object.assign(componentTypes, {RootComponent, Component});
 
 class ComponentFactory {
     constructor() {
@@ -22,8 +23,8 @@ class ComponentFactory {
     /**
      * 
      * @param {ComponentTemplate} cTemplate 
-     * @param {ComponentWithView} parentComponent 
-     * @returns {ComponentWithView}
+     * @param {Component} parentComponent 
+     * @returns {Component}
      */
     static newComponent(cTemplate, parentComponent) {
         let newComponent, view;
@@ -42,12 +43,12 @@ class ComponentFactory {
         }
         else {
             const {template} = TemplateReconcilier.reconcile(
-                    ComponentWithView.createDefaultDef,
+                    Component.createDefaultDef,
                     cTemplate,
-                    ComponentWithView.objectType
+                    Component.objectType
                 );
             view = ViewFactory.newView(template.view, parentComponent.view, template.UID)
-            newComponent = new ComponentWithView(parentComponent, template, view);
+            newComponent = new Component(parentComponent, template, view);
         }
 
         registries.component.set(newComponent.regUID, newComponent);
