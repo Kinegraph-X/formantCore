@@ -23,25 +23,27 @@ export class EventEmitter<EventPayload> {
     constructor(public eventType: string) {}
 
     removeEventListener(
-        handler: (e: FrameworkEvent<EventPayload>, ctx: FrameworkEventCtx, meta: FrameworkEventMeta) => void
+        handler: EventHandler<EventPayload>
     ): void {
         this.eventHandlers = this.eventHandlers.filter((h) => h !== handler);
     }
 
     addEventListener(
-        handler: (e: FrameworkEvent<EventPayload>, ctx: FrameworkEventCtx, meta: FrameworkEventMeta) => void
+        handler: EventHandler<EventPayload>
     ): void {
         this.eventHandlers.push(handler);
     }
 
     addEventListenerAt(
-        handler: (e: FrameworkEvent<EventPayload>, ctx: FrameworkEventCtx, meta: FrameworkEventMeta) => void,
+        handler: EventHandler<EventPayload>,
         index: number
     ): void {
         this.eventHandlers.splice(index, 0, handler);
     }
 
-    removeEventListenerAt(index: number): void {
+    removeEventListenerAt(
+        index: number
+    ): void {
         if (index < this.eventHandlers.length) {
             this.eventHandlers.splice(index, 1);
         }
@@ -61,14 +63,28 @@ export class EventEmitter<EventPayload> {
     ): void {
         for (const handler of this.eventHandlers) {
             handler(
-                new FrameworkEvent<EventPayload>(this.eventType, payload as EventPayload, bubble ?? false, nativeEvent),
-                new FrameworkEventCtx(regUID),
-                metaOverride ?? new FrameworkEventMeta(regUID, key)
+                new FrameworkEvent<EventPayload>(
+                    this.eventType,
+                    payload as EventPayload,
+                    bubble ?? false,
+                    nativeEvent
+                ),
+                new FrameworkEventCtx(
+                    regUID
+                ),
+                metaOverride ?? new FrameworkEventMeta(
+                    regUID,
+                    key
+                )
             );
         }
     }
 
-    emit(_payload?: EventPayload, _metaOverride?: FrameworkEventMeta, _bubble?: boolean): void {
+    emit(
+        _payload?: EventPayload,
+        _metaOverride?: FrameworkEventMeta,
+        _bubble?: boolean
+    ): void {
         throw new Error(
             'Unknown Event binding error: Probable missing "outputs" declaration in template. Default implementation of EventEmitter has not been bound to a component.'
         );
@@ -79,16 +95,35 @@ export class EventEmitter<EventPayload> {
         eventEmitter: EventEmitter<T>
     ): (nativeEvent: Event) => void {
         return (nativeEvent: Event) => {
-            eventEmitter.trigger(nativeEvent, component.regUID, component.key);
+            eventEmitter.trigger(
+                nativeEvent,
+                component.regUID,
+                component.key
+            );
         };
     }
 
     static getTriggerFunction<T>(
         component: ComponentWithView,
         eventEmitter: EventEmitter<T>
-    ): (payload?: T, metaOverride?: FrameworkEventMeta, bubble?: boolean) => void {
-        return (payload?: T, metaOverride?: FrameworkEventMeta, bubble: boolean = false) => {
-            eventEmitter.trigger(null, component.regUID, component.key, payload, metaOverride, bubble);
-        };
-    }
+    ): (
+            payload?: T,
+            metaOverride?: FrameworkEventMeta,
+            bubble?: boolean
+        ) => void {
+            return (
+                payload?: T,
+                metaOverride?: FrameworkEventMeta,
+                bubble: boolean = false
+            ) => {
+                eventEmitter.trigger(
+                    null,
+                    component.regUID,
+                    component.key,
+                    payload,
+                    metaOverride,
+                    bubble
+                );
+            };
+        }
 }
