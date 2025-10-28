@@ -4,9 +4,9 @@
 
 /** 
  * @template EventPayload
- * @typedef {import('../reactivity/EventEmitter').FrameworkEvent<EventPayload>} FrameworkEvent 
- * @typedef {import('../reactivity/EventEmitter').FrameworkEventCtx} FrameworkEventCtx 
- * @typedef {import('../reactivity/EventEmitter').FrameworkEventMeta} FrameworkEventMeta 
+ * @typedef {import('../eventEmitter/FrameworkEvent.js').FrameworkEvent<EventPayload>} FrameworkEvent 
+ * @typedef {import('../eventEmitter/FrameworkEventCtx.js').FrameworkEventCtx} FrameworkEventCtx 
+ * @typedef {import('../eventEmitter/FrameworkEventMeta.js').FrameworkEventMeta} FrameworkEventMeta 
  * */
 
 /**

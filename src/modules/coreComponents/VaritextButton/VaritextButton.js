@@ -4,7 +4,7 @@
 import {Output} from '../../decorators.js';
 import { Component } from '../../component/Component.js';
 import varitextButtonHostTemplate from './componentTemplates/VaritextButtonHostTemplate.js';
-import { EventEmitter } from '../../reactivity/EventEmitter.js';
+import { EventEmitter } from '../../eventEmitter/EventEmitter.js';
 
 class VaritextButton extends Component {
   static objectType = 'VaritextButton';

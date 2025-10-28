@@ -13,7 +13,7 @@
  */
 
 import {ComponentError} from '../error/Error';
-import {EventEmitter} from '../reactivity/EventEmitter';
+import {EventEmitter} from '../eventEmitter/EventEmitter';
 import registries from '../Registries';
 import EffectCtx from '../reactivity/EffectCtx';
 

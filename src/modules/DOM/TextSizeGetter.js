@@ -6,7 +6,7 @@
 import {defUIDGenerator} from '../UIDGenerator.js';
 import NodeResizeObserver from './ResizeObserver'
 
-/** @typedef {import('../reactivity/EventEmitter').FrameworkEvent<unknown>} FrameworkEvent*/
+/** @typedef {import('../eventEmitter/FrameworkEvent').FrameworkEvent<unknown>} FrameworkEvent*/
 
 /**
  * @typedef {Object<'boundingBox', DOMRect>} EventData 

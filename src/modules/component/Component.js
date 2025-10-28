@@ -7,7 +7,8 @@ import {
     ComponentTemplate,
 } from '../template/TemplateFactory.js';
 import {BaseComponentWithView, ComponentWithView} from './ComponentWithView.js';
-import { FrameworkEvent, EventEmitter } from '../reactivity/EventEmitter.js';
+import { EventEmitter } from '../eventEmitter/EventEmitter.js';
+//import { FrameworkEvent } from '../eventEmitter/FrameworkEvent.js';
 import { ComponentView, RootComponentView } from '../view/ComponentView.js';
 
 /** 

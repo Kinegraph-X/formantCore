@@ -7,7 +7,7 @@
  */
 
 import {defUIDGenerator} from '../UIDGenerator.js';
-import {EventEmitter} from '../reactivity/EventEmitter.js';
+import {EventEmitter} from '../eventEmitter/EventEmitter.js';
 
 const workerExceptionMessage = 'Worker MessageType normalization failed';
 
