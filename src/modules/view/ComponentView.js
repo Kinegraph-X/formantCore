@@ -10,7 +10,7 @@ import createRootComponentTemplate from '../templates/rootComponentTemplate.js';
 /**
  * @typedef {import('../DOM/types').stdTagNameType} stdTagName
  * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
- * @typedef {import('../component/Component.js').Component} Component
+ * @typedef {import('../component/Component.js').ComponentBase} Component
  * @typedef {import('./ViewStrategyInterface').default} ViewStrategyInterface
  */
 

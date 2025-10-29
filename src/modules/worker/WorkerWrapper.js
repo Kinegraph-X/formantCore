@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {import('../component/Component.js').Component} Component
+ * @typedef {import('../component/Component.js').ComponentBase} Component
  */
 
 import {defUIDGenerator} from '../UIDGenerator.js';

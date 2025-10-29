@@ -13,12 +13,12 @@
  * @typedef {import('./template/TemplateFactory.js').StateArray} StateArray
  * @typedef {import('./template/TemplateFactory.js').ReactivityQueryArray} ReactivityQueryArray
  * @typedef {import('./template/TemplateFactory.js').EventSubscriptionArray} EventSubscriptionArray
- * @typedef {import('./component/TemplateReconcilier').DomEventBindings} DomEventBindings
+ * @typedef {import('./template/TemplateFactory').DomEventBindings} DomEventBindings
  * @typedef {import('./DOM/CachedNode.js').default} CachedNode
  * @typedef {import('./view/ComponentView.js').ComponentView<any>} ComponentView
  * @typedef {import('./view/ComponentView.js').RootComponentView} RootComponentView
  * @typedef {import('./reactivity/Stream.js').default<any>} Stream
- * @typedef {import('./component/Component.js').Component} Component
+ * @typedef {import('./component/Component.js').ComponentBase} Component
  * @typedef {import('./Imperative.js').Imperative} Imperative
  * @typedef {import('./style/FontSizeBuffer.js').default} FontSizeBuffer
  * typedef {import('./reactivity/StreamCtxProvider.js').StreamCtxProvider} StreamCtxProvider;

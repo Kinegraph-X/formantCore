@@ -11,17 +11,14 @@
  * @typedef {import('./ReactivityQuery').ReactivityQueryDef} ReactivityQueryDef
  * @typedef {import('./EventSubscription').EventSubscriptionDef<EventPayload>} EventSubscriptionDef
  * @typedef {import('./ListTemplate').ListTemplateDef} ListTemplateDef
- * @typedef {import('../component/Component.js').Component} Component
  * @typedef {import('../reactivity/EffectCtx')} EffectCtx
  * @typedef {import('../style/Stylesheet')} Stylesheet
  */
+
 import {templateUIDGenerator, viewUIDGenerator} from '../UIDGenerator.js';
-import registries from '../Registries.js';
-import {Imperative} from '../Imperative.js'; 
 
 
 import { 
-	AbstractProp,
 	Attribute,
 	Prop,
 	State,
@@ -157,7 +154,6 @@ class ViewTemplate {
  * @property {string} [uuid] 
  * @property {ViewTemplateDef|ViewTemplate} view
  * @property {string} [type]
- * @property {[string, string][]} [imperatives]
  * @property {PropDef[]} [props]
  * @property {StateDef[]} [states]
  * property {Command} [command]

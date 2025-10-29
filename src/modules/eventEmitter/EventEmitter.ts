@@ -80,8 +80,11 @@ export class EventEmitter<EventPayload> {
         }
     }
 
+    /**
+     * @virtual will be overridden at runtime
+     */
     emit(
-        _payload?: EventPayload,
+        _payload: EventPayload,
         _metaOverride?: FrameworkEventMeta,
         _bubble?: boolean
     ): void {
@@ -107,12 +110,12 @@ export class EventEmitter<EventPayload> {
         component: ComponentWithView,
         eventEmitter: EventEmitter<T>
     ): (
-            payload?: T,
+            payload: T,
             metaOverride?: FrameworkEventMeta,
             bubble?: boolean
         ) => void {
             return (
-                payload?: T,
+                payload: T,
                 metaOverride?: FrameworkEventMeta,
                 bubble: boolean = false
             ) => {

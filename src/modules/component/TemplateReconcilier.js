@@ -3,9 +3,8 @@
  */
 
 /**
- * @typedef {import('./Component.js').Component} Component
+ * @typedef {import('./Component.js').ComponentBase} Component
  * @typedef {import('../template/TemplateFactory').DomEventType} DomEventType
- * @typedef {import('../template/TemplateFactory').DomEventBindings} DomEventBindings
  */
 import {ComponentError } from '../error/Error.js';
 import {Logger} from '../log/Logger.js';
@@ -121,9 +120,9 @@ class TemplateReconcilier {
 		);
 
 		for (const domEventType in viewTemplate.listens) {
-			const eventType = /**@type {keyof DomEventBindings}*/ (domEventType);
+			const eventType = domEventType;
 			if (defaultViewTemplate.listens === null)
-				defaultViewTemplate.listens = /** @type {DomEventBindings} */ ({});
+				defaultViewTemplate.listens = {};
 			
 			defaultViewTemplate.listens[eventType] = viewTemplate.listens[eventType];
 		}

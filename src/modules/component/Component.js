@@ -15,7 +15,7 @@ import { ComponentView, RootComponentView } from '../view/ComponentView.js';
  * @typedef {import('../DOM/types.js').stdTagNameType} stdTagName
 */
 
-export class Component extends ComponentWithView {
+export class ComponentBase extends ComponentWithView {
     /**
      * @param {BaseComponentWithView} parent
      * @param {ComponentTemplate} cTemplate
@@ -28,7 +28,7 @@ export class Component extends ComponentWithView {
         // (EventEmitter has the ability to bind on DOM events, and the handler gets refs to "regUID" and "key")
         // Define here the correct emit function
         const ctor = /** @type {unknown} */(this.constructor);
-        /** @type {typeof Component} */(ctor)._outputs.forEach(
+        /** @type {typeof ComponentBase} */(ctor)._outputs.forEach(
             (/**@type{string}*/output) => {
                 const prop = /** @type {keyof this} */ (output);
                 const emitter = this[prop];

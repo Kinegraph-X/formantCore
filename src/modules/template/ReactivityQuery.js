@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {import('../component/Component.js').Component} Component
+ * @typedef {import('../component/Component.js').ComponentBase} Component
  * @typedef {import('../reactivity/EffectCtx.js').default} EffectCtx
  */
 

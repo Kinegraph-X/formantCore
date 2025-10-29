@@ -19,13 +19,13 @@
 import {
     ComponentError,
     Output,
-    ComponentDecorator,
+    Component,
     ComponentTemplate,
     ViewTemplate,
     CreateStyle,
-    Component,
+    ComponentBase,
     EventEmitter
-} from '../../component/ComponentBoilerplate.js';
+} from '../../component/ComponentCore.js';
 import createBranchTemplateDef from './componentTemplates/branchTemplateDef';
 import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
 
@@ -48,7 +48,7 @@ import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
 
 
 
-@ComponentDecorator({
+@Component({
     view : new ViewTemplate({
         nodeName : 'folded-tree',
 		/**@CSSifyStyle componentStyle : AbstractTreeHost */
@@ -81,7 +81,7 @@ import createLeafTemplateDef from './componentTemplates/leafTemplateDef';
     ]
 })
 
-class AbstractTree extends Component {
+class AbstractTree extends ComponentBase {
     static objectType = 'AbstractTree';
     expanded = false;
 
