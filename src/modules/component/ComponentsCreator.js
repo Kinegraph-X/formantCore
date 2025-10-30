@@ -4,7 +4,7 @@
 
 /**
  * @typedef {import('../component/ComponentWithView.js').RootComponent} RootComponent
- * @typedef {import('../component/Component.js').Component} Component
+ * @typedef {import('./Component.js').Component} Component
  * @typedef {import('../view/ComponentView.js').ComponentView<string>} ComponentView
  */
 import {ComponentError} from '../error/Error.js';

@@ -5,7 +5,7 @@
  * 		Rendering coupled with [push(), pushApply()]
  */
 /**
- * @typedef {import('../component/Component').Component} Component
+ * @typedef {import('../component/Component.js').Component} Component
  */
 import {ComponentTemplate, ListTemplate} from '../template/TemplateFactory.js';
 import registries from '../Registries.js';

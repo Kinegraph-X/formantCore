@@ -15,7 +15,7 @@ import {
     ComponentTemplate,
     ViewTemplate
 } from './template/TemplateFactory.js';
-import {type ComponentBase} from './component/Component'
+import {type ComponentBase} from './component/Component.js'
 
 
 
@@ -56,11 +56,11 @@ export function View(options : ViewTemplateDef) {
 
 
 export function Output() {
-    /** @param {any} target @param {string} propertyName */ 
+    /** @param {undefined} value @param {ClassFieldDecoratorContext<any, any>} ctx */ 
     return (
-            target : ComponentBase,
-            propertyNam : string
-        ) => {}
+            value : any,
+            ctx : ClassFieldDecoratorContext<any, any>
+        ) : void => {}
 }
 
 /**

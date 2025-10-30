@@ -28,7 +28,18 @@ class EffectCtx {
     subViews;
     /** @type {ComponentView[]} */
     memberViews;
-    /** @type {HTMLElement} */
+    /**
+     * ⚠️ Direct DOM access is an escape hatch.
+     * Prefer using states, props, and reactivity queries.
+     * Type safety is not guaranteed - cast at your own risk.
+     * 
+     * @example
+     * // If you must access the node:
+     * const button = this.element as HTMLButtonElement;
+     * button.disabled = true;
+     * 
+     * @type {HTMLElement}
+     */
     element;
     /** @type {Map<string, Stream>} */
     streams;
@@ -43,6 +54,7 @@ class EffectCtx {
             throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
         
         this.regUID = regUID;
+        
         this.element =  (getToolingProxy(regUID, 'element', component.view.node));
         this.view =  (getToolingProxy(regUID, 'view', component.view));
         this.subViews =  (getToolingProxy(regUID, 'subViews', component.subViews));

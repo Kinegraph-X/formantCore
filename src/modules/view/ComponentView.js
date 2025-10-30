@@ -72,6 +72,15 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 	
 	/**
 	 * Shorthand method on the currentViewAPI
+	 * 
+	 * ⚠️ Direct DOM access is an escape hatch.
+	 * Prefer using states, props, and reactivity queries.
+	 * Type safety is not guaranteed - cast at your own risk.
+	 * 
+	 * @example
+	 * // If you must access the node:
+	 * const button = this.view.node as HTMLButtonElement;
+	 * button.disabled = true;
 	 */
 	get node() {
 		return this.#currentViewStrategy.masterNode;
