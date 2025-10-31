@@ -33,27 +33,27 @@ interface IComponentWithView<V> {
 
 
 export abstract class BaseComponentWithView extends HierarchicalObject 
-		implements IComponentWithView<ComponentView<stdTagNameType | string>> {
+		implements IComponentWithView<ComponentView> {
     static readonly objectType: string = 'BaseComponentWithView';
     
     children: BaseComponentWithView[] = [];
     parent: RootComponent | ComponentWithView;
     regUID: string;
 
-    #view: ComponentView<stdTagNameType | string>;
+    #view: ComponentView;
     
-    get view(): ComponentView<stdTagNameType | string> {
+    get view(): ComponentView {
         return this.#view;
     }
     
-    set view(view: ComponentView<stdTagNameType | string>) {
+    set view(view: ComponentView) {
         throw new ComponentError(this, 'view cannot be overridden');
     }
 
     constructor(
         parent: BaseComponentWithView,
         cTemplate: ComponentTemplate,
-        view: ComponentView<stdTagNameType | string>
+        view: ComponentView
     ) {
         super(parent);
         
@@ -116,20 +116,20 @@ export class RootComponent extends RootHierarchicalObject
 export abstract class ComponentWithView extends BaseComponentWithView {
     static readonly objectType: string = 'ComponentWithView';
     
-    subViews: ComponentView<stdTagNameType | string>[] = [];
-    memberViews: ComponentView<stdTagNameType | string>[] = [];
+    subViews: ComponentView[] = [];
+    memberViews: ComponentView[] = [];
 
     /** 
-     * We chose to mimic the behavior of the Angular compiler
-     * which reflects @output annotations to the @component object
+     * Private field used to mimic the behavior of the Angular compiler
+     * which reflects @Output annotations onto the @Component object
      * @see rollup-plugin-formant-annotations
      */
     static _outputs: string[] = [];
-    
+
     constructor(
         parent: BaseComponentWithView,
         cTemplate: ComponentTemplate,
-        view: ComponentView<stdTagNameType | string>
+        view: ComponentView
     ) {
         super(parent, cTemplate, view);
     }

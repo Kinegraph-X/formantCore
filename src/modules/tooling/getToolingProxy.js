@@ -4,7 +4,7 @@
 
 /**
  * @template {keyof HTMLElementTagNameMap|string} tagName
- * @typedef {import('../view/ComponentView.js').ComponentView<string>} ComponentView
+ * @typedef {import('../view/ComponentView.js').ComponentView} ComponentView
  * @typedef {import('../reactivity/Stream.js').default<unknown>} Stream
  * @typedef {import('../tooling/ToolingEvents')} ToolingEvents
  */

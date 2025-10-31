@@ -3,13 +3,12 @@
  */
 
 /**
- * @template {import('../DOM/types').stdTagNameType|string} tagName
  * @template StreamValue
  */
 
 /**
- * @typedef {import('../DOM/Factories.js').HTMLCustomElement<tagName>} HTMLCustomElement
- * @typedef {import('../view/ComponentView').ComponentView<tagName>} ComponentView
+ * @typedef {import('../DOM/Factories.js').HTMLCustomElement} HTMLCustomElement
+ * @typedef {import('../view/ComponentView').ComponentView} ComponentView
  * @typedef {import('../reactivity/Stream.js').default<StreamValue>} Stream
  */
 import {ComponentError} from '../error/Error';

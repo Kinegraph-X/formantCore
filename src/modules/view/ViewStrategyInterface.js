@@ -127,8 +127,10 @@ class ViewStrategyInterface {
 	
 	 /**
 	  * @param {string[]} contentAsArray
+	  * @returns {string[]}
 	  */
 	 getMultilineContent(contentAsArray) {
+		return [];
 	 }
 	
 	 /**

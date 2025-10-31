@@ -52,7 +52,7 @@ type TreeNode = {
 
 @Component({
     view : new ViewTemplate({
-        nodeName : 'folded-tree' as const,
+        nodeName : 'folded-tree',
 		/**@CSSifyStyle componentStyle : AbstractTreeHost */
     }),
     props : [

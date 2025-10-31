@@ -20,7 +20,7 @@ class DOMViewStrategy {		/* implements ViewStrategyInterface */
 	#isShadowHost = false;
 	/** @type {stdTagName|tagName}*/
 	#nodeName;
-	/** @type {HTMLElementTagNameMap[stdTagName]|HTMLCustomElement<tagName>|null} @default null */
+	/** @type {HTMLElementTagNameMap[stdTagName]|HTMLCustomElement|null} @default null */
 	#masterNode = null;
 	/** @type {ShadowRoot|null} @default null */
 	#wrappingNode = null;
@@ -56,9 +56,9 @@ class DOMViewStrategy {		/* implements ViewStrategyInterface */
 	get HTMLElementMasterNode() {
 		return /** @type {HTMLElementTagNameMap[stdTagName]} */ (this.#masterNode);
 	}
-	/** @returns {HTMLCustomElement<tagName>} */
+	/** @returns {HTMLCustomElement} */
 	get customElementMasterNode() {
-		return /** @type {HTMLCustomElement<tagName>} */ (this.#masterNode);
+		return /** @type {HTMLCustomElement} */ (this.#masterNode);
 	}
 	
 	get masterNode() {
@@ -77,11 +77,11 @@ class DOMViewStrategy {		/* implements ViewStrategyInterface */
 		this.#wrappingNode = node.shadowRoot;
 	}
 	/**
-	 * @return {HTMLElement|HTMLCustomElement<tagName>|ShadowRoot}
+	 * @return {HTMLElement|HTMLCustomElement|ShadowRoot}
 	 */
 	get wrappingNode() {
 		// masterNode shall be acquired later
-		return this.#wrappingNode || /**@type {HTMLElement|HTMLCustomElement<tagName>}*/ (this.#masterNode);
+		return this.#wrappingNode || /**@type {HTMLElement|HTMLCustomElement}*/ (this.#masterNode);
 	}
 
 	/**

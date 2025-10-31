@@ -10,7 +10,7 @@
  * @typedef {import('./Prop').StateDef} StateDef
  * @typedef {import('./ReactivityQuery').ReactivityQueryDef} ReactivityQueryDef
  * @typedef {import('./EventSubscription').EventSubscriptionDef<EventPayload>} EventSubscriptionDef
- * @typedef {import('./ListTemplate').ListTemplateDef} ListTemplateDef
+ * @typedef {import('./List.js').ListTemplateDef} ListTemplateDef
  * @typedef {import('../reactivity/EffectCtx')} EffectCtx
  * @typedef {import('../style/Stylesheet')} Stylesheet
  */
@@ -43,7 +43,7 @@ import {
 } from './EventSubscription';
 
 import TaskDefinition from './TaskDefinition';
-import ListTemplate from './ListTemplate';
+import ListTemplate from './List.js';
 
 
 

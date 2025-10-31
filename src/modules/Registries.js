@@ -15,7 +15,7 @@
  * @typedef {import('./template/TemplateFactory.js').EventSubscriptionArray} EventSubscriptionArray
  * @typedef {import('./template/TemplateFactory').DomEventBindings} DomEventBindings
  * @typedef {import('./DOM/CachedNode.js').default} CachedNode
- * @typedef {import('./view/ComponentView.js').ComponentView<any>} ComponentView
+ * @typedef {import('./view/ComponentView.js').ComponentView} ComponentView
  * @typedef {import('./view/ComponentView.js').RootComponentView} RootComponentView
  * @typedef {import('./reactivity/Stream.js').default<any>} Stream
  * @typedef {import('./component/Component.js').ComponentBase} Component

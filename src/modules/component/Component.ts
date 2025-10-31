@@ -30,13 +30,15 @@ export class ComponentBase extends ComponentWithView {
     constructor(
         parent : BaseComponentWithView,
         cTemplate : ComponentTemplate,
-        view : ComponentView<stdTagNameType|string>
+        view : ComponentView
     ) {
         super(parent, cTemplate, view);
         
-        // EventEmitters don't have a propoer "emit()" function when defining them
-        // (EventEmitter has the ability to bind on DOM events, and the handler gets refs to "regUID" and "key")
-        // Define here the correct emit function
+        /**
+         * EventEmitters only have a virtual "emit()" function when instanciating them
+         * (EventEmitter has the ability to reflect DOM events, and the handler gets refs to "regUID" and "key")
+         * We define here the correct emit function
+         */
         const ctor = this.constructor as unknown;
         (ctor as typeof ComponentBase)._outputs.forEach(
             (output) => {
@@ -49,11 +51,11 @@ export class ComponentBase extends ComponentWithView {
         })
     }
 
-    /*
+    /**
 	 * @example:
 	 * 	@ Output() output = new EventEmitter<EventPayload>('eventName');
-	 * 	will be transformed at build time to
-	 * 	`output = Component.declareOutput(${typeName}, ${outputName)} && new EventEmitter<EventPayload>();`
+	 * 	// will be transformed at build time to
+	 * 	output = ComponentBase.declareOutput(${typeName}, '${outputName)'} && new EventEmitter<EventPayload>();
 	 */
 	@Output() update = new EventEmitter<any>('update');
 }

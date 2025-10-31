@@ -3,10 +3,10 @@
  */
 
 /**
- * @typedef {import('../view/ComponentView.js').ComponentView<string>} ComponentView
+ * @typedef {import('../view/ComponentView.js').ComponentView} ComponentView
  * @typedef {import('../reactivity/Stream.js').default<unknown>} Stream
  * @typedef {import('../component/Component.js').ComponentBase} Component
- * @typedef {import('../DOM/Factories.js').HTMLCustomElement<string>} HTMLCustomElement
+ * @typedef {import('../DOM/Factories.js').HTMLCustomElement} HTMLCustomElement
  */
 import {ComponentError } from '../error/Error.js';
 import {Logger} from '../log/Logger.js';
