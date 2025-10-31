@@ -15,6 +15,7 @@
 import {ComponentError } from '../error/Error.js';
 import {Logger} from '../log/Logger.js';
 import StreamToDomInterface from '../reactivity/StreamToDomInterface.js';
+import StateReflector from './StateReflector';
 import { tryParseBoolean } from '../nativeTypesUtilities/BooleanUtilities.js';
 
 import {
@@ -34,10 +35,7 @@ class BaseElementFactory {
     }
 }
 
-class HTMLElementFactory extends BaseElementFactory {
-}
-
-class HTMLDivElementFactory extends HTMLElementFactory {
+class HTMLDivElementFactory extends BaseElementFactory {
     static createElement() {
         return document.createElement('div');
     }
@@ -70,24 +68,28 @@ export class HTMLCustomElement extends HTMLElement {
         return this.observedStates;
     }
     #stateReflection() {
-        /** @type {typeof HTMLCustomElement} */
-        (this.constructor as typeof HTMLCustomElement).observedStates.forEach(
-            (stateName, key) => {
-                const name = stateName as keyof HTMLElement;
-                if (!HTMLElement.prototype[name]) {
-                    let stream;
-                    if (!(stream = this.#streams.get(stateName))) {
-                        const thisArg = this as unknown as typeof HTMLCustomElement;
-                        throw new ComponentError(this, 'Unknown custom-element creation error: a State doesn\'t correspond to a Stream', thisArg.observedStates, this.#streams);
-                    }
-                    Object.defineProperty(this, stateName, StreamToDomInterface.getPropertyDescriptor.bind(this, stream));
-                }
-                else {
-                    delete this.#nonProtectedObservedStates[key];
-                    Logger.debug(this, 'Given State in custom-element overlaps a native dom property:', stateName);
-                }
-            }
-        )
+        this.#nonProtectedObservedStates = StateReflector.reflect(
+            this as HTMLCustomElement,
+            (this.constructor as typeof HTMLCustomElement).observedStates,
+            this.#streams
+        );
+        // (this.constructor as typeof HTMLCustomElement).observedStates.forEach(
+        //     (stateName, key) => {
+        //         const name = stateName as keyof HTMLElement;
+        //         if (!HTMLElement.prototype[name]) {
+        //             let stream;
+        //             if (!(stream = this.#streams.get(stateName))) {
+        //                 const thisArg = this as unknown as typeof HTMLCustomElement;
+        //                 throw new ComponentError(this, 'Unknown custom-element creation error: a State doesn\'t correspond to a Stream', thisArg.observedStates, this.#streams);
+        //             }
+        //             Object.defineProperty(this, stateName, StreamToDomInterface.getPropertyDescriptor.bind(this, stream));
+        //         }
+        //         else {
+        //             delete this.#nonProtectedObservedStates[key];
+        //             Logger.debug(this, 'Given State in custom-element overlaps a native dom property:', stateName);
+        //         }
+        //     }
+        // )
     }
     /** @param {string|number|null|undefined} AttributeValue*/
     #getTypedValue(attrValue : AttributeValue) {
@@ -101,8 +103,8 @@ export class HTMLCustomElement extends HTMLElement {
             console.error('Attribute value', attrValue, 'is neither string, or number, nor boolean', this)
     }
     connectedCallback() {
-        /** @type {typeof HTMLCustomElement} */
-        (this.constructor as typeof HTMLCustomElement).observedStates.forEach((stateName, key) => {
+        (this.constructor as typeof HTMLCustomElement)
+                .observedStates.forEach((stateName, key) => {
             /** @ts-ignore overridden native props have been checked */
             this[stateName] = this.#stateInitialValues[key];
             // Initial setup, don't define if given value is empty/nullable
@@ -207,4 +209,20 @@ export class HTMLCustomElementFactory {
 }
 
 
-
+export class HTMLElementFactory {
+    /** 
+     * @param {string} nodeName
+     * @param {AbstractPropArray|[]} states 
+     * @param {Map<string, Stream>} streams
+     * @return {HTMLElement}
+     */
+    static createElement(
+        nodeName : string,
+        states : StateArray | [],
+        streams : Map<string, Stream<unknown>>
+    ) {
+        const element = document.createElement(nodeName);
+        StateReflector.reflect(element, states, streams);
+        return element;
+    }
+}

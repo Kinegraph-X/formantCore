@@ -59,10 +59,18 @@ class Renderer {
         }
         else {
             if (view.isCustomElem) {
-                cachedNode.cloneMother = createCustomElement(cachedNode.nodeName, registries.state.get(view.regUID), registries.streams.get(view.regUID));
+                cachedNode.cloneMother = createCustomElement(
+                    cachedNode.nodeName,
+                    registries.state.get(view.regUID),
+                    registries.streams.get(view.regUID)
+                );
             }
             else {
-                cachedNode.cloneMother = createElement(/** @type {keyof HTMLElementTagNameMap} */ (cachedNode.nodeName));
+                cachedNode.cloneMother = createElement(
+                    cachedNode.nodeName,
+                    registries.state.get(view.regUID),
+                    registries.streams.get(view.regUID)
+                );
             }
             view.node = cachedNode.cloneMother.cloneNode(true);
         }

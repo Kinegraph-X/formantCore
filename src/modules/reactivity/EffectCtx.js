@@ -15,7 +15,21 @@ import {ComponentError} from '../error/Error';
 import registries from '../Registries';
 import getToolingProxy from '../tooling/getToolingProxy.js';
 
-
+/**
+ * /!\ Streams are dynamically created. For type safety:
+ * 
+ * @example
+ * class MyComponent extends ComponentBase {
+ *   interface Streams {
+ *     count: Stream<number>;
+ *     isActive: Stream<boolean>;
+ *   }
+ *   
+ *   // In your callback:
+ *   const streams = ctx.streams as unknown as MyComponent['Streams'];
+ *   streams.count.value; // Type-safe
+ * }
+ */
 class EffectCtx {
     /** @type {string} */
     static objectType = 'EffectCtx';
@@ -28,7 +42,7 @@ class EffectCtx {
     /** @type {ComponentView[]} */
     memberViews;
     /**
-     * ⚠️ Direct DOM access is an escape hatch.
+     * /!\  Direct DOM access is an escape hatch.
      * Prefer using states, props, and reactivity queries.
      * Type safety is not guaranteed - cast at your own risk.
      * 
@@ -36,8 +50,6 @@ class EffectCtx {
      * // If you must access the node:
      * const button = this.element as HTMLButtonElement;
      * button.disabled = true;
-     * 
-     * @type {HTMLElement}
      */
     element;
     /** @type {Map<string, Stream>} */
