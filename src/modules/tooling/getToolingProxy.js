@@ -13,16 +13,15 @@ import {elementTrap, viewTrap, viewArrayTrap, streamTrap} from '../proxies/proxy
 
 
 /** 
- * @template effectCtxVal
  * @param {string} regUID
  * @param {keyof ToolingEvents<any>} type
- * @param {effectCtxVal} value 
+ * @param {object} value 
  */
 export default (regUID, type, value) => {
     switch(type) {
         case 'element' :
             return new Proxy(
-                /** @type {object} */ (value),
+                value,
                 {
                     get : elementTrap.get.bind(null, regUID, type),
                     set : elementTrap.set.bind(null, regUID, type)

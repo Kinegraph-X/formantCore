@@ -11,11 +11,15 @@ import {camelToHyphens} from '../nativeTypesUtilities/StringUtilities';
 import ElementFactory from '../DOM/ElementFactory';
 const createElement = ElementFactory.createElement;
 const createCustomElement = ElementFactory.createElement;
-import registries from '../Registries';
 import { EventEmitter } from '../reactivity/EventEmitter';
-const views = registries.views;
-const nodes = registries.node;
-const attributesCache = registries.attribute;
+import { 
+  getState, 
+  getStreams, 
+  getComponent, 
+  getDomListens,
+  getNode,
+  getAttribute
+} from '../registryAccessors';
 
 class Renderer {
     static objectType = 'ViewsRenderer';
@@ -48,10 +52,10 @@ class Renderer {
      */
     static getNode(view) {
         const cachedNode = nodes.get(view.viewUID);
-        /* @debug-build start */
-        if (!cachedNode)
-            throw new ComponentError(this, 'Unknown View instanciation error: Unable to retrieve a node from the cache', view);
-        /* @debug-build end */
+        if (process.env.NODE_ENV === 'development') {
+            if (!cachedNode)
+                throw new ComponentError(this, 'Unknown View instanciation error: Unable to retrieve a node from the cache', view);
+        }
 
         if (cachedNode.cloneMother) {
             view.node = cachedNode.cloneMother.cloneNode(true);
@@ -61,15 +65,15 @@ class Renderer {
             if (view.isCustomElem) {
                 cachedNode.cloneMother = createCustomElement(
                     cachedNode.nodeName,
-                    registries.state.get(view.regUID),
-                    registries.streams.get(view.regUID)
+                    getState(view.regUID),
+                    getStreams(view.regUID)
                 );
             }
             else {
                 cachedNode.cloneMother = createElement(
                     cachedNode.nodeName,
-                    registries.state.get(view.regUID),
-                    registries.streams.get(view.regUID)
+                    getState(view.regUID),
+                    getStreams(view.regUID)
                 );
             }
             view.node = cachedNode.cloneMother.cloneNode(true);
@@ -104,14 +108,12 @@ class Renderer {
      */
     static bindDomEvents(view) {
         const component = registries.component.get(view.regUID);
-        /* @debug-build start */
-        if (!component)
-            throw new ComponentError(this, 'Component not found in registry. Unknown error');
-        /* @debug-build end */
+        if (process.env.NODE_ENV === 'development') {
+            if (!component)
+                throw new ComponentError(this, 'Component not found in registry. Unknown error');
+        }
 
-        const domListens = registries.domListens.get(view.regUID);
-        if (!domListens)
-            return;
+        const domListens = getDomListens(view.regUID);
         for (const eventType in domListens) {
             if (!component.hasOwnProperty(domListens[eventType]))
                 throw new ComponentError(component, 'A view is listening to a DOM event without a handler being defined on the component. View is ', view, 'Component is ', component);

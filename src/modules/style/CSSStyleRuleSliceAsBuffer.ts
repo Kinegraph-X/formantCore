@@ -1,7 +1,7 @@
 import {bufferToString, bufferToPartialString} from '../nativeTypesUtilities/Uint8ArrayUtilities';
 import type {ParserToken} from './ParserTokenType'
 import MemoryMapBuffer from '../buffer/MemoryMapBuffer.js';
-import registries from '../Registries.js';
+import registries from '../registries.js';
 import CSSPropertyAsBuffer from './CSSPropertyAsBuffer.js';
 import {
 	CSSCategory,

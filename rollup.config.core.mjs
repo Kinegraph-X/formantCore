@@ -1,4 +1,6 @@
+import 'dotenv/config'
 import { fileURLToPath } from 'node:url';
+import replace from '@rollup/plugin-replace';
 import typescript from 'rollup-plugin-typescript2';
 import annotations from 'rollup-plugin-formant-annotations';
 import resolve from '@rollup/plugin-node-resolve';
@@ -10,6 +12,7 @@ import cssifyFromDB from 'rollup-plugin-cssifyfromdb';
 
 const formantCoreBundleName = 'formantJS';
 const distFolder = 'dist/';
+
 
 export default function () {
 
@@ -23,6 +26,9 @@ export default function () {
       sourcemap : true,
       exports : 'auto'
     },
+
+    treeshake : 'recommended',
+
     plugins: [
       alias({
         entries : [
@@ -44,6 +50,12 @@ export default function () {
       }),
       annotations(),
       typescript(),
+      replace({   // allow tree-shaking on debug code
+        preventAssignment : true,
+        values : {
+          ["process.env.NODE_ENV"] : JSON.stringify(process.env.NODE_ENV),
+        }
+      }),
       cssifyFromDB({
         dbURL: 'mongodb://localhost:27017/themed_components',
         include: '**/*.js',

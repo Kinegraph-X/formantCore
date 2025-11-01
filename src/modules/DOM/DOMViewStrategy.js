@@ -10,15 +10,12 @@ import { HTMLCustomElement } from '../DOM/Factories.js';
  * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
  */
 
-/**
- * @template {string} tagName
- */
-class DOMViewStrategy {		/* implements ViewStrategyInterface */
+class DOMViewStrategy extends ViewStrategyInterface {		/* implements ViewStrategyInterface */
 	/** @type {string} */
 	static objectType = 'DOMViewAPI';
 	/** @type {boolean} @default false*/
 	#isShadowHost = false;
-	/** @type {stdTagName|tagName}*/
+	/** @type {string}*/
 	#nodeName;
 	/** @type {HTMLElementTagNameMap[stdTagName]|HTMLCustomElement|null} @default null */
 	#masterNode = null;
@@ -30,8 +27,9 @@ class DOMViewStrategy {		/* implements ViewStrategyInterface */
 	 * @param {ViewTemplate} def
 	 */
 	constructor(def) {
+		super(def);
 		this.#isShadowHost = def.isCustomElem;
-		this.#nodeName = /** @type {stdTagName|tagName}*/ (def.nodeName);
+		this.#nodeName = def.nodeName;
 	}
 	/**
 	 * @param {boolean} bool

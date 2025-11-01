@@ -4,7 +4,7 @@
 
 import {ComponentError} from './error/Error';
 import Stream from './reactivity/Stream';
-import registries from './Registries';
+import registries from './registries';
 
 class Imperative{
     /** @type {string} */

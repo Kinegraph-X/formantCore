@@ -16,28 +16,30 @@
     "rollup": "^4.18.0"
   },
   "dependencies": {
-	"ulid" : "^3.0.1"
+    "ulid": "^3.0.1"
   },
   "devDependencies": {
-    "typescript" : "^5.9.3",
-    "rollup": "^4.18.0",
-    "eslint": "^9.0.0",
-    "vitest": "^1.0.0",
-    "rollup-plugin-typescript2": "^0.36.0",
     "@rollup/plugin-alias": "5.1.0",
     "@rollup/plugin-json": "6.1.0",
     "@rollup/plugin-node-resolve": "15.2.3",
+    "@rollup/plugin-replace": "^6.0.3",
     "dep-case-verify": "2.1.0",
+    "dotenv": "^17.2.3",
+    "eslint": "^9.0.0",
     "highlighted-sources": "0.0.1",
+    "rollup": "^4.18.0",
     "rollup-plugin-copy": "3.5.0",
     "rollup-plugin-cssifyfromdb": "0.0.13",
-    "rollup-plugin-formant-annotations": "^0.1.6",
     "rollup-plugin-debug-load": "file:../perso_node_modules/rollup-plugin-debug-load",
+    "rollup-plugin-formant-annotations": "^0.1.7",
     "rollup-plugin-import-css": "3.5.0",
     "rollup-plugin-import-paths": "0.0.1",
     "rollup-plugin-livereload": "0.4.0",
     "rollup-plugin-sourcemaps": "0.6.3",
-    "rollup-plugin-string": "3.0.0"
+    "rollup-plugin-string": "3.0.0",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "typescript": "^5.9.3",
+    "vitest": "^1.0.0"
   },
   "repository": {
     "type": "git",

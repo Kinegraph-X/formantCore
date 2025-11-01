@@ -12,7 +12,7 @@ import {
 import CSSSelectorsList from './CSSSelectorsList.js'
 import CSSSelectorSetBuffer from './CSSSelectorSetBuffer.js'
 import CSSRuleAsBuffer from './CSSStyleRuleAsBuffer.js'
-import registries from '../Registries.js';
+import registries from '../registries.js';
 
 /**
  * Manages a set of CSS selectors and associated attributes for a rule.

@@ -58,8 +58,10 @@ class Subscription {
 			
 		// optimize by breaking the reference : TODO: benchmark
 		const functionBody = filterFunc.toString().match(/\{.*\}\s*$/);
-		if (!functionBody)
-			throw new ComponentError(this, 'probably malformed filter function, unable to parse function body', filterFunc);
+		if (process.env.NODE_ENV === 'development') {
+			if (!functionBody)
+				throw new ComponentError(this, 'probably malformed filter function, unable to parse function body', filterFunc);
+		}
 		var f = new Function('value', `${functionBody}`);
 		this.filter = f;
 		return this;
@@ -74,8 +76,10 @@ class Subscription {
 			
 		// optimize by breaking the reference : TODO: benchmark
 		const functionBody = mapFunc.toString().match(/\{.*\}\s*$/);
-		if (!functionBody)
-			throw new ComponentError(this, 'probably malformed map function, unable to parse function body', mapFunc);
+		if (process.env.NODE_ENV === 'development') {
+			if (!functionBody)
+				throw new ComponentError(this, 'probably malformed map function, unable to parse function body', mapFunc);
+		}
 		var f = new Function('value', `${functionBody}`);
 		this.map = f;
 		return this;
@@ -90,8 +94,10 @@ class Subscription {
 			
 		// optimize by breaking the reference : TODO: benchmark
 		const functionBody = transformFunc.toString().match(/\{.*\}\s*$/);
-		if (!functionBody)
-			throw new ComponentError(this, 'probably malformed transform function, unable to parse function body', transformFunc);
+		if (process.env.NODE_ENV === 'development') {
+			if (!functionBody)
+				throw new ComponentError(this, 'probably malformed transform function, unable to parse function body', transformFunc);
+		}
 		var f = new Function('value', `${functionBody}`);
 		this.transform = f;
 		return this;

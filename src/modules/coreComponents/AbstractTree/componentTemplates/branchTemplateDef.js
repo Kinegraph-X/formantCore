@@ -10,7 +10,7 @@
 
 /**
  * @typedef {import('../../../reactivity/Stream').default<string|null>} Stream
- * @typedef {import('../../../reactivity/EffectCtx.js').default} EffectCtx
+ * @typedef {import('../../../reactivity/EffectCtx').default} EffectCtx
  */
 
 

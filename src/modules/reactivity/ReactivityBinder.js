@@ -14,7 +14,7 @@
 
 import {ComponentError} from '../error/Error';
 import {EventEmitter} from '../eventEmitter/EventEmitter';
-import registries from '../Registries';
+import {getStreams} from '../registryAccessors';
 import EffectCtx from '../reactivity/EffectCtx';
 
 class ReactivityBinder {
@@ -45,12 +45,15 @@ class ReactivityBinder {
      * @param {ReactivityQuery} reactivityQuery
      */
     static bindReactOnUpStream(component, reactivityQuery) {
-        let upStream, downStream;
+        const upStream = getStreams(component.parent.regUID)?.get(reactivityQuery.from);
+        const downStream = getStreams(component.regUID)?.get(reactivityQuery.to);
         const parentRegUID = component.parent.regUID;
         const regUID = component.regUID;
         
-        if (typeof (upStream = registries.streams.get(parentRegUID)?.get(reactivityQuery.from)) === 'undefined')
-            throw new ComponentError(component, 'Missing stream on parent component.', reactivityQuery.from);
+        if (process.env.NODE_ENV === 'development') {
+            if (typeof (upStream) === 'undefined')
+                throw new ComponentError(component, 'Missing stream on parent component.', reactivityQuery.from);
+        }
 
         if (reactivityQuery.effect) { 
             upStream.subscribe(
@@ -64,8 +67,10 @@ class ReactivityBinder {
             if (!reactivityQuery.to)
                 throw new ComponentError(component, 'Neither "effect" nor "to" property on reactOn definition.', reactivityQuery);
             /** @debug-build end */
-            if (typeof (downStream = registries.streams.get(regUID)?.get(reactivityQuery.to)) === 'undefined')
-                throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.to);
+            if (process.env.NODE_ENV === 'development') {
+                if (typeof (downStream) === 'undefined')
+                    throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.to);
+            }
             
             const newSubscription = upStream.subscribe(
                 downStream,
@@ -89,10 +94,13 @@ class ReactivityBinder {
      * @param {ReactivityQuery} reactivityQuery
      */
     static bindReactOnSelfStream(component, reactivityQuery) {
-        let stream, targetStream;
+        const stream = getStreams(component.regUID)?.get(reactivityQuery.from);
         const regUID = component.regUID;
-        if (typeof (stream = registries.streams.get(regUID)?.get(reactivityQuery.from)) === 'undefined')
-            throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.from);
+
+        if (process.env.NODE_ENV === 'development') {
+            if (typeof (stream) === 'undefined')
+                throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.from);
+        }
         
         if (reactivityQuery.effect) {  
             stream.subscribe(
@@ -102,12 +110,16 @@ class ReactivityBinder {
         }
         else {
             /* already tested in ReactivityQuery */
-            /** @debug-build start */
-            if (!reactivityQuery.to)
-                throw new ComponentError(component, 'Neither "effect" nor "to" property on reactOn definition.', reactivityQuery);
-            /** @debug-build end */
-            if (typeof (targetStream = registries.streams.get(regUID)?.get(reactivityQuery.to)) === 'undefined')
-                throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.to);
+            if (process.env.NODE_ENV === 'development') {
+                if (!reactivityQuery.to)
+                    throw new ComponentError(component, 'Neither "effect" nor "to" property on reactOn definition.', reactivityQuery);
+            }
+            
+            const targetStream = getStreams(regUID)?.get(reactivityQuery.to);
+            if (process.env.NODE_ENV === 'development') {
+                if (typeof (targetStream) === 'undefined')
+                    throw new ComponentError(component, 'Missing stream on component.', reactivityQuery.to);
+            }
             
             const newSubscription = stream.subscribe(
                 targetStream,

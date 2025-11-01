@@ -9,7 +9,7 @@
  */
 import {ComponentView} from './ComponentView';
 import CachedNode from '../DOM/CachedNode';
-import registries from '../Registries';
+import registries from '../registries';
 
 class ViewFactory {
     constructor() {

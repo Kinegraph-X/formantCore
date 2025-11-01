@@ -47,19 +47,18 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 
 		let nodeName /** @type {tagName}*/ = vTemplate.nodeName;
 
-		/* @debug-build start */
-		this.#currentViewStrategy = new Proxy(
-			new currentViewStrategy(vTemplate),
-			{
-				get : viewStrategyTrap.get.bind(null, this.regUID, 'viewStrategy'),
-				set : viewStrategyTrap.set
-			}
-		);
-		/* @debug-build end */
-		
-		/* @production-build start 
-		this.#currentViewStrategy = new currentViewStrategy(vTemplate);
-		@production-build end */
+		if (process.env.NODE_ENV === 'development') {
+			this.#currentViewStrategy = new Proxy(
+				new currentViewStrategy(vTemplate),
+				{
+					get : viewStrategyTrap.get.bind(null, this.regUID, 'viewStrategy'),
+					set : viewStrategyTrap.set
+				}
+			);
+		}
+		else {
+			this.#currentViewStrategy = new currentViewStrategy(vTemplate);
+		}
 		
 		// this.styleHook = new SWrapperInViewManipulator(this);
 	}

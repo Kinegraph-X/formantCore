@@ -3,7 +3,7 @@
  */
 
 import { ComponentError } from '../error/Error';
-import registries from '../Registries';
+import registries from '../registries';
 import { ComponentWithView } from '../component/ComponentWithView';
 import  Stream from '../reactivity/Stream';
 import type { EventEmitter } from './EventEmitter.ts';

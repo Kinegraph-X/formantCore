@@ -3,7 +3,8 @@
  */
 
 import {ComponentError} from '../error/Error';
-import registries from '../Registries';
+import registries from '../registries';
+import {getProp, getStream} from '../registryAccessors';
 import Stream from './Stream';
 
 /**
@@ -21,21 +22,21 @@ class StreamCreator {
         const registry = new Map();
         registries.streams.set(regUID, registry);
 
-        const props = registries.prop.get(regUID);
-        /** @debug-build start */
-        if (!props)
-            throw new ComponentError(component, 'StreamCreator unknown error: props entry not found in props registry. UID is', regUID);
-        /** @debug-build end */
+        const props = getProp(regUID);
+        if (process.env.NODE_ENV === 'development') {
+            if (!props)
+                throw new ComponentError(component, 'StreamCreator unknown error: props entry not found in props registry. UID is', regUID);
+        }
 
         props.forEach((prop) => {
             registry.set(prop.getName(), new Stream(prop.getName(), prop.getValue()));
         });
 
-        const states = registries.state.get(regUID);
-        /** @debug-build start */
-        if (!states)
-            throw new ComponentError(component, 'StreamCreator unknown error: states entry not found in states registry. UID is', regUID);
-        /** @debug-build end */
+        const states = getStream(regUID);
+        if (process.env.NODE_ENV === 'development') {
+            if (!states)
+                throw new ComponentError(component, 'StreamCreator unknown error: states entry not found in states registry. UID is', regUID);
+        }
 
         states.forEach((state) => {
             registry.set(state.getName(), new Stream(state.getName(), state.getValue()));

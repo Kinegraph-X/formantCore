@@ -14,7 +14,7 @@ import {
     ComponentTemplate,
     ViewTemplate,
 } from '../template/TemplateFactory.js';
-import registries from '../Registries.js';
+import registries from '../registries.js';
 import {RootHierarchicalObject, HierarchicalObject} from './HierarchicalObject.js';
 import { ComponentView, RootComponentView } from '../view/ComponentView.js';
 import type { stdTagNameType } from '../DOM/types.js';

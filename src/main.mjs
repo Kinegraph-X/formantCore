@@ -3,7 +3,7 @@
  */
 import CreateStyle from './modules/style/CreateStyle.js'
 import {ComponentBase} from './modules/component/Component.js';
-import EffectCtx from './modules/reactivity/EffectCtx.js';
+import EffectCtx from './modules/reactivity/EffectCtx';
 import {WorkerWrapper} from './modules/worker/WorkerWrapper.js';
 import {ComponentError} from './modules/error/Error.js';
 import {Logger} from './modules/log/Logger.js';

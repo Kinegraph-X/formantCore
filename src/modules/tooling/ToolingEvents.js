@@ -10,7 +10,10 @@
  */
 import {ComponentError } from '../error/Error.js';
 import {Logger} from '../log/Logger.js';
-import registries from '../Registries.js';
+import { 
+  getStream,
+  getComponent, 
+} from '../registryAccessors';
 
 /** @param {unknown[]} values */
 function stringify(...values) {
@@ -42,10 +45,11 @@ class BaseToolingEvent {
         this.regUID = regUID;
         this.prop = prop;
         this.values = values;
-        this.component = registries.component.get(regUID);
-        /* @debug-build */
-        if (!this.component)
-            throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
+        this.component = getComponent(regUID);
+        if (process.env.NODE_ENV === 'development') {
+            if (!this.component)
+                throw new ComponentError(this, 'Component instance not found in component registry. UID is', regUID);
+        }
     }
     toString() {
         return '';   
@@ -74,8 +78,9 @@ class ElementAccessEvent extends BaseToolingEvent {
         return `element-${this.regUID}-${this.element.nodeName}-${this.prop}-${stringify(this.values)}`;   
     }
     warning() {
-        /* @debug-build */
-        Logger.debugWarn(this.component, 'Direct access to DOM elements should be prohibited. nodeName is', this.element.nodeName);   
+        if (process.env.NODE_ENV === 'development') {
+            Logger.debugWarn(this.component, 'Direct access to DOM elements should be prohibited. nodeName is', this.element.nodeName);   
+        }
     }
 }
 
@@ -184,12 +189,12 @@ class StreamAccessEvent extends BaseToolingEvent {
      */
     constructor(regUID, prop, ...values) {
         super(regUID, prop, ...values);
-        const streamRegistry = registries.streams.get(regUID);
-        if (!streamRegistry)
-            throw new Error('Logging error: streams not found in registry for UID: ' + regUID);
-        let stream;
-        if (!(stream = streamRegistry.get(prop)))
-            throw new Error('Logging error: stream not found in registry for UID: ' + regUID + '& name: ' + prop);
+
+        const stream = getStream(regUID, prop);
+        if (process.env.NODE_ENV === 'development') {
+            if (!stream)
+                throw new Error('Logging error: stream not found in registry for UID: ' + regUID + '& name: ' + prop);
+        }
         this.stream = stream;
 
     }
