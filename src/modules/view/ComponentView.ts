@@ -10,17 +10,8 @@ import {type ViewTemplate} from '../template/TemplateFactory';
 import { type ComponentBase as Component} from '../component/Component';
 import type ViewStrategyInterface from './ViewStrategyInterface';
 import {type HTMLCustomElement} from '../DOM/Factories';
-/**
- * @typedef {import('../template/TemplateFactory').ViewTemplate} ViewTemplate
- * @typedef {import('../component/Component.js').ComponentBase} Component
- * @typedef {import('./ViewStrategyInterface').default} ViewStrategyInterface
- */
 
-/**
- * @typedef {import('../DOM/Factories').HTMLCustomElement} HTMLCustomElement
- */
-
-class BaseComponentView {	/* implements ViewStrategyInterface */
+class BaseComponentView {
 	/** @type {string} */
 	static objectType = 'BaseComponentView';
 	/** @type {string} */
@@ -47,6 +38,7 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 
 		let nodeName /** @type {tagName}*/ = vTemplate.nodeName;
 
+		// tooling switch
 		if (process.env.NODE_ENV === 'development') {
 			this.#currentViewStrategy = new Proxy(
 				new currentViewStrategy(vTemplate),
@@ -192,8 +184,8 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 	 /**
 	  * @param {string[]} contentAsArray
 	  */
-	 getMultilineContent(contentAsArray : string[]) {
-		return this.#currentViewStrategy.getMultilineContent(contentAsArray);
+	 getMultilineContent(contentAsArray : string[], templateNodeName : string) {
+		return this.#currentViewStrategy.getMultilineContent(contentAsArray, templateNodeName);
 	 }
 	
 	 /**
@@ -212,8 +204,8 @@ class BaseComponentView {	/* implements ViewStrategyInterface */
 	  * @param {string[]} contentAsArray
 	  * 
 	  */
-	 setContentFromArray(contentAsArray : string[]) {
-	 	return this.#currentViewStrategy.setContentFromArray(contentAsArray);
+	 setContentFromArray(contentAsArray : string[], templateNodeName : string) {
+	 	return this.#currentViewStrategy.setContentFromArray(contentAsArray, templateNodeName);
 	 }
 	
 	/** @param {string} color */

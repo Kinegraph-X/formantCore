@@ -19,21 +19,18 @@
 import {
     ComponentError,
     // Output,
-    Component,
+    // Component,
     ComponentTemplate,
     ViewTemplate,
     CreateStyle,
     ComponentBase,
-	ComponentView,
     EventEmitter
 } from '../../component/ComponentCore.js';
-import {Output} from '../../decorators'
+import {Component, Output} from '../../decorators'
+import type {ComponentView} from '../../view/ComponentView.js';
 import createBranchTemplateDef from './componentTemplates/branchTemplateDef.js';
 import createLeafTemplateDef from './componentTemplates/leafTemplateDef.js';
 
-/**
- * @typedef {import('../../view/ComponentView').ComponentView<string>} ComponentView
- */
 
 type NodeTransformFunction = ((node: object) => TreeNode)|null;
 
@@ -51,10 +48,10 @@ type TreeNode = {
 
 
 @Component({
-    view : new ViewTemplate({
+    view : {
         nodeName : 'folded-tree',
 		/**@CSSifyStyle componentStyle : AbstractTreeHost */
-    }),
+    } as const,
     props : [
         {selected : undefined},
         {expanded : true}
@@ -62,10 +59,10 @@ type TreeNode = {
     members : [
         new ComponentTemplate({
             type : 'VaritextButton',
-            view : new ViewTemplate({
+            view : {
                 nodeName : 'header',
 				/**@CSSify Style componentStyle : AbstractTreeHeader */
-            }),
+            } as const,
             states : [
                 {role : "heading"},
                 {expanded : undefined} 
@@ -101,7 +98,7 @@ class AbstractTree extends ComponentBase {
 	 */
 	constructor(
 		parent : ComponentBase,
-		cTemplate : ComponentTemplate,
+		cTemplate : ComponentTemplate<unknown>,
 		view : ComponentView
 	) {
 		super(parent, cTemplate, view);
@@ -128,7 +125,7 @@ class AbstractTree extends ComponentBase {
     * @returns {TreeNode} Root data node.
     */
     renderJSON(
-		rootTemplate : ComponentTemplate,
+		rootTemplate : ComponentTemplate<unknown>,
 		jsonData : object|string
 	) {
         const dataTree = this.buildTree(jsonData);
@@ -209,7 +206,7 @@ class AbstractTree extends ComponentBase {
      * @param {(node: TreeNode) => TreeNode} [filter] - Optional node transform/filter.
      */
     instantiateTree(
-		rootTemplate : ComponentTemplate,
+		rootTemplate : ComponentTemplate<unknown>,
 		root : TreeNode
 	) {
 		// Build ComponentTemplate children
