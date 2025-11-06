@@ -17,19 +17,33 @@ import type { ComponentView } from '../view/ComponentView.js';
 import type Stream from '../reactivity/Stream.js';
 
 /**
- * /!\ Streams are dynamically created. 
- * So, for type safety:
+ * Context provided to reactive effect callbacks.
+ * Provides access to component view, streams, and DOM elements.
+ * 
+ * /!\ Type safety: Streams and element properties are dynamically created.
+ * Cast manually when accessing them for type safety.
+ * (Existence of streams is already checked at runtime by the framework)
  * 
  * @example
- * class MyComponent extends ComponentBase {
- *   interface Streams {
- *     count: Stream<number>;
- *     isActive: Stream<boolean>;
+ * @Component({
+ *       states: [{ name: 'count', value: 0 }],
+ *       reactOnSelf: [{
+ *         query: ['count'],
+ *         callback: (ctx, value) => {
+ *           // Access streams with type cast
+ *           const countStream = ctx.streams.get('count') as Stream<number>;
+ *           console.log(countStream.value);
+ *           
+ *           // Access element (escape hatch)
+ *           const button = ctx.element as HTMLButtonElement;
+ *           button.disabled = true;
+ *           
+ *           // Access views
+ *           ctx.view.setContent('Updated!');
+ *         }
+ *       }]
+ *     });
  *   }
- *   
- *   // In your callback:
- *   const streams = ctx.streams as unknown as MyComponent['Streams'];
- *   streams.get('count')?.value; // Type-safe
  * }
  */
 class EffectCtx {

@@ -18,21 +18,21 @@
 
 import {
     ComponentError,
-    // Output,
-    // Component,
+    Output,
+    Component,
     ComponentTemplate,
     ViewTemplate,
     CreateStyle,
     ComponentBase,
-    EventEmitter
+    EventEmitter,
+	Stream,
+	type ComponentView
 } from '../../component/ComponentCore.js';
-import {Component, Output} from '../../decorators'
-import type {ComponentView} from '../../view/ComponentView.js';
 import createBranchTemplateDef from './componentTemplates/branchTemplateDef.js';
 import createLeafTemplateDef from './componentTemplates/leafTemplateDef.js';
 
 
-type NodeTransformFunction = ((node: object) => TreeNode)|null;
+type NodeTransformFunction = ((node: object) => TreeNode) | null;
 
 type TreeNode = {
 	key: string|null;
@@ -44,8 +44,6 @@ type TreeNode = {
 	depth: number|0;
 	projectedData: any;
 }
-
-
 
 @Component({
     view : {
@@ -86,10 +84,11 @@ class AbstractTree extends ComponentBase {
 
     /** 
      * Optional node transform callback.
-     * @type {((node: object) => TreeNode)|null}
+     * @type {NodeTransformFunction|null}
      */
     nodeTransformFunction : NodeTransformFunction = null;
 	
+
 	/**
 	 * 
 	 * @param {ComponentBase} parent - Parent component.
@@ -98,17 +97,13 @@ class AbstractTree extends ComponentBase {
 	 */
 	constructor(
 		parent : ComponentBase,
-		cTemplate : ComponentTemplate<unknown>,
+		cTemplate : ComponentTemplate,
 		view : ComponentView
 	) {
 		super(parent, cTemplate, view);
 
 		this.update.addEventListener((e, ctx, meta) => {
-            const stream = ctx.streams.get('selected');
-            /** @debug-build start */
-            if (!stream)
-                throw new ComponentError(this, 'unknwown stream error (not declared?): streams entry not found in streams registry. UID is', meta.regUID);
-            /** @debug-build end */
+            const stream = ctx.streams.get('selected') as Stream<string>;
 			stream.next = meta.regUID;
 		});
 
@@ -125,7 +120,7 @@ class AbstractTree extends ComponentBase {
     * @returns {TreeNode} Root data node.
     */
     renderJSON(
-		rootTemplate : ComponentTemplate<unknown>,
+		rootTemplate : ComponentTemplate,
 		jsonData : object|string
 	) {
         const dataTree = this.buildTree(jsonData);
@@ -203,10 +198,9 @@ class AbstractTree extends ComponentBase {
      * Creates the full component tree from a data tree.
 	 * @param {ComponentTemplate} rootTemplate - Root template.
      * @param {TreeNode} root - Root data node.
-     * @param {(node: TreeNode) => TreeNode} [filter] - Optional node transform/filter.
      */
     instantiateTree(
-		rootTemplate : ComponentTemplate<unknown>,
+		rootTemplate : ComponentTemplate,
 		root : TreeNode
 	) {
 		// Build ComponentTemplate children

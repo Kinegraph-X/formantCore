@@ -13,10 +13,10 @@ import type {FrameworkEvent} from '../eventEmitter/FrameworkEvent';
 import type {FrameworkEventCtx} from '../eventEmitter/FrameworkEventCtx';
 import type {FrameworkEventMeta} from '../eventEmitter/FrameworkEventMeta';
 
-export interface EventSubscriptionDef<EventPayload> {
+export interface EventSubscriptionDef {
 	on : string,
 	subscribe (
-		e : FrameworkEvent<EventPayload>,
+		e : FrameworkEvent<unknown>,
 		ctx: FrameworkEventCtx,
 		meta: FrameworkEventMeta
 	) : void;
@@ -38,7 +38,7 @@ class EventSubscription<EventPayload> {
 	/**
 	 * @param {EventSubscriptionDef<EventPayload>} obj
 	 */
-	constructor(obj : EventSubscriptionDef<EventPayload>) {
+	constructor(obj : EventSubscriptionDef) {
 		/** @readonly */ this.on = obj.on;
 		/** @readonly */ this.subscribe = obj.subscribe;
 	}

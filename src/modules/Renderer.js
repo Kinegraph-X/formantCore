@@ -8,7 +8,7 @@
  */
 
 import {ComponentError} from './error/Error';
-import registries from './Registries';
+import registries from './registries';
 import {ComponentTemplate, ListTemplate} from './template/TemplateFactory';
 import ViewsRender from './view/ViewsRenderer';
 const renderDOM = ViewsRender.renderDOM;
@@ -30,9 +30,11 @@ class Renderer {
      */
     static processTemplate(parentComponent, cTemplate) {
         ComponentCreator.process(parentComponent, cTemplate);
-        renderDOM();
         registries.component.forEach((component) => {
             createStreams(component);
+        });
+        renderDOM();
+        registries.component.forEach((component) => {
             bindReactivity(component);
         });
         registries.component.clear();

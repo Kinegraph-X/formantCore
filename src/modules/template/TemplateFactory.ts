@@ -61,13 +61,12 @@ export type DomEventType =
     | 'touchend'
     | 'touchmove';
 
+/**
+ * Provides the name of the event handler defined on the component type
+ */
 export type DomEventBindings = Partial<Record<DomEventType, string>>;
 
-/**
- * uuid is dynamically added by rollup-plugin-formant-annotations (if @View() decorator is used)
- */
 export interface ViewTemplateDef {
-    uuid?: string;
     nodeName: string;
     attributes?: AttributeDef[];
     listens?: DomEventBindings;
@@ -77,14 +76,13 @@ export interface ViewTemplateDef {
 }
 
 export class ViewTemplate {
-    uuid: string | null = null;
     readonly UID: string;
     nodeName: string = 'div';
     isCustomElem: boolean = false;
     readonly attributes: AttributeArray = new AttributeArray();
-    listens: DomEventBindings | null = null;
+    readonly listens: DomEventBindings | null = null;
     section: number | null = null;
-    sWrapper: Stylesheet | null = null;
+    readonly sWrapper: Stylesheet | null = null;
     sOverride: Record<string, string>[] | null = null;
     readonly objectType: string = 'ViewTemplate';
     
@@ -92,9 +90,6 @@ export class ViewTemplate {
         this.UID = viewUIDGenerator.newUID();
         
         if (obj) {
-            if (obj.uuid) {
-                this.uuid = obj.uuid;
-            }
             if (obj.nodeName) {
                 this.nodeName = obj.nodeName;
             }
@@ -121,7 +116,7 @@ export class ViewTemplate {
 /**
  * uuid is dynamically added by rollup-plugin-formant-annotations (if @Component() decorator is used)
  */
-export interface ComponentTemplateDef<EventPayload> {
+export interface ComponentTemplateDef {
     uuid?: string;
     view: ViewTemplateDef | ViewTemplate;
     type?: string;
@@ -130,15 +125,15 @@ export interface ComponentTemplateDef<EventPayload> {
     // command?: Command; // Commented in original
     reactOnParent?: ReactivityQueryDef[];
     reactOnSelf?: ReactivityQueryDef[];
-    subscribeOnChild?: EventSubscriptionDef<EventPayload>[];
-    subscribeOnSelf?: EventSubscriptionDef<EventPayload>[];
+    subscribeOnChild?: EventSubscriptionDef[];
+    subscribeOnSelf?: EventSubscriptionDef[];
     // outputs?: string[]; // Commented in original
-    members?: (ComponentTemplate<EventPayload> | ViewTemplate)[];
-    subSections?: (ComponentTemplate<EventPayload> | ViewTemplate)[];
+    members?: (ComponentTemplate | ViewTemplate)[];
+    subSections?: (ComponentTemplate | ViewTemplate)[];
     list?: ListTemplateDef;
 }
 
-export class ComponentTemplate<EventPayload> {
+export class ComponentTemplate {
     readonly uuid: string | null = null;
     readonly UID: string;
     readonly view: ViewTemplate;
@@ -150,12 +145,12 @@ export class ComponentTemplate<EventPayload> {
     readonly reactOnSelf: ReactivityQueryArray = new ReactivityQueryArray();
     readonly subscribeOnChild: EventSubscriptionArray = new EventSubscriptionArray();
     readonly subscribeOnSelf: EventSubscriptionArray = new EventSubscriptionArray();
-    readonly members: (ComponentTemplate<EventPayload> | ViewTemplate)[] = [];
-    readonly subSections: (ComponentTemplate<EventPayload> | ViewTemplate)[] = [];
+    readonly members: (ComponentTemplate | ViewTemplate)[] = [];
+    readonly subSections: (ComponentTemplate | ViewTemplate)[] = [];
     list: ListTemplate | null = null;
     readonly objectType: string = 'ComponentTemplate';
     
-    constructor(obj?: ComponentTemplateDef<EventPayload> | null) {
+    constructor(obj?: ComponentTemplateDef | null) {
         this.UID = templateUIDGenerator.newUID();
         
         if (obj) {

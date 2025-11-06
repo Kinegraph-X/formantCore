@@ -70,7 +70,7 @@ abstract class ViewStrategyInterface {
     
     abstract getFragmentFromContent(contentAsArray: string[], templateNodeName: string) : any
     
-    abstract setContentFromArray(contentAsArray: string[]) : void
+    abstract setContentFromArray(contentAsArray: string[], templateNodeName : string) : void
     
     abstract updateBGColor(color: string) : void
     

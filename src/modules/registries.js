@@ -6,7 +6,7 @@
 /**
  * @typedef {import('./style/StyleIFace.js').default} StyleIFace
  * @typedef {import('./style/Stylesheet.js').default} Stylesheet
- * @typedef {import('./template/TemplateFactory.js').ComponentTemplate} ComponentTemplate
+ * @typedef {import('./template/TemplateFactory.ts').ComponentTemplate} ComponentTemplate
  * @typedef {import('./template/TemplateFactory.js').ViewTemplate} ViewTemplate
  * @typedef {import('./template/TemplateFactory.js').AttributeArray} AttributeArray
  * @typedef {import('./template/TemplateFactory.js').PropArray} PropArray
@@ -143,7 +143,7 @@ export default {
 	subscribeOnChild : new Map(),
 	/** @type {Map<string, EventSubscriptionArray>} */
 	subscribeOnSelf : new Map(),
-	/** @type {Map<string, DomEventBindings|null>} */
+	/** @type {Map<string, DomEventBindings>} */
 	domListens : new Map(),
 	/** @type {Map<string, ComponentTemplate>} */
 	componentTemplate : new Map(),

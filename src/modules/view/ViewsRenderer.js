@@ -86,7 +86,7 @@ class Renderer {
      * @param {HTMLElement} node
      */
     static setAttributes(view, node) {
-        attributesCache.get(view.viewUID)?.forEach((tplAttr) => {
+        getAttribute(view.viewUID)?.forEach((tplAttr) => {
             if (tplAttr.getName().indexOf('aria') === 0)
 					node.setAttribute(camelToHyphens(tplAttr.getName()), tplAttr.getValue());
             else {
@@ -100,18 +100,14 @@ class Renderer {
      * @param {RootComponentView|ComponentView} view 
      */
     static setStyle(view) {
-        // view.callCurrentViewAPI('getWrappingNode').append(view.styleHook.s.getStyleNode());
+        view.getWrappingNode().append(view.styleHook.s.getStyleNode());
     }
 
     /**
      * @param {ComponentView} view 
      */
     static bindDomEvents(view) {
-        const component = registries.component.get(view.regUID);
-        if (process.env.NODE_ENV === 'development') {
-            if (!component)
-                throw new ComponentError(this, 'Component not found in registry. Unknown error');
-        }
+        const component = getComponent(view.regUID);
 
         const domListens = getDomListens(view.regUID);
         for (const eventType in domListens) {
