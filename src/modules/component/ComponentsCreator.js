@@ -4,11 +4,11 @@
 
 /**
  * @typedef {import('../component/ComponentWithView.js').RootComponent} RootComponent
- * @typedef {import('./Component.js').Component} Component
+ * @typedef {import('./Component.js').ComponentBase} Component
  * @typedef {import('../view/ComponentView.js').ComponentView<string>} ComponentView
  */
 import {ComponentError} from '../error/Error.js';
-import { ComponentTemplate, ViewTemplate } from '../template/TemplateFactory.js';
+import { ComponentTemplate, ViewTemplate } from '../template/TemplateFactory';
 import ViewFactory from '../view/ViewFactory.js';
 import ComponentFactory from './ComponentFactory.js'
 const newComponent = ComponentFactory.newComponent;
@@ -98,7 +98,7 @@ class ComponentCreator {
     /**
      * @param {number} section 
      * @param {Component} parentComponent 
-     * @returns {InstanceType<ComponentView>}   parsing bug, seemingly (TODO: find out why)
+     * @returns {ComponentView>
      */
     static handleTargetViewOnparentComponent(section, parentComponent) {
         if (this.subComponents.length) {

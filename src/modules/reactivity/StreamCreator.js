@@ -8,7 +8,7 @@ import {getProp, getStream} from '../registryAccessors';
 import Stream from './Stream';
 
 /**
- * @typedef {import('../component/Component.js').Component} Component
+ * @typedef {import('../component/Component.js').ComponentBase} Component
  */
 
 class StreamCreator {

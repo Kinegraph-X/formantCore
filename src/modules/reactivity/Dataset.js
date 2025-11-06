@@ -5,10 +5,10 @@
  * 		Rendering coupled with [push(), pushApply()]
  */
 /**
- * @typedef {import('../component/Component.js').Component} Component
+ * @typedef {import('../component/Component.js').ComponentBase} Component
  */
 import {ComponentTemplate, ListTemplate} from '../template/TemplateFactory.js';
-import registries from '../Registries.js';
+import registries from '../registries.js';
 import Renderer from '../Renderer.js';
 const processList = Renderer.processList;
 

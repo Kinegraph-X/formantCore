@@ -7,9 +7,9 @@
  */
 
 import {ComponentError } from '../error/Error.js';
-import registries from '../Registries.js';
-import { RootComponent } from './Component.js';
-import { Component } from './Component.js';
+import registries from '../registries.js';
+import { RootComponent } from './ComponentWithView.js';
+import { ComponentBase as Component } from './Component.js';
 import TemplateReconcilier from './TemplateReconcilier.js';
 import ViewFactory from '../view/ViewFactory.js';
 /** @ts-ignore Virtual modules can't be statically resolved */

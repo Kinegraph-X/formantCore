@@ -6,7 +6,7 @@
 // FIXME: the semantic isn't clear, search where it was used
 
 /**
- * @typedef {import('../component/Component.js').Component} Component
+ * @typedef {import('../component/Component.js').ComponentBase} Component
  * @typedef {import('./IndexedStream.js')} IndexedStream
  */
 

@@ -3,8 +3,8 @@
  */
 
 /**
- * @typedef {import('./component/Component').RootComponent} RootComponent
- * @typedef {import('./component/Component').Component} Component
+ * @typedef {import('./component/ComponentWithView').RootComponent} RootComponent
+ * @typedef {import('./component/Component').ComponentBase} Component
  */
 
 import {ComponentError} from './error/Error';

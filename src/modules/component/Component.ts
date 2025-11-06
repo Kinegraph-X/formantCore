@@ -7,7 +7,6 @@ import {ComponentTemplate} from '../template/TemplateFactory.js';
 import {BaseComponentWithView, ComponentWithView} from './ComponentWithView.js';
 import { EventEmitter } from '../eventEmitter/EventEmitter.js';
 import { ComponentView} from '../view/ComponentView.js';
-import type { stdTagNameType } from '../DOM/types.js';
 
 export class ComponentBase extends ComponentWithView {
 

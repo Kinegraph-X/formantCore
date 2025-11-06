@@ -4,7 +4,7 @@
 
 
 /**
- * typedef {import('../component/Component').Component} Component
+ * typedef {import('../component/Component').ComponentBase} Component
  */
 
 import Subscription from './Subscription';

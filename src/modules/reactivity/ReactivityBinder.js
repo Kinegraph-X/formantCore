@@ -9,7 +9,7 @@
  * @typedef {import('../template/TemplateFactory').ReactivityQuery} ReactivityQuery 
  * @typedef {import('../template/TemplateFactory').EventSubscription<EventPayload>} EventSubscription 
  * @typedef {import('../reactivity/Stream')<unknown>} Stream 
- * @typedef {import('../component/Component').Component} Component
+ * @typedef {import('../component/Component').ComponentBase} Component
  */
 
 import {ComponentError} from '../error/Error';

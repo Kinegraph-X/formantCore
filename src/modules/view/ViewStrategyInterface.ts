@@ -3,9 +3,10 @@
  */
 
 /**
- * Abstract interface for view rendering strategies.
- * NOTE: This class seems to serve as a base/interface but isn't actually used polymorphically.
- * Consider: Could this be a proper TypeScript interface instead of a class?
+ * Abstract interface for view access strategies.
+ * The distinction between #masterNode & #wrappingNode
+ * is meant to allow shadow-DOM or similar implementations.
+ * In those implementations, appending to the #masterNode won't work 
  */
 abstract class ViewStrategyInterface {
     static readonly objectType: string = 'ViewStrategyInterface';

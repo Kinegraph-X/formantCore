@@ -9,7 +9,7 @@
 import {ComponentError } from '../error/Error.js';
 import {Logger} from '../log/Logger.js';
 import {ComponentTemplate} from '../template/TemplateFactory.js';
-import registries from '../Registries.js';
+import registries from '../registries.js';
 
 class TemplateReconcilier {
 	static objectType = 'TemplateReconcilier';

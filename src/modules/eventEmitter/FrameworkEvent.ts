@@ -12,7 +12,7 @@
  *    - Automatically bound by the framework to component EventEmitters
  *    - Payload is `undefined`, access data via `e.nativeEvent`
  * 
- * 2. **Custom Events**: Declared via `_outputs` (similar to Angular @Output)
+ * 2. **Custom Events**: Declared via `@output` (similar to Angular @Output)
  *    - Emitted manually by components
  *    - Can have typed payloads
  * 
@@ -23,20 +23,20 @@
  *       view: {
  *         nodeName: 'button',
  *         listens: {
- *           click: 'handleClick',    // ⬅️ Framework binds this automatically
- *           input: 'handleInput'
+ *           click: 'emitClick',    // The Framework binds this automatically
+ *           input: 'emitInput'
  *         }
  *       }
  *     });
+ * 
  * class MyButton extends ComponentBase {
- *   
  *   // EventEmitters for DOM events (payload is void)
- *   handleClick = new EventEmitter<void>('handleClick');
- *   handleInput = new EventEmitter<void>('handleInput');
+ *   emitClick = new EventEmitter<void>('emitClick');
+ *   emitInput = new EventEmitter<void>('emitInput');
  * }
  * 
  * @example
- * // 2. Custom Events - declared in _outputs
+ * // 2. Custom Events - declared as @ Output
  * class MyCounter extends ComponentBase {
  *   
  *   @ Output onValueChange = new EventEmitter<number>('onValueChange');
@@ -44,7 +44,7 @@
  *   
  *   increment() {
  *     const newValue = this.count + 1;
- *     this.onValueChange.emit(newValue); // ⬅️ Manual emit with payload
+ *     this.onValueChange.emit(newValue); // Manual emit with payload
  *   }
  * }
  * 
@@ -53,7 +53,7 @@
  * 
  * @Component({
  *       subscribeOnChild: [{
- *         on: 'handleClick',  // DOM event
+ *         on: 'emitClick',  // DOM event
  *         subscribe: (e, ctx, meta) => {
  *           // Access native DOM event
  *           if (e.nativeEvent) {

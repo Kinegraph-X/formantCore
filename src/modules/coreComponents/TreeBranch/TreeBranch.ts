@@ -4,7 +4,6 @@
 import {Output, Component} from '../../decorators.js';
 import { ComponentBase } from '../../component/Component.js';
 import {ComponentTemplate, ViewTemplate} from '../../template/TemplateFactory';
-import treeBranchHostTemplate from './componentTemplates/TreeBranchHostTemplate.js';
 import { EventEmitter } from '../../eventEmitter/EventEmitter.js';
 
 @Component({
